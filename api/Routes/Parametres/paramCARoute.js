@@ -38,5 +38,6 @@ router.get('/getRepartitionCA/:id_journal', paramCAController.getRepartitionCA);
 
 // Import des sections analytiques
 router.post('/importSections', verifyJWT, verifyPermission('ADD', 'EDIT'), paramCAController.importSections);
+router.post('/importSectionsWithProgress', verifyJWT, verifyPermission('ADD', 'EDIT'), paramCAController.importSectionsWithProgress);
 
 module.exports = router;

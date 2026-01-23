@@ -13,6 +13,15 @@ export default function ImportProgressBar({
 
     useEffect(() => {
         if (isVisible && variant === 'determinate') {
+            if (progress !== null && progress !== undefined) {
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                }
+                startTimeRef.current = null;
+                setDisplayProgress(Math.max(0, Math.min(100, progress)));
+                return;
+            }
+
             if (!startTimeRef.current) {
                 setDisplayProgress(0);
                 startTimeRef.current = Date.now();

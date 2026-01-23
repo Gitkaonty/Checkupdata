@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
 import {
     Typography,
     Stack,
@@ -24,6 +25,7 @@ import expectedtedHeader from './PopupFunctions/ExpectedHeaderEbilan';
 import { getPopupTitle, getFileUrl } from './PopupFunctions/PopupConfig';
 
 import ImportCard from './ImportCard/ImportCard';
+import ImportProgressBar from '../../ImportProgressBar';
 
 import {
     parseCsvFile,
@@ -33,6 +35,8 @@ import {
     processDaRow,
     processEiafncRow
 } from './PopupFunctions/csvHandlers';
+
+import useSSEImport from '../../../../hooks/useSSEImport';
 
 import VirtualTableAnomalieEbilan from './VirtualTable/VirtualTableAnomalieEbilan';
 import VirtualTableAnomalieColumnsEbilan from './VirtualTable/VirtualTableAnomalieColumnsEbilan';
@@ -58,7 +62,28 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice, refreshTable }) => {
+
     const [csvFile, setCsvFile] = useState(null);
+
+    const [traitementWaiting, setTraitementWaiting] = useState(false);
+    const [traitementMsg, setTraitementMsg] = useState('');
+    const [progressValue, setProgressValue] = useState(0);
+    const [importedCount, setImportedCount] = useState(0);
+
+    const { isImporting, progress: sseProgress, message: sseMessage, currentLine, totalLines, startImport } = useSSEImport();
+
+    useEffect(() => {
+        if (isImporting) {
+            setTraitementWaiting(true);
+            setProgressValue(sseProgress);
+            const displayMessage = currentLine > 0 && totalLines > 0
+                ? `${sseMessage} (${currentLine}/${totalLines} lignes)`
+                : sseMessage;
+            setTraitementMsg(displayMessage);
+        } else {
+            setTraitementWaiting(false);
+        }
+    }, [isImporting, sseProgress, sseMessage, currentLine, totalLines]);
 
     const [anomalieData, setAnomalieData] = useState([]);
     const [showAnomalieData, setShowAnomalieData] = useState(false);
@@ -100,10 +125,15 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         id_exercice: Number(id_exercice)
                     };
                 },
+                startImport,
                 setCsvFile,
                 setShowAnomalieData,
                 setAnomalieData,
-                closePopup
+                closePopup,
+                setTraitementWaiting,
+                setTraitementMsg,
+                setProgressValue,
+                setImportedCount
             });
         } else if (type === "12") {
             // MP
@@ -121,10 +151,15 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         id_exercice: Number(id_exercice)
                     };
                 },
+                startImport,
                 setCsvFile,
                 setShowAnomalieData,
                 setAnomalieData,
-                closePopup
+                closePopup,
+                setTraitementWaiting,
+                setTraitementMsg,
+                setProgressValue,
+                setImportedCount
             });
         } else if (type === "13") {
             // DA
@@ -142,10 +177,15 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         id_exercice: Number(id_exercice)
                     };
                 },
+                startImport,
                 setCsvFile,
                 setShowAnomalieData,
                 setAnomalieData,
-                closePopup
+                closePopup,
+                setTraitementWaiting,
+                setTraitementMsg,
+                setProgressValue,
+                setImportedCount
             });
         } else if (type === "14") {
             // DP
@@ -164,10 +204,15 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         id_exercice: Number(id_exercice)
                     };
                 },
+                startImport,
                 setCsvFile,
                 setShowAnomalieData,
                 setAnomalieData,
-                closePopup
+                closePopup,
+                setTraitementWaiting,
+                setTraitementMsg,
+                setProgressValue,
+                setImportedCount
             });
         } else if (type === "16") {
             // SAD
@@ -189,10 +234,15 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         id_exercice: Number(id_exercice)
                     };
                 },
+                startImport,
                 setCsvFile,
                 setShowAnomalieData,
                 setAnomalieData,
-                closePopup
+                closePopup,
+                setTraitementWaiting,
+                setTraitementMsg,
+                setProgressValue,
+                setImportedCount
             });
         } else if (type === "19") {
         }
@@ -351,6 +401,13 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                                 </Stack>
                             )
                         }
+
+                        <ImportProgressBar
+                            isVisible={traitementWaiting}
+                            message={traitementMsg || (importedCount > 0 ? `Import en cours... (${importedCount} lignes)` : 'Import en cours...')}
+                            variant="determinate"
+                            progress={progressValue}
+                        />
                     </Stack>
                 </DialogContent>
 

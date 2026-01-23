@@ -15,7 +15,7 @@ import { DataGrid, frFR } from '@mui/x-data-grid';
 import QuickFilter from '../../../componentsTools/DatagridToolsStyle';
 import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 import PopupActionConfirm from '../../../componentsTools/popupActionConfirm';
-import CircularProgress from '@mui/material/CircularProgress';
+import ImportProgressBar from '../../../componentsTools/ImportProgressBar';
 import PopupInformation from '../../../componentsTools/popupInformation';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -35,6 +35,7 @@ export default function ImportCodeJournaux() {
     const [msgAnomalie, setMsgAnomalie] = useState([]);
     const [traitementWaiting, setTraitementWaiting] = useState(false);
     const [traitementMsg, setTraitementMsg] = useState('');
+    const [progressValue, setProgressValue] = useState(0);
     const [openDialogConfirmImport, setOpenDialogConfirmImport] = useState(false);
     const [anomaliePersiste, setAnomaliePersiste] = useState(false);
     const navigate = useNavigate();
@@ -247,6 +248,7 @@ export default function ImportCodeJournaux() {
                     if (validateHeaders(headers)) {
                         setTraitementMsg('Traitement des données en cours...');
                         setTraitementWaiting(true);
+                        setProgressValue(30);
 
                         setMsgAnomalie([]);
                         setCouleurBoutonAnomalie('white');
@@ -267,8 +269,14 @@ export default function ImportCodeJournaux() {
                         setCodeJournauxData(DataWithId);
                         formikImport.setFieldValue('codeJournauxData', DataWithId);
 
+                        toast.success(`${DataWithId.length} ligne(s) chargée(s)`);
+
                         event.target.value = null;
-                        setTraitementWaiting(false);
+                        setProgressValue(100);
+                        setTimeout(() => {
+                            setTraitementWaiting(false);
+                            setProgressValue(0);
+                        }, 600);
                         handleOpenAnomalieDetails();
                     }
                 },
@@ -419,12 +427,12 @@ export default function ImportCodeJournaux() {
                                     </Button>
                                 </label>
 
-                                {traitementWaiting && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                                        <CircularProgress size={20} sx={{ mr: 2 }} />
-                                        <Typography variant='body2'>{traitementMsg}</Typography>
-                                    </Box>
-                                )}
+                                <ImportProgressBar
+                                    isVisible={traitementWaiting}
+                                    message={traitementMsg}
+                                    variant="determinate"
+                                    progress={progressValue}
+                                />
 
                                 {nbrAnomalie > 0 && (
                                     <Badge

@@ -467,7 +467,7 @@ export default function ImportBalance() {
 
     //download modele d'import
     const handleDownloadModel = () => {
-        const fileUrl = '../../../../../public/modeleImport/modeleImportBalance.csv';
+        const fileUrl = '/modeleImport/modeleImportBalance.csv';
         const link = document.createElement('a');
         link.href = fileUrl;
         link.download = 'ModeleImportBalance';
