@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import { TiWarning } from "react-icons/ti";
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 
-const VirtualTableModifiableEbilan = ({ columns, rows, deleteState, modifyState, state, withFooter, withAnomalie, type, canModify, canAdd, canDelete, canView }) => {
+const VirtualTableModifiableEbilan = ({ columns, rows, deleteState, modifyState, state, withFooter, withAnomalie, type, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const [openRowsMp, setOpenRowsMp] = useState({});
   const [openRowsBhiapc, setOpenRowsBhiapc] = useState({});
   const initial = init[0];

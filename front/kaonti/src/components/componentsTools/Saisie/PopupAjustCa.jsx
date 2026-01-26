@@ -95,6 +95,27 @@ export default function PopupAjustCa({
                 if (!resData?.state) return;
 
                 const fetchedRows = resData?.list || [];
+
+                if (type === "modification") {
+                    const rows = listCaFinal
+                        .filter(item => item.id_ligne_ecriture === data.rowId)
+                        .map(item => {
+                            const fetched = fetchedRows.find(f => f.id_section === item.id_section);
+
+                            return {
+                                ...item,
+                                debit: fetched?.debit ?? 0,
+                                credit: fetched?.credit ?? 0,
+                                pourcentage: fetched?.pourcentage ?? 0,
+                                libelle_axe: item.libelle_axe || fetched?.libelle_axe || '',
+                                section: item.section || fetched?.section || ''
+                            };
+                        });
+
+                    setPopupRows(rows);
+                    return;
+                }
+
                 const mergedRows = listCaFinal
                     .filter(item => item.id_ligne_ecriture === data.rowId)
                     .map(item => {
@@ -115,28 +136,6 @@ export default function PopupAjustCa({
                             pourcentage: localPourcentage,
                             libelle_axe: item.libelle_axe || fetched?.libelle_axe || '',
                             section: item.section || fetched?.section || '',
-                        };
-                    });
-
-                const missingRows = listCaFinal
-                    .filter(item => item.id_ligne_ecriture === data.rowId)
-                    .filter(item =>
-                        !fetchedRows.some(f => f.id_section === item.id_section)
-                    )
-                    .map(item => {
-                        const localPourcentage = item.pourcentage ?? listCa.find(
-                            p => p.id_section === item.id_section
-                        )?.pourcentage ?? 0;
-
-                        const montantCalc = (data?.montant || 0) * (localPourcentage / 100);
-
-                        return {
-                            ...item,
-                            debit: data?.type === 'debit' ? montantCalc : 0,
-                            credit: data?.type === 'credit' ? montantCalc : 0,
-                            pourcentage: localPourcentage,
-                            libelle_axe: item.libelle_axe || '',
-                            section: item.section || '',
                         };
                     });
 

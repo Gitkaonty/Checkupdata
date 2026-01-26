@@ -17,7 +17,7 @@ import PopupAjustRubriqueEbilanEtatFinancier from './popup/popupAjustRubriqueEbi
 import { FaRegPenToSquare } from "react-icons/fa6";
 import { init } from '../../../../init';
 
-const VirtualTableEbilanEtatFinaciere = ({ refreshTable, columns, rows, noCollapsible, state, setIsRefreshed, type, canModify, canAdd, canDelete, canView }) => {
+const VirtualTableEbilanEtatFinaciere = ({ refreshTable, columns, rows, noCollapsible, state, setIsRefreshed, type, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const initial = init[0];
   const targetColumnId = 'libelle';
   const [openRows, setOpenRows] = useState({});
@@ -121,6 +121,7 @@ const VirtualTableEbilanEtatFinaciere = ({ refreshTable, columns, rows, noCollap
             canModify={canModify}
             canDelete={canDelete}
             canView={canView}
+            deviseParDefaut={deviseParDefaut}
           />
           :
           null
