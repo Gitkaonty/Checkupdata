@@ -11,10 +11,13 @@ const recupTableau = require('../../../Middlewares/Ebilan/recupTableau');
 const functionControles = require('../../../Middlewares/Ebilan/controles');
 const fonctionUpdateBalanceSold = require('../../../Middlewares/UpdateSolde/updateBalanceSold');
 
+const { withSSEProgress } = require('../../../Middlewares/sseProgressMiddleware');
+
 const { create } = require('xmlbuilder2');
 
 const PdfPrinter = require('pdfmake');
 const { PDFDocument } = require('pdf-lib');
+
 const ExcelJS = require('exceljs');
 
 const compterubriques = db.compterubriques;
@@ -1665,7 +1668,7 @@ const exportAllToPDF = async (req, res) => {
     console.error(error);
     res.status(500).json({ msg: 'Erreur génération PDF' });
   }
-};
+}
 
 const importBhiapc = async (req, res) => {
   try {
@@ -1675,15 +1678,18 @@ const importBhiapc = async (req, res) => {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
     }
 
+    const batchSize = 500;
     let lineAdded = 0;
-    for (const d of data) {
-      await liassebhiapcs.create(d);
-      lineAdded++;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await liassebhiapcs.bulkCreate(batch);
+      lineAdded += batch.length;
     }
 
     return res.status(200).json({
       state: true,
-      message: `${lineAdded} ${lineAdded.length > 1 ? 'lignes ajoutées' : 'ligne ajouté'} avec succès`
+      nbrligne: lineAdded,
+      message: `${lineAdded} ${lineAdded > 1 ? 'lignes ajoutées' : 'ligne ajoutée'} avec succès`
     });
   } catch (error) {
     console.error(error);
@@ -1699,15 +1705,18 @@ const importMp = async (req, res) => {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
     }
 
+    const batchSize = 500;
     let lineAdded = 0;
-    for (const d of data) {
-      await liassemps.create(d);
-      lineAdded++;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await liassemps.bulkCreate(batch);
+      lineAdded += batch.length;
     }
 
     return res.status(200).json({
       state: true,
-      message: `${lineAdded} ${lineAdded.length > 1 ? 'lignes ajoutées' : 'ligne ajouté'} avec succès`
+      nbrligne: lineAdded,
+      message: `${lineAdded} ${lineAdded > 1 ? 'lignes ajoutées' : 'ligne ajoutée'} avec succès`
     });
   } catch (error) {
     console.error(error);
@@ -1723,15 +1732,18 @@ const importDa = async (req, res) => {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
     }
 
+    const batchSize = 500;
     let lineAdded = 0;
-    for (const d of data) {
-      await liassedas.create(d);
-      lineAdded++;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await liassedas.bulkCreate(batch);
+      lineAdded += batch.length;
     }
 
     return res.status(200).json({
       state: true,
-      message: `${lineAdded} ${lineAdded.length > 1 ? 'lignes ajoutées' : 'ligne ajouté'} avec succès`
+      nbrligne: lineAdded,
+      message: `${lineAdded} ${lineAdded > 1 ? 'lignes ajoutées' : 'ligne ajoutée'} avec succès`
     });
   } catch (error) {
     console.error(error);
@@ -1747,15 +1759,18 @@ const importEiafnc = async (req, res) => {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
     }
 
+    const batchSize = 500;
     let lineAdded = 0;
-    for (const d of data) {
-      await liasseeiafncs.create(d);
-      lineAdded++;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await liasseeiafncs.bulkCreate(batch);
+      lineAdded += batch.length;
     }
 
     return res.status(200).json({
       state: true,
-      message: `${lineAdded} ${lineAdded.length > 1 ? 'lignes ajoutées' : 'ligne ajouté'} avec succès`
+      nbrligne: lineAdded,
+      message: `${lineAdded} ${lineAdded > 1 ? 'lignes ajoutées' : 'ligne ajoutée'} avec succès`
     });
   } catch (error) {
     console.error(error);
@@ -1771,15 +1786,18 @@ const importSe = async (req, res) => {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
     }
 
+    const batchSize = 500;
     let lineAdded = 0;
-    for (const d of data) {
-      await liasseses.create(d);
-      lineAdded++;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await liasseses.bulkCreate(batch);
+      lineAdded += batch.length;
     }
 
     return res.status(200).json({
       state: true,
-      message: `${lineAdded} ${lineAdded.length > 1 ? 'lignes ajoutées' : 'ligne ajouté'} avec succès`
+      nbrligne: lineAdded,
+      message: `${lineAdded} ${lineAdded > 1 ? 'lignes ajoutées' : 'ligne ajoutée'} avec succès`
     });
   } catch (error) {
     console.error(error);
@@ -2434,6 +2452,61 @@ const setEtatValide = async (req, res) => {
   }
 };
 
+const importEbilanWithProgressLogic = (tableModel, label) => {
+  return async (req, res, progress) => {
+    try {
+      const { data } = req.body;
+
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        progress.error("Données manquantes ou invalides");
+        return;
+      }
+
+      const totalLines = data.length;
+      progress.update(0, totalLines, `Démarrage import ${label}...`, 0);
+
+      await progress.processBatch(
+        data,
+        async (batch) => {
+          await tableModel.bulkCreate(batch);
+          return null;
+        },
+        10,
+        95,
+        `Import ${label} en cours...`
+      );
+
+      progress.complete(
+        `${totalLines} ${totalLines > 1 ? 'lignes ajoutées' : 'ligne ajoutée'} avec succès`,
+        { nbrligne: totalLines }
+      );
+    } catch (error) {
+      console.error(error);
+      progress.error(`Erreur lors de l'import ${label}`, error);
+    }
+  };
+};
+
+const importBhiapcWithProgress = withSSEProgress(importEbilanWithProgressLogic(liassebhiapcs, 'BHIAPC'), {
+  batchSize: 500
+});
+
+const importMpWithProgress = withSSEProgress(importEbilanWithProgressLogic(liassemps, 'MP'), {
+  batchSize: 500
+});
+
+const importDaWithProgress = withSSEProgress(importEbilanWithProgressLogic(liassedas, 'DA'), {
+  batchSize: 500
+});
+
+const importEiafncWithProgress = withSSEProgress(importEbilanWithProgressLogic(liasseeiafncs, 'EIAFNC'), {
+  batchSize: 500
+});
+
+const importSeWithProgress = withSSEProgress(importEbilanWithProgressLogic(liasseses, 'SE'), {
+  batchSize: 500
+});
+
 module.exports = {
   overview,
   details,
@@ -2457,10 +2530,15 @@ module.exports = {
   exportAllToExcel,
   exportAllToPDF,
   importBhiapc,
+  importBhiapcWithProgress,
   importMp,
+  importMpWithProgress,
   importDa,
+  importDaWithProgress,
   importEiafnc,
+  importEiafncWithProgress,
   importSe,
+  importSeWithProgress,
   generateBhiapcAuto,
   generateDpAuto,
   exportAllToXml
