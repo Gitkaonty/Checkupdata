@@ -119,11 +119,13 @@ module.exports = (sequelize, DataTypes) => {
         },
         montanth_tva: {
             type: DataTypes.DOUBLE,
-            allowNull: false,
+            allowNull: true,
+            defaultValue: 0
         },
         tva: {
             type: DataTypes.DOUBLE,
             allowNull: true,
+            defaultValue: 0
         },
         type: {
             type: DataTypes.STRING(50),

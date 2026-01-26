@@ -265,6 +265,8 @@ export default function EtatFinancier() {
     const [buttonActifVariant, setButtonActifVariant] = useState('contained');
     const [buttonPassifVariant, setButtonPassifVariant] = useState('outlined');
 
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
+
     const [verrBilan, setVerrBilan] = useState(false);
     const [verrCrn, setVerrCrn] = useState(false);
     const [verrCrf, setVerrCrf] = useState(false);
@@ -363,6 +365,18 @@ export default function EtatFinancier() {
             handleCloseDialogConfirmRefresh();
         }
         setIsLoading(false);
+    }
+
+    // Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`)
+            .then((response) => {
+                const data = response.data;
+                const defaultDevise = data.find(val => val.par_defaut === true);
+                if (defaultDevise) {
+                    setDeviseParDefaut(defaultDevise.code);
+                }
+            })
     }
 
     //===========================================================================================
@@ -665,6 +679,7 @@ export default function EtatFinancier() {
     useEffect(() => {
         if (canView && fileId && compteId && selectedExerciceId) {
             getEtatFinancierGlobal();
+            getListeDevises();
         }
     }, [fileId, compteId, selectedExerciceId, isRefreshed])
 
@@ -890,6 +905,7 @@ export default function EtatFinancier() {
                                                     rows={bilanActifData}
                                                     state={verrBilan}
                                                     setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
                                             : null
@@ -909,6 +925,7 @@ export default function EtatFinancier() {
                                                     rows={bilanPassifData}
                                                     state={verrBilan}
                                                     setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
                                             : null
@@ -993,6 +1010,7 @@ export default function EtatFinancier() {
                                                 rows={crnData}
                                                 state={verrCrn}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1075,6 +1093,7 @@ export default function EtatFinancier() {
                                                 rows={crfData}
                                                 state={verrCrf}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1157,6 +1176,7 @@ export default function EtatFinancier() {
                                                 rows={tftdData}
                                                 state={verrTftd}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1239,6 +1259,7 @@ export default function EtatFinancier() {
                                                 rows={tftiData}
                                                 state={verrTfti}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1322,6 +1343,7 @@ export default function EtatFinancier() {
                                                 rows={evcpData}
                                                 state={verrEvcp}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 

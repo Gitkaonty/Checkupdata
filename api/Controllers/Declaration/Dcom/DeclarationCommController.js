@@ -46,6 +46,7 @@ const infoBlock = (dossier, exercice) => ([
 exports.addDroitCommA = async (req, res) => {
     try {
         const { formData } = req.body;
+        console.log('formData : ', formData);
         if (!formData) {
             return res.status(400).json({
                 state: false,

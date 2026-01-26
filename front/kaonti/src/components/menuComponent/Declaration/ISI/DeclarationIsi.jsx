@@ -51,6 +51,8 @@ export default function DeclarationIsi() {
     const [listeSituation, setListeSituation] = useState([]);
     const [listeAnnee, setListeAnnee] = useState([])
 
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
+
     const [historiqueIsi, setHistoriqueIsi] = useState([]);
     const [isHistoriqueRefreshed, setIsHistoriqueRefreshed] = useState(false);
 
@@ -180,6 +182,18 @@ export default function DeclarationIsi() {
         } else if (choix === 1) {
             GetListeSituation(selectedExerciceId);
         }
+    }
+
+    // Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`)
+            .then((response) => {
+                const data = response.data;
+                const defaultDevise = data.find(val => val.par_defaut === true);
+                if (defaultDevise) {
+                    setDeviseParDefaut(defaultDevise.code);
+                }
+            })
     }
 
     // Changer de tab
@@ -383,7 +397,8 @@ export default function DeclarationIsi() {
     // Liste plan comptable
     useEffect(() => {
         if (canView) {
-            getPc()
+            getPc();
+            getListeDevises();
         }
     }, [fileId, compteId, valSelectMois, valSelectAnnee, isDetailSelectionRefreshed])
 
@@ -596,6 +611,7 @@ export default function DeclarationIsi() {
                                             canAdd={canAdd}
                                             canDelete={canDelete}
                                             canModify={canModify}
+                                            deviseParDefaut={deviseParDefaut}
                                         />
                                     </TabPanel>
 

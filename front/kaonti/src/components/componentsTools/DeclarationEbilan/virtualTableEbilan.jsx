@@ -17,7 +17,7 @@ import { RiExchangeBoxFill } from "react-icons/ri";
 import PopupAjustRubriqueEbilan from '../FormulaireModifTableauEbilan/popupAjustRubriqueEbilan';
 import { FaRegPenToSquare } from "react-icons/fa6";
 
-const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state, type, canModify, canAdd, canDelete, canView }) => {
+const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state, type, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const initial = init[0];
   const targetColumnId = 'rubriquesmatrix.libelle';
   const [openRows, setOpenRows] = React.useState({});
@@ -132,6 +132,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
             canModify={canModify}
             canDelete={canDelete}
             canView={canView}
+            deviseParDefaut={deviseParDefaut}
           />
           :
           null
