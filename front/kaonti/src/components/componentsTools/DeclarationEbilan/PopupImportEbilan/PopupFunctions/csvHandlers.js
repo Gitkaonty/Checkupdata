@@ -16,24 +16,40 @@ export const parseCsvFile = async ({
     type,
     expectedHeaders,
     processRow,
+    startImport,
     setCsvFile,
     setShowAnomalieData,
     closePopup,
-    setAnomalieData
+    setAnomalieData,
+    setTraitementWaiting,
+    setTraitementMsg,
+    setProgressValue,
+    setImportedCount
 }) => {
     if (!file) return;
+
+    if (setTraitementMsg) setTraitementMsg('Lecture du fichier en cours...');
+    if (setTraitementWaiting) setTraitementWaiting(true);
+    if (setProgressValue) setProgressValue(10);
+
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        delimiter: ';',
         complete: async (results) => {
-            const actualHeaders = results.meta.fields;
+            const actualHeaders = results?.meta?.fields || [];
             const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h));
 
             if (missingHeaders.length > 0) {
                 toast.error("Colonnes manquantes : " + missingHeaders.join(', '));
                 setCsvFile(null);
+                if (setTraitementWaiting) setTraitementWaiting(false);
+                if (setProgressValue) setProgressValue(0);
                 return;
             }
+
+            if (setTraitementMsg) setTraitementMsg('Validation des données en cours...');
+            if (setProgressValue) setProgressValue(35);
 
             const anomalies = [];
             const parsedData = results.data.reduce((acc, row, rowIndex) => {
@@ -42,33 +58,77 @@ export const parseCsvFile = async ({
                 return acc;
             }, []);
 
+            if (setImportedCount) setImportedCount(parsedData.length);
+
             if (anomalies.length > 0) {
                 toast.error(`${anomalies.length} anomalies détectées. Import annulé.`);
                 setAnomalieData(anomalies);
                 setCsvFile(null);
                 setShowAnomalieData(true);
+                if (setTraitementWaiting) setTraitementWaiting(false);
+                if (setProgressValue) setProgressValue(0);
                 return;
             }
 
             const endpoint = apiEndpoints[type];
             if (endpoint) {
+                let usedSSE = false;
                 try {
-                    const response = await axios.post(endpoint, { data: parsedData });
-                    if (response?.data?.state) {
-                        toast.success(response.data.message);
-                        closePopup();
+                    if (setTraitementMsg) setTraitementMsg(`Envoi des données (${parsedData.length} lignes) en cours...`);
+                    if (setProgressValue) setProgressValue(70);
+                    if (startImport) {
+                        usedSSE = true;
+                        const sseEndpoint = `${endpoint}WithProgress`;
+                        startImport(
+                            sseEndpoint,
+                            { data: parsedData },
+                            (eventData) => {
+                                if (setProgressValue) setProgressValue(100);
+                                toast.success(eventData?.message || 'Import terminé');
+                                closePopup();
+                            },
+                            (errMsg) => {
+                                toast.error(errMsg || "Erreur lors de l'import");
+                            }
+                        );
                     } else {
-                        toast.error(response.data.message);
+                        const response = await axios.post(endpoint, { data: parsedData });
+                        if (response?.data?.state) {
+                            if (setProgressValue) setProgressValue(100);
+                            toast.success(response.data.message);
+                            closePopup();
+                        } else {
+                            toast.error(response.data.message);
+                        }
                     }
                 } catch (error) {
                     console.error(`Erreur API import type ${type} :`, error);
                     toast.error("Erreur lors de l'envoi des données à l'API.");
+                } finally {
+                    if (usedSSE) {
+                        // Le hook SSE gère l'état et la fermeture du flux.
+                        // Ne pas masquer la barre tant que le SSE n'a pas émis complete/error.
+                        return;
+                    }
+                    if (setTraitementWaiting) {
+                        setTimeout(() => {
+                            setTraitementWaiting(false);
+                            if (setProgressValue) setProgressValue(0);
+                        }, 600);
+                    } else if (setProgressValue) {
+                        setProgressValue(0);
+                    }
                 }
             }
 
             setCsvFile(file);
         },
-        error: (error) => console.error("Erreur parsing CSV :", error)
+        error: (error) => {
+            console.error("Erreur parsing CSV :", error);
+            toast.error("Erreur lors de la lecture du fichier.");
+            if (setTraitementWaiting) setTraitementWaiting(false);
+            if (setProgressValue) setProgressValue(0);
+        }
     });
 };
 

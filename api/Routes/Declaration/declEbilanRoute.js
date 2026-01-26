@@ -64,18 +64,23 @@ router.get('/exportAllToPDF/:id_compte/:id_dossier/:id_exercice', declEbilanCont
 
 // Import formulaire bhiapc
 router.post('/importBhiapc', declEbilanController.importBhiapc);
+router.post('/importBhiapcWithProgress', declEbilanController.importBhiapcWithProgress);
 
 // Import formulaire mp
 router.post('/importMp', declEbilanController.importMp);
+router.post('/importMpWithProgress', declEbilanController.importMpWithProgress);
 
 // Import formulaire da
 router.post('/importDa', declEbilanController.importDa);
+router.post('/importDaWithProgress', declEbilanController.importDaWithProgress);
 
 // Import formulaire eiafnc
 router.post('/importEiafnc', declEbilanController.importEiafnc);
+router.post('/importEiafncWithProgress', declEbilanController.importEiafncWithProgress);
 
 // Import formulaire se
 router.post('/importSe', declEbilanController.importSe);
+router.post('/importSeWithProgress', declEbilanController.importSeWithProgress);
 
 // Génération automatique du tableau BHIAPC
 router.post('/generateBhiapcAuto', declEbilanController.generateBhiapcAuto);

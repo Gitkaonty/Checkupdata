@@ -1,4 +1,4 @@
-import { React, useState } from 'react';
+import { React, useState, useEffect } from 'react';
 import { Typography, Stack, Button, Dialog, DialogTitle, DialogContent, DialogActions, Badge, Box, CircularProgress, TextField } from '@mui/material';
 import { init } from '../../../../../init';
 import toast from 'react-hot-toast';
@@ -9,11 +9,11 @@ import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 import PopupInformation from '../../../componentsTools/popupInformation';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import DownloadIcon from '@mui/icons-material/Download';
-import useAxiosPrivate from '../../../../../config/axiosPrivate';
+import useSSEImport from '../../../../hooks/useSSEImport';
+import ImportProgressBar from '../../../componentsTools/ImportProgressBar';
 
 export default function PopupImportAnalitique({ open, onClose, fileId, compteId, axeId, onImportSuccess }) {
     let initial = init[0];
-    const axiosPrivate = useAxiosPrivate();
     const [nbrAnomalie, setNbrAnomalie] = useState(0);
     const [openDetailsAnomalie, setOpenDetailsAnomalie] = useState(false);
     const [couleurBoutonAnomalie, setCouleurBoutonAnomalie] = useState('white');
@@ -21,6 +21,18 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
     const [msgAnomalie, setMsgAnomalie] = useState([]);
     const [traitementWaiting, setTraitementWaiting] = useState(false);
     const [traitementMsg, setTraitementMsg] = useState('');
+
+    const { isImporting, progress, message, currentLine, totalLines, startImport } = useSSEImport();
+
+    useEffect(() => {
+        if (isImporting) {
+            setTraitementWaiting(true);
+            const displayMessage = currentLine > 0 && totalLines > 0
+                ? `${message} (${currentLine}/${totalLines} lignes)`
+                : message;
+            setTraitementMsg(displayMessage);
+        }
+    }, [isImporting, progress, message, currentLine, totalLines]);
 
     const [openRecalcPopup, setOpenRecalcPopup] = useState(false);
     const [recalcChoice, setRecalcChoice] = useState(null); // 'oui' | 'non'
@@ -266,31 +278,32 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
             recalcPourcentages: choice
         };
 
-        axiosPrivate.post('/paramCa/importSections', dataToSend)
-            .then((response) => {
-                const resData = response.data;
+        startImport(
+            '/paramCa/importSectionsWithProgress',
+            dataToSend,
+            (eventData) => {
                 setTraitementWaiting(false);
-                if (resData.state) {
-                    toast.success(resData.msg);
+                if (eventData?.state) {
+                    toast.success(eventData.msg || eventData.message);
                     handleClose();
                     if (onImportSuccess) {
                         onImportSuccess();
                     }
                 } else {
-                    toast.error(resData.msg);
-                    if (resData.anomalies && resData.anomalies.length > 0) {
-                        setMsgAnomalie(resData.anomalies);
-                        setNbrAnomalie(resData.anomalies.length);
-                        setCouleurBoutonAnomalie("#EB5B00");
+                    toast.error(eventData?.msg || eventData?.message || "Une erreur est survenue lors de l'import");
+                    if (eventData?.anomalies && eventData.anomalies.length > 0) {
+                        setMsgAnomalie(eventData.anomalies);
+                        setNbrAnomalie(eventData.anomalies.length);
+                        setCouleurBoutonAnomalie('#EB5B00');
                         handleOpenAnomalieDetails();
                     }
                 }
-            })
-            .catch((error) => {
+            },
+            (errMsg) => {
                 setTraitementWaiting(false);
-                toast.error("Une erreur est survenue lors de l'import");
-                console.error(error);
-            });
+                toast.error(errMsg || "Une erreur est survenue lors de l'import");
+            }
+        );
     };
 
     const handleClose = () => {
@@ -427,12 +440,19 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                                 </label>
                             </Stack>
 
-                            {traitementWaiting && (
+                            {traitementWaiting && !isImporting && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
                                     <CircularProgress size={20} sx={{ mr: 2 }} />
                                     <Typography variant='body2'>{traitementMsg}</Typography>
                                 </Box>
                             )}
+
+                            <ImportProgressBar
+                                isVisible={isImporting}
+                                message={traitementMsg || 'Import en cours...'}
+                                variant="determinate"
+                                progress={progress}
+                            />
 
                             {nbrAnomalie > 0 && (
                                 <Badge

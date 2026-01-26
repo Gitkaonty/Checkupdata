@@ -1,6 +1,7 @@
 const db = require("../../Models");
 require('dotenv').config();
 const Sequelize = require('sequelize');
+const { withSSEProgress } = require('../../Middlewares/sseProgressMiddleware');
 
 const caAxes = db.caAxes;
 const caSections = db.caSections;
@@ -534,10 +535,10 @@ exports.importSections = async (req, res) => {
         const id_dossier = parseInt(fileId);
         const id_axe = parseInt(axeId);
 
-        if (isNaN(id_compte) || isNaN(id_dossier) || isNaN(id_axe)) {
+        if (isNaN(id_compte) || isNaN(id_dossier)) {
             return res.status(400).json({
                 state: false,
-                msg: "Compte, dossier ou axe invalide"
+                msg: "Compte ou dossier invalide"
             });
         }
 
@@ -628,6 +629,134 @@ exports.importSections = async (req, res) => {
         });
     }
 };
+
+const importSectionsWithProgressLogic = async (req, res, progress) => {
+    try {
+        const { compteId, fileId, axeId, sectionsData, recalcPourcentages } = req.body;
+
+        let resData = {
+            state: false,
+            msg: 'Une erreur est survenue au moment du traitement.',
+            anomalies: []
+        };
+
+        if (!compteId || !fileId || !axeId || !sectionsData || !Array.isArray(sectionsData)) {
+            resData.state = false;
+            resData.msg = 'Données manquantes ou invalides';
+            progress.complete(resData.msg, resData);
+            return;
+        }
+
+        const id_compte = parseInt(compteId);
+        const id_dossier = parseInt(fileId);
+        const id_axe = parseInt(axeId);
+
+        if (isNaN(id_compte) || isNaN(id_dossier) || isNaN(id_axe)) {
+            resData.state = false;
+            resData.msg = 'Compte, dossier ou axe invalide';
+            progress.complete(resData.msg, resData);
+            return;
+        }
+
+        if (sectionsData.length === 0) {
+            resData.state = false;
+            resData.msg = 'Aucune donnée à importer';
+            progress.complete(resData.msg, resData);
+            return;
+        }
+
+        const shouldRecalc = String(recalcPourcentages || 'oui').toLowerCase() !== 'non';
+
+        const totalPourcentage = sectionsData.reduce((sum, item) => sum + (parseFloat(item.pourcentage) || 0), 0);
+        if (Math.abs(totalPourcentage - 100) > 0.1) {
+            resData.state = false;
+            resData.msg = `Le total des pourcentages doit être égal à 100%. Total actuel: ${totalPourcentage.toFixed(2)}%`;
+            progress.complete(resData.msg, resData);
+            return;
+        }
+
+        const sectionsToCreate = [];
+        const anomalies = [];
+
+        progress.update(0, sectionsData.length, 'Validation des données...', 10);
+
+        for (let i = 0; i < sectionsData.length; i++) {
+            const item = sectionsData[i];
+
+            if (!item.section || !item.intitule || !item.compte) {
+                anomalies.push(`Ligne ${i + 1}: Données manquantes (section, intitulé ou compte)`);
+            } else {
+                sectionsToCreate.push({
+                    id_compte,
+                    id_dossier,
+                    id_axe,
+                    section: item.section,
+                    intitule: item.intitule,
+                    compte: item.compte,
+                    pourcentage: parseFloat(item.pourcentage).toFixed(2),
+                    fermer: false,
+                    par_defaut: false
+                });
+            }
+
+            if (i === sectionsData.length - 1 || (i + 1) % 50 === 0) {
+                progress.update(i + 1, sectionsData.length, 'Validation des données...', 10 + Math.floor(((i + 1) / sectionsData.length) * 30));
+            }
+        }
+
+        if (anomalies.length > 0) {
+            resData.state = false;
+            resData.msg = 'Des anomalies ont été détectées dans les données';
+            resData.anomalies = anomalies;
+            progress.complete(resData.msg, resData);
+            return;
+        }
+
+        let insertedCount = 0;
+
+        await progress.processBatch(
+            sectionsToCreate,
+            async (batch) => {
+                const created = await caSections.bulkCreate(batch);
+                const nb = Array.isArray(created) ? created.length : batch.length;
+                insertedCount += nb;
+                return created;
+            },
+            50,
+            85,
+            'Insertion en base...'
+        );
+
+        if (shouldRecalc) {
+            progress.step('Recalcul des pourcentages...', 90);
+
+            const allSections = await caSections.findAll({
+                where: { id_compte, id_dossier, id_axe },
+                attributes: ['id']
+            });
+
+            const nb = allSections.length;
+            const pct = nb > 0 ? Number((100 / nb).toFixed(2)) : 100;
+
+            if (nb > 0) {
+                await caSections.update(
+                    { pourcentage: pct },
+                    { where: { id_compte, id_dossier, id_axe } }
+                );
+            }
+        }
+
+        resData.state = true;
+        resData.msg = `${insertedCount} section(s) importée(s) avec succès.`;
+
+        progress.complete(resData.msg, { ...resData, nbrligne: insertedCount });
+    } catch (error) {
+        console.error("Erreur lors de l'import des sections:", error);
+        progress.error("Erreur serveur lors de l'import", error);
+    }
+};
+
+exports.importSectionsWithProgress = withSSEProgress(importSectionsWithProgressLogic, { batchSize: 200 });
 
 exports.getRepartitionCA = async (req, res) => {
     const { id_journal } = req.params;
