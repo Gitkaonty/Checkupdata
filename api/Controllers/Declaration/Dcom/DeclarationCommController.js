@@ -8,6 +8,8 @@ const generateDComAuto = require('../../../Middlewares/DCom/declCommGenerateAuto
 const declDCommGeneratePdf = require('../../../Middlewares/DCom/declCommGeneratePDF');
 const declDCommGenerateExcel = require('../../../Middlewares/DCom/declCommGenerateExcel');
 
+const { withSSEProgress } = require('../../../Middlewares/sseProgressMiddleware');
+
 const generateDroitComm = generateDComAuto.generateDroitComm;
 const generateDComAutoFunction = generateDComAuto.generateDComAuto;
 
@@ -529,6 +531,69 @@ exports.importdroitCommB = async (req, res) => {
         return res.status(500).json({ state: false, message: "Erreur serveur", error: error.message });
     }
 };
+
+const importdroitCommAWithProgressLogic = async (req, res, progress) => {
+    try {
+        const { data } = req.body;
+
+        if (!data || !Array.isArray(data)) {
+            progress.error('Données manquantes ou invalides');
+            return;
+        }
+
+        progress.step('Préparation des données...', 5);
+
+        let lineAdded = 0;
+        await progress.processBatch(
+            data,
+            async (batch) => {
+                await droitcommas.bulkCreate(batch);
+                lineAdded += batch.length;
+                return [];
+            },
+            10,
+            90,
+            'Import en cours...'
+        );
+
+        progress.complete(`${lineAdded} lignes ajoutées`, { nbrligne: lineAdded });
+    } catch (error) {
+        progress.error('Erreur serveur', error);
+    }
+};
+
+const importdroitCommBWithProgressLogic = async (req, res, progress) => {
+    try {
+        const { data } = req.body;
+
+        if (!data || !Array.isArray(data)) {
+            progress.error('Données manquantes ou invalides');
+            return;
+        }
+
+        progress.step('Préparation des données...', 5);
+
+        let lineAdded = 0;
+        await progress.processBatch(
+            data,
+            async (batch) => {
+                await droitcommbs.bulkCreate(batch);
+                lineAdded += batch.length;
+                return [];
+            },
+            10,
+            90,
+            'Import en cours...'
+        );
+
+        progress.complete(`${lineAdded} lignes ajoutées`, { nbrligne: lineAdded });
+    } catch (error) {
+        progress.error('Erreur serveur', error);
+    }
+};
+
+exports.importdroitCommAWithProgress = withSSEProgress(importdroitCommAWithProgressLogic, { batchSize: 200 });
+exports.importdroitCommBWithProgress = withSSEProgress(importdroitCommBWithProgressLogic, { batchSize: 200 });
 
 const getIdRubrique = (nature) => {
     let id_rubrique = 0;
