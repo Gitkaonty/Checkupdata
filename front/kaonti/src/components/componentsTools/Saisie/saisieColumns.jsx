@@ -741,7 +741,11 @@ export const getSaisieColumnHeader = ({
                 if (!pc) return null
                 const compteValue = String(pc?.compte || '');
 
-                if (!isCaActive || tableRows.length === 0 || valueDebit === 0 || !['2', '6', '7'].some(prefix => compteValue.startsWith(prefix))) {
+                if (!isCaActive
+                    || tableRows.length === 0
+                    || valueDebit === 0
+                    // || !['2', '6', '7'].some(prefix => compteValue.startsWith(prefix))
+                ) {
                     return null;
                 }
                 return (
@@ -878,7 +882,11 @@ export const getSaisieColumnHeader = ({
                 const compteValue = String(pc?.compte || '');
                 const valueCredit = params.row.credit;
 
-                if (!isCaActive || tableRows.length === 0 || valueCredit === 0 || !['2', '6', '7'].some(prefix => compteValue.startsWith(prefix))) {
+                if (!isCaActive
+                    || tableRows.length === 0
+                    || valueCredit === 0
+                    // || !['2', '6', '7'].some(prefix => compteValue.startsWith(prefix))
+                ) {
                     return null;
                 }
                 return (

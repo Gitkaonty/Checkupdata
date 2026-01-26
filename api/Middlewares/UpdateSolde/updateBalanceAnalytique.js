@@ -422,11 +422,6 @@ const createAnalytiqueIfNotExist = async (id_compte, id_dossier, id_exercice) =>
             id_compte,
             compteaux: { [Op.regexp]: '^(6|7)' }
         },
-        // include: [{
-        //     model: dossierplancomptableModel,
-        //     attributes: ['compte'],
-        //     where: { compte: { [Op.regexp]: '^(6|7)' } }
-        // }],
         attributes: ['debit', 'credit', 'id_ecriture'],
     });
 
@@ -440,12 +435,14 @@ const createAnalytiqueIfNotExist = async (id_compte, id_dossier, id_exercice) =>
     for (const id_ecriture of id_ecritures) {
 
         const journalEcriture = await journals.findAll({
-            where: { id_ecriture, id_dossier, id_exercice, id_compte },
+            where: {
+                id_ecriture,
+                id_dossier,
+                id_exercice,
+                id_compte,
+                compteaux: { [Op.regexp]: '^(6|7)' }
+            },
             attributes: ['id', 'debit', 'credit'],
-            include: [{
-                model: dossierplancomptableModel,
-                where: { compte: { [Op.regexp]: '^(6|7)' } }
-            }],
         });
 
         if (journalEcriture.length === 0) {

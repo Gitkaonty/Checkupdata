@@ -320,6 +320,7 @@ const actualizeBalance = async (req, res) => {
         const { id_compte, id_dossier, id_exercice, type, id_axe, id_sections } = req.body;
         if (type === 3) {
             await createAnalytiqueIfNotExist(id_compte, id_dossier, id_exercice);
+            return res.json({ state: true, message: "Balance mise à jour avec succès" })
         }
     } catch (error) {
         console.log(error);

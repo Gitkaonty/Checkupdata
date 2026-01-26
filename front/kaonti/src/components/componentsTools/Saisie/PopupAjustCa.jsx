@@ -95,26 +95,28 @@ export default function PopupAjustCa({
                 if (!resData?.state) return;
 
                 const fetchedRows = resData?.list || [];
+                const mergedRows = listCaFinal
+                    .filter(item => item.id_ligne_ecriture === data.rowId)
+                    .map(item => {
+                        const fetched = fetchedRows.find(f => f.id_section === item.id_section);
 
-                const mergedRows = fetchedRows.map(f => {
-                    const localFinal = listCaFinal.find(
-                        l => l.id_ligne_ecriture === f.id_ligne_ecriture &&
-                            l.id_section === f.id_section
-                    );
+                        const localPourcentage = fetched?.pourcentage
+                            ?? item.pourcentage
+                            ?? listCa.find(p => p.id_section === item.id_section)?.pourcentage
+                            ?? 0;
 
-                    const localPourcentage = localFinal?.pourcentage ?? listCa.find(
-                        p => p.id_section === f.id_section
-                    )?.pourcentage ?? f.pourcentage ?? 0;
+                        const debit = fetched?.debit ?? (data?.type === 'debit' ? (data?.montant || 0) * (localPourcentage / 100) : 0);
+                        const credit = fetched?.credit ?? (data?.type === 'credit' ? (data?.montant || 0) * (localPourcentage / 100) : 0);
 
-                    const montantCalc = (data?.montant || 0) * (localPourcentage / 100);
-
-                    return {
-                        ...f,
-                        debit: data?.type === 'debit' ? montantCalc : 0,
-                        credit: data?.type === 'credit' ? montantCalc : 0,
-                        pourcentage: localPourcentage,
-                    };
-                });
+                        return {
+                            ...item,
+                            debit,
+                            credit,
+                            pourcentage: localPourcentage,
+                            libelle_axe: item.libelle_axe || fetched?.libelle_axe || '',
+                            section: item.section || fetched?.section || '',
+                        };
+                    });
 
                 const missingRows = listCaFinal
                     .filter(item => item.id_ligne_ecriture === data.rowId)
@@ -138,7 +140,7 @@ export default function PopupAjustCa({
                         };
                     });
 
-                setPopupRows([...mergedRows, ...missingRows]);
+                setPopupRows(mergedRows);
             });
         } catch (error) {
             toast.error('Impossible de récupérer les données existantes');
@@ -180,6 +182,7 @@ export default function PopupAjustCa({
             headerClassName: 'HeaderbackColor',
             editable: true,
             renderEditCell: (params) => {
+                let localValue = params.formattedValue ?? '';
                 const handleChange = (event) => {
                     const rawValue = event.target.value ?? '';
                     localValue = rawValue;

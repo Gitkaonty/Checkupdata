@@ -50,6 +50,8 @@ export default function ExportBalance() {
     const { id } = useParams();
     const [noFile, setNoFile] = useState(false);
 
+    const [isRefreshed, setIsRefreshed] = useState(false);
+
     const [selectedExerciceId, setSelectedExerciceId] = useState(0);
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
@@ -306,9 +308,6 @@ export default function ExportBalance() {
 
     const actualizeBalance = async () => {
         try {
-            setTraitementJournalWaiting(true);
-            setTraitementJournalMsg('Actualisation en cours...');
-
             const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
 
             const response = await axios.post('/administration/exportBalance/actualizeBalance', {
@@ -322,15 +321,13 @@ export default function ExportBalance() {
 
             if (response?.data?.state) {
                 toast.success(response?.data?.message);
+                setIsRefreshed(prev => !prev);
             } else {
                 toast.error(response?.data?.message || response?.data?.msg);
             }
         } catch (err) {
             toast.error("Erreur lors de l'actualisation");
             console.error(err);
-        } finally {
-            setTraitementJournalWaiting(false);
-            setTraitementJournalMsg('');
         }
     };
 
@@ -345,7 +342,7 @@ export default function ExportBalance() {
         return () => {
             if (balanceFetchTimer.current) clearTimeout(balanceFetchTimer.current);
         };
-    }, [fileId, selectedPeriodeId, checked, unsoldedCompte, movmentedCpt, type, selectedAxeId, selectedSectionsId]);
+    }, [fileId, selectedPeriodeId, checked, unsoldedCompte, movmentedCpt, type, selectedAxeId, selectedSectionsId, isRefreshed]);
 
     //Formulaire pour l'import du journal
     const formikImport = useFormik({
