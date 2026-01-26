@@ -29,7 +29,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupModifSE = ({ choix, confirmationState, data }) => {
+const PopupModifSE = ({ choix, confirmationState, data, deviseParDefaut }) => {
     const [formDataFinal, setFormDataFinal] = useState({
         state: false,
         id: -1,
@@ -350,7 +350,7 @@ const PopupModifSE = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -392,7 +392,7 @@ const PopupModifSE = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -434,7 +434,7 @@ const PopupModifSE = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -532,7 +532,7 @@ const PopupModifSE = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -574,7 +574,7 @@ const PopupModifSE = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -621,7 +621,7 @@ const PopupModifSE = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',

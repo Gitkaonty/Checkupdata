@@ -1165,6 +1165,7 @@ export default function DeclarationEbilan() {
     const [verrSdr, setVerrSdr] = useState(false);
     const [verrSe, setVerrSe] = useState(false);
     const [verrNote, setVerrNote] = useState(false);
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
 
     const [bilanActifData, setBilanActifData] = useState([]);
     const [bilanPassifData, setBilanPassifData] = useState([]);
@@ -1279,6 +1280,18 @@ export default function DeclarationEbilan() {
 
         recupRubriqueGlobal(compteId, fileId, exercice_id);
         infosVerrouillage(compteId, fileId, exercice_id);
+    }
+
+    // Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`)
+            .then((response) => {
+                const data = response.data;
+                const defaultDevise = data.find(val => val.par_defaut === true);
+                if (defaultDevise) {
+                    setDeviseParDefaut(defaultDevise.code);
+                }
+            })
     }
 
     //Choix période
@@ -3040,6 +3053,12 @@ export default function DeclarationEbilan() {
         }
     }, [updateCalculEtatfinancier.state]);
 
+    useEffect(() => {
+        if (fileId && compteId && selectedExerciceId) {
+            getListeDevises();
+        }
+    }, [fileId, compteId, selectedExerciceId])
+
     return (
         <>
 
@@ -3101,6 +3120,7 @@ export default function DeclarationEbilan() {
                         choix={choixActionBHIAPC}
                         confirmationState={AddOrModifyRowBHIAPC}
                         data={rowToModifyBHIAPC}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null
@@ -3113,6 +3133,7 @@ export default function DeclarationEbilan() {
                         choix={choixActionMP}
                         confirmationState={AddOrModifyRowMP}
                         data={rowToModifyMP}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null
@@ -3124,6 +3145,7 @@ export default function DeclarationEbilan() {
                         choix={choixActionDA}
                         confirmationState={AddOrModifyRowDA}
                         data={rowToModifyDA}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null
@@ -3135,6 +3157,7 @@ export default function DeclarationEbilan() {
                         choix={choixActionDP}
                         confirmationState={AddOrModifyRowDP}
                         data={rowToModifyDP}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null
@@ -3146,6 +3169,7 @@ export default function DeclarationEbilan() {
                         choix={choixActionEIAFNC}
                         confirmationState={AddOrModifyRowEIAFNC}
                         data={rowToModifyEIAFNC}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null
@@ -3157,6 +3181,7 @@ export default function DeclarationEbilan() {
                         choix={choixActionSE}
                         confirmationState={AddOrModifyRowSE}
                         data={rowToModifySE}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null
@@ -3406,7 +3431,7 @@ export default function DeclarationEbilan() {
                                                 alignItems={"start"}
                                                 style={{ overflow: "auto" }}
                                             >
-                                                <VirtualTableEbilan refreshTable={setUpdateCalculEtatfinancier} columns={associeColumn} rows={associeData} noCollapsible={true} />
+                                                <VirtualTableEbilan refreshTable={setUpdateCalculEtatfinancier} columns={associeColumn} rows={associeData} noCollapsible={true} deviseParDefaut={deviseParDefaut} />
                                             </Stack>
                                             {/* <TableListeActionnaireModel rows={rows} key={"ListeActionnaire"} /> */}
                                         </Stack>
@@ -3425,7 +3450,7 @@ export default function DeclarationEbilan() {
                                                 alignItems={"start"}
                                                 style={{ overflow: "auto" }}
                                             >
-                                                <VirtualTableEbilan refreshTable={setUpdateCalculEtatfinancier} columns={domBankColumn} rows={domBankData} noCollapsible={true} />
+                                                <VirtualTableEbilan refreshTable={setUpdateCalculEtatfinancier} columns={domBankColumn} rows={domBankData} noCollapsible={true} deviseParDefaut={deviseParDefaut} />
                                             </Stack>
                                         </Stack>
                                     </TabPanel>
@@ -3554,6 +3579,7 @@ export default function DeclarationEbilan() {
                                                         noCollapsible={false}
                                                         state={verrBilan}
                                                         type={"Actif"}
+                                                        deviseParDefaut={deviseParDefaut}
                                                     />
                                                 </Stack>
                                                 : null
@@ -3575,6 +3601,7 @@ export default function DeclarationEbilan() {
                                                         noCollapsible={false}
                                                         state={verrBilan}
                                                         type={"Passif"}
+                                                        deviseParDefaut={deviseParDefaut}
                                                     />
                                                 </Stack>
                                                 : null
@@ -3677,6 +3704,7 @@ export default function DeclarationEbilan() {
                                                     columns={crnColumn}
                                                     rows={crnData}
                                                     state={verrCrn}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -3777,6 +3805,7 @@ export default function DeclarationEbilan() {
                                                     columns={crnColumn}
                                                     rows={crfData}
                                                     state={verrCrf}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -3877,6 +3906,7 @@ export default function DeclarationEbilan() {
                                                     columns={tftdColumn}
                                                     rows={tftdData}
                                                     state={verrTftd}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -3976,6 +4006,7 @@ export default function DeclarationEbilan() {
                                                     refreshTable={setUpdateCalculEtatfinancier}
                                                     columns={crnColumn} rows={tftiData}
                                                     state={verrTfti}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4077,6 +4108,7 @@ export default function DeclarationEbilan() {
                                                     columns={evcpColumn}
                                                     rows={evcpData}
                                                     state={verrEvcp}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4177,6 +4209,7 @@ export default function DeclarationEbilan() {
                                                     columns={drfColumn}
                                                     rows={drfData}
                                                     state={verrDrf}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4321,6 +4354,7 @@ export default function DeclarationEbilan() {
                                                     withFooter={true}
                                                     withAnomalie={true}
                                                     type={'BHIAPC'}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4447,6 +4481,7 @@ export default function DeclarationEbilan() {
                                                     state={verrMp}
                                                     withFooter={true}
                                                     type={'MP'}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
                                         </Stack>
@@ -4566,6 +4601,7 @@ export default function DeclarationEbilan() {
                                                     deleteState={deleteOneRowDA}
                                                     modifyState={modifyRowDA}
                                                     state={verrDa}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4697,6 +4733,7 @@ export default function DeclarationEbilan() {
                                                     deleteState={deleteOneRowDP}
                                                     modifyState={modifyRowDP}
                                                     state={verrDp}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4817,6 +4854,7 @@ export default function DeclarationEbilan() {
                                                     deleteState={deleteOneRowEIAFNC}
                                                     modifyState={modifyRowEIAFNC}
                                                     state={verrEiafnc}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -4917,6 +4955,7 @@ export default function DeclarationEbilan() {
                                                     columns={sadColumn}
                                                     rows={sadData}
                                                     state={verrSad}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -5017,6 +5056,7 @@ export default function DeclarationEbilan() {
                                                     columns={sdrColumn}
                                                     rows={sdrData}
                                                     state={verrSdr}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -5142,6 +5182,7 @@ export default function DeclarationEbilan() {
                                                     modifyState={modifyRowSE}
                                                     state={verrSe}
                                                     withFooter={true}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 
@@ -5245,6 +5286,7 @@ export default function DeclarationEbilan() {
                                                     modifyState={modifyRowNE}
                                                     state={verrNote}
                                                     withFooter={false}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
 

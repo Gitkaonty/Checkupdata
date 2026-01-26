@@ -56,7 +56,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selectedExerciceId, compteId, type, nature, rowToModify }) => {
+const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selectedExerciceId, compteId, type, nature, rowToModify, deviseParDefaut }) => {
     const textTitle = getTextTitle(nature);
     const disabledFormMontant = rowToModify === null ? false : true;
     const axiosPrivate = useAxiosPrivate();
@@ -1370,6 +1370,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                 label="Comptabilisées"
                                                 name="comptabilisees"
                                                 value={formData.values.comptabilisees}
+                                                onChange={formData.handleChange}
                                                 fullWidth
                                                 variant='standard'
                                                 InputProps={{
@@ -1380,7 +1381,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                     },
                                                     inputComponent: FormatedInput,
                                                     endAdornment: <InputAdornment position="end" >
-                                                        <span style={{ fontSize: '13px' }}>Ar</span>
+                                                        <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                                     </InputAdornment>,
                                                     sx: {
                                                         '& input': {
@@ -1408,6 +1409,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                 label="Versees"
                                                 name="versees"
                                                 value={formData.values.versees}
+                                                onChange={formData.handleChange}
                                                 fullWidth
                                                 variant='standard'
                                                 InputProps={{
@@ -1418,7 +1420,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                     },
                                                     inputComponent: FormatedInput,
                                                     endAdornment: <InputAdornment position="end" >
-                                                        <span style={{ fontSize: '13px' }}>Ar</span>
+                                                        <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                                     </InputAdornment>,
                                                     sx: {
                                                         '& input': {
@@ -1497,7 +1499,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                         },
                                                         inputComponent: FormatedInput,
                                                         endAdornment: <InputAdornment position="end" >
-                                                            <span style={{ fontSize: '13px' }}>Ar</span>
+                                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                                         </InputAdornment>,
                                                         sx: {
                                                             '& input': {
@@ -1576,6 +1578,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                         label="Montants hors TVA"
                                                         name="montanth_tva"
                                                         value={formData.values.montanth_tva}
+                                                        onChange={formData.handleChange}
                                                         fullWidth
                                                         variant='standard'
                                                         InputProps={{
@@ -1586,7 +1589,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                             },
                                                             inputComponent: FormatedInput,
                                                             endAdornment: <InputAdornment position="end" >
-                                                                <span style={{ fontSize: '13px' }}>Ar</span>
+                                                                <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                                             </InputAdornment>,
                                                             sx: {
                                                                 '& input': {
@@ -1613,6 +1616,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                         label="TVA"
                                                         name="tva"
                                                         value={formData.values.tva}
+                                                        onChange={formData.handleChange}
                                                         fullWidth
                                                         variant='standard'
                                                         InputProps={{
@@ -1623,7 +1627,7 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                                                             },
                                                             inputComponent: FormatedInput,
                                                             endAdornment: <InputAdornment position="end" >
-                                                                <span style={{ fontSize: '13px' }}>Ar</span>
+                                                                <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                                             </InputAdornment>,
                                                             sx: {
                                                                 '& input': {

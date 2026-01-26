@@ -86,6 +86,8 @@ export default function DeclarationComm() {
     const [typeDelete, setTypeDelete] = useState(null);
     const [idNumcptToDelete, setIdNumcptToDelete] = useState(null);
 
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
+
     const [isLoading, setIsLoading] = useState(false);
 
     const [isRefreshed, setIsRefreshed] = useState(false);
@@ -406,6 +408,18 @@ export default function DeclarationComm() {
         })
     }
 
+    //Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`)
+            .then((response) => {
+                const data = response.data;
+                const defaultDevise = data.find(val => val.par_defaut === true);
+                if (defaultDevise) {
+                    setDeviseParDefaut(defaultDevise.code);
+                }
+            })
+    };
+
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
         axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
@@ -622,6 +636,7 @@ export default function DeclarationComm() {
         if (canView) {
             handleGetDroitCommGLobal();
             handleGetVerrouillage();
+            getListeDevises();
         }
     }, [compteId, fileId, selectedExerciceId, isRefreshed])
 
@@ -668,6 +683,7 @@ export default function DeclarationComm() {
                         rowToModify={rowToModify}
                         setIsRefreshed={() => setIsRefreshed(!isRefreshed)}
                         textTitle={textTitle}
+                        deviseParDefaut={deviseParDefaut}
                     /> : null
             }
             {
@@ -676,6 +692,7 @@ export default function DeclarationComm() {
                         confirmationState={handleCloseFormEditPlp}
                         rowToModify={rowToModify}
                         setIsRefreshed={() => setIsRefreshed(!isRefreshed)}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     : null
             }

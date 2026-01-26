@@ -89,11 +89,13 @@ module.exports = {
       mode_payement: Sequelize.STRING(50),
       montanth_tva: {
         type: Sequelize.DOUBLE,
-        allowNull: false
+        allowNull: true,
+        defaultValue: 0
       },
       tva: {
         type: Sequelize.DOUBLE,
-        allowNull: true
+        allowNull: true,
+        defaultValue: 0
       },
       type: {
         type: Sequelize.STRING(50),

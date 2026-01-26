@@ -369,7 +369,7 @@ const PopupEditIsi = ({ confirmationState, objectAnnexeDIsi, setRowToModify }) =
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -408,7 +408,7 @@ const PopupEditIsi = ({ confirmationState, objectAnnexeDIsi, setRowToModify }) =
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
