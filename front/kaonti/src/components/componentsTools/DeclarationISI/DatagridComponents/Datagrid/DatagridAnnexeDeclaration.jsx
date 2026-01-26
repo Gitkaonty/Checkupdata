@@ -30,7 +30,8 @@ const DatagridAnnexe = ({
     canModify,
     canAdd,
     canDelete,
-    canView
+    canView,
+    deviseParDefaut
 }) => {
     const axiosPrivate = useAxiosPrivate();
     const [showModalPopupIsiEdit, setShowModalPopupIsiEdit] = useState(false);
@@ -157,6 +158,7 @@ const DatagridAnnexe = ({
                         objectAnnexeDIsi={rowToModify}
                         confirmationState={handleCloseDialogConfirmEditIsi}
                         setRowToModify={() => setRowToModify(null)}
+                        deviseParDefaut={deviseParDefaut}
                     />
                     :
                     null

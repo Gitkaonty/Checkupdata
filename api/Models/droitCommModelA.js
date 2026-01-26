@@ -100,11 +100,13 @@ module.exports = (sequelize, DataTypes) => {
         },
         comptabilisees: {
             type: DataTypes.DOUBLE,
-            allowNull: false,
+            allowNull: true,
+            defaultValue: 0
         },
         versees: {
             type: DataTypes.DOUBLE,
             allowNull: true,
+            defaultValue: 0
         },
         type: {
             type: DataTypes.STRING(50),

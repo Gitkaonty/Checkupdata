@@ -29,7 +29,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupPlpEdit = ({ confirmationState, rowToModify, setIsRefreshed }) => {
+const PopupPlpEdit = ({ confirmationState, rowToModify, setIsRefreshed, deviseParDefaut }) => {
     const axiosPrivate = useAxiosPrivate();
     const handleClose = () => {
         confirmationState(false);
@@ -169,7 +169,7 @@ const PopupPlpEdit = ({ confirmationState, rowToModify, setIsRefreshed }) => {
                                         },
                                         inputComponent: FormatedInput,
                                         endAdornment: <InputAdornment position="end" >
-                                            <span style={{ fontSize: '13px' }}>Ar</span>
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                         </InputAdornment>,
                                         sx: {
                                             '& input': {
@@ -228,7 +228,7 @@ const PopupPlpEdit = ({ confirmationState, rowToModify, setIsRefreshed }) => {
                                         },
                                         inputComponent: FormatedInput,
                                         endAdornment: <InputAdornment position="end" >
-                                            <span style={{ fontSize: '13px' }}>Ar</span>
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                         </InputAdornment>,
                                         sx: {
                                             '& input': {
