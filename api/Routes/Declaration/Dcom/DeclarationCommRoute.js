@@ -42,6 +42,8 @@ router.post('/verrouillerTableComm', droitCommController.verrouillerTableComm);
 //Import droit comm de type a
 router.post('/importdroitCommA', droitCommController.importdroitCommA);
 router.post('/importdroitCommB', droitCommController.importdroitCommB);
+router.post('/importdroitCommAWithProgress', droitCommController.importdroitCommAWithProgress);
+router.post('/importdroitCommBWithProgress', droitCommController.importdroitCommBWithProgress);
 
 // Génération automatique d'une tableau de droit de communication
 router.post('/generateDCommAuto', droitCommController.generateDCommAuto);
