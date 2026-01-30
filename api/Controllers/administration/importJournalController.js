@@ -932,7 +932,7 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               comptegen: rawGen,
               compteaux: (rawAux === '' || rawAux === null) ? rawGen : rawAux,
               libelleaux: foundAux ? foundAux?.libelle : 'Pas encore de libellé',
-              libellecompte: fondG4 ? foundGen?.libelle : 'Pas encore de libellé'
+              libellecompte: foundGen ? foundGen?.libelle : 'Pas encore de libellé'
             });
 
             // Gestion de la colonne analytique
