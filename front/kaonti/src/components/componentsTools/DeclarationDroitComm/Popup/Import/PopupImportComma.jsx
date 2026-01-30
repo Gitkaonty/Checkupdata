@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Typography, Stack, Button, Dialog, DialogTitle,
     DialogContent, DialogActions, IconButton, styled,
@@ -10,12 +10,13 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 
 import { init } from '../../../../../../init';
-import axios from '../../../../../../config/axios';
 import Papa from 'papaparse';
 import { DataGrid, frFR } from '@mui/x-data-grid';
 import toast from 'react-hot-toast';
 import { DataGridStyle } from '../../../DatagridToolsStyle';
 import FormatedInput from '../../../FormatedInput';
+import useSSEImport from '../../../../../hooks/useSSEImport';
+import ImportProgressBar from '../../../ImportProgressBar';
 
 let initial = init[0];
 
@@ -61,6 +62,21 @@ const ImportCard = ({ icon: Icon, label, iconStyle = {}, children, sx = {}, sxTy
 const PopupImportComma = ({ confirmationState, setIsRefreshed, nature, compteId, fileId, selectedExerciceId, textTitle }) => {
     const [csvFile, setCsvFile] = useState(null);
     const [csvData, setCsvData] = useState([]);
+
+    const [traitementWaiting, setTraitementWaiting] = useState(false);
+    const [traitementMsg, setTraitementMsg] = useState('');
+
+    const { isImporting, progress, message, currentLine, totalLines, startImport } = useSSEImport();
+
+    useEffect(() => {
+        if (isImporting) {
+            setTraitementWaiting(true);
+            const displayMessage = currentLine > 0 && totalLines > 0
+                ? `${message} (${currentLine}/${totalLines} lignes)`
+                : message;
+            setTraitementMsg(displayMessage);
+        }
+    }, [isImporting, progress, message, currentLine, totalLines]);
 
     const handleClose = () => {
         confirmationState(false);
@@ -277,33 +293,45 @@ const PopupImportComma = ({ confirmationState, setIsRefreshed, nature, compteId,
             date_cin: row.date_cin ? formatDateToISO(row.date_cin) : null,
         }));
 
-        try {
-            if (['SVT', 'ADR', 'AC', 'AI', 'DEB'].includes(nature)) {
-                const response = await axios.post('/declaration/comm/importdroitCommA', {
-                    data: parsedData,
-                });
-                if (response?.data?.state) {
-                    toast.success(response?.data?.message);
+        if (['SVT', 'ADR', 'AC', 'AI', 'DEB'].includes(nature)) {
+            setTraitementWaiting(true);
+            setTraitementMsg('Import en cours...');
+            startImport(
+                '/declaration/comm/importdroitCommAWithProgress',
+                { data: parsedData },
+                (eventData) => {
+                    setTraitementWaiting(false);
+                    toast.success(eventData?.message || 'Import terminé');
                     handleClose();
-                } else {
-                    toast.error(response?.data?.message);
+                },
+                (errMsg) => {
+                    setTraitementWaiting(false);
+                    toast.error(errMsg || "Erreur lors de l'import");
                 }
-            } else if (['MV', 'PSV', 'PL'].includes(nature)) {
-                const response = await axios.post('/declaration/comm/importdroitCommB', {
-                    data: parsedData,
-                });
-                if (response?.data?.state) {
-                    toast.success(response?.data?.message);
-                    handleClose();
-                } else {
-                    toast.error(response?.data?.message);
-                }
-            } else {
-                toast.error('Non trouvé');
-            }
-        } catch (error) {
-            console.error('Erreur serveur:', error);
+            );
+            return;
         }
+
+        if (['MV', 'PSV', 'PL'].includes(nature)) {
+            setTraitementWaiting(true);
+            setTraitementMsg('Import en cours...');
+            startImport(
+                '/declaration/comm/importdroitCommBWithProgress',
+                { data: parsedData },
+                (eventData) => {
+                    setTraitementWaiting(false);
+                    toast.success(eventData?.message || 'Import terminé');
+                    handleClose();
+                },
+                (errMsg) => {
+                    setTraitementWaiting(false);
+                    toast.error(errMsg || "Erreur lors de l'import");
+                }
+            );
+            return;
+        }
+
+        toast.error('Non trouvé');
     };
 
     // Header pour les SVT, ADR, AC, AI, DEB
@@ -633,11 +661,11 @@ const PopupImportComma = ({ confirmationState, setIsRefreshed, nature, compteId,
     const handleDownloadModel = () => {
         const fileUrl =
             nature === 'SVT' || nature === 'ADR' || nature === 'AC' || nature === 'AI' || nature === 'DEB' ?
-                '../../../../../../public/modeleImport/modeleImportDCommA.csv' :
+                '/modeleImport/modeleImportDCommA.csv' :
                 nature === 'MV' || nature === 'PSV' ?
-                    '../../../../../../public/modeleImport/modeleImportDCommB.csv' :
+                    '/modeleImport/modeleImportDCommB.csv' :
                     nature === 'PL' ?
-                        '../../../../../../public/modeleImport/modeleImportDCommPL.csv' : '';
+                        '/modeleImport/modeleImportDCommPL.csv' : '';
         const link = document.createElement('a');
         link.href = fileUrl;
         link.download = `ModeleImportDCom${nature}`;
@@ -680,6 +708,12 @@ const PopupImportComma = ({ confirmationState, setIsRefreshed, nature, compteId,
                 </IconButton>
 
                 <DialogContent>
+                    <ImportProgressBar
+                        isVisible={traitementWaiting || isImporting}
+                        message={traitementMsg || message || 'Import en cours...'}
+                        progress={progress}
+                        variant="determinate"
+                    />
                     <Stack
                         style={{
                             marginTop: '0px'

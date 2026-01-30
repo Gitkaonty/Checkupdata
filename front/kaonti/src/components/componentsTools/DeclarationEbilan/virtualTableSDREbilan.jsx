@@ -16,7 +16,7 @@ import { RiExchangeBoxFill } from "react-icons/ri";
 import PopupAjustRubriqueSDREbilan from '../FormulaireModifTableauEbilan/popupAjustRubriqueSDREbilan';
 import { FaRegPenToSquare } from "react-icons/fa6";
 
-const VirtualTableSDRbilan = ({ refreshTable, columns, rows, noCollapsible, state, canModify, canAdd, canDelete, canView }) => {
+const VirtualTableSDRbilan = ({ refreshTable, columns, rows, noCollapsible, state, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const initial = init[0];
   const targetColumnId = 'rubriquesmatrix.libelle';
   const [openRows, setOpenRows] = React.useState({});
@@ -113,6 +113,7 @@ const VirtualTableSDRbilan = ({ refreshTable, columns, rows, noCollapsible, stat
             column={detailColumnHeader}
             value={detailValue}
             dataAjust={[]}
+            deviseParDefaut={deviseParDefaut}
           />
           :
           null

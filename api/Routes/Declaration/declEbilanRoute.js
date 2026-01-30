@@ -95,4 +95,10 @@ router.get('/exportAllToXml/:id_compte/:id_dossier/:id_exercice', declEbilanCont
 router.get('/overview/:compteId/:dossierId/:exerciceId', declEbilanController.overview);
 router.get('/controles/:compteId/:dossierId/:exerciceId/:tableau', declEbilanController.details);
 
+// Récupération de Ebilan
+router.post('/getEbilan', declEbilanController.getEbilan);
+
+// Récupération de la détail d'une ligne Ebilan
+router.post('/getDetailLigneEbilan', declEbilanController.getDetailLigneEbilan);
+
 module.exports = router;

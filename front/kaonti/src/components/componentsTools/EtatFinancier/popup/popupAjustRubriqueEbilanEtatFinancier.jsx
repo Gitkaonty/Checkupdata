@@ -36,7 +36,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIsRefreshed, value, canModify, canAdd, canDelete, canView }) => {
+const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIsRefreshed, value, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
     const apiRef = useGridApiRef();
     const axiosPrivate = useAxiosPrivate();
     const [selectedRowId, setSelectedRowId] = useState([]);
@@ -153,7 +153,7 @@ const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIs
                         disableUnderline: true,
                         endAdornment: (
                             <InputAdornment position="end" sx={{ fontSize: 12 }}>
-                                <span style={{ fontSize: 15, paddingBottom: '6px' }}>Ar</span>
+                                <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                             </InputAdornment>
                         ),
                         sx: {
@@ -188,7 +188,7 @@ const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIs
                             disableUnderline: true,
                             endAdornment: (
                                 <InputAdornment position="end" sx={{ fontSize: 12 }}>
-                                    <span style={{ fontSize: 15, paddingBottom: '6px' }}>Ar</span>
+                                    <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                 </InputAdornment>
                             ),
                             sx: {
@@ -728,7 +728,7 @@ const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIs
                                         disableUnderline: true,
                                         endAdornment: (
                                             <InputAdornment position="end" sx={{ fontSize: 12 }}>
-                                                <span style={{ fontSize: 14, color: '#1976d2' }}>Ar</span>
+                                                <span style={{ fontSize: '13px', color: '#1976d2' }}>{deviseParDefaut}</span>
                                             </InputAdornment>
                                         ),
                                         sx: {

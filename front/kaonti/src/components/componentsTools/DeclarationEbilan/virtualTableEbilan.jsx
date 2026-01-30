@@ -16,8 +16,9 @@ import { CgDetailsMore } from "react-icons/cg";
 import { RiExchangeBoxFill } from "react-icons/ri";
 import PopupAjustRubriqueEbilan from '../FormulaireModifTableauEbilan/popupAjustRubriqueEbilan';
 import { FaRegPenToSquare } from "react-icons/fa6";
+import axios from '../../../../config/axios';
 
-const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state, type, canModify, canAdd, canDelete, canView }) => {
+const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state, type, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const initial = init[0];
   const targetColumnId = 'rubriquesmatrix.libelle';
   const [openRows, setOpenRows] = React.useState({});
@@ -26,7 +27,28 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
   const [detailColumnHeader, setDetailColumnHeader] = useState();
   const [detailValue, setDetailValue] = useState();
 
-  const toggleRow = (rowKey) => {
+  const [rowInfo, setRowInfo] = useState({});
+
+  const toggleRow = (rowKey, row) => {
+    console.log('row : ', row);
+    axios.post('/declaration/ebilan/getDetailLigneEbilan', {
+      id_compte: row.id_compte,
+      id_dossier: row.id_dossier,
+      id_exercice: row.id_exercice,
+      id_etat: row.id_etat,
+      id_rubrique: row.id_rubrique,
+      subtable: row.subtable
+    })
+      .then((response) => {
+        const resData = response?.data;
+        if (resData?.state) {
+          setRowInfo((prev) => ({
+            ...prev,
+            [rowKey]: resData.detail || []
+          }));
+        }
+      });
+
     setOpenRows((prev) => ({
       ...prev,
       [rowKey]: !prev[rowKey],
@@ -132,6 +154,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
             canModify={canModify}
             canDelete={canDelete}
             canView={canView}
+            deviseParDefaut={deviseParDefaut}
           />
           :
           null
@@ -252,7 +275,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
                                 size="small"
                                 onClick={(e) => {
                                   e.stopPropagation(); // évite de déclencher handleRowClick
-                                  toggleRow(rowKey);
+                                  toggleRow(rowKey, row);
                                 }}
                               >
 
@@ -338,93 +361,46 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
                               }}
                             />
 
-                            {(row.infosCompte && row.infosCompte.length > 0) ? (
+                            {(rowInfo[rowKey]?.length > 0 ? (
                               <Table size="small" aria-label="details">
                                 <TableHead>
                                   <TableRow style={{ border: 'none' }}>
-                                    <TableCell style={{ width: 150, border: 'none' }}>
-                                      <Typography style={{ fontWeight: 'bold' }}>
-                                        N° Compte
-                                      </Typography>
-                                    </TableCell>
-                                    <TableCell style={{ width: 450, border: 'none' }}>
-                                      <Typography style={{ fontWeight: 'bold' }}>
-                                        Libellé
-                                      </Typography>
-                                    </TableCell>
-                                    <TableCell align={"right"} style={{ width: 200, border: 'none' }}>
-                                      <Typography style={{ fontWeight: 'bold' }}>
-                                        Solde débit
-                                      </Typography>
-                                    </TableCell>
-                                    <TableCell align={"right"} style={{ width: 200, border: 'none' }}>
-                                      <Typography style={{ fontWeight: 'bold' }}>
-                                        Solde crédit
-                                      </Typography>
-                                    </TableCell>
+                                    <TableCell style={{ width: 150, border: 'none' }}><Typography style={{ fontWeight: 'bold' }}>N° Compte</Typography></TableCell>
+                                    <TableCell style={{ width: 450, border: 'none' }}><Typography style={{ fontWeight: 'bold' }}>Libellé</Typography></TableCell>
+                                    <TableCell align="right" style={{ width: 200, border: 'none' }}><Typography style={{ fontWeight: 'bold' }}>Solde débit</Typography></TableCell>
+                                    <TableCell align="right" style={{ width: 200, border: 'none' }}><Typography style={{ fontWeight: 'bold' }}>Solde crédit</Typography></TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                  {row.infosCompte.map((detail, index) => (
-                                    <TableRow
-                                      key={index}
-                                      style={{
-                                        backgroundColor: index % 2 === 0 ? '#ffffff' : '#f5f5f5',
-                                      }}
-                                    >
+                                  {rowInfo[rowKey].map((detail, index) => (
+                                    <TableRow key={index} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#f5f5f5' }}>
                                       <TableCell style={{ border: 'none' }}>{detail.compte}</TableCell>
                                       <TableCell style={{ border: 'none' }}>{detail.libelle}</TableCell>
-                                      <TableCell style={{ border: 'none' }} align={"right"}>
+                                      <TableCell style={{ border: 'none' }} align="right">
                                         {detail.soldedebit.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </TableCell>
-                                      <TableCell style={{ border: 'none' }} align={"right"}>
+                                      <TableCell style={{ border: 'none' }} align="right">
                                         {detail.soldecredit.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </TableCell>
                                     </TableRow>
                                   ))}
                                 </TableBody>
-
-                                <TableFooter
-                                  style={{
-                                    backgroundColor: '#E4EFE7',
-                                    position: 'sticky',
-                                    bottom: 0,
-                                    zIndex: 1,
-                                  }}
-                                >
+                                <TableFooter style={{ backgroundColor: '#E4EFE7', position: 'sticky', bottom: 0, zIndex: 1 }}>
                                   <TableRow style={{ border: 'none' }}>
-                                    <TableCell style={{ width: 150, border: 'none' }}>
-                                      <Typography style={{ fontWeight: 'bold' }}>
-                                        Total
-                                      </Typography>
+                                    <TableCell style={{ width: 150, border: 'none' }}><Typography style={{ fontWeight: 'bold' }}>Total</Typography></TableCell>
+                                    <TableCell style={{ width: 450, border: 'none' }}></TableCell>
+                                    <TableCell align='right' style={{ width: 200, border: 'none', fontSize: 14, fontWeight: 'bold' }}>
+                                      {totalColumn(rowInfo[rowKey], "soldedebit").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </TableCell>
-                                    <TableCell style={{ width: 450, border: 'none' }}>
-
-                                    </TableCell>
-                                    <TableCell align='right'
-                                      style={{
-                                        width: 200, border: 'none', fontSize: 14, fontWeight: 'bold'
-                                      }}
-                                    >
-                                      {
-                                        totalColumn(row.infosCompte, "soldedebit").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                      }
-                                    </TableCell>
-                                    <TableCell align='right'
-                                      style={{
-                                        width: 200, border: 'none', fontSize: 14, fontWeight: 'bold'
-                                      }}
-                                    >
-                                      {
-                                        totalColumn(row.infosCompte, "soldecredit").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                      }
+                                    <TableCell align='right' style={{ width: 200, border: 'none', fontSize: 14, fontWeight: 'bold' }}>
+                                      {totalColumn(rowInfo[rowKey], "soldecredit").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </TableCell>
                                   </TableRow>
                                 </TableFooter>
                               </Table>
                             ) : (
                               <Typography variant="body2" style={{ fontStyle: 'italic' }}>Aucun détail</Typography>
-                            )}
+                            ))}
                           </Box>
 
                           <Box margin={1}

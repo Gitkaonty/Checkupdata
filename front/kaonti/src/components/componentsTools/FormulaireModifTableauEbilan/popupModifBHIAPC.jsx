@@ -29,7 +29,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupModifBHIAPC = ({ choix, confirmationState, data }) => {
+const PopupModifBHIAPC = ({ choix, confirmationState, data, deviseParDefaut }) => {
     const disabledFormMontant = data.id < 0 ? false : true;
     const [formDataFinal, setFormDataFinal] = useState({
         state: false,
@@ -261,7 +261,9 @@ const PopupModifBHIAPC = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -299,7 +301,9 @@ const PopupModifBHIAPC = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',

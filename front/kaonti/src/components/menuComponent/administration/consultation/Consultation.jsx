@@ -59,6 +59,7 @@ export default function ConsultationComponent() {
     const [listeSituation, setListeSituation] = useState([]);
     const [selectedExerciceId, setSelectedExerciceId] = useState(0);
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
 
     const [openSaisiePopup, setOpenSaisiePopup] = useState(false);
     const [openAnalytiquePopup, setOpenAnalytiquePopup] = useState(false);
@@ -195,18 +196,6 @@ export default function ConsultationComponent() {
                 }
             })
     }
-
-    // const getPcForAjout = () => {
-    //     axios.get(`/paramPlanComptable/recupPcIdLibelleForJournal/${compteId}/${fileId}`)
-    //         .then((response) => {
-    //             const resData = response.data;
-    //             if (resData.state) {
-    //                 setListePlanComptablePourAjout(resData.liste);
-    //             } else {
-    //                 toast.error(resData.msg);
-    //             }
-    //         })
-    // }
 
     //Liste des sections avec ses axes
     const getListAxeSection = () => {
@@ -667,8 +656,12 @@ export default function ConsultationComponent() {
     //Récupération données liste des devises
     const getListeDevises = () => {
         axios.get(`/devises/devise/compte/${compteId}/${fileId}`).then((response) => {
-            const resData = response.data;
+            const data = response?.data;
             setListeDevise(response.data);
+            const defaultDevise = data.find(val => val.par_defaut === true);
+            if (defaultDevise) {
+                setDeviseParDefaut(defaultDevise.code);
+            }
         })
     }
 
@@ -755,7 +748,6 @@ export default function ConsultationComponent() {
 
     useEffect(() => {
         const fetchData = async () => {
-            // setValSelectedCompte("tout");
 
             if (filtrageCompte === "0") {
                 setListePlanComptable(listePlanComptableInitiale);
@@ -1274,7 +1266,7 @@ export default function ConsultationComponent() {
                                         const soldeNum = parseFloat(soldeLigne.toString().replace(',', '.'));
 
                                         if (soldeNum !== 0) {
-                                            setMessageLettrageDesequilibre(`Le lettrage ${lettrageValue} est déséquilibré de ${soldeLigne} Ar.\nLes lettrages vont être annulés.`)
+                                            setMessageLettrageDesequilibre(`Le lettrage ${lettrageValue} est déséquilibré de ${soldeLigne} ${deviseParDefaut}.\nLes lettrages vont être annulés.`)
                                             setSelectedLigneDesequilibre(selectedData);
                                             setOpenLettrageDesequilibrePopup(true);
                                         }

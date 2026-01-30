@@ -29,7 +29,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupModifDA = ({ choix, confirmationState, data }) => {
+const PopupModifDA = ({ choix, confirmationState, data, deviseParDefaut }) => {
     const [formDataFinal, setFormDataFinal] = useState({
         state: false,
         id: -1,
@@ -399,7 +399,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                         height: '30px',
                                     },
                                     inputComponent: FormatedInput,
-                                    endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                    endAdornment: <InputAdornment position="end" >
+                                        <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                    </InputAdornment>,
                                     sx: {
                                         '& input': {
                                             textAlign: 'right',
@@ -444,7 +446,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -483,7 +487,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -522,7 +528,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -561,7 +569,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -607,7 +617,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -646,7 +658,9 @@ const PopupModifDA = ({ choix, confirmationState, data }) => {
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',

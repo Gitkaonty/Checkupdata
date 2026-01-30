@@ -11,6 +11,10 @@ const recupTableau = require('../../../Middlewares/Ebilan/recupTableau');
 const functionControles = require('../../../Middlewares/Ebilan/controles');
 const fonctionUpdateBalanceSold = require('../../../Middlewares/UpdateSolde/updateBalanceSold');
 
+const recupEbilan = require('../../../Middlewares/Declaration/Ebilan/EblianMiddleware');
+const getEbilanComplet = recupEbilan.getEbilanComplet;
+const getDetailLigne = recupEbilan.getDetailLigne;
+
 const { withSSEProgress } = require('../../../Middlewares/sseProgressMiddleware');
 
 const { create } = require('xmlbuilder2');
@@ -247,23 +251,23 @@ const getListeRubriqueGlobal = async (req, res) => {
     resData.sdr = await recupTableau.recupSDR(compteId, fileId, exerciceId);
     resData.se = await recupTableau.recupSE(compteId, fileId, exerciceId);
     resData.ne = await recupTableau.recupNE(compteId, fileId, exerciceId);
-    resData.bilanActif = await recupTableau.recupBILAN_ACTIF(compteId, fileId, exerciceId);
-    resData.bilanPassif = await recupTableau.recupBILAN_PASSIF(compteId, fileId, exerciceId);
-    resData.crn = await recupTableau.recupCRN(compteId, fileId, exerciceId);
-    resData.crf = await recupTableau.recupCRF(compteId, fileId, exerciceId);
-    resData.tftd = await recupTableau.recupTFTD(compteId, fileId, exerciceId);
-    resData.tfti = await recupTableau.recupTFTI(compteId, fileId, exerciceId);
-    resData.evcp = await recupTableau.recupEVCP(compteId, fileId, exerciceId);
-    resData.drf = await recupTableau.recupDRF(compteId, fileId, exerciceId);
-    resData.bhiapc = await recupTableau.recupBHIAPC(compteId, fileId, exerciceId);
-    resData.mp = await recupTableau.recupMP(compteId, fileId, exerciceId);
-    resData.da = await recupTableau.recupDA(compteId, fileId, exerciceId);
-    resData.dp = await recupTableau.recupDP(compteId, fileId, exerciceId);
-    resData.eiafnc = await recupTableau.recupEIAFNC(compteId, fileId, exerciceId);
-    resData.sad = await recupTableau.recupSAD(compteId, fileId, exerciceId);
-    resData.sdr = await recupTableau.recupSDR(compteId, fileId, exerciceId);
-    resData.se = await recupTableau.recupSE(compteId, fileId, exerciceId);
-    resData.ne = await recupTableau.recupNE(compteId, fileId, exerciceId);
+    // resData.bilanActif = await recupTableau.recupBILAN_ACTIF(compteId, fileId, exerciceId);
+    // resData.bilanPassif = await recupTableau.recupBILAN_PASSIF(compteId, fileId, exerciceId);
+    // resData.crn = await recupTableau.recupCRN(compteId, fileId, exerciceId);
+    // resData.crf = await recupTableau.recupCRF(compteId, fileId, exerciceId);
+    // resData.tftd = await recupTableau.recupTFTD(compteId, fileId, exerciceId);
+    // resData.tfti = await recupTableau.recupTFTI(compteId, fileId, exerciceId);
+    // resData.evcp = await recupTableau.recupEVCP(compteId, fileId, exerciceId);
+    // resData.drf = await recupTableau.recupDRF(compteId, fileId, exerciceId);
+    // resData.bhiapc = await recupTableau.recupBHIAPC(compteId, fileId, exerciceId);
+    // resData.mp = await recupTableau.recupMP(compteId, fileId, exerciceId);
+    // resData.da = await recupTableau.recupDA(compteId, fileId, exerciceId);
+    // resData.dp = await recupTableau.recupDP(compteId, fileId, exerciceId);
+    // resData.eiafnc = await recupTableau.recupEIAFNC(compteId, fileId, exerciceId);
+    // resData.sad = await recupTableau.recupSAD(compteId, fileId, exerciceId);
+    // resData.sdr = await recupTableau.recupSDR(compteId, fileId, exerciceId);
+    // resData.se = await recupTableau.recupSE(compteId, fileId, exerciceId);
+    // resData.ne = await recupTableau.recupNE(compteId, fileId, exerciceId);
 
     //récupération nombre anomalies et détails anomalies
     resData.etatglobal = await recupTableau.recupETAT(compteId, fileId, exerciceId);
@@ -2507,6 +2511,257 @@ const importSeWithProgress = withSSEProgress(importEbilanWithProgressLogic(liass
   batchSize: 500
 });
 
+const groupedDataDa = (data) => {
+  const groupedData = data.reduce((acc, item) => {
+    if (!acc[item.rubriques_poste]) {
+      acc[item.rubriques_poste] = {
+        rubriques_poste: item.rubriques_poste,
+        items: [],
+        taux: 0,
+        valeur_acquisition: 0,
+        augmentation: 0,
+        diminution: 0,
+        amort_anterieur: 0,
+        dotation_exercice: 0,
+        amort_cumule: 0,
+        valeur_nette: 0
+      };
+    }
+    acc[item.rubriques_poste].items.push(item);
+
+    acc[item.rubriques_poste].taux += parseFloat(item.taux) || 0;
+    acc[item.rubriques_poste].valeur_acquisition += parseFloat(item.valeur_acquisition) || 0;
+    acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
+    acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
+    acc[item.rubriques_poste].amort_anterieur += parseFloat(item.amort_anterieur) || 0;
+    acc[item.rubriques_poste].dotation_exercice += parseFloat(item.dotation_exercice) || 0;
+    acc[item.rubriques_poste].amort_cumule += parseFloat(item.amort_cumule) || 0;
+    acc[item.rubriques_poste].valeur_nette += parseFloat(item.valeur_nette) || 0;
+
+    return acc;
+
+  }, {});
+
+  const groupedArray = Object.values(groupedData)
+    .sort((a, b) => a.rubriques_poste.localeCompare(b.rubriques_poste));
+
+  const rows = groupedArray.sort((a, b) => {
+    if (a.rubriques_poste < b.rubriques_poste) {
+      return -1;
+    }
+    if (a.rubriques_poste > b.rubriques_poste) {
+      return 1;
+    }
+    return 0;
+  });
+
+  return rows;
+}
+
+const groupedDataDp = (data) => {
+  const groupedData = data.reduce((acc, item) => {
+    if (!acc[item.nature_prov]) {
+      acc[item.nature_prov] = {
+        nature_prov: item.nature_prov,
+        items: [],
+        montant_debut_ex: 0,
+        augm_dot_ex: 0,
+        dim_repr_ex: 0,
+        montant_fin: 0
+      };
+    }
+    acc[item.nature_prov].items.push(item);
+
+    acc[item.nature_prov].montant_debut_ex += parseFloat(item.montant_debut_ex) || 0;
+    acc[item.nature_prov].augm_dot_ex += parseFloat(item.augm_dot_ex) || 0;
+    acc[item.nature_prov].dim_repr_ex += parseFloat(item.dim_repr_ex) || 0;
+    acc[item.nature_prov].montant_fin += parseFloat(item.montant_fin) || 0;
+
+    return acc;
+  }, {});
+
+  const groupedArray = Object.values(groupedData)
+    .sort((a, b) => a.nature_prov.localeCompare(b.nature_prov));
+
+  const rows = groupedArray.sort((a, b) => {
+    if (a.ordre < b.ordre) {
+      return -1;
+    }
+    if (a.ordre > b.ordre) {
+      return 1;
+    }
+    return 0;
+  });
+
+  return rows
+}
+
+const groupedDataEiafnc = (data) => {
+  const groupedData = data.reduce((acc, item) => {
+    if (!acc[item.rubriques_poste]) {
+      acc[item.rubriques_poste] = {
+        rubriques_poste: item.rubriques_poste,
+        items: [],
+        valeur_acquisition: 0,
+        augmentation: 0,
+        diminution: 0,
+        valeur_brute: 0
+      };
+    }
+    acc[item.rubriques_poste].items.push(item);
+
+    acc[item.rubriques_poste].valeur_acquisition += parseFloat(item.valeur_acquisition) || 0;
+    acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
+    acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
+    acc[item.rubriques_poste].valeur_brute += parseFloat(item.valeur_brute) || 0;
+
+    return acc;
+  }, {});
+
+  const groupedArray = Object.values(groupedData)
+    .sort((a, b) => a.rubriques_poste.localCompare(b.rubriques_poste));
+
+  const rows = Object.values(groupedArray).sort((a, b) => {
+    if (a.rubriques_poste < b.rubriques_poste) {
+      return -1;
+    }
+    if (a.rubriques_poste > b.rubriques_poste) {
+      return 1;
+    }
+    return 0;
+  })
+
+  return rows;
+}
+
+const getEbilan = async (req, res) => {
+  try {
+    const { id_etat, id_compte, id_dossier, id_exercice } = req.body;
+    // if (!id_etat) {
+    //   return res.json({ state: false, message: 'Tableau non trouvé' });
+    // }
+    if (!id_compte) {
+      return res.json({ state: false, message: 'Compte non trouvé' });
+    }
+    if (!id_dossier) {
+      return res.json({ state: false, message: 'Dossier non trouvé' });
+    }
+    if (!id_exercice) {
+      return res.json({ state: false, message: ('Exercice non trouvé') });
+    }
+
+    let resData = {
+      state: false,
+      msg: '...',
+      bilanActif: [],
+      bilanPassif: [],
+      crn: [],
+      crf: [],
+      tftd: [],
+      tfti: [],
+      evcp: [],
+      drf: [],
+      bhiapc: [],
+      mp: [],
+      da: [],
+      dp: [],
+      eiafnc: [],
+      sad: [],
+      sdr: [],
+      se: [],
+      ne: [],
+      etatglobal: [],
+      detailAnomBilan: [],
+      detailAnomCrn: [],
+      detailAnomCrf: [],
+      detailAnomTfti: [],
+      detailAnomTftd: [],
+      detailAnomEvcp: [],
+      detailAnomDrf: [],
+      detailAnomBhiapc: [],
+      detailAnomMp: [],
+      detailAnomDa: [],
+      detailAnomDp: [],
+      detailAnomEiafnc: [],
+      detailAnomSad: [],
+      detailAnomSdr: [],
+      detailAnomSe: [],
+    }
+
+    resData.bilanActif = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
+    resData.bilanPassif = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+    resData.crn = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'CRN');
+    resData.crf = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'CRF');
+    resData.tftd = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'TFTD');
+    resData.tfti = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'TFTI');
+    resData.bhiapc = await recupTableau.recupBHIAPC(id_compte, id_dossier, id_exercice);
+
+    resData.evcp = await recupTableau.recupEVCP(id_compte, id_dossier, id_exercice);
+    resData.drf = await recupTableau.recupDRF(id_compte, id_dossier, id_exercice);
+    resData.sad = await recupTableau.recupSAD(id_compte, id_dossier, id_exercice);
+    resData.sdr = await recupTableau.recupSDR(id_compte, id_dossier, id_exercice);
+    resData.mp = await recupTableau.recupMP(id_compte, id_dossier, id_exercice);
+    resData.se = await recupTableau.recupSE(id_compte, id_dossier, id_exercice);
+    resData.ne = await recupTableau.recupNE(id_compte, id_dossier, id_exercice);
+
+    const daData = await recupTableau.recupDA(id_compte, id_dossier, id_exercice);
+    resData.da = groupedDataDa(daData);
+
+    const dpData = await recupTableau.recupDP(id_compte, id_dossier, id_exercice);
+    resData.dp = groupedDataDp(dpData);
+
+    const eiafncData = await recupTableau.recupEIAFNC(id_compte, id_dossier, id_exercice);
+    resData.eiafnc = groupedDataEiafnc(eiafncData);
+
+    resData.state = true;
+    return res.json(resData);
+
+    // const data = await getEbilanComplet(id_compte, id_dossier, id_exercice, id_etat);
+    // return res.json({ state: true, list: data })
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      state: false,
+      error: error.message
+    });
+  }
+}
+
+const getDetailLigneEbilan = async (req, res) => {
+  try {
+    const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable } = req.body;
+    if (!id_etat) {
+      return res.json({ state: false, message: 'Tableau non trouvé' });
+    }
+    if (!id_dossier) {
+      return res.json({ state: false, message: 'Dossier non trouvé' });
+    }
+    if (!id_exercice) {
+      return res.json({ state: false, message: 'Exercice non trouvé' })
+    }
+    if (!id_compte) {
+      return res.json({ state: false, message: 'Compte non trouvé' })
+    }
+    if (!id_rubrique) {
+      return res.json({ state: false, message: 'Rubrique non trouvé' });
+    }
+    // if (!subtable) {
+    //   return res.json({ state: false, message: 'Subtable non trouvé' })
+    // }
+    const data = await getDetailLigne(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable);
+    return res.json({ state: true, detail: data })
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      state: false,
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   overview,
   details,
@@ -2541,5 +2796,7 @@ module.exports = {
   importSeWithProgress,
   generateBhiapcAuto,
   generateDpAuto,
-  exportAllToXml
+  exportAllToXml,
+  getEbilan,
+  getDetailLigneEbilan
 };

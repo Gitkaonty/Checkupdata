@@ -274,6 +274,7 @@ export default function EtatFinancierAnalytique() {
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
 
     const [showBilan, setShowBilan] = useState('actif');
     const [buttonActifVariant, setButtonActifVariant] = useState('contained');
@@ -380,6 +381,18 @@ export default function EtatFinancierAnalytique() {
             handleCloseDialogConfirmRefresh();
         }
         setIsLoading(false);
+    }
+
+    // Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`)
+            .then((response) => {
+                const data = response.data;
+                const defaultDevise = data.find(val => val.par_defaut === true);
+                if (defaultDevise) {
+                    setDeviseParDefaut(defaultDevise.code);
+                }
+            })
     }
 
     //===========================================================================================
@@ -722,6 +735,7 @@ export default function EtatFinancierAnalytique() {
     useEffect(() => {
         if (canView && fileId && compteId && selectedExerciceId && selectedAxeId && selectedSectionsId) {
             getEtatFinancierAnalytiqueGlobal();
+            getListeDevises();
         }
     }, [fileId, compteId, selectedExerciceId, selectedAxeId, selectedSectionsId, isRefreshed])
 
@@ -1074,6 +1088,7 @@ export default function EtatFinancierAnalytique() {
                                                     setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                     id_axe={selectedAxeId}
                                                     id_sections={selectedSectionsId.map(val => val.id)}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
                                             : null
@@ -1095,6 +1110,7 @@ export default function EtatFinancierAnalytique() {
                                                     setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                     id_axe={selectedAxeId}
                                                     id_sections={selectedSectionsId.map(val => val.id)}
+                                                    deviseParDefaut={deviseParDefaut}
                                                 />
                                             </Stack>
                                             : null
@@ -1181,6 +1197,7 @@ export default function EtatFinancierAnalytique() {
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1265,6 +1282,7 @@ export default function EtatFinancierAnalytique() {
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1349,6 +1367,7 @@ export default function EtatFinancierAnalytique() {
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1433,6 +1452,7 @@ export default function EtatFinancierAnalytique() {
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 
@@ -1518,6 +1538,7 @@ export default function EtatFinancierAnalytique() {
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
+                                                deviseParDefaut={deviseParDefaut}
                                             />
                                         </Stack>
 

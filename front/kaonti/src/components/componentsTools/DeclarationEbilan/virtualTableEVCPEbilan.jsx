@@ -16,7 +16,7 @@ import { RiExchangeBoxFill } from "react-icons/ri";
 import PopupAjustRubriqueEVCPEbilan from '../FormulaireModifTableauEbilan/popupAjustRubriqueEVCPEbilan';
 import { FaRegPenToSquare } from "react-icons/fa6";
 
-const VirtualTableEVCPEbilan = ({ refreshTable, columns, rows, noCollapsible, state, canModify, canAdd, canDelete, canView }) => {
+const VirtualTableEVCPEbilan = ({ refreshTable, columns, rows, noCollapsible, state, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const initial = init[0];
   const targetColumnId = 'rubriquesmatrix.libelle';
   const [openRows, setOpenRows] = React.useState({});
@@ -102,6 +102,7 @@ const VirtualTableEVCPEbilan = ({ refreshTable, columns, rows, noCollapsible, st
             column={detailColumnHeader}
             value={detailValue}
             dataAjust={[]}
+            deviseParDefaut={deviseParDefaut}
           />
           :
           null
