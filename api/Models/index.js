@@ -5,7 +5,7 @@ require('dotenv').config();
 //Database connection with dialect of postgres specifying the database we are using
 //port for my database is 5433
 //database name is discover
-const DB_ConnexionString = `postgresql://${process.env.NODE_API_USER}:${process.env.NODE_API_PWD}@${process.env.NODE_API_URL}:${process.env.NODE_API_PORT}/${process.env.NODE_API_DBNAME}`;
+const DB_ConnexionString = `postgresql://${process.env.NODE_API_USER}:${process.env.NODE_API_PWD}@${process.env.NODE_API_URL}:${process.env.DB_PORT}/${process.env.NODE_API_DBNAME}`;
 const sequelize = new Sequelize(
     DB_ConnexionString,
     {
