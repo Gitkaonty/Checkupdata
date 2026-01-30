@@ -174,7 +174,7 @@ const popupAjustRubriqueEVCPEbilan = ({ actionState, row, column, value, canModi
                         disableUnderline: true,
                         endAdornment: (
                             <InputAdornment position="end" sx={{ fontSize: 12 }}>
-                                <span style={{ fontSize: 15, paddingBottom: '6px' }}>{deviseParDefaut}</span>
+                                <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                             </InputAdornment>
                         ),
                         sx: {
@@ -209,7 +209,7 @@ const popupAjustRubriqueEVCPEbilan = ({ actionState, row, column, value, canModi
                             disableUnderline: true,
                             endAdornment: (
                                 <InputAdornment position="end" sx={{ fontSize: 12 }}>
-                                    <span style={{ fontSize: 15, paddingBottom: '6px' }}>{deviseParDefaut}</span>
+                                    <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
                                 </InputAdornment>
                             ),
                             sx: {
@@ -772,7 +772,7 @@ const popupAjustRubriqueEVCPEbilan = ({ actionState, row, column, value, canModi
                                         disableUnderline: true,
                                         endAdornment: (
                                             <InputAdornment position="end" sx={{ fontSize: 12 }}>
-                                                <span style={{ fontSize: 14, color: '#1976d2' }}>{deviseParDefaut}</span>
+                                                <span style={{ fontSize: '13px', color: '#1976d2' }}>{deviseParDefaut}</span>
                                             </InputAdornment>
                                         ),
                                         sx: {
