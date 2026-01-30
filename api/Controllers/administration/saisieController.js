@@ -2076,16 +2076,16 @@ exports.modificationJournal = async (req, res) => {
         for (const row of tableRows) {
             const dossierPc = await dossierplancomptable.findByPk(row.compte);
             const libellecompte = dossierPc?.libelle;
-            const comptegen = dossierPc?.compte;
+            const compteaux = dossierPc?.compte;
             const comptebaseaux = dossierPc?.baseaux_id;
 
             let id_numcptcentralise = null;
             let libelleaux = '';
-            let compteaux = null;
+            let comptegen = null;
             if (comptebaseaux) {
                 const cpt = await dossierplancomptable.findByPk(comptebaseaux);
                 id_numcptcentralise = cpt?.id || null;
-                compteaux = cpt?.compte;
+                comptegen = cpt?.compte;
                 libelleaux = cpt?.libelle;
             }
 
@@ -3359,16 +3359,16 @@ exports.addJournal = async (req, res) => {
         const newTableRows = await Promise.all(tableRows.map(async (row) => {
             const dossierPc = await dossierplancomptable.findByPk(row.compte);
             const libellecompte = dossierPc?.libelle;
-            const comptegen = dossierPc?.compte;
+            const compteaux = dossierPc?.compte;
             const comptebaseaux = dossierPc?.baseaux_id;
 
             let id_numcptcentralise = null;
             let libelleaux = '';
-            let compteaux = null;
+            let comptegen = null;
             if (comptebaseaux) {
                 const cpt = await dossierplancomptable.findByPk(comptebaseaux);
                 id_numcptcentralise = cpt?.id || null;
-                compteaux = cpt?.compte;
+                comptegen = cpt?.compte;
                 libelleaux = cpt?.libelle;
             }
 

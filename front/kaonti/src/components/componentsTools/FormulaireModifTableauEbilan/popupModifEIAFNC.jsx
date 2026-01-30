@@ -314,7 +314,9 @@ const PopupModifEIAFNC = ({ choix, confirmationState, data, deviseParDefaut }) =
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -356,7 +358,9 @@ const PopupModifEIAFNC = ({ choix, confirmationState, data, deviseParDefaut }) =
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -396,7 +400,9 @@ const PopupModifEIAFNC = ({ choix, confirmationState, data, deviseParDefaut }) =
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',
@@ -436,7 +442,9 @@ const PopupModifEIAFNC = ({ choix, confirmationState, data, deviseParDefaut }) =
                                             height: '30px',
                                         },
                                         inputComponent: FormatedInput,
-                                        endAdornment: <InputAdornment position="end">{deviseParDefaut}</InputAdornment>,
+                                        endAdornment: <InputAdornment position="end" >
+                                            <span style={{ fontSize: '13px' }}>{deviseParDefaut}</span>
+                                        </InputAdornment>,
                                         sx: {
                                             '& input': {
                                                 textAlign: 'right',

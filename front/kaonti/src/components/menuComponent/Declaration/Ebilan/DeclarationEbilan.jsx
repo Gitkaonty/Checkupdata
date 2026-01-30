@@ -124,7 +124,7 @@ const domBankColumn = [
 //colonne bilan
 const BilanActifColumn = [
     {
-        id: 'rubriquesmatrix.libelle',
+        id: 'libelle',
         label: 'Actif',
         minWidth: 500,
         align: 'left',
@@ -174,7 +174,7 @@ const BilanActifColumn = [
 
 const BilanPassifColumn = [
     {
-        id: 'rubriquesmatrix.libelle',
+        id: 'libelle',
         label: 'Capitaux propres et passifs',
         minWidth: 700,
         align: 'left',
@@ -208,7 +208,7 @@ const BilanPassifColumn = [
 
 const crnColumn = [
     {
-        id: 'rubriquesmatrix.libelle',
+        id: 'libelle',
         label: 'Rubriques',
         minWidth: 700,
         align: 'left',
@@ -249,7 +249,7 @@ const crnColumn = [
 
 const tftdColumn = [
     {
-        id: 'rubriquesmatrix.libelle',
+        id: 'libelle',
         label: 'Rubriques',
         minWidth: 700,
         align: 'left',
@@ -2319,195 +2319,253 @@ export default function DeclarationEbilan() {
     }
 
     //récupération data individual
+    // const recupRubriqueGlobal = (compteId, fileId, exerciceId) => {
+    //     axios.post(`/declaration/ebilan/listeRubriqueGlobal`, { compteId, fileId, exerciceId }).then((response) => {
+    //         const resData = response.data;
+    //         console.log('resData : ', resData);
+    //         if (resData.state) {
+    //             setBilanActifData(resData.bilanActif);
+    //             setBilanPassifData(resData.bilanPassif);
+    //             setCrnData(resData.crn);
+    //             setCrfData(resData.crf);
+    //             setTftdData(resData.tftd);
+    //             setTftiData(resData.tfti);
+    //             setEvcpData(resData.evcp);
+    //             setDrfData(resData.drf);
+    //             setBhiapcData(resData.bhiapc);
+    // setMpData(resData.mp);
+    // setSadData(resData.sad);
+    // setSdrData(resData.sdr);
+    // setSeData(resData.se);
+
+    // const data = resData.da;
+
+    // const groupedData = data.reduce((acc, item) => {
+    //     if (!acc[item.rubriques_poste]) {
+    //         acc[item.rubriques_poste] = {
+    //             rubriques_poste: item.rubriques_poste,
+    //             items: [],
+    //             taux: 0,
+    //             valeur_acquisition: 0,
+    //             augmentation: 0,
+    //             diminution: 0,
+    //             amort_anterieur: 0,
+    //             dotation_exercice: 0,
+    //             amort_cumule: 0,
+    //             valeur_nette: 0,
+    //         };
+    //     }
+
+    //     acc[item.rubriques_poste].items.push(item);
+
+    //     acc[item.rubriques_poste].taux += parseFloat(item.taux) || 0;
+    //     acc[item.rubriques_poste].valeur_acquisition += parseFloat(item.valeur_acquisition) || 0;
+    //     acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
+    //     acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
+    //     acc[item.rubriques_poste].amort_anterieur += parseFloat(item.amort_anterieur) || 0;
+    //     acc[item.rubriques_poste].dotation_exercice += parseFloat(item.dotation_exercice) || 0;
+    //     acc[item.rubriques_poste].amort_cumule += parseFloat(item.amort_cumule) || 0;
+    //     acc[item.rubriques_poste].valeur_nette += parseFloat(item.valeur_nette) || 0;
+
+    //     return acc;
+    // }, {});
+
+    // // Transforme les données groupées en un tableau
+    // const groupedArray = Object.values(groupedData)
+    //     .sort((a, b) => a.rubriques_poste.localeCompare(b.rubriques_poste));
+
+    // const rows = groupedArray.sort((a, b) => {
+    //     if (a.rubriques_poste < b.rubriques_poste) {
+    //         return -1;
+    //     }
+    //     if (a.rubriques_poste > b.rubriques_poste) {
+    //         return 1;
+    //     }
+    //     return 0;
+    // });
+
+    // setDaData(rows);
+
+    //             // //données pour DP
+    //             const data2 = resData.dp;
+    //             const groupedData2 = data2.reduce((acc, item) => {
+    //                 if (!acc[item.nature_prov]) {
+    //                     acc[item.nature_prov] = {
+    //                         nature_prov: item.nature_prov,
+    //                         items: [],
+    //                         montant_debut_ex: 0,
+    //                         augm_dot_ex: 0,
+    //                         dim_repr_ex: 0,
+    //                         montant_fin: 0,
+    //                     };
+    //                 }
+    //                 acc[item.nature_prov].items.push(item);
+
+    //                 acc[item.nature_prov].montant_debut_ex += parseFloat(item.montant_debut_ex) || 0;
+    //                 acc[item.nature_prov].augm_dot_ex += parseFloat(item.augm_dot_ex) || 0;
+    //                 acc[item.nature_prov].dim_repr_ex += parseFloat(item.dim_repr_ex) || 0;
+    //                 acc[item.nature_prov].montant_fin += parseFloat(item.montant_fin) || 0;
+    //                 return acc;
+    //             }, {});
+
+    //             const groupedArray2 = Object.values(groupedData2)
+    //                 .sort((a, b) => a.nature_prov.localeCompare(b.nature_prov));
+
+    //             const rows2 = groupedArray2.sort((a, b) => {
+    //                 if (a.ordre < b.ordre) {
+    //                     return -1;
+    //                 }
+    //                 if (a.ordre > b.ordre) {
+    //                     return 1;
+    //                 }
+    //                 return 0;
+    //             });
+
+    //             setDpData(rows2);
+
+    //             // //données pour EIAFNC
+    //             const data3 = resData.eiafnc;
+    //             const groupedData3 = data3.reduce((acc, item) => {
+    //                 if (!acc[item.rubriques_poste]) {
+    //                     acc[item.rubriques_poste] = {
+    //                         rubriques_poste: item.rubriques_poste,
+    //                         items: [],
+    //                         valeur_acquisition: 0,
+    //                         augmentation: 0,
+    //                         diminution: 0,
+    //                         valeur_brute: 0,
+    //                     };
+    //                 }
+
+    //                 acc[item.rubriques_poste].items.push(item);
+
+    //                 acc[item.rubriques_poste].valeur_acquisition += parseFloat(item.valeur_acquisition) || 0;
+    //                 acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
+    //                 acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
+    //                 acc[item.rubriques_poste].valeur_brute += parseFloat(item.valeur_brute) || 0;
+
+    //                 return acc;
+    //             }, {});
+
+    //             // Transforme les données groupées en un tableau
+    //             const groupedArray3 = Object.values(groupedData3)
+    //                 .sort((a, b) => a.rubriques_poste.localeCompare(b.rubriques_poste));
+
+    //             const rows3 = groupedArray3.sort((a, b) => {
+    //                 if (a.rubriques_poste < b.rubriques_poste) {
+    //                     return -1;  // a vient avant b
+    //                 }
+    //                 if (a.rubriques_poste > b.rubriques_poste) {
+    //                     return 1;   // b vient avant a
+    //                 }
+    //                 return 0;  // a et b sont égaux
+    //             });
+
+    //             setEiafncData(rows3);
+
+    //             //=================================================================
+    //             //RECUPERATION INFOS ANOMALIES
+    //             //==================================================================
+    //             setDetailAnombilan(resData.detailAnomBilan);
+    //             setDetailAnomcrn(resData.detailAnomCrn);
+    //             setDetailAnomcrf(resData.detailAnomCrf);
+    //             setDetailAnomtftd(resData.detailAnomTftd);
+    //             setDetailAnomtfti(resData.detailAnomTfti);
+    //             setDetailAnomevcp(resData.detailAnomEvcp);
+    //             setDetailAnomdrf(resData.detailAnomDrf);
+    //             setDetailAnombhiapc(resData.detailAnomBhiapc);
+    //             setDetailAnommp(resData.detailAnomMp);
+    //             setDetailAnomda(resData.detailAnomDa);
+    //             setDetailAnomdp(resData.detailAnomDp);
+    //             setDetailAnomeiafnc(resData.detailAnomEiafnc);
+    //             setDetailAnomsad(resData.detailAnomSad);
+    //             setDetailAnomsdr(resData.detailAnomSdr);
+    //             setDetailAnomse(resData.detailAnomSe);
+
+    //             setNbrAnomalieBILAN(resData.etatglobal.find((item) => item.code === 'BILAN')?.nbranomalie);
+    //             setNbrAnomalieCRN(resData.etatglobal.find((item) => item.code === 'CRN')?.nbranomalie);
+    //             setNbrAnomalieCRF(resData.etatglobal.find((item) => item.code === 'CRF')?.nbranomalie);
+    //             setNbrAnomalieTFTD(resData.etatglobal.find((item) => item.code === 'TFTD')?.nbranomalie);
+    //             setNbrAnomalieTFTI(resData.etatglobal.find((item) => item.code === 'TFTI')?.nbranomalie);
+    //             setNbrAnomalieEVCP(resData.etatglobal.find((item) => item.code === 'EVCP')?.nbranomalie);
+    //             setNbrAnomalieDRF(resData.etatglobal.find((item) => item.code === 'DRF')?.nbranomalie);
+    //             setNbrAnomalieBHIAPC(resData.etatglobal.find((item) => item.code === 'BHIAPC')?.nbranomalie);
+    //             setNbrAnomalieMP(resData.etatglobal.find((item) => item.code === 'MP')?.nbranomalie);
+    //             setNbrAnomalieDA(resData.etatglobal.find((item) => item.code === 'DA')?.nbranomalie);
+    //             setNbrAnomalieDP(resData.etatglobal.find((item) => item.code === 'DP')?.nbranomalie);
+    //             setNbrAnomalieEIAFNC(resData.etatglobal.find((item) => item.code === 'EIAFNC')?.nbranomalie);
+    //             setNbrAnomalieSAD(resData.etatglobal.find((item) => item.code === 'SAD')?.nbranomalie);
+    //             setNbrAnomalieSDR(resData.etatglobal.find((item) => item.code === 'SDR')?.nbranomalie);
+    //             setNbrAnomalieSE(resData.etatglobal.find((item) => item.code === 'SE')?.nbranomalie);
+    //         } else {
+    //             toast.error(resData.msg);
+    //         }
+    //     });
+    // }
+
     const recupRubriqueGlobal = (compteId, fileId, exerciceId) => {
-        axios.post(`/declaration/ebilan/listeRubriqueGlobal`, { compteId, fileId, exerciceId }).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                setBilanActifData(resData.bilanActif);
-                setBilanPassifData(resData.bilanPassif);
-                setCrnData(resData.crn);
-                setCrfData(resData.crf);
-                setTftdData(resData.tftd);
-                setTftiData(resData.tfti);
-                setEvcpData(resData.evcp);
-                setDrfData(resData.drf);
-                setBhiapcData(resData.bhiapc);
-                setMpData(resData.mp);
-                setSadData(resData.sad);
-                setSdrData(resData.sdr);
-                setSeData(resData.se);
-                setNeData(resData.ne);
-                setDrfData(resData.drf);
-                setBhiapcData(resData.bhiapc);
-                setMpData(resData.mp);
-                setSadData(resData.sad);
-                setSdrData(resData.sdr);
-                setSeData(resData.se);
-                setNeData(resData.ne);
+        axios.post('/declaration/ebilan/getEbilan', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(exerciceId) })
+            .then((response) => {
+                const resData = response?.data;
+                console.log('resData : ', resData);
+                if (resData?.state) {
+                    setBilanActifData(resData?.bilanActif);
+                    setBilanPassifData(resData?.bilanPassif);
+                    setCrnData(resData?.crn);
+                    setCrfData(resData?.crf);
+                    setTftdData(resData?.tftd);
+                    setTftiData(resData?.tfti);
+                    setEvcpData(resData?.evcp);
+                    setDrfData(resData?.drf);
+                    setBhiapcData(resData?.bhiapc);
+                    setMpData(resData?.mp);
+                    setSadData(resData?.sad);
+                    setSdrData(resData?.sdr);
+                    setSeData(resData?.se);
 
-                const data = resData.da;
+                    const daData = resData?.da;
+                    const groupedDataData = daData.reduce((acc, item) => {
+                        if (!acc[item.rubriques_poste]) {
+                            acc[item.rubriques_poste] = {
+                                rubriques_poste: item.rubriques_poste,
+                                items: [],
+                                taux: 0,
+                                valeur_acquisition: 0,
+                                augmentation: 0,
+                                diminution: 0,
+                                amort_anterieur: 0,
+                                dotation_exercice: 0,
+                                amort_cumule: 0,
+                                valeur_nette: 0
+                            }
+                        }
+                        acc[item.rubriques_poste].items.push(item);
+                        acc[item.rubriques_poste].taux += parseFloat(item.taux) || 0;
+                        acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
+                        acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
+                        acc[item.rubriques_poste].amort_anterieur += parseFloat(item.amort_anterieur) || 0;
+                        acc[item.rubriques_poste].dotation_exercice += parseFloat(item.dotation_exercice) || 0;
+                        acc[item.rubriques_poste].amort_cumule += parseFloat(item.amort_cumule) || 0;
+                        acc[item.rubriques_poste].valeur_nette += parseFloat(item.valeur_nette) || 0;
 
-                const groupedData = data.reduce((acc, item) => {
-                    if (!acc[item.rubriques_poste]) {
-                        acc[item.rubriques_poste] = {
-                            rubriques_poste: item.rubriques_poste,
-                            items: [],
-                            taux: 0,
-                            valeur_acquisition: 0,
-                            augmentation: 0,
-                            diminution: 0,
-                            amort_anterieur: 0,
-                            dotation_exercice: 0,
-                            amort_cumule: 0,
-                            valeur_nette: 0,
-                        };
-                    }
+                        return acc;
+                    }, {})
 
-                    acc[item.rubriques_poste].items.push(item);
+                    const groupedArrayDa = Object.values(groupedDataData)
+                        .sort((a, b) => a.rubriques_poste.localCompare(b.rubriques_poste));
 
-                    acc[item.rubriques_poste].taux += parseFloat(item.taux) || 0;
-                    acc[item.rubriques_poste].valeur_acquisition += parseFloat(item.valeur_acquisition) || 0;
-                    acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
-                    acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
-                    acc[item.rubriques_poste].amort_anterieur += parseFloat(item.amort_anterieur) || 0;
-                    acc[item.rubriques_poste].dotation_exercice += parseFloat(item.dotation_exercice) || 0;
-                    acc[item.rubriques_poste].amort_cumule += parseFloat(item.amort_cumule) || 0;
-                    acc[item.rubriques_poste].valeur_nette += parseFloat(item.valeur_nette) || 0;
+                    const rowsDa = groupedArrayDa.sort((a, b) => {
+                        if (a.rubriques_poste < b.rubriques_poste) {
+                            return -1;
+                        }
+                        if (a.rubriques_poste > b.rubriques_poste) {
+                            return 1;
+                        }
+                        return 0;
+                    })
 
-                    return acc;
-                }, {});
-
-                // Transforme les données groupées en un tableau
-                const groupedArray = Object.values(groupedData)
-                    .sort((a, b) => a.rubriques_poste.localeCompare(b.rubriques_poste));
-
-                const rows = groupedArray.sort((a, b) => {
-                    if (a.rubriques_poste < b.rubriques_poste) {
-                        return -1;
-                    }
-                    if (a.rubriques_poste > b.rubriques_poste) {
-                        return 1;
-                    }
-                    return 0;
-                });
-
-                setDaData(rows);
-
-                // //données pour DP
-                const data2 = resData.dp;
-                const groupedData2 = data2.reduce((acc, item) => {
-                    if (!acc[item.nature_prov]) {
-                        acc[item.nature_prov] = {
-                            nature_prov: item.nature_prov,
-                            items: [],
-                            montant_debut_ex: 0,
-                            augm_dot_ex: 0,
-                            dim_repr_ex: 0,
-                            montant_fin: 0,
-                        };
-                    }
-                    acc[item.nature_prov].items.push(item);
-
-                    acc[item.nature_prov].montant_debut_ex += parseFloat(item.montant_debut_ex) || 0;
-                    acc[item.nature_prov].augm_dot_ex += parseFloat(item.augm_dot_ex) || 0;
-                    acc[item.nature_prov].dim_repr_ex += parseFloat(item.dim_repr_ex) || 0;
-                    acc[item.nature_prov].montant_fin += parseFloat(item.montant_fin) || 0;
-                    return acc;
-                }, {});
-
-                const groupedArray2 = Object.values(groupedData2)
-                    .sort((a, b) => a.nature_prov.localeCompare(b.nature_prov));
-
-                const rows2 = groupedArray2.sort((a, b) => {
-                    if (a.ordre < b.ordre) {
-                        return -1;
-                    }
-                    if (a.ordre > b.ordre) {
-                        return 1;
-                    }
-                    return 0;
-                });
-
-                setDpData(rows2);
-
-                // //données pour EIAFNC
-                const data3 = resData.eiafnc;
-                const groupedData3 = data3.reduce((acc, item) => {
-                    if (!acc[item.rubriques_poste]) {
-                        acc[item.rubriques_poste] = {
-                            rubriques_poste: item.rubriques_poste,
-                            items: [],
-                            valeur_acquisition: 0,
-                            augmentation: 0,
-                            diminution: 0,
-                            valeur_brute: 0,
-                        };
-                    }
-
-                    acc[item.rubriques_poste].items.push(item);
-
-                    acc[item.rubriques_poste].valeur_acquisition += parseFloat(item.valeur_acquisition) || 0;
-                    acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
-                    acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
-                    acc[item.rubriques_poste].valeur_brute += parseFloat(item.valeur_brute) || 0;
-
-                    return acc;
-                }, {});
-
-                // Transforme les données groupées en un tableau
-                const groupedArray3 = Object.values(groupedData3)
-                    .sort((a, b) => a.rubriques_poste.localeCompare(b.rubriques_poste));
-
-                const rows3 = groupedArray3.sort((a, b) => {
-                    if (a.rubriques_poste < b.rubriques_poste) {
-                        return -1;  // a vient avant b
-                    }
-                    if (a.rubriques_poste > b.rubriques_poste) {
-                        return 1;   // b vient avant a
-                    }
-                    return 0;  // a et b sont égaux
-                });
-
-                setEiafncData(rows3);
-
-                //=================================================================
-                //RECUPERATION INFOS ANOMALIES
-                //==================================================================
-                setDetailAnombilan(resData.detailAnomBilan);
-                setDetailAnomcrn(resData.detailAnomCrn);
-                setDetailAnomcrf(resData.detailAnomCrf);
-                setDetailAnomtftd(resData.detailAnomTftd);
-                setDetailAnomtfti(resData.detailAnomTfti);
-                setDetailAnomevcp(resData.detailAnomEvcp);
-                setDetailAnomdrf(resData.detailAnomDrf);
-                setDetailAnombhiapc(resData.detailAnomBhiapc);
-                setDetailAnommp(resData.detailAnomMp);
-                setDetailAnomda(resData.detailAnomDa);
-                setDetailAnomdp(resData.detailAnomDp);
-                setDetailAnomeiafnc(resData.detailAnomEiafnc);
-                setDetailAnomsad(resData.detailAnomSad);
-                setDetailAnomsdr(resData.detailAnomSdr);
-                setDetailAnomse(resData.detailAnomSe);
-
-                setNbrAnomalieBILAN(resData.etatglobal.find((item) => item.code === 'BILAN')?.nbranomalie);
-                setNbrAnomalieCRN(resData.etatglobal.find((item) => item.code === 'CRN')?.nbranomalie);
-                setNbrAnomalieCRF(resData.etatglobal.find((item) => item.code === 'CRF')?.nbranomalie);
-                setNbrAnomalieTFTD(resData.etatglobal.find((item) => item.code === 'TFTD')?.nbranomalie);
-                setNbrAnomalieTFTI(resData.etatglobal.find((item) => item.code === 'TFTI')?.nbranomalie);
-                setNbrAnomalieEVCP(resData.etatglobal.find((item) => item.code === 'EVCP')?.nbranomalie);
-                setNbrAnomalieDRF(resData.etatglobal.find((item) => item.code === 'DRF')?.nbranomalie);
-                setNbrAnomalieBHIAPC(resData.etatglobal.find((item) => item.code === 'BHIAPC')?.nbranomalie);
-                setNbrAnomalieMP(resData.etatglobal.find((item) => item.code === 'MP')?.nbranomalie);
-                setNbrAnomalieDA(resData.etatglobal.find((item) => item.code === 'DA')?.nbranomalie);
-                setNbrAnomalieDP(resData.etatglobal.find((item) => item.code === 'DP')?.nbranomalie);
-                setNbrAnomalieEIAFNC(resData.etatglobal.find((item) => item.code === 'EIAFNC')?.nbranomalie);
-                setNbrAnomalieSAD(resData.etatglobal.find((item) => item.code === 'SAD')?.nbranomalie);
-                setNbrAnomalieSDR(resData.etatglobal.find((item) => item.code === 'SDR')?.nbranomalie);
-                setNbrAnomalieSE(resData.etatglobal.find((item) => item.code === 'SE')?.nbranomalie);
-            } else {
-                toast.error(resData.msg);
-            }
-        });
+                }
+            })
     }
 
     //Actualisation d'un tableau
@@ -2632,7 +2690,7 @@ export default function DeclarationEbilan() {
                     }
                     case 'DP': {
                         const data = resData.list1;
-                        const groupedData2 = data2.reduce((acc, item) => {
+                        const groupedData2 = data.reduce((acc, item) => {
                             if (!acc[item.nature_prov]) {
                                 acc[item.nature_prov] = {
                                     nature_prov: item.nature_prov,
