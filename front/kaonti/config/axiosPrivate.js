@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import axios from "axios";
 import useAuth from "../src/hooks/useAuth";
 
-const BASE_URL = "http://localhost:5100";
+//const BASE_URL = "http://localhost:5100";
+const BASE_URL = 'https://finance.inframad.com/api';
 
 const axiosPrivate = axios.create({
     baseURL: BASE_URL,

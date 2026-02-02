@@ -1973,7 +1973,7 @@ export default function ParamTVAComponent() {
                         const annee = Number(valSelectAnnee);
                         const idDossier = fileId || sessionStorage.getItem('fileId');
                         const mode = fileInfos?.centrefisc === 'DGE' ? 'dge' : 'cfisc';
-                        const url = `http://localhost:5100/declaration/tva/formulaire/export-excel/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}`;
+                        const url = `${axios}/declaration/tva/formulaire/export-excel/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}`;
                         const resp = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
                         if (!resp.ok) throw new Error('Erreur export Formulaire Excel');
                         const blob = await resp.blob();
@@ -2001,7 +2001,7 @@ export default function ParamTVAComponent() {
                         const annee = Number(valSelectAnnee);
                         const idDossier = fileId || sessionStorage.getItem('fileId');
                         const mode = fileInfos?.centrefisc === 'DGE' ? 'dge' : 'cfisc';
-                        const url = `http://localhost:5100/declaration/tva/formulaire/export-excel/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}&includeDetails=1`;
+                        const url = `${axios}/declaration/tva/formulaire/export-excel/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}&includeDetails=1`;
                         const resp = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
                         if (!resp.ok) throw new Error('Erreur export Formulaire Excel (détails)');
                         const blob = await resp.blob();
@@ -2039,7 +2039,7 @@ export default function ParamTVAComponent() {
                         const annee = Number(valSelectAnnee);
                         const idDossier = fileId || sessionStorage.getItem('fileId');
                         const mode = fileInfos?.centrefisc === 'DGE' ? 'dge' : 'cfisc';
-                        const url = `http://localhost:5100/declaration/tva/formulaire/export-pdf/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}`;
+                        const url = `${axios}/declaration/tva/formulaire/export-pdf/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}`;
                         const resp = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/pdf' } });
                         if (!resp.ok) throw new Error('Erreur export Formulaire PDF');
                         const blob = await resp.blob();
@@ -2067,7 +2067,7 @@ export default function ParamTVAComponent() {
                         const annee = Number(valSelectAnnee);
                         const idDossier = fileId || sessionStorage.getItem('fileId');
                         const mode = fileInfos?.centrefisc === 'DGE' ? 'dge' : 'cfisc';
-                        const url = `http://localhost:5100/declaration/tva/formulaire/export-pdf/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}&includeDetails=1`;
+                        const url = `${axios}/declaration/tva/formulaire/export-pdf/${idDossier}/${compteId}/${selectedExerciceId}?mois=${mois}&annee=${annee}&mode=${mode}&includeDetails=1`;
                         const resp = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/pdf' } });
                         if (!resp.ok) throw new Error('Erreur export Formulaire PDF (détails)');
                         const blob = await resp.blob();
