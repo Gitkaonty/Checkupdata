@@ -76,7 +76,7 @@ export default function App() {
           <Route path='/unauthorized' element={<Unauthorized />} />
 
           {/*Protected routes */}
-          <Route element={<PersistLogin />}>
+          {/* <Route element={<PersistLogin />}> */}
             <Route element={<RequireAuth allowedRoles={[ROLES.Admin, ROLES.User, ROLES.Editor, ROLES.SuperAdmin]} />}>
               <Route path='/tab' element={<MainPage />} >
 
@@ -145,7 +145,7 @@ export default function App() {
           </Route>
           {/* catch all */}
           <Route path='*' element={<NotFoundPage />} />
-        </Route>
+        {/* </Route> */}
       </Routes>
     </>
   )
