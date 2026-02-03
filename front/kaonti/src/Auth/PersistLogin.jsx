@@ -12,38 +12,46 @@ const PersistLogin = () => {
     const { auth } = useAuth();
 
     useEffect(() => {
+        let isMounted = true;
+
         const verifyRefreshToken = async () => {
             try {
                 await refresh();
             } catch (err) {
                 navigate('/');
             } finally {
-                setIsLoading(false);
+                isMounted && setIsLoading(false);
             }
         };
 
-        !auth?.accessToken ? verifyRefreshToken() : setIsLoading(false);
-    }, []);
+        if (!auth?.accessToken) {
+            verifyRefreshToken();
+        } else {
+            setIsLoading(false);
+        }
+
+        return () => {
+            isMounted = false;
+        };
+    }, [auth?.accessToken]); // 👈 TRÈS IMPORTANT
 
     return (
         <>
-            {
-                isLoading ? (
-                    <Box
-                        sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            width: "100vw",
-                            height: "100vh"
-                        }}
-                    >
-                        <CircularProgress size={50} color="success" />
-                    </Box>
-                ) : (
-                    <Outlet />
-                )
-            }
+            {isLoading ? (
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: "100vw",
+                        height: "100vh"
+                    }}
+                >
+                    <CircularProgress size={50} color="success" />
+                </Box>
+            ) : (
+                <Outlet />
+            )}
         </>
     );
 };
