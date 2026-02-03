@@ -28,7 +28,7 @@ const saveUser = async (req, res, next) => {
 
     //if email exist in the database respond with a status of 409
     if (emailcheck) {
-      return res.json(409).send("Cet email existe déjà");
+      return res.status(409).send("Cet email existe déjà");
     }
 
     next();
