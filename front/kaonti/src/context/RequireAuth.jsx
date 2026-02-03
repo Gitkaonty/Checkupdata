@@ -1,6 +1,6 @@
 import { useLocation, Navigate, Outlet } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import jwtDecode from "jwt-decode";
+import {jwtDecode} from "jwt-decode";
 
 const RequireAuth = ({ allowedRoles }) => {
     const { auth } = useAuth();
