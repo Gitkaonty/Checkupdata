@@ -1,30 +1,26 @@
 import { useLocation, Navigate, Outlet } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import { jwtDecode } from 'jwt-decode';
+import jwtDecode from "jwt-decode";
 
 const RequireAuth = ({ allowedRoles }) => {
     const { auth } = useAuth();
     const location = useLocation();
 
-    // ⛔ Pas encore d'accessToken → on attend (PersistLogin)
-    if (!auth?.accessToken) {
-        return null; // très important
-    }
+    if (!auth?.accessToken) return null; // attendre PersistLogin
 
     let decoded;
     try {
         decoded = jwtDecode(auth.accessToken);
-    } catch (err) {
-        return <Navigate to="/" state={{ from: location }} replace />;
+    } catch {
+        return <Navigate to="/" replace />;
     }
 
-    const role = decoded?.UserInfo?.roles;
+    const role = decoded?.UserInfo?.roles; // STRING
+    if (!role || !allowedRoles.includes(role)) {
+        return <Navigate to="/tab/unauthorized" state={{ from: location }} replace />;
+    }
 
-    return (
-        allowedRoles.includes(role)
-            ? <Outlet />
-            : <Navigate to="/unauthorized" state={{ from: location }} replace />
-    );
+    return <Outlet />;
 };
 
 export default RequireAuth;
