@@ -2,7 +2,7 @@ import { useParams, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import useAxiosPrivate from '../../config/axiosPrivate';
 import useAuth from '../hooks/useAuth';
-import jwtDecode from 'jwt-decode';
+import {jwtDecode} from 'jwt-decode';
 import useRefreshToken from '../hooks/useRefreshToken';
 
 export default function ProtectedDossier() {
