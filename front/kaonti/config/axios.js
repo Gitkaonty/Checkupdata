@@ -4,7 +4,7 @@ const BASE_URL = 'https://finance.inframad.com/api';
 
 export default axios.create({
     baseURL: BASE_URL,
-    //withCredentials: true
+    withCredentials: true
 });
 
 export const axiosPrivate = axios.create({
