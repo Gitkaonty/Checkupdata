@@ -6,20 +6,25 @@ const RequireAuth = ({ allowedRoles }) => {
     const { auth } = useAuth();
     const location = useLocation();
 
-    const decoded = auth?.accessToken
-        ? jwtDecode(auth.accessToken)
-        : undefined
+    // ⛔ Pas encore d'accessToken → on attend (PersistLogin)
+    if (!auth?.accessToken) {
+        return null; // très important
+    }
 
-    const roles = decoded?.UserInfo?.roles || null;
+    let decoded;
+    try {
+        decoded = jwtDecode(auth.accessToken);
+    } catch (err) {
+        return <Navigate to="/" state={{ from: location }} replace />;
+    }
+
+    const role = decoded?.UserInfo?.roles;
 
     return (
-        allowedRoles.includes(roles)
+        allowedRoles.includes(role)
             ? <Outlet />
-            : auth?.accessToken
-                ? <Navigate to="/unauthorized" state={{ from: location }} replace />
-                : <Navigate to="/" state={{ from: location }} replace />
-
-    )
-}
+            : <Navigate to="/unauthorized" state={{ from: location }} replace />
+    );
+};
 
 export default RequireAuth;
