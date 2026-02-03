@@ -13,10 +13,10 @@ export const axiosPrivate = axios.create({
     withCredentials: true
 });
 
-axiosPrivate.interceptors.request.use(config => {
-  const token = localStorage.getItem('accessToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// axiosPrivate.interceptors.request.use(config => {
+//   const token = localStorage.getItem('accessToken');
+//   if (token) config.headers.Authorization = `Bearer ${token}`;
+//   return config;
+// });
 
 export const URL = BASE_URL;
