@@ -99,67 +99,69 @@ const recupBalance = async (req, res) => {
 
 const recupBalanceFromJournal = async (req, res) => {
     try {
-        const {
-            compteId,
-            fileId,
-            exerciceId,
-            centraliser = false,
-            unSolded = false,
-            movmentedCpt = false,
-            type = null
-        } = req.body;
+        // const {
+        //     compteId,
+        //     fileId,
+        //     exerciceId,
+        //     centraliser = false,
+        //     unSolded = false,
+        //     movmentedCpt = false,
+        //     type = null
+        // } = req.body;
 
-        if (!compteId) {
-            return res.json({ state: false, msg: 'Compte vide' })
-        }
-        if (!fileId) {
-            return res.json({ state: false, msg: 'Dossier vide' })
-        }
-        if (!exerciceId) {
-            return res.json({ state: false, msg: 'Exercice vide' })
-        }
+        // if (!compteId) {
+        //     return res.json({ state: false, msg: 'Compte vide' })
+        // }
+        // if (!fileId) {
+        //     return res.json({ state: false, msg: 'Dossier vide' })
+        // }
+        // if (!exerciceId) {
+        //     return res.json({ state: false, msg: 'Exercice vide' })
+        // }
 
-        const rows = await db.sequelize.query(
-            `
-            SELECT
-                ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'} AS COMPTE,
-                ${centraliser ? 'MAX(J.LIBELLECOMPTE)' : 'MAX(J.LIBELLEAUX)'} AS LIBELLE,
-                SUM(J.DEBIT) AS MVMDEBIT,
-                SUM(J.CREDIT) AS MVMCREDIT,
-                GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
-                GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT
-            FROM
-                JOURNALS J
-            WHERE
-                J.ID_DOSSIER = :id_dossier
-                AND J.ID_EXERCICE = :id_exercice
-                AND J.ID_COMPTE = :id_compte
-                AND (
-                    :type = 0
-                    OR (:type = 1 AND J.COMPTEGEN LIKE '401%')
-                    OR (:type = 2 AND J.COMPTEGEN LIKE '411%')
-                )
-            GROUP BY
-                ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'}
-            HAVING
-                (:unSolded = 0 OR ABS(SUM(J.DEBIT) - SUM(J.CREDIT)) > 0)
-                AND (:movmentedCpt = 0 OR SUM(J.DEBIT) > 0 OR SUM(J.CREDIT) > 0)
-            ORDER BY
-                ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'} ASC
-            `,
-            {
-                replacements: {
-                    id_dossier: Number(fileId),
-                    id_compte: Number(compteId),
-                    id_exercice: Number(exerciceId),
-                    unSolded: unSolded ? 1 : 0,
-                    movmentedCpt: movmentedCpt ? 1 : 0,
-                    type: Number(type)
-                },
-                type: db.Sequelize.QueryTypes.SELECT
-            });
+        // const rows = await db.sequelize.query(
+        //     `
+        //     SELECT
+        //         ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'} AS COMPTE,
+        //         ${centraliser ? 'MAX(J.LIBELLECOMPTE)' : 'MAX(J.LIBELLEAUX)'} AS LIBELLE,
+        //         SUM(J.DEBIT) AS MVMDEBIT,
+        //         SUM(J.CREDIT) AS MVMCREDIT,
+        //         GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
+        //         GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT
+        //     FROM
+        //         JOURNALS J
+        //     WHERE
+        //         J.ID_DOSSIER = :id_dossier
+        //         AND J.ID_EXERCICE = :id_exercice
+        //         AND J.ID_COMPTE = :id_compte
+        //         AND (
+        //             :type = 0
+        //             OR (:type = 1 AND J.COMPTEGEN LIKE '401%')
+        //             OR (:type = 2 AND J.COMPTEGEN LIKE '411%')
+        //         )
+        //     GROUP BY
+        //         ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'}
+        //     HAVING
+        //         (:unSolded = 0 OR ABS(SUM(J.DEBIT) - SUM(J.CREDIT)) > 0)
+        //         AND (:movmentedCpt = 0 OR SUM(J.DEBIT) > 0 OR SUM(J.CREDIT) > 0)
+        //     ORDER BY
+        //         ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'} ASC
+        //     `,
+        //     {
+        //         replacements: {
+        //             id_dossier: Number(fileId),
+        //             id_compte: Number(compteId),
+        //             id_exercice: Number(exerciceId),
+        //             unSolded: unSolded ? 1 : 0,
+        //             movmentedCpt: movmentedCpt ? 1 : 0,
+        //             type: Number(type)
+        //         },
+        //         type: db.Sequelize.QueryTypes.SELECT
+        //     });
 
-        return res.json({ state: true, list: rows, message: 'Balance générale récupérée avec succès' });
+        //return res.json({ state: true, list: rows, message: 'Balance générale récupérée avec succès' });
+
+        return res.json({ state: true, list: [], message: 'Balance générale récupérée avec succès' });
 
     } catch (error) {
         console.error(error);
