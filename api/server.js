@@ -17,7 +17,7 @@ const credentials = require('./Middlewares/credentials');
 //const modelePlanComptableDeleteRoutes = require('./Routes/modelePlanComptableRoutes/modelePlanComptableDeleteRoutes');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 5100;
+const PORT = process.env.NODE_API_PORT || 5100;
 
 //Définition du moteur d'affichage
 const app = express();

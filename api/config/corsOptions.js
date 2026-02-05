@@ -5,9 +5,10 @@ const corsOptions = {
         if(allowedOrigins.indexOf(origin) !== -1 || !origin) {
             callback(null,true);
         }else{
-            callback(new error('accès interdit par CORS'));
+            callback(new Error('accès interdit par CORS'));
         }
     },
+    credentials:true,
     optionsSuccessStatus:200
 }
 
