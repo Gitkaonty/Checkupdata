@@ -89,7 +89,7 @@ db.controles = require('./controlesModel')(sequelize, DataTypes);
 db.controlematrices = require('./controlematricesModel')(sequelize, DataTypes);
 db.controlematricedetails = require('./controlematricedetailsModel')(sequelize, DataTypes);
 db.etatsCentresFiscales = require('./etatsCentresFiscales')(sequelize, DataTypes);
-db.etatsCentresFiscalesmatrices = require('./etatscentresfiscalesmatrices')(sequelize, DataTypes);
+db.etatsCentresFiscalesmatrices = require('./etatsCentresFiscalesMatrices')(sequelize, DataTypes);
 db.etatsDge = require('./etatsDge')(sequelize, DataTypes);
 db.etatsDgeMatrices = require('./etatsDgeMatrices')(sequelize, DataTypes);
 // Unified TVA form tables

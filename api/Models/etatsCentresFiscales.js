@@ -1,6 +1,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
  module.exports = (sequelize, DataTypes) => {
-    const etatsCentresFiscales = sequelize.define("etatscentresfiscales", {
+    const etatsCentresFiscales = sequelize.define("etatsCentresfiscales", {
         id_cfisc: {
             type: DataTypes.BIGINT,
             allowNull: false,
