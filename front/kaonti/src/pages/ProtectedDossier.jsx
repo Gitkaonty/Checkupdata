@@ -15,9 +15,9 @@ export default function ProtectedDossier({ type }) {
     const decoded = auth?.accessToken
         ? jwtDecode(auth.accessToken)
         : undefined
-
+ 
     const userId = decoded.UserInfo.userId || null;
-
+ 
     useEffect(() => {
         const verifyAccess = async () => {
             await refresh();
@@ -34,11 +34,11 @@ export default function ProtectedDossier({ type }) {
                 // setAccess(false);
             }
         };
-
+ 
         verifyAccess();
     }, [id, userId]);
-
+ 
     // if (access === false) return <Navigate to="/tab/unauthorized-dossier" replace />;
-
+ 
     return <Outlet />;
 }
