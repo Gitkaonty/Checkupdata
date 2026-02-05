@@ -4499,20 +4499,6 @@ module.exports = {
         updatedAt: new Date()
       },
       {
-        id_rubrique: 1,
-        id_etat: 'CRF',
-        tableau: 'CRF',
-        compte: '70',
-        nature: 'BRUT',
-        senscalcul: 'C-D',
-        condition: 'SOLDE',
-        equation: 'ADDITIF',
-        par_default: true,
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
         id_rubrique: 3,
         id_etat: 'CRF',
         tableau: 'CRF',
