@@ -37,7 +37,6 @@ const handleRefreshToken = async (req, res) => {
         refreshToken,
         process.env.REFRESH_TOKEN_SECRET,
         async (err, decoded) => {
-
             if (err) {
                 await User.update(
                     { refresh_token: null },

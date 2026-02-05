@@ -2507,7 +2507,6 @@ export default function DeclarationEbilan() {
         axios.post('/declaration/ebilan/getEbilan', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(exerciceId) })
             .then((response) => {
                 const resData = response?.data;
-                console.log('resData : ', resData);
                 if (resData?.state) {
                     setBilanActifData(resData?.bilanActif);
                     setBilanPassifData(resData?.bilanPassif);
@@ -2519,51 +2518,14 @@ export default function DeclarationEbilan() {
                     setDrfData(resData?.drf);
                     setBhiapcData(resData?.bhiapc);
                     setMpData(resData?.mp);
+                    setDaData(resData?.da);
+                    setDpData(resData?.dp);
+                    setEiafncData(resData?.eiafnc);
                     setSadData(resData?.sad);
                     setSdrData(resData?.sdr);
                     setSeData(resData?.se);
-
-                    const daData = resData?.da;
-                    const groupedDataData = daData.reduce((acc, item) => {
-                        if (!acc[item.rubriques_poste]) {
-                            acc[item.rubriques_poste] = {
-                                rubriques_poste: item.rubriques_poste,
-                                items: [],
-                                taux: 0,
-                                valeur_acquisition: 0,
-                                augmentation: 0,
-                                diminution: 0,
-                                amort_anterieur: 0,
-                                dotation_exercice: 0,
-                                amort_cumule: 0,
-                                valeur_nette: 0
-                            }
-                        }
-                        acc[item.rubriques_poste].items.push(item);
-                        acc[item.rubriques_poste].taux += parseFloat(item.taux) || 0;
-                        acc[item.rubriques_poste].augmentation += parseFloat(item.augmentation) || 0;
-                        acc[item.rubriques_poste].diminution += parseFloat(item.diminution) || 0;
-                        acc[item.rubriques_poste].amort_anterieur += parseFloat(item.amort_anterieur) || 0;
-                        acc[item.rubriques_poste].dotation_exercice += parseFloat(item.dotation_exercice) || 0;
-                        acc[item.rubriques_poste].amort_cumule += parseFloat(item.amort_cumule) || 0;
-                        acc[item.rubriques_poste].valeur_nette += parseFloat(item.valeur_nette) || 0;
-
-                        return acc;
-                    }, {})
-
-                    const groupedArrayDa = Object.values(groupedDataData)
-                        .sort((a, b) => a.rubriques_poste.localCompare(b.rubriques_poste));
-
-                    const rowsDa = groupedArrayDa.sort((a, b) => {
-                        if (a.rubriques_poste < b.rubriques_poste) {
-                            return -1;
-                        }
-                        if (a.rubriques_poste > b.rubriques_poste) {
-                            return 1;
-                        }
-                        return 0;
-                    })
-
+                    setNeData(resData?.ne);
+                    toast.success('Données récupérées avec succès');
                 }
             })
     }
@@ -3099,17 +3061,9 @@ export default function DeclarationEbilan() {
     }, []);
 
     //Mettre à jours les tableaux des états financiers après ajustement de montant
-    useEffect(() => {
-        if (updateCalculEtatfinancier.state) {
-            setTableToRefresh(updateCalculEtatfinancier.tableName);
-            ActivateTableCalcul(compteId, fileId, selectedPeriodeId, updateCalculEtatfinancier.tableName, false);
-            setUpdateCalculEtatfinancier((prev) => ({
-                ...prev,
-                state: false
-            })
-            );
-        }
-    }, [updateCalculEtatfinancier.state]);
+    // useEffect(() => {
+    //     recupRubriqueGlobal(compteId, fileId, selectedExerciceId);
+    // }, [updateCalculEtatfinancier.state]);
 
     useEffect(() => {
         if (fileId && compteId && selectedExerciceId) {
@@ -3638,6 +3592,7 @@ export default function DeclarationEbilan() {
                                                         state={verrBilan}
                                                         type={"Actif"}
                                                         deviseParDefaut={deviseParDefaut}
+                                                        getListe={() => recupRubriqueGlobal(compteId, fileId, selectedExerciceId)}
                                                     />
                                                 </Stack>
                                                 : null
@@ -3660,6 +3615,7 @@ export default function DeclarationEbilan() {
                                                         state={verrBilan}
                                                         type={"Passif"}
                                                         deviseParDefaut={deviseParDefaut}
+                                                        getListe={() => recupRubriqueGlobal(compteId, fileId, selectedExerciceId)}
                                                     />
                                                 </Stack>
                                                 : null
@@ -3763,6 +3719,7 @@ export default function DeclarationEbilan() {
                                                     rows={crnData}
                                                     state={verrCrn}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    getListe={() => recupRubriqueGlobal(compteId, fileId, selectedExerciceId)}
                                                 />
                                             </Stack>
 
@@ -3864,6 +3821,7 @@ export default function DeclarationEbilan() {
                                                     rows={crfData}
                                                     state={verrCrf}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    getListe={() => recupRubriqueGlobal(compteId, fileId, selectedExerciceId)}
                                                 />
                                             </Stack>
 
@@ -3965,6 +3923,7 @@ export default function DeclarationEbilan() {
                                                     rows={tftdData}
                                                     state={verrTftd}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    getListe={() => recupRubriqueGlobal(compteId, fileId, selectedExerciceId)}
                                                 />
                                             </Stack>
 
@@ -4065,6 +4024,7 @@ export default function DeclarationEbilan() {
                                                     columns={crnColumn} rows={tftiData}
                                                     state={verrTfti}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    getListe={() => recupRubriqueGlobal(compteId, fileId, selectedExerciceId)}
                                                 />
                                             </Stack>
 
