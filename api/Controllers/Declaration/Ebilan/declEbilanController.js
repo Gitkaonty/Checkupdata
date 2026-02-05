@@ -2650,6 +2650,15 @@ const getEbilan = async (req, res) => {
       return res.json({ state: false, message: ('Exercice non trouvé') });
     }
 
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice, id_etat);
+
+    const bilanActif = (data.filter(val => val.id_etat === 'BILAN' && val.subtable === 1)) ?? [];
+    const bilanPassif = (data.filter(val => val.id_etat === 'BILAN' && val.subtable === 2)) ?? [];
+    const crn = (data.filter(val => val.id_etat === 'CRN' && val.subtable === 0)) ?? [];
+    const crf = (data.filter(val => val.id_etat === 'CRF' && val.subtable === 0)) ?? [];
+    const tftd = (data.filter(val => val.id_etat === 'TFTD' && val.subtable === 0)) ?? [];
+    const tfti = (data.filter(val => val.id_etat === 'TFTI' && val.subtable === 0)) ?? [];
+
     let resData = {
       state: false,
       msg: '...',
@@ -2688,14 +2697,14 @@ const getEbilan = async (req, res) => {
       detailAnomSe: [],
     }
 
-    resData.bilanActif = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
-    resData.bilanPassif = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
-    resData.crn = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'CRN');
-    resData.crf = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'CRF');
-    resData.tftd = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'TFTD');
-    resData.tfti = await getEbilanComplet(id_compte, id_dossier, id_exercice, 'TFTI');
-    resData.bhiapc = await recupTableau.recupBHIAPC(id_compte, id_dossier, id_exercice);
+    resData.bilanActif = bilanActif;
+    resData.bilanPassif = bilanPassif;
+    resData.crn = crn;
+    resData.crf = crf;
+    resData.tftd = tftd;
+    resData.tfti = tfti;
 
+    resData.bhiapc = await recupTableau.recupBHIAPC(id_compte, id_dossier, id_exercice);
     resData.evcp = await recupTableau.recupEVCP(id_compte, id_dossier, id_exercice);
     resData.drf = await recupTableau.recupDRF(id_compte, id_dossier, id_exercice);
     resData.sad = await recupTableau.recupSAD(id_compte, id_dossier, id_exercice);
@@ -2715,9 +2724,6 @@ const getEbilan = async (req, res) => {
 
     resData.state = true;
     return res.json(resData);
-
-    // const data = await getEbilanComplet(id_compte, id_dossier, id_exercice, id_etat);
-    // return res.json({ state: true, list: data })
 
   } catch (error) {
     console.error(error);

@@ -11,7 +11,7 @@ export default function ProtectedDossier({ type }) {
     const [access, setAccess] = useState(null);
     const axiosPrivate = useAxiosPrivate();
     const refresh = useRefreshToken();
- 
+
     const decoded = auth?.accessToken
         ? jwtDecode(auth.accessToken)
         : undefined
