@@ -171,12 +171,12 @@ const calculateRubrique = async (id_dossier, id_compte, id_exercice, id_etat) =>
 
                         switch ((associatedIdRubrique.type || "").toUpperCase()) {
                             case "LIAISON VAR ACTIF":
-                                solde = (rubriqueExterneAssociatedIdRubrique?.montantnet || 0) -
-                                    (rubriqueExterneAssociatedIdRubrique?.montantnetn1 || 0);
-                                break;
-                            case "LIAISON VAR PASSIF":
                                 solde = (rubriqueExterneAssociatedIdRubrique?.montantnetn1 || 0) -
                                     (rubriqueExterneAssociatedIdRubrique?.montantnet || 0);
+                                break;
+                            case "LIAISON VAR PASSIF":
+                                solde = (rubriqueExterneAssociatedIdRubrique?.montantnet || 0) -
+                                    (rubriqueExterneAssociatedIdRubrique?.montantnetn1 || 0);
                                 break;
                             case "LIAISON":
                                 solde = rubriqueExterneAssociatedIdRubrique?.montantnet || 0;

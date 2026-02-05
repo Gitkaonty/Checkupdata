@@ -35,7 +35,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupAjustRubriqueEbilan = ({ actionState, row, column, value, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const PopupAjustRubriqueEbilan = ({ actionState, row, column, value, canModify, canAdd, canDelete, canView, deviseParDefaut, getListe }) => {
     const axiosPrivate = useAxiosPrivate();
     const apiRef = useGridApiRef();
 
@@ -57,7 +57,7 @@ const PopupAjustRubriqueEbilan = ({ actionState, row, column, value, canModify, 
     const [selectedRow, setSelectedRow] = useState([]);
 
     const data = { ...row };
-    const rubriqueCaption = data['rubriquesmatrix.libelle'];
+    const rubriqueCaption = data.libelle;
     const idCompte = data.id_compte;
     const idDossier = data.id_dossier;
     const idExercice = data.id_exercice;
@@ -227,6 +227,7 @@ const PopupAjustRubriqueEbilan = ({ actionState, row, column, value, canModify, 
 
     const handleClose = async () => {
         actionState(stateUpdateTable);
+        getListe();
     }
 
     const saveSelectedRow = (ids) => {
@@ -285,12 +286,13 @@ const PopupAjustRubriqueEbilan = ({ actionState, row, column, value, canModify, 
             if (resData.state) {
                 setDisableSaveBouton(true);
                 setDisableAddRowBouton(false);
-                setStateUpdateTable((prev) => ({
-                    ...prev,
-                    tableName: idEtat,
-                    state: true
-                })
-                );
+                // setStateUpdateTable((prev) => ({
+                //     ...prev,
+                //     tableName: idEtat,
+                //     state: true
+                // })
+                // );
+                // actionState(stateUpdateTable);
                 getInfosAjust(idCompte, idDossier, idExercice, idEtat, idRubrique, nature);
                 toast.success(resData.msg);
             } else {

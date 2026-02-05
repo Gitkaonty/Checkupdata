@@ -18,7 +18,7 @@ import PopupAjustRubriqueEbilan from '../FormulaireModifTableauEbilan/popupAjust
 import { FaRegPenToSquare } from "react-icons/fa6";
 import axios from '../../../../config/axios';
 
-const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state, type, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state, type, canModify, canAdd, canDelete, canView, deviseParDefaut, getListe }) => {
   const initial = init[0];
   const targetColumnId = 'rubriquesmatrix.libelle';
   const [openRows, setOpenRows] = React.useState({});
@@ -30,7 +30,6 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
   const [rowInfo, setRowInfo] = useState({});
 
   const toggleRow = (rowKey, row) => {
-    console.log('row : ', row);
     axios.post('/declaration/ebilan/getDetailLigneEbilan', {
       id_compte: row.id_compte,
       id_dossier: row.id_dossier,
@@ -89,7 +88,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
     if (value) {
       setOpenTableDetail(false);
     } else {
-      setOpenTableDetail(false);
+      setOpenTableDetail(true);
     }
   }
 
@@ -155,6 +154,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
             canDelete={canDelete}
             canView={canView}
             deviseParDefaut={deviseParDefaut}
+            getListe={getListe}
           />
           :
           null
@@ -354,7 +354,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
 
                               style={{
                                 width: 175,
-                                display: 'flex', // ou block, selon le rendu souhaité
+                                display: 'flex',
                                 justifyContent: 'space-between',
                                 backgroundColor: '#67AE6E',
                                 color: 'white'
@@ -412,7 +412,7 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
 
                               style={{
                                 width: 175,
-                                display: 'flex', // ou block, selon le rendu souhaité
+                                display: 'flex',
                                 justifyContent: 'space-between',
                                 backgroundColor: '#67AE6E',
                                 color: 'white'
@@ -428,11 +428,6 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
                                         Motif
                                       </Typography>
                                     </TableCell>
-                                    {/* <TableCell style={{width: 75, border:'none'}}>
-                                        <Typography style={{fontWeight:'bold'}}>
-                                          Nature
-                                        </Typography>
-                                      </TableCell> */}
                                     <TableCell align='right' style={{ width: 200, border: 'none' }}>
                                       <Typography style={{ fontWeight: 'bold' }}>
                                         Montant
@@ -449,7 +444,6 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
                                       }}
                                     >
                                       <TableCell style={{ border: 'none' }}>{ajust.motif}</TableCell>
-                                      {/* <TableCell style={{border:'none'}}>{ajust.nature}</TableCell> */}
                                       <TableCell style={{ border: 'none' }} align={"right"}>{ajust.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     </TableRow>
                                   ))}
@@ -469,11 +463,6 @@ const VirtualTableEbilan = ({ refreshTable, columns, rows, noCollapsible, state,
                                         Total
                                       </Typography>
                                     </TableCell>
-                                    {/* <TableCell style={{width: 75, border:'none'}}>
-                                        <Typography style={{fontWeight:'bold'}}>
-                                          
-                                        </Typography>
-                                      </TableCell> */}
                                     <TableCell align='right'
                                       style={{
                                         width: 200, border: 'none', fontSize: 14, fontWeight: 'bold'
