@@ -1,10 +1,10 @@
 import axios from "axios";
 const BASE_URL = 'http://localhost:5100';
-//const BASE_URL = 'https://finance.inframad.com/api';
+// const BASE_URL = 'https://finance.inframad.com/api';
 
 export default axios.create({
     baseURL: BASE_URL,
-    //withCredentials: true
+    withCredentials: true
 });
 
 export const axiosPrivate = axios.create({

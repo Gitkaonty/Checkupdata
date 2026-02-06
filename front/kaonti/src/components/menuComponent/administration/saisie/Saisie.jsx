@@ -269,7 +269,7 @@ export default function SaisieComponent() {
             headerClassName: 'HeaderbackColor',
         },
         {
-            field: 'compte',
+            field: 'compteaux',
             headerName: 'Compte',
             type: 'string',
             sortable: true,
@@ -1164,7 +1164,7 @@ export default function SaisieComponent() {
                                             .filter((row) => row.id_ecriture === id_ecriture)
                                             .map((row) => {
                                                 const [annee, mois, jour] = row.dateecriture.split('-');
-                                                const compteObj = listePlanComptable.find(pc => pc.compte === row.compte);
+                                                const compteObj = listePlanComptable.find(pc => pc.compte === row.compteaux);
 
                                                 return {
                                                     ...row,
