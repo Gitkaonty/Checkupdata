@@ -353,11 +353,12 @@ export default function ConsultationComponent() {
             align: 'center',
             headerClassName: 'HeaderbackColor',
             renderCell: (params) => {
-                const compte = String(params.row?.compte || '');
-                const disabled = !canView || !/^(2|6|7)/.test(compte);
+                // const compte = String(params.row?.compte || '');
+                // const disabled = !canView || !/^(2|6|7)/.test(compte);
 
                 return (
-                    <Tooltip title={disabled ? "Non applicable pour ce compte" : "Voir les répartitions analytiques"}>
+                    // <Tooltip title={disabled ? "Non applicable pour ce compte" : "Voir les répartitions analytiques"}>
+                    <Tooltip title={"Voir les répartitions analytiques"}>
                         <span>
                             <Button
                                 sx={{
@@ -407,7 +408,7 @@ export default function ConsultationComponent() {
         const compteSelectStr = compteSelect.compte.toString();
 
         const filtered = listSaisie.filter(
-            (item) => item.compte?.toString() === compteSelectStr
+            (item) => item.compteaux?.toString() === compteSelectStr
         );
 
         setFilteredList(filtered);
@@ -580,7 +581,7 @@ export default function ConsultationComponent() {
                 .filter((row) => row.id_ecriture === id_ecriture)
                 .map((row) => {
                     const [annee, mois, jour] = row.dateecriture.split('-');
-                    const compteObj = listePlanComptable.find(pc => pc.compte === row.compte);
+                    const compteObj = listePlanComptable.find(pc => pc.compte === row.compteaux);
 
                     return {
                         ...row,
@@ -755,7 +756,7 @@ export default function ConsultationComponent() {
             } else {
                 try {
                     const resData = await getListeSaisieReturn();
-                    const comptesAvecSolde = resData.map(row => String(row.compte));
+                    const comptesAvecSolde = resData.map(row => String(row.compteaux));
 
                     const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
                         comptesAvecSolde.includes(String(plan.compte))
@@ -768,7 +769,7 @@ export default function ConsultationComponent() {
                     } else if (filtrageCompte === "2") {
                         // Comptes soldés
                         const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
-                            const lignes = resData.filter(row => String(row.compte) === String(plan.compte));
+                            const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
                             const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
                             const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
                             return Math.abs(totalDebit - totalCredit) < 0.01;
@@ -779,7 +780,7 @@ export default function ConsultationComponent() {
                     } else if (filtrageCompte === "3") {
                         // Comptes non soldés
                         const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
-                            const lignes = resData.filter(row => String(row.compte) === String(plan.compte));
+                            const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
                             const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
                             const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
                             return Math.abs(totalDebit - totalCredit) >= 0.01;
@@ -1036,6 +1037,9 @@ export default function ConsultationComponent() {
                                                 onChange={(event, newValue) => {
                                                     setValSelectedCompte(newValue?.id || null);
                                                 }}
+                                                PaperComponent={(props) => (
+                                                    <div {...props} style={{ width: 600, backgroundColor: 'white' }} />
+                                                )}
                                                 renderOption={(props, option) => (
                                                     <li {...props}>
                                                         <span>
@@ -1164,7 +1168,7 @@ export default function ConsultationComponent() {
                                     onClick={handleOpenPopupAddEcriture}
                                     startIcon={<TbPlugConnected size={20} />}
                                 >
-                                    Créer
+                                    Lettrer : Avec écart
                                 </Button>
                                 <Button
                                     disabled={!canAdd || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}

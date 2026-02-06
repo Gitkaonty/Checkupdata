@@ -3,24 +3,22 @@ import { useEffect, useState } from 'react';
 import useAxiosPrivate from '../../config/axiosPrivate';
 import useAuth from '../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
-import useRefreshToken from '../hooks/useRefreshToken';
+ 
 export default function ProtectedDossier({ type }) {
     const navigate = useNavigate();
     const { auth } = useAuth();
     const { id } = useParams();
     const [access, setAccess] = useState(null);
     const axiosPrivate = useAxiosPrivate();
-    const refresh = useRefreshToken();
-
+ 
     const decoded = auth?.accessToken
         ? jwtDecode(auth.accessToken)
         : undefined
-
+ 
     const userId = decoded.UserInfo.userId || null;
-
+ 
     useEffect(() => {
-        const verifyAccess = async () => {
-            await refresh();
+        const verifyAccess = () => {
             try {
                 axiosPrivate.get(`/home/checkAccessDossier/${id}`).then((response) => {
                     if (response?.data?.state) {
@@ -34,11 +32,11 @@ export default function ProtectedDossier({ type }) {
                 // setAccess(false);
             }
         };
-
+ 
         verifyAccess();
     }, [id, userId]);
-
+ 
     // if (access === false) return <Navigate to="/tab/unauthorized-dossier" replace />;
-
+ 
     return <Outlet />;
 }

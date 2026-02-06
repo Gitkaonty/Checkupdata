@@ -848,15 +848,29 @@ const verifyFilePassword = async (req, res) => {
 const deleteDossierPasswordAccess = async (req, res) => {
   try {
     const { user_id } = req.body;
+
     if (!user_id) {
-      return res.json({ state: false, message: 'Utilisateur non trouvé' });
+      return res.status(400).json({
+        state: false,
+        message: 'Utilisateur non trouvé'
+      });
     }
-    await dossierPasswordAccess.destroy({
+
+    const deleted = await dossierPasswordAccess.destroy({
       where: { user_id }
-    })
+    });
+
+    return res.json({
+      state: true,
+      deleted
+    });
+
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ state: false, message: 'Erreur serveur' });
+    return res.status(500).json({
+      state: false,
+      message: 'Erreur serveur'
+    });
   }
 }
 

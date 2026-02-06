@@ -1,12 +1,17 @@
 require('dotenv').config();
 const recupTableau = require('../../Middlewares/Ebilan/recupTableau');
 
+const recupEbilan = require('../../Middlewares/Declaration/Ebilan/EblianMiddleware');
+const getEbilanComplet = recupEbilan.getEbilanComplet;
+
 const db = require("../../Models");
 const dossierassocies = db.dossierassocies;
 const dombancaires = db.dombancaires;
 
 const exportActifToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
-    const bilanActif = await recupTableau.recupBILAN_ACTIF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const bilanActif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 1);
 
     if (bilanActif.length === 0) {
         return
@@ -54,7 +59,9 @@ const exportActifToXml = async (tableau, id_dossier, id_compte, id_exercice) => 
 };
 
 const exportPassifToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
-    const bilanPassif = await recupTableau.recupBILAN_PASSIF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const bilanPassif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 2);
 
     if (bilanPassif.length === 0) {
         return
@@ -108,7 +115,9 @@ const exportPassifToXml = async (tableau, id_dossier, id_compte, id_exercice) =>
 };
 
 const exportCrnToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
-    const crn = await recupTableau.recupCRN(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const crn = data.filter(val => val.id_etat === 'CRN' && val.subtable === 0);
 
     if (crn.length === 0) {
         return
@@ -171,7 +180,9 @@ const exportCrnToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
 };
 
 const exportCrfToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
-    const crf = await recupTableau.recupCRF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const crf = data.filter(val => val.id_etat === 'CRF' && val.subtable === 0);
 
     if (crf.length === 0) {
         return
@@ -222,7 +233,9 @@ const exportCrfToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
 };
 
 const exportTftdToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
-    const tftd = await recupTableau.recupTFTD(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const tftd = data.filter(val => val.id_etat === 'TFTD' && val.subtable === 0);
 
     if (tftd.length === 0) {
         return
@@ -259,7 +272,9 @@ const exportTftdToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
 };
 
 const exportTftiToXml = async (tableau, id_dossier, id_compte, id_exercice) => {
-    const tfti = await recupTableau.recupTFTI(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const tfti = data.filter(val => val.id_etat === 'TFTI' && val.subtable === 0);
 
     if (tfti.length === 0) {
         return
