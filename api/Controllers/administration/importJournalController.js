@@ -909,6 +909,8 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
             const devCode = String(item.Idevise || '').trim() || 'MGA';
             const devId = deviseMap.get(devCode) || defaultDeviseId || 0;
 
+            const rawAuxToAdd = (rawAux === '' || rawAux === null) ? rawGen : rawAux;
+
             const journalEntry = await journals.create({
               id_compte: Number(compteId),
               id_dossier: Number(fileId),
@@ -930,9 +932,9 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               saisiepar: Number(userId),
               modifierpar: Number(userId) || 0,
               comptegen: rawGen,
-              compteaux: (rawAux === '' || rawAux === null) ? rawGen : rawAux,
-              libelleaux: foundAux ? foundAux?.libelle : 'Pas encore de libellé',
-              libellecompte: foundGen ? foundGen?.libelle : 'Pas encore de libellé'
+              compteaux: rawAuxToAdd,
+              libelleaux: rawGen === rawAuxToAdd ? foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100) : foundAux?.libelle || String(item.EcritureLib || '').substring(0, 100),
+              libellecompte: foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100)
             });
 
             // Gestion de la colonne analytique
@@ -972,8 +974,8 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
       progress.update(processedLines, totalLines, 'Importation des écritures...', batchProgress);
     }
 
-    progress.step('Mise à jour des soldes...', 90);
-    fonctionUpdateBalanceSold.updateSold(compteId, fileId, selectedPeriodeId, [], true);
+    // progress.step('Mise à jour des soldes...', 90);
+    // fonctionUpdateBalanceSold.updateSold(compteId, fileId, selectedPeriodeId, [], true);
 
     progress.step('Finalisation...', 95);
 

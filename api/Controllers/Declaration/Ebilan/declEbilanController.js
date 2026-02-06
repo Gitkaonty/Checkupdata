@@ -9,7 +9,6 @@ const declEbilanGenerateExcel = require('../../../Middlewares/Ebilan/declEbilanG
 const declEbilanGenerateXml = require('../../../Middlewares/Ebilan/declEbillanGenerateXml');
 const recupTableau = require('../../../Middlewares/Ebilan/recupTableau');
 const functionControles = require('../../../Middlewares/Ebilan/controles');
-const fonctionUpdateBalanceSold = require('../../../Middlewares/UpdateSolde/updateBalanceSold');
 
 const recupEbilan = require('../../../Middlewares/Declaration/Ebilan/EblianMiddleware');
 const getEbilanComplet = recupEbilan.getEbilanComplet;
@@ -381,12 +380,12 @@ const activateCalcul = async (req, res) => {
       detailAnom: []
     }
 
-    try {
-      await fonctionUpdateBalanceSold.updateSold(compteId, fileId, exerciceId, [], true);
+    // try {
+    //   await fonctionUpdateBalanceSold.updateSold(compteId, fileId, exerciceId, [], true);
 
-    } catch (err) {
-      throw new Error(`Erreur lors de la mise à jour des soldes ou des rubriques : ${err.message}`);
-    }
+    // } catch (err) {
+    //   throw new Error(`Erreur lors de la mise à jour des soldes ou des rubriques : ${err.message}`);
+    // }
 
     if (tableau === 'BILAN') {
       const { stateRefresh } = await declEbilanRefreshFunction.refreshBILAN(compteId, fileId, exerciceId, refreshTotal);

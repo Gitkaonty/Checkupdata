@@ -1,6 +1,9 @@
 require('dotenv').config();
 const recupTableau = require('../../Middlewares/Ebilan/recupTableau');
 
+const recupEbilan = require('../../Middlewares/Declaration/Ebilan/EblianMiddleware');
+const getEbilanComplet = recupEbilan.getEbilanComplet;
+
 const formatAmount = (value) => {
     if (value === null || value === undefined) return '';
 
@@ -19,8 +22,10 @@ const formatDate = (dateStr) => {
 };
 
 const generateBilanContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanActif = await recupTableau.recupBILAN_ACTIF(id_compte, id_dossier, id_exercice);
-    const bilanPassif = await recupTableau.recupBILAN_PASSIF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const bilanActif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 1);
+    const bilanPassif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 2);
 
     const buildTable = (data, type) => {
         const body = [];
@@ -41,7 +46,7 @@ const generateBilanContent = async (id_compte, id_dossier, id_exercice) => {
                 const bgColor = isLevel4 ? '#89A8B2' : isLevel0 ? '#f0f0f0' : null;
 
                 body.push([
-                    { text: row.rubriquesmatrix?.libelle || '', fillColor: bgColor, alignment: 'left', valign: 'middle', margin: [0, 2, 0, 2] },
+                    { text: row.libelle || '', fillColor: bgColor, alignment: 'left', valign: 'middle', margin: [0, 2, 0, 2] },
                     { text: row.note || '', fillColor: bgColor, alignment: 'left', valign: 'middle', margin: [0, 2, 0, 2] },
                     { text: isLevel0 ? '' : formatAmount(row.montantbrut), fillColor: bgColor, alignment: 'right', valign: 'middle', margin: [0, 2, 0, 2] },
                     { text: isLevel0 ? '' : formatAmount(row.montantamort), fillColor: bgColor, alignment: 'right', valign: 'middle', margin: [0, 2, 0, 2] },
@@ -65,7 +70,7 @@ const generateBilanContent = async (id_compte, id_dossier, id_exercice) => {
 
                 body.push([
                     {
-                        text: row.rubriquesmatrix?.libelle || '',
+                        text: row.libelle || '',
                         fillColor: bgColor,
                         alignment: 'left',
                         valign: 'middle',
@@ -118,7 +123,9 @@ const generateBilanContent = async (id_compte, id_dossier, id_exercice) => {
 };
 
 const generateBilanActifContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanActif = await recupTableau.recupBILAN_ACTIF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const bilanActif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 1);
 
     const buildTable = (data, type) => {
         const body = [];
@@ -137,7 +144,7 @@ const generateBilanActifContent = async (id_compte, id_dossier, id_exercice) => 
             const bgColor = isLevel4 ? '#89A8B2' : isLevel0 ? '#f0f0f0' : null;
 
             body.push([
-                { text: row.rubriquesmatrix?.libelle || '', fillColor: bgColor, alignment: 'left', valign: 'middle', margin: [0, 2, 0, 2] },
+                { text: row.libelle || '', fillColor: bgColor, alignment: 'left', valign: 'middle', margin: [0, 2, 0, 2] },
                 { text: row.note || '', fillColor: bgColor, alignment: 'left', valign: 'middle', margin: [0, 2, 0, 2] },
                 { text: isLevel0 ? '' : formatAmount(row.montantbrut), fillColor: bgColor, alignment: 'right', valign: 'middle', margin: [0, 2, 0, 2] },
                 { text: isLevel0 ? '' : formatAmount(row.montantamort), fillColor: bgColor, alignment: 'right', valign: 'middle', margin: [0, 2, 0, 2] },
@@ -164,7 +171,9 @@ const generateBilanActifContent = async (id_compte, id_dossier, id_exercice) => 
 }
 
 const generateBilanPassifContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanPassif = await recupTableau.recupBILAN_PASSIF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const bilanPassif = data.filter(val => val.id_etat === 'BILAN' && subtable === 2);
 
     const buildTable = (data, type) => {
         const body = [];
@@ -182,7 +191,7 @@ const generateBilanPassifContent = async (id_compte, id_dossier, id_exercice) =>
 
             body.push([
                 {
-                    text: row.rubriquesmatrix?.libelle || '',
+                    text: row.libelle || '',
                     fillColor: bgColor,
                     alignment: 'left',
                     valign: 'middle',
@@ -231,7 +240,9 @@ const generateBilanPassifContent = async (id_compte, id_dossier, id_exercice) =>
 };
 
 const generateCrnContent = async (id_compte, id_dossier, id_exercice) => {
-    const crn = await recupTableau.recupCRN(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const crn = data.filter(val => val.id_etat === 'CRN' && val.subtable === 0);
 
     const buildTable = (data) => {
         const body = [];
@@ -249,7 +260,7 @@ const generateCrnContent = async (id_compte, id_dossier, id_exercice) => {
 
             body.push([
                 {
-                    text: row.rubriquesmatrix?.libelle || '',
+                    text: row.libelle || '',
                     fillColor: bgColor,
                     alignment: 'left',
                     valign: 'middle',
@@ -298,7 +309,9 @@ const generateCrnContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateCrfContent = async (id_compte, id_dossier, id_exercice) => {
-    const crf = await recupTableau.recupCRF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const crf = data.filter(val => val.id_etat === 'CRF' && val.subtable === 0);
 
     const buildTable = (data) => {
         const body = [];
@@ -316,7 +329,7 @@ const generateCrfContent = async (id_compte, id_dossier, id_exercice) => {
 
             body.push([
                 {
-                    text: row.rubriquesmatrix?.libelle || '',
+                    text: row.libelle || '',
                     fillColor: bgColor,
                     alignment: 'left',
                     valign: 'middle',
@@ -365,7 +378,9 @@ const generateCrfContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateTftdContent = async (id_compte, id_dossier, id_exercice) => {
-    const tftd = await recupTableau.recupTFTD(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const tftd = data.filter(val => val.id_etat === 'TFTD' && val.subtable === 0);
 
     const buildTable = (data) => {
         const body = [];
@@ -385,7 +400,7 @@ const generateTftdContent = async (id_compte, id_dossier, id_exercice) => {
 
             body.push([
                 {
-                    text: row.rubriquesmatrix?.libelle || '',
+                    text: row.libelle || '',
                     fillColor: bgColor,
                     alignment: 'left',
                     valign: 'middle',
@@ -441,7 +456,9 @@ const generateTftdContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateTftiContent = async (id_compte, id_dossier, id_exercice) => {
-    const tfti = await recupTableau.recupTFTI(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const tfti = data.filter(val => val.id_etat === 'TFTI' && val.subtable === 0);
 
     const buildTable = (data) => {
         const body = [];
@@ -460,7 +477,7 @@ const generateTftiContent = async (id_compte, id_dossier, id_exercice) => {
 
             body.push([
                 {
-                    text: row.rubriquesmatrix?.libelle || '',
+                    text: row.libelle || '',
                     fillColor: bgColor,
                     alignment: 'left',
                     valign: 'middle',

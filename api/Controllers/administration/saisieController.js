@@ -305,6 +305,7 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const pcId = Number(req.query?.pcId);
         const endDateParam = req.query?.endDate; // optionnel, sinon on prend fin d'exercice
+        const compte = req.querry?.compte;
         if (!fileId || !compteId || !exerciceId || !pcId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -313,23 +314,41 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         if (!exo) return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
         const dateDebut = exo.date_debut;
         const dateFin = endDateParam ? new Date(endDateParam) : exo.date_fin;
+
         // SQL: journaux du code journal associé au compte 512 sélectionné, dates incluses, et compte different du 512 sélectionné
+        // const sql = `
+        //     SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
+        //     FROM journals j
+        //     JOIN codejournals cj ON cj.id = j.id_journal
+        //     JOIN dossierplancomptables pc ON pc.id = :pcId
+        //     JOIN dossierplancomptables c ON c.id = j.id_numcpt
+        //     WHERE j.id_compte = :compteId
+        //       AND j.id_dossier = :fileId
+        //       AND j.id_exercice = :exerciceId
+        //       AND cj.compteassocie = pc.compte
+        //       AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+        //       AND c.compte <> pc.compte
+        //     ORDER BY j.dateecriture ASC, j.id ASC
+        // `;
+
         const sql = `
-            SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
+            SELECT 
+                j.*,
+                j.compteaux AS compte_ecriture,
+                cj.code AS code_journal
             FROM journals j
-            JOIN codejournals cj ON cj.id = j.id_journal
-            JOIN dossierplancomptables pc ON pc.id = :pcId
-            JOIN dossierplancomptables c ON c.id = j.id_numcpt
+            JOIN codejournals cj 
+                ON cj.id = j.id_journal
             WHERE j.id_compte = :compteId
-              AND j.id_dossier = :fileId
-              AND j.id_exercice = :exerciceId
-              AND cj.compteassocie = pc.compte
-              AND j.dateecriture BETWEEN :dateDebut AND :dateFin
-              AND c.compte <> pc.compte
+            AND j.id_dossier = :fileId
+            AND j.id_exercice = :exerciceId
+            AND j.compteaux <> :compte
+            AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
         `;
+
         const rows = await db.sequelize.query(sql, {
-            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin },
+            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
             type: db.Sequelize.QueryTypes.SELECT,
         });
         return res.json({ state: true, list: rows || [] });
@@ -2387,7 +2406,7 @@ exports.getAllJournal = async (req, res) => {
 exports.getJournalFiltered = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, journal, compte, piece, libelle, debut, fin } = req.body;
-        const id_numcpt = compte?.id;
+        const compteaux = compte?.compte;
 
         if (!id_dossier) return res.status(400).json({ state: false, message: 'Dossier non trouvé' });
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
@@ -2444,6 +2463,7 @@ exports.getJournalFiltered = async (req, res) => {
 
         if (piece) whereClause.piece = { [Op.iLike]: `%${piece}%` };
         if (libelle) whereClause.libelle = { [Op.iLike]: `%${libelle}%` };
+        if (compteaux) whereClause.compteaux = compteaux;
         if (debut && fin) {
             whereClause.dateecriture = { [Op.between]: [debut, fin] };
         } else if (debut) {
@@ -2458,14 +2478,6 @@ exports.getJournalFiltered = async (req, res) => {
             where: whereClause,
             order: [['createdAt', 'DESC']],
             include: [
-                {
-                    model: dossierplancomptable,
-                    attributes: ['compte', 'id'],
-                    where:
-                    {
-                        ...(compte ? { id: id_numcpt } : {}),
-                    }
-                },
                 {
                     model: codejournals,
                     attributes: ['code'],
@@ -3471,13 +3483,13 @@ exports.addEcriture = async (req, res) => {
         let id_devise = null;
 
         const dossierPc_pc = await dossierplancomptable.findByPk(id_plan_comptable);
-        const comptegen_pc = dossierPc_cp?.compte;
+        const comptegen_pc = dossierPc_pc?.compte;
 
         const dossierPc_cp = await dossierplancomptable.findByPk(id_contre_partie);
         const comptegen_cp = dossierPc_cp?.compte;
 
         if (!dossierPc_pc || !dossierPc_cp) {
-            throw new Error("Compte ou contrepartie introuvable");
+            throw new Error("Compte de contrepartie introuvable");
         }
 
         const comptebaseaux_pc = dossierPc_pc?.baseaux_id;

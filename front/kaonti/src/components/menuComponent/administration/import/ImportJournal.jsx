@@ -467,6 +467,42 @@ export default function ImportJournal() {
         return isNaN(num) ? 0 : num;
     };
 
+    const pluralizeCompte = (nbr) => {
+        if (nbr === 1) {
+            return `Ce compte n'existe`;
+        }
+        if (nbr > 1) {
+            return `Ces ${nbr} comptes n'existent`;
+        }
+    }
+
+    const pluralizeDevise = (nbr) => {
+        if (nbr === 1) {
+            return `Ce devise n'existe`;
+        }
+        if (nbr > 0) {
+            return `Ces ${nbr} devises n'existent`;
+        }
+    }
+
+    const pluralizeCodeJournal = (nbr) => {
+        if (nbr === 1) {
+            return `Ce code journal n'existe`;
+        }
+        if (nbr > 0) {
+            return `Ces ${nbr} codes journaux n'existent`;
+        }
+    }
+
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+
     const handleFileSelect = (event) => {
         const file = event.target.files[0];
 
@@ -496,18 +532,13 @@ export default function ImportJournal() {
                         const listeUniqueCompteInitial = [
                             ...new Set(
                                 result.data.flatMap(item => [
-                                    padCompte(item.CompteNum),
-                                    padCompte(item.CompAuxNum)
+                                    item.CompteNum,
+                                    item.CompAuxNum
                                 ]).filter(Boolean)
                             )
                         ];
 
                         const listeUniqueCompte = listeUniqueCompteInitial.filter(item => item !== '');
-
-                        // const compteNonValideStd = result.data.some(item => {
-                        //     return item.CompteNum && item.CompteNum.length !== longeurCompteStd;
-                        // });
-
 
                         let DataWithId = [];
                         if (fileTypeCSV) {
@@ -579,10 +610,11 @@ export default function ImportJournal() {
                         const ListeCodeJnlParams = [...new Set(codeJournal.map(item => normalizeCode(item.code)))];
                         const ListeCompteParams = [...new Set(planComptable.map(item => item.compte))];
 
-                        //const codeJournalNotInParams = existance(ListeCodeJnlParams, listeUniqueCodeJnl);
-                        const codeJournalNotInParams = [];
-                        //const compteNotInParams = existance(ListeCompteParams, listeUniqueCompte);
-                        const compteNotInParams = [];
+                        const codeJournalNotInParams = existance(ListeCodeJnlParams, listeUniqueCodeJnl);
+                        // const codeJournalNotInParams = [];
+                        const compteNotInParams = existance(ListeCompteParams, listeUniqueCompte);
+                        // const compteNotInParams = [];
+
                         const compteNotInParamsGen = existance(ListeCompteParams, listeUniqueCompteGen);
                         const compteNotInParamsAux = existance(ListeCompteParams, listeUniqueCompteAux);
 
@@ -590,18 +622,20 @@ export default function ImportJournal() {
                         const listeUniqueDevisesInitial = [...new Set(result.data.map(item => (item.Idevise || '').trim()))];
                         const listeUniqueDevises = listeUniqueDevisesInitial.filter(item => item !== '');
                         const listeDevisesParams = [...new Set((devises || []).map(d => d.code))];
-                        //const devisesNotInParams = existance(listeDevisesParams, listeUniqueDevises);
-                        const devisesNotInParams = [];
+                        const devisesNotInParams = existance(listeDevisesParams, listeUniqueDevises);
+                        // const devisesNotInParams = [];
                         const numberOfEmptyDevises = result.data.filter(row => !row.Idevise || row.Idevise.trim() === '').length;
 
-                        if (codeJournalNotInParams.length > 0) {
-                            msg.push(`Les codes journaux suivants n'existent pas encore dans votre dossier : ${codeJournalNotInParams.join(', ')}`);
+                        const codeJournalNotInParamsFiltered = [...new Set(codeJournalNotInParams.map(val => val))];
+
+                        if (codeJournalNotInParamsFiltered.length > 0) {
+                            msg.push(`${pluralizeCodeJournal} pas encore dans votre dossier : ${codeJournalNotInParamsFiltered.join(', ')}`);
                             nbrAnom = nbrAnom + 1;
                             setNbrAnomalie(nbrAnom);
                             setCouleurBoutonAnomalie(couleurAnom);
 
                             // Construire { code, libelle } à partir du fichier importé (JournalLib si présent)
-                            const missingCodeWithLib = codeJournalNotInParams.map((code) => {
+                            const missingCodeWithLib = codeJournalNotInParamsFiltered.map((code) => {
                                 const row = result.data.find(r => normalizeCode(r.JournalCode) === code);
                                 const libelle = row && (row.JournalLib || row.JournalLabel || row.Journal || '')
                                     ? (row.JournalLib || row.JournalLabel || row.Journal)
@@ -611,17 +645,21 @@ export default function ImportJournal() {
                             setCodeJournalToCreate(missingCodeWithLib);
                         }
 
-                        if (compteNotInParams.length > 0) {
-                            msg.push(`Les numéros de compte suivants n'existent pas encore dans votre dossier : ${compteNotInParams.join(', ')}`);
+                        const compteNotInParamsFiltered = [...new Set(compteNotInParams.map(val => padCompte(val)))];
+
+                        if (compteNotInParamsFiltered.length > 0) {
+                            msg.push(`${pluralizeCompte(compteNotInParamsFiltered.length)} pas encore dans votre dossier : ${compteNotInParamsFiltered.join(', ')}`);
 
                             nbrAnom = nbrAnom + 1;
                             setNbrAnomalie(nbrAnom);
                             setCouleurBoutonAnomalie(couleurAnom);
                         }
 
+                        const devisesNotInParamsFiltered = [... new Set(devisesNotInParams.map(val => val))];
+
                         // Anomalies devises manquantes (seront créées automatiquement)
-                        if (devisesNotInParams.length > 0) {
-                            msg.push(`Les devises suivantes n'existent pas encore dans votre dossier et seront créées automatiquement : ${devisesNotInParams.join(', ')}`);
+                        if (devisesNotInParamsFiltered.length > 0) {
+                            msg.push(`${pluralizeDevise(devisesNotInParamsFiltered.length)} pas encore dans votre dossier : ${devisesNotInParamsFiltered.join(', ')}`);
                             nbrAnom = nbrAnom + 1;
                             setNbrAnomalie(nbrAnom);
                             setCouleurBoutonAnomalie(couleurAnom);
@@ -629,7 +667,7 @@ export default function ImportJournal() {
 
                         // Anomalies devises vides (par défaut MGA)
                         if (numberOfEmptyDevises > 0) {
-                            const hasMGA = listeDevisesParams.includes('MGA') || devisesNotInParams.includes('MGA');
+                            const hasMGA = listeDevisesParams.includes('MGA') || devisesNotInParamsFiltered.includes('MGA');
                             const suffix = hasMGA ? '' : " (MGA sera créé au besoin)";
                             msg.push(`Certaines lignes n'ont pas de devise : elles utiliseront la devise par défaut 'MGA'${suffix}.`);
                             nbrAnom = nbrAnom + 1;
@@ -674,6 +712,10 @@ export default function ImportJournal() {
                         let finalData = DataWithId;
                         const dStart = parseToDate(start);
                         const dEnd = parseToDate(end);
+
+                        const dateDebut = formatDate(start);
+                        const dateFin = formatDate(end);
+
                         if (dStart || dEnd) {
                             // Séparer dates manquantes et hors bornes pour des messages cohérents
                             const missingDate = DataWithId.filter(r => !parseToDate(r.EcritureDate));
@@ -687,13 +729,13 @@ export default function ImportJournal() {
                             });
 
                             if (missingDate.length > 0) {
-                                msg.push("Certaines lignes n'ont pas de date d'écriture valide: elles seront ignorées.");
+                                msg.push("Certaines lignes n'ont pas de date d'écriture valide, elles seront ignorées.");
                                 nbrAnom = nbrAnom + 1;
                                 setNbrAnomalie(nbrAnom);
                                 setCouleurBoutonAnomalie(couleurAnom);
                             }
                             if (outOfRange.length > 0) {
-                                msg.push("Certaines lignes ne seront pas importées car leur date d'écriture est en dehors de l'exercice.");
+                                msg.push(`Certaines lignes ne seront pas importées car leur date d'écriture n'est pas entre ${dateDebut} et ${dateFin}.`);
                                 nbrAnom = nbrAnom + 1;
                                 setNbrAnomalie(nbrAnom);
                                 setCouleurBoutonAnomalie(couleurAnom);
