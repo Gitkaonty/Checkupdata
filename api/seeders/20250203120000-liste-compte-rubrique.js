@@ -2447,7 +2447,7 @@ module.exports = {
         nature: 'BRUT',
         senscalcul: 'C-D',
         condition: 'SiC',
-        equation: 'ADDITIF',
+        equation: 'SOUSTRACTIF',
         par_default: true,
         active: true,
         exercice: 'N',
