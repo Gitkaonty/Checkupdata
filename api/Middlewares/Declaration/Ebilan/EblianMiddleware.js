@@ -467,32 +467,23 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                             WHEN CR2.NATURE = 'BRUT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b IS NOT NULL AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b IS NOT NULL AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b IS NOT NULL AND b.SOLDEDEBIT <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b IS NOT NULL AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE
-                                            WHEN 'BILAN' = 'TFTD'
-                                                THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO
-                                            ELSE b.SOLDEDEBIT - b.SOLDECREDIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE
-                                            WHEN 'BILAN' = 'TFTD'
-                                                    THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO
-                                            ELSE b.SOLDECREDIT - b.SOLDEDEBIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
                     ),
-                    0
-                )
+                0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -511,32 +502,23 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                             WHEN CR2.NATURE = 'AMORT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b IS NOT NULL AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b IS NOT NULL AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b IS NOT NULL AND b.SOLDEDEBIT <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b IS NOT NULL AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE
-                                            WHEN 'BILAN' = 'TFTD'
-                                                THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO
-                                            ELSE b.SOLDEDEBIT - b.SOLDECREDIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE
-                                            WHEN 'BILAN' = 'TFTD'
-                                                THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO
-                                            ELSE b.SOLDECREDIT - b.SOLDEDEBIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
                     ),
-                    0
-                )
+                0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -722,34 +704,26 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                 COALESCE(
                     SUM(
                         CASE
-                            WHEN CR2.COMPTE IS NOT NULL
-                                AND CR2.NATURE = 'BRUT'
+                            WHEN CR2.NATURE = 'BRUT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE
-                                            WHEN 'BILAN' = 'TFTD' THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO
-                                            ELSE b.SOLDEDEBIT - b.SOLDECREDIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE
-                                            WHEN 'BILAN' = 'TFTD' THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO
-                                            ELSE b.SOLDECREDIT - b.SOLDEDEBIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
                     ),
-                    0
-                )
+                0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -765,34 +739,26 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                 COALESCE(
                     SUM(
                         CASE
-                            WHEN CR2.COMPTE IS NOT NULL
-                                AND CR2.NATURE = 'AMORT'
+                            WHEN CR2.NATURE = 'AMORT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('BILAN' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                    OR ('BILAN' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE 
-                                            WHEN 'BILAN' = 'TFTD' THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO 
-                                            ELSE b.SOLDEDEBIT - b.SOLDECREDIT 
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE 
-                                            WHEN 'BILAN' = 'TFTD' THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO 
-                                            ELSE b.SOLDECREDIT - b.SOLDEDEBIT 
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
                     ),
-                    0
-                )
+                0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -1003,30 +969,26 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                 COALESCE(
                     SUM(
                         CASE
-                            WHEN CR2.COMPTE IS NOT NULL
-                                AND CR2.NATURE = 'BRUT'
+                            WHEN CR2.NATURE = 'BRUT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('CRN' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('CRN' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('CRN' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                    OR ('CRN' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE WHEN 'CRN' = 'TFTD' THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO ELSE b.SOLDEDEBIT - b.SOLDECREDIT END)
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
                                         * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE WHEN 'CRN' = 'TFTD' THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO ELSE b.SOLDECREDIT - b.SOLDEDEBIT END)
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
                                         * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
                     ),
-                    0
-                )
+                0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -1109,7 +1071,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 ld.ID_RUBRIQUE,
                 ld.MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM ligne_detail_crn_n ld
             JOIN rubriques r
                 ON r.ID_RUBRIQUE = ld.ID_RUBRIQUE
@@ -1126,7 +1088,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 lt.ID_TOTAL AS ID_RUBRIQUE,
                 tr.MONTANTBRUT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM total_recursive_crn_n tr
             JOIN liens_total_crn_n lt
                 ON lt.ID_ENFANT = tr.ID_RUBRIQUE
@@ -1216,30 +1178,26 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                 COALESCE(
                     SUM(
                         CASE
-                            WHEN CR2.COMPTE IS NOT NULL
-                                AND CR2.NATURE = 'BRUT'
+                            WHEN CR2.NATURE = 'BRUT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('CRF' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('CRF' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('CRF' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                    OR ('CRF' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE WHEN 'CRF' = 'TFTD' THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO ELSE b.SOLDEDEBIT - b.SOLDECREDIT END)
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
                                         * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE WHEN 'CRF' = 'TFTD' THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO ELSE b.SOLDECREDIT - b.SOLDEDEBIT END)
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
                                         * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
                     ),
-                    0
-                )
+                0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -1322,7 +1280,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 ld.ID_RUBRIQUE,
                 ld.MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM ligne_detail_crf_n ld
             JOIN rubriques r
                 ON r.ID_RUBRIQUE = ld.ID_RUBRIQUE
@@ -1339,7 +1297,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 lt.ID_TOTAL AS ID_RUBRIQUE,
                 tr.MONTANTBRUT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM total_recursive_crf_n tr
             JOIN liens_total_crf_n lt
                 ON lt.ID_ENFANT = tr.ID_RUBRIQUE
@@ -1460,31 +1418,35 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
         ligne_detail_tftd_n AS (
             SELECT
                 CR.ID_RUBRIQUE,
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN CR2.NATURE = 'BRUT'
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN CR2.NATURE = 'BRUT'
                             AND (
                                 CR2.CONDITION = 'SOLDE'
                                 OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBITTRESO <> 0)
                                 OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDITTRESO <> 0)
-                                OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                             )
-                        THEN
-                            CASE CR2.SENSCALCUL
-                                WHEN 'D-C' THEN
-                                    COALESCE(b.SOLDEDEBITTRESO, b.SOLDEDEBIT) - COALESCE(b.SOLDECREDITTRESO, b.SOLDECREDIT)
-                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                WHEN 'C-D' THEN
-                                    COALESCE(b.SOLDECREDITTRESO, b.SOLDECREDIT) - COALESCE(b.SOLDEDEBITTRESO, b.SOLDEDEBIT)
-                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                ELSE 0
-                            END
-                        ELSE 0
-                    END
-                ),
-            0)
+                            THEN
+                                CASE CR2.SENSCALCUL
+                                    WHEN 'D-C' THEN
+                                        (
+                                            COALESCE(b.SOLDEDEBITTRESO, 0)
+                                        - COALESCE(b.SOLDECREDITTRESO, 0)
+                                        )
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                    WHEN 'C-D' THEN
+                                        (
+                                            COALESCE(b.SOLDECREDITTRESO, 0)
+                                        - COALESCE(b.SOLDEDEBITTRESO, 0)
+                                        )
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                    ELSE 0
+                                END
+                            ELSE 0
+                        END
+                    ),
+                0)
                 + COALESCE(MAX(tmbn.montant), 0)
                 + COALESCE(MAX(tmbn1.montant), 0)
                 + COALESCE((
@@ -1573,7 +1535,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 ld.ID_RUBRIQUE,
                 ld.MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM ligne_detail_tftd_n ld
             JOIN rubriques r
                 ON r.ID_RUBRIQUE = ld.ID_RUBRIQUE
@@ -1590,7 +1552,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 lt.ID_TOTAL AS ID_RUBRIQUE,
                 tr.MONTANTBRUT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM total_recursive_tftd_n tr
             JOIN liens_total_tftd_n lt
                 ON lt.ID_ENFANT = tr.ID_RUBRIQUE
@@ -1741,7 +1703,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             GROUP BY m.ID_TOTALMIXTE
         ),
         
-        totalmixte_bilan_a_var__to_tfti_map_n AS (
+        totalmixte_bilan_a_var_to_tfti_map_n AS (
             SELECT
                 cr.ID_RUBRIQUE      AS ID_TOTALMIXTE,
                 cr.COMPTE::int      AS ID_RUBRIQUE_BILAN,
@@ -1770,13 +1732,13 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                     ) * m.COEFF
                 )
                 AS MONTANTNET_BILAN_A_VAR_N
-            FROM totalmixte_bilan_a_var__to_tfti_map_n m
+            FROM totalmixte_bilan_a_var_to_tfti_map_n m
             LEFT JOIN BILAN_P_A_COMPLET ba
                 ON ba.ID_RUBRIQUE = m.ID_RUBRIQUE_BILAN
             GROUP BY m.ID_TOTALMIXTE
         ),
 
-        totalmixte_bilan_p_var__to_tfti_map_n AS (
+        totalmixte_bilan_p_var_to_tfti_map_n AS (
             SELECT
                 cr.ID_RUBRIQUE      AS ID_TOTALMIXTE,
                 cr.COMPTE::int      AS ID_RUBRIQUE_BILAN,
@@ -1805,7 +1767,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                     ) * m.COEFF
                 )
                 AS MONTANTNET_BILAN_P_VAR_N
-            FROM totalmixte_bilan_p_var__to_tfti_map_n m
+            FROM totalmixte_bilan_p_var_to_tfti_map_n m
             LEFT JOIN BILAN_P_A_COMPLET ba
                 ON ba.ID_RUBRIQUE = m.ID_RUBRIQUE_BILAN
             GROUP BY m.ID_TOTALMIXTE
@@ -1840,29 +1802,23 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                             WHEN CR2.NATURE = 'BRUT'
                                 AND (
                                     CR2.CONDITION = 'SOLDE'
-                                    OR ('TFTI' = 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBITTRESO <> 0)
-                                    OR ('TFTI' = 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDITTRESO <> 0)
-                                    OR ('TFTI' <> 'TFTD' AND CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                    OR ('TFTI' <> 'TFTD' AND CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
                                 )
                             THEN
                                 CASE CR2.SENSCALCUL
                                     WHEN 'D-C' THEN
-                                        (CASE WHEN 'TFTI' = 'TFTD'
-                                            THEN b.SOLDEDEBITTRESO - b.SOLDECREDITTRESO
-                                            ELSE b.SOLDEDEBIT - b.SOLDECREDIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     WHEN 'C-D' THEN
-                                        (CASE WHEN 'TFTI' = 'TFTD'
-                                            THEN b.SOLDECREDITTRESO - b.SOLDEDEBITTRESO
-                                            ELSE b.SOLDECREDIT - b.SOLDEDEBIT
-                                        END) * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                     ELSE 0
                                 END
                             ELSE 0
                         END
-                    ), 0
-                )
+                    ),
+                0)
                 + COALESCE(MAX(tmbn.MONTANTNET_BILAN_N), 0)
                 + COALESCE(MAX(tmbn1.MONTANTNET_BILAN_N1), 0)
                 + COALESCE(MAX(tmcrnn.MONTANTNET_CRN_N), 0)
@@ -1962,7 +1918,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 ld.ID_RUBRIQUE,
                 ld.MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM ligne_detail_tfti_n ld
             JOIN rubriques r
                 ON r.ID_RUBRIQUE = ld.ID_RUBRIQUE
@@ -1979,7 +1935,7 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             SELECT
                 lt.ID_TOTAL AS ID_RUBRIQUE,
                 tr.MONTANTBRUT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTBRUT,
-                0 AS MONTANTAMORT
+                0::numeric AS MONTANTAMORT
             FROM total_recursive_tfti_n tr
             JOIN liens_total_tfti_n lt
                 ON lt.ID_ENFANT = tr.ID_RUBRIQUE
@@ -2084,7 +2040,7 @@ const getEbilanComplet = async (id_compte, id_dossier, id_exercice, id_etat) => 
         id_dossier,
         id_exercice
     }));
-
+    
     return finalRows;
     // return rowsN;
 };
@@ -2243,9 +2199,12 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
             SELECT *
             FROM ligne_detail
             WHERE
-                SOLDEDEBIT <> 0
-                OR SOLDECREDIT <> 0;
-            
+                CASE
+                    WHEN :id_etat = 'TFTD'
+                        THEN (SOLDEDEBIT <> 0 OR SOLDECREDIT <> 0)
+                    ELSE
+                        (SOLDEDEBIT <> 0 OR SOLDECREDIT <> 0)
+                END;
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,

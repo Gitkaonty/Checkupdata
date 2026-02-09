@@ -1,6 +1,9 @@
 require('dotenv').config();
 const recupTableau = require('../../Middlewares/Ebilan/recupTableau');
 
+const recupEbilan = require('../../Middlewares/Declaration/Ebilan/EblianMiddleware');
+const getEbilanComplet = recupEbilan.getEbilanComplet;
+
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const [jour, mois, annee] = dateStr.split('-');
@@ -47,8 +50,10 @@ const generateTitle = (sheetName, label, dossier, compte, date_debut, date_fin, 
 
 
 const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const bilanActif = await recupTableau.recupBILAN_ACTIF(id_compte, id_dossier, id_exercice);
-    const bilanPassif = await recupTableau.recupBILAN_PASSIF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const bilanActif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 1);
+    const bilanPassif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 2);
 
     // Feuille Actif
     const sheetActif = workbook.addWorksheet('Bilan Actif');
@@ -88,7 +93,7 @@ const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, 
         const bgColor = isLevel4 ? 'FF89A8B2' : isLevel0 ? 'FFF0F0F0' : null;
 
         const newRow = sheetActif.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             isLevel0 ? '' : Number(row.montantbrut),
             isLevel0 ? '' : Number(row.montantamort),
@@ -154,7 +159,7 @@ const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, 
 
         const bgColor = isLevel4 ? 'FF89A8B2' : isLevel0 ? 'FFF0F0F0' : null;
         const newRow = sheetPassif.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             row.niveau === 0 ? '' : Number(row.montantnet),
             row.niveau === 0 ? '' : Number(row.montantnetn1)
@@ -174,7 +179,9 @@ const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, 
 };
 
 const exportCrnToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const crn = await recupTableau.recupCRN(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const crn = data.filter(val => val.id_etat === 'CRN' && val.subtable === 0);
 
     const sheetCrn = workbook.addWorksheet('Compte de résultats par nature');
     // sheetCrn.views = [
@@ -207,7 +214,7 @@ const exportCrnToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
         const bgColor = isLevel1 ? 'f0f0f0' : null;
 
         const newRow = sheetCrn.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             isLevel1 ? '' : Number(row.montantnet) || 0,
             isLevel1 ? '' : Number(row.montantnetn1) || 0
@@ -231,7 +238,9 @@ const exportCrnToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
 };
 
 const exportCrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const crf = await recupTableau.recupCRF(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const crf = data.filter(val => val.id_etat === 'CRF' && val.subtable === 0);
 
     const sheetCrf = workbook.addWorksheet('Compte de résultats par fonction');
     // sheetCrf.views = [
@@ -266,7 +275,7 @@ const exportCrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
         const bgColor = isLevel4 ? 'FF89A8B2' : isLevel0 ? 'FFF0F0F0' : isLevel1 ? 'f0f0f0' : null;
 
         const newRow = sheetCrf.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             isLevel1 ? '' : Number(row.montantnet) || 0,
             isLevel1 ? '' : Number(row.montantnetn1) || 0
@@ -290,7 +299,9 @@ const exportCrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
 };
 
 const exportTftdToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const tftd = await recupTableau.recupTFTD(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const tftd = data.filter(val => val.id_etat === 'TFTD' && val.subtable === 0);
 
     // Feuille TFTD avec nom court
     const sheetTftd = workbook.addWorksheet('TFTD Méth. Directe');
@@ -326,7 +337,7 @@ const exportTftdToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
         const bgColor = isLevel4 ? 'FF89A8B2' : isLevel0 ? 'FFF0F0F0' : isLevel1 ? 'f0f0f0' : null;
 
         const newRow = sheetTftd.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             row.senscalcul || '',
             isLevel1 ? '' : Number(row.montantnet) || 0,
@@ -354,7 +365,9 @@ const exportTftdToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
 };
 
 const exportTftiToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const tfti = await recupTableau.recupTFTI(id_compte, id_dossier, id_exercice);
+    const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
+
+    const tfti = data.filter(val => val.id_rubrique === 'TFTI' && val.subtable === 0);
 
     // Feuille TFTI avec nom court
     const sheetTfti = workbook.addWorksheet('TFTI Méth. Indirecte');
@@ -389,7 +402,7 @@ const exportTftiToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
         const bgColor = isLevel4 ? 'FF89A8B2' : isLevel0 ? 'FFF0F0F0' : isLevel1 ? 'f0f0f0' : null;
 
         const newRow = sheetTfti.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             isLevel1 ? '' : Number(row.montantnet) || 0,
             isLevel1 ? '' : Number(row.montantnetn1) || 0

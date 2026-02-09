@@ -310,7 +310,7 @@ function RapprochementsBancaires() {
       if (!selectedR || !selectedR.date_fin) { setEcrituresRows([]); return; }
       const norm = (s) => (s ? String(s).substring(0, 10) : null);
       const endDate = pendingDateFin[selectedR.id] ? norm(pendingDateFin[selectedR.id]) : norm(selectedR.date_fin);
-      const params = { fileId, compteId, exerciceId: selectedExerciceId, pcId: pcSelected.id, endDate };
+      const params = { fileId, compteId, exerciceId: selectedExerciceId, pcId: pcSelected.id, compte: pcSelected.compte, endDate };
       const { data } = await axios.get('/administration/traitementSaisie/rapprochements/ecritures', { params, timeout: 60000 });
       const list = Array.isArray(data?.list) ? data.list : (data?.list ? [data.list] : []);
       const rowsAll = list.map(it => ({
