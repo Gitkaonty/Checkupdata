@@ -10,8 +10,9 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import { init } from '../../../../../init';
 import { LuView } from "react-icons/lu";
+import { MdFilePresent } from "react-icons/md";
 
-import axios from '../../../../../config/axios';
+import axios, { URL } from '../../../../../config/axios';
 import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
 import { TbPlugConnected } from "react-icons/tb";
 import { TbPlugConnectedX } from "react-icons/tb";
@@ -80,7 +81,6 @@ export default function ConsultationComponent() {
     const [filteredList, setFilteredList] = useState(null);
     const [listePlanComptable, setListePlanComptable] = useState([]);
     const [listePlanComptableInitiale, setListePlanComptableInitiale] = useState([]);
-    const [listePlanComptablePourAjout, setListePlanComptablePourAjout] = useState([]);
     const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
     const [listeDevise, setListeDevise] = useState([]);
     const [listeAnnee, setListeAnnee] = useState([]);
@@ -169,7 +169,11 @@ export default function ConsultationComponent() {
     const getListeSaisie = () => {
         axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`).then((response) => {
             const resData = response.data;
-            canView ? setListSaisie(resData) : setListSaisie([]);
+            if (canView) {
+                setListSaisie(resData);
+            } else {
+                setListSaisie([]);
+            }
         })
     }
 
@@ -177,6 +181,11 @@ export default function ConsultationComponent() {
     const getListeSaisieReturn = async () => {
         const response = await axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`);
         const resData = response.data;
+        if (canView) {
+            setListSaisie(resData);
+        } else {
+            setListSaisie(resData);
+        }
         canView ? setListSaisie(resData) : setListSaisie([]);
         return resData;
     };
@@ -214,6 +223,15 @@ export default function ConsultationComponent() {
         setOpenAnalytiquePopup(false);
         setIdJournal(null);
     }
+
+    const viewFile = (file) => {
+        if (!file) return;
+
+        const baseUrl = `${URL}/`;
+        const fileUrl = baseUrl + file;
+
+        window.open(fileUrl, "_blank");
+    };
 
     //Header
     const ConsultationColumnHeader = [
@@ -273,10 +291,40 @@ export default function ConsultationComponent() {
             headerName: 'Libellé',
             type: 'string',
             sortable: true,
-            flex: 2.5,
+            flex: 2.2,
             headerAlign: 'left',
             align: 'left',
             headerClassName: 'HeaderbackColor',
+        },
+        {
+            field: 'fichier',
+            headerName: 'Fichier',
+            type: 'string',
+            sortable: false,
+            flex: 0.4,
+            headerAlign: 'center',
+            align: 'center',
+            headerClassName: 'HeaderbackColor',
+            renderCell: (params) => {
+                const file = params.row.fichier;
+                return (
+                    <>
+                        <Button
+                            onClick={() => file && viewFile(file)}
+                            disabled={!file}
+                            sx={{
+                                boxShadow: 'none',
+                                '&:focus': {
+                                    outline: 'none',
+                                    boxShadow: 'none',
+                                }
+                            }}
+                        >
+                            <MdFilePresent style={{ width: '30px', height: '30px' }} />
+                        </Button>
+                    </>
+                )
+            }
         }, {
             field: 'debit',
             headerName: 'Débit',
@@ -371,9 +419,9 @@ export default function ConsultationComponent() {
                                 }}
                                 disabled={disabled}
                                 onClick={() => {
-                                    if (!disabled) {
-                                        handleOpenPopupShowAnalytique(params.row.id);
-                                    }
+                                    // if (!disabled) {
+                                    handleOpenPopupShowAnalytique(params.row.id);
+                                    // }
                                 }}
                             >
                                 <LuView style={{ width: 85, height: 30 }} />
@@ -641,6 +689,9 @@ export default function ConsultationComponent() {
     const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
     const solde = parseFloat(soldeStr);
 
+    const soldeLigneStr = calculateDebitCredit(filteredList || []).solde.replace(/\s/g, '').replace(',', '.');
+    const soldeLigne = parseFloat(soldeLigneStr);
+
     //Récupération données liste code journaux
     const GetListeCodeJournaux = () => {
         axios.get(`/paramCodeJournaux/listeCodeJournaux/${fileId}`).then((response) => {
@@ -695,7 +746,7 @@ export default function ConsultationComponent() {
 
     // Liste saisie
     useEffect(() => {
-        if (fileId && selectedExerciceId && compteId && (listePlanComptable.length > 0 && listePlanComptableInitiale.length > 0)) {
+        if (fileId && selectedExerciceId && compteId) {
             getListeSaisie();
         }
     }, [selectedPeriodeId, selectedExerciceId, selectedExerciceId, isRefresehed])
@@ -749,51 +800,44 @@ export default function ConsultationComponent() {
 
     useEffect(() => {
         const fetchData = async () => {
+            try {
+                const resData = await getListeSaisieReturn();
+                const comptesAvecSolde = resData.map(row => String(row.compteaux));
 
-            if (filtrageCompte === "0") {
-                setListePlanComptable(listePlanComptableInitiale);
-                setValSelectedCompte("tout");
-            } else {
-                try {
-                    const resData = await getListeSaisieReturn();
-                    const comptesAvecSolde = resData.map(row => String(row.compteaux));
+                const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
+                    comptesAvecSolde.includes(String(plan.compte))
+                );
 
-                    const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
-                        comptesAvecSolde.includes(String(plan.compte))
-                    );
+                if (filtrageCompte === "1") {
+                    // Comptes mouvementés
+                    setListePlanComptable(listePlanComptableFiltree);
 
-                    if (filtrageCompte === "1") {
-                        // Comptes mouvementés
-                        setListePlanComptable(listePlanComptableFiltree);
+                } else if (filtrageCompte === "2") {
+                    // Comptes soldés
+                    const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
+                        const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
+                        const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+                        const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+                        return Math.abs(totalDebit - totalCredit) < 0.01;
+                    });
 
-                    } else if (filtrageCompte === "2") {
-                        // Comptes soldés
-                        const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
-                            const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-                            const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-                            const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-                            return Math.abs(totalDebit - totalCredit) < 0.01;
-                        });
+                    setListePlanComptable(comptesEquilibres);
 
-                        setListePlanComptable(comptesEquilibres);
+                } else if (filtrageCompte === "3") {
+                    // Comptes non soldés
+                    const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
+                        const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
+                        const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+                        const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+                        return Math.abs(totalDebit - totalCredit) >= 0.01;
+                    });
 
-                    } else if (filtrageCompte === "3") {
-                        // Comptes non soldés
-                        const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
-                            const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-                            const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-                            const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-                            return Math.abs(totalDebit - totalCredit) >= 0.01;
-                        });
-
-                        setListePlanComptable(comptesDesequilibres);
-                    }
-                } catch (error) {
-                    console.error("Erreur lors du chargement des écritures :", error);
+                    setListePlanComptable(comptesDesequilibres);
                 }
+            } catch (error) {
+                console.error("Erreur lors du chargement des écritures :", error);
             }
-        };
-
+        }
         if (fileId && compteId) {
             fetchData();
         }
@@ -815,12 +859,6 @@ export default function ConsultationComponent() {
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [listePlanComptable, valSelectedCompte]);
-
-    useEffect(() => {
-        if (valSelectedCompte) {
-            localStorage.setItem("valSelectedCompteConsultation", valSelectedCompte);
-        }
-    }, [valSelectedCompte]);
 
     // Liste des années
     useEffect(() => {
@@ -1142,67 +1180,93 @@ export default function ConsultationComponent() {
                             </Stack>
 
                             <Stack
-                                direction="row"
-                                justifyContent="flex-end"
-                                alignItems="center"
-                                width="100%"
-                                spacing={0.5}
-                                sx={{ mt: 2, borderRadius: "5px" }}
+                                direction={'row'}
+                                alignItems={'end'}
                                 style={{
-                                    marginLeft: "0px",
-                                    marginTop: "20px",
-                                    borderRadius: "5px"
-                                }}>
+                                    marginTop: '25px'
+                                }}
+                                justifyContent={'space-between'}
+                                width={"100%"}
+                            >
+                                <Stack
+                                    direction={"row"}
+                                >
+                                    <span style={{ whiteSpace: 'nowrap' }}>
+                                        Solde : <strong
+                                            style={{
+                                                color: `${soldeLigneStr.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
+                                            }}
+                                        >
+                                            {
+                                                soldeLigne.toLocaleString('fr-FR', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }).replace(/\u202f/g, ' ')
+                                            }
+                                        </strong>
+                                    </span>
+                                </Stack>
+                                <Stack
+                                    direction="row"
+                                    justifyContent="flex-end"
+                                    alignItems="center"
+                                    width="100%"
+                                    spacing={0.5}
+                                    style={{
+                                        marginLeft: "0px",
+                                        borderRadius: "5px"
+                                    }}>
 
-                                <Button
-                                    disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
-                                    variant="contained"
-                                    style={{
-                                        textTransform: 'none',
-                                        outline: 'none',
-                                        backgroundColor: initial.theme,
-                                        color: "white",
-                                        height: "39px",
-                                        marginTop: '10px'
-                                    }}
-                                    onClick={handleOpenPopupAddEcriture}
-                                    startIcon={<TbPlugConnected size={20} />}
-                                >
-                                    Lettrer : Avec écart
-                                </Button>
-                                <Button
-                                    disabled={!canAdd || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
-                                    variant="contained"
-                                    style={{
-                                        textTransform: 'none',
-                                        outline: 'none',
-                                        backgroundColor: initial.theme,
-                                        color: "white",
-                                        height: "39px",
-                                        marginTop: '10px'
-                                    }}
-                                    onClick={ajoutLettrage}
-                                    startIcon={<TbPlugConnected size={20} />}
-                                >
-                                    Lettrer
-                                </Button>
-                                <Button
-                                    disabled={!canDelete || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
-                                    variant="contained"
-                                    style={{
-                                        textTransform: 'none',
-                                        outline: 'none',
-                                        backgroundColor: '#FF8A8A',
-                                        color: "white",
-                                        height: "39px",
-                                        marginTop: '10px'
-                                    }}
-                                    onClick={supprimerLettrage}
-                                    startIcon={<TbPlugConnectedX size={20} />}
-                                >
-                                    Délettrer
-                                </Button>
+                                    <Button
+                                        disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        variant="contained"
+                                        style={{
+                                            textTransform: 'none',
+                                            outline: 'none',
+                                            backgroundColor: initial.theme,
+                                            color: "white",
+                                            height: "39px",
+                                            marginTop: '10px'
+                                        }}
+                                        onClick={handleOpenPopupAddEcriture}
+                                        startIcon={<TbPlugConnected size={20} />}
+                                    >
+                                        Lettrer : Avec écart
+                                    </Button>
+                                    <Button
+                                        disabled={!canAdd || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        variant="contained"
+                                        style={{
+                                            textTransform: 'none',
+                                            outline: 'none',
+                                            backgroundColor: initial.theme,
+                                            color: "white",
+                                            height: "39px",
+                                            marginTop: '10px'
+                                        }}
+                                        onClick={ajoutLettrage}
+                                        startIcon={<TbPlugConnected size={20} />}
+                                    >
+                                        Lettrer
+                                    </Button>
+                                    <Button
+                                        disabled={!canDelete || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        variant="contained"
+                                        style={{
+                                            textTransform: 'none',
+                                            outline: 'none',
+                                            backgroundColor: '#FF8A8A',
+                                            color: "white",
+                                            height: "39px",
+                                            marginTop: '10px'
+                                        }}
+                                        onClick={supprimerLettrage}
+                                        startIcon={<TbPlugConnectedX size={20} />}
+                                    >
+                                        Délettrer
+                                    </Button>
 
+                                </Stack>
                             </Stack>
 
                             <Stack
@@ -1213,6 +1277,10 @@ export default function ConsultationComponent() {
                                     marginTop: "20px",
                                 }}
                                 height={"600px"}>
+                                <Stack
+                                    width={"50%"}
+                                >
+                                </Stack>
                                 <DataGrid
                                     disableMultipleSelection={DataGridStyle.disableMultipleSelection}
                                     disableColumnSelector={DataGridStyle.disableColumnSelector}

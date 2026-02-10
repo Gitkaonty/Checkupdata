@@ -31,14 +31,30 @@ const DropPDFUploader = ({ file, setFile, mode }) => {
         }
     }, []);
 
-    const handleFileChange = (e) => {
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
         setIsLoading(true);
-        if (e.target.files && e.target.files[0]) {
-            setTimeout(() => {
-                setFile(e.target.files[0]);
+
+        const newFile = e.dataTransfer.files?.[0];
+        setTimeout(() => {
+            if (newFile) {
+                setFile(newFile);
                 setIsLoading(false);
-            }, 1500);
-        }
+            }
+        }, 1000)
+    };
+
+    const handleFileChange = (e) => {
+        const newFile = e.target.files?.[0];
+        setIsLoading(true);
+        setTimeout(() => {
+            if (newFile) {
+                setFile(newFile);
+                setIsLoading(false);
+            }
+        }, 1000)
     };
 
     const fileName = typeof file === 'string'
@@ -89,13 +105,14 @@ const DropPDFUploader = ({ file, setFile, mode }) => {
                     :
                     null
             }
-            <Box sx={{ maxWidth: 600, mt: 4 }}>
+            <Box sx={{ mt: 4 }}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems="start">
                     <Paper
                         elevation={dragActive ? 6 : 2}
                         onDragOver={handleDrag}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
+                        onDrop={handleDrop}
                         onClick={() => document.getElementById('fileInput').click()}
                         sx={{
                             flex: 1.5,
@@ -113,6 +130,7 @@ const DropPDFUploader = ({ file, setFile, mode }) => {
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            maxWidth: 350
                         }}
                     >
                         {isLoading ? (
@@ -121,7 +139,7 @@ const DropPDFUploader = ({ file, setFile, mode }) => {
                             <>
                                 <UploadFileIcon sx={{ fontSize: 48, color: 'primary.main' }} />
                                 <Typography variant="body1" mt={2}>
-                                    {fileName || 'Cliquez pour importer'}
+                                    {fileName || 'Glissez ou cliquez pour importer un fichier'}
                                 </Typography>
                             </>
                         )}
@@ -133,7 +151,7 @@ const DropPDFUploader = ({ file, setFile, mode }) => {
                         />
                     </Paper>
 
-                    <Stack spacing={1} justifyContent="space-between" sx={{ flex: 1 }}>
+                    <Stack spacing={1} justifyContent="space-between" sx={{ flex: 1, width: 600 }}>
                         {(fileName || fileSize) && (
                             <Box>
                                 {fileName && (
