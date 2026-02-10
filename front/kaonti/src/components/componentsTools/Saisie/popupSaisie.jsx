@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Typography, Stack, Box, Button, Divider, DialogTitle, Tooltip } from '@mui/material';
+import { Typography, Stack, Box, Button, Divider, DialogTitle, Tooltip, Autocomplete, TextField } from '@mui/material';
 import { TabContext, TabPanel } from '@mui/lab';
 import { styled } from '@mui/material/styles';
 import Dialog from '@mui/material/Dialog';
@@ -168,7 +168,9 @@ const PopupSaisie = ({
 
     const formSaisie = useFormik({
         initialValues: {
-            valSelectCodeJnl: parseInt(rowsEdit[0]?.id_journal) || "",
+            valSelectCodeJnl: listeCodeJournaux.find(
+                j => j.id === Number(rowsEdit[0]?.id_journal)
+            ) || null,
             valSelectMois: parseInt(rowsEdit[0]?.dateecriture?.split('-')[1]) || "",
             valSelectAnnee: rowsEdit[0]?.dateecriture?.split('-')[0] || "",
             choixDevise: rowsEdit[0]?.devise || defaultDevise,
@@ -182,6 +184,8 @@ const PopupSaisie = ({
             id_devise: '',
         }
     })
+
+    const compteAssocieCodeJournal = formSaisie.values.valSelectCodeJnl?.compteassocie;
 
     const handleRowModesModelChange = (newRowModesModel) => {
         setRowModesModel(newRowModesModel);
@@ -344,6 +348,7 @@ const PopupSaisie = ({
         } else {
             const minId = Math.min(...tableRows.map(r => r.id), -1);
             const newId = minId <= 0 ? minId - 1 : -1;
+            // const newId = -Date.now();
 
             let dernierJour = '';
             let dernierLibelle = '';
@@ -397,7 +402,7 @@ const PopupSaisie = ({
         setInvalidRows,
         invalidRows,
         selectedCell,
-        listePlanComptable,
+        listePlanComptable: compteAssocieCodeJournal ? listePlanComptable.filter(val => val.compte !== compteAssocieCodeJournal) : listePlanComptable,
         taux,
         equilibrateDebitCredit,
         tableRows,
@@ -416,6 +421,7 @@ const PopupSaisie = ({
             setTableRows((prevRows) => prevRows.filter((row) => row.id !== selectedIdToDelete));
             setListCaFinal(prev => prev.filter(item => item.id_ligne_ecriture !== selectedIdToDelete));
             setOpenDialogDeleteSaisie(false);
+            toast.success('Ligne supprimée avec succès');
         } else {
             setOpenDialogDeleteSaisie(false);
         }
@@ -430,6 +436,7 @@ const PopupSaisie = ({
             if (selectedIdToDelete > 0) {
                 setDeletedRowIds(prev => [...prev, selectedIdToDelete]);
             }
+            toast.success('Ligne supprimée avec succès');
         } else {
             setOpenDialogDeleteSaisie(false);
         }
@@ -470,7 +477,7 @@ const PopupSaisie = ({
                                 Raccourci disponible !
                             </Typography>
                             <Typography variant="body2">
-                                Appuyez sur <b>Ctrl + Entrée</b> pour équilibrer automatiquement le solde du
+                                Appuyez sur <b>Ctrl + Espace</b> pour équilibrer automatiquement le solde du
                                 <b> {params.field === 'debit' ? 'débit' : 'crédit'}</b>.
                             </Typography>
                         </Box>
@@ -556,6 +563,7 @@ const PopupSaisie = ({
             const valeursSansFichier = {
                 ...formSaisie.values,
                 file: undefined,
+                valSelectCodeJnl: formSaisie.values.valSelectCodeJnl?.id,
                 tableRows,
                 listCa: listCaFinalFiltered,
                 ...(type === 'modification' ? { conserverFichier, deletedIds: deletedRowIds } : {})
@@ -867,6 +875,22 @@ const PopupSaisie = ({
         setIsDisabledAddButton(isDatagridEditing());
     }, [tableRows, apiRef.current?.state?.editRows]);
 
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'l') {
+                ajouterNouvelleLigne();
+            }
+        };
+
+        if (!isDisabledAddButton) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isDisabledAddButton, tableRows, ajouterNouvelleLigne]);
+
     return (
         <>
             {
@@ -971,18 +995,35 @@ const PopupSaisie = ({
                                     >
                                         {/* Code Journal */}
                                         <FormControl variant="standard" sx={{ width: 250 }}>
-                                            <InputLabel>Code journal</InputLabel>
-                                            <Select
+                                            <Autocomplete
+                                                options={Array.from(
+                                                    new Map(listeCodeJournaux.map(item => [item.id, item])).values()
+                                                )}
+                                                getOptionLabel={(option) => `${option.code || ''} - ${option.libelle || ''}`}
+                                                renderOption={(props, option, { index }) => (
+                                                    <li {...props} key={`${option.id}-${index}`}>
+                                                        <span>
+                                                            {option.code} - {option.libelle}
+                                                        </span>
+                                                    </li>
+                                                )}
+                                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                                PaperComponent={(props) => (
+                                                    <div {...props} style={{ width: 280, backgroundColor: 'white' }} />
+                                                )}
                                                 value={formSaisie.values.valSelectCodeJnl}
-                                                onChange={formSaisie.handleChange}
-                                                name="valSelectCodeJnl"
-                                            >
-                                                {listeCodeJournaux.map((value, index) => (
-                                                    <MenuItem sx={{ flex: 0.18 }} key={index} value={value.id}>
-                                                        {`${value.code} - ${value.libelle}`}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
+                                                onChange={(e, value) => {
+                                                    formSaisie.setFieldValue('valSelectCodeJnl', value);
+                                                }}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        variant="standard"
+                                                        name="valSelectCodeJnl"
+                                                        label="Code journal"
+                                                    />
+                                                )}
+                                            />
                                         </FormControl>
 
                                         {/* Mois */}

@@ -1360,39 +1360,63 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
         ),
 
         -- TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD TFTD N
-        
-        totalmixte_bilan_tftd_n AS (
+
+        totalmixte_bilan_to_tftd_map_n AS (
             SELECT
-                cr.ID_RUBRIQUE AS id_totalmixte,
-                SUM(COALESCE(ba.MONTANTNET, 0) * (CASE WHEN cr.EQUATION='SOUSTRACTIF' THEN -1 ELSE 1 END)) AS montant
+                cr.ID_RUBRIQUE      AS ID_TOTALMIXTE,
+                cr.COMPTE::int      AS ID_RUBRIQUE_BILAN,
+                CASE 
+                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
+                    ELSE 1
+                END AS COEFF
             FROM compterubriques cr
-            LEFT JOIN BILAN_A_P_N ba
-                ON ba.ID_RUBRIQUE = cr.ID_RUBRIQUE
-            WHERE cr.ID_ETAT = 'TFTD'
+            WHERE
+                cr.ID_ETAT = 'TFTI'
                 AND cr.NATURE = 'BILAN'
                 AND cr.COMPTE ~ '^[0-9]+$'
                 AND cr.ID_COMPTE = :id_compte
                 AND cr.ID_DOSSIER = :id_dossier
                 AND cr.ID_EXERCICE = :id_exercice
                 AND cr.EXERCICE = 'N'
-            GROUP BY cr.ID_RUBRIQUE
         ),
 
-        totalmixte_bilan_tftd_n1 AS (
+        totalmixte_bilan_to_tftd_sum_n AS (
             SELECT
-                cr.ID_RUBRIQUE AS id_totalmixte,
-                SUM(COALESCE(ba.MONTANTNET, 0) * (CASE WHEN cr.EQUATION='SOUSTRACTIF' THEN -1 ELSE 1 END)) AS montant
+                m.ID_TOTALMIXTE,
+                SUM(ba.MONTANTNET * m.COEFF) AS MONTANTNET_BILAN_N
+            FROM totalmixte_bilan_to_tftd_map_n m
+            LEFT JOIN BILAN_A_P_N ba
+                ON ba.ID_RUBRIQUE = m.ID_RUBRIQUE_BILAN
+            GROUP BY m.ID_TOTALMIXTE
+        ),
+
+        totalmixte_bilan_to_tftd_map_n1 AS (
+            SELECT
+                cr.ID_RUBRIQUE      AS ID_TOTALMIXTE,
+                cr.COMPTE::int      AS ID_RUBRIQUE_BILAN,
+                CASE 
+                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
+                    ELSE 1
+                END AS COEFF
             FROM compterubriques cr
-            LEFT JOIN BILAN_A_P_N1 ba
-                ON ba.ID_RUBRIQUE = cr.ID_RUBRIQUE
-            WHERE cr.ID_ETAT = 'TFTD'
+            WHERE
+                cr.ID_ETAT = 'TFTD'
                 AND cr.NATURE = 'BILAN'
                 AND cr.COMPTE ~ '^[0-9]+$'
                 AND cr.ID_COMPTE = :id_compte
                 AND cr.ID_DOSSIER = :id_dossier
                 AND cr.ID_EXERCICE = :id_exercice_N1
                 AND cr.EXERCICE = 'N1'
-            GROUP BY cr.ID_RUBRIQUE
+        ),
+
+        totalmixte_bilan_to_tftd_sum_n1 AS (
+            SELECT
+                m.ID_TOTALMIXTE,
+                SUM(ba.MONTANTNET * m.COEFF) AS MONTANTNET_BILAN_N1
+            FROM totalmixte_bilan_to_tftd_map_n1 m
+            LEFT JOIN BILAN_A_P_N1 ba
+                ON ba.ID_RUBRIQUE = m.ID_RUBRIQUE_BILAN
+            GROUP BY m.ID_TOTALMIXTE
         ),
 
         COMPTE_RUBRIQUES_TFTD AS (
@@ -1447,8 +1471,8 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
                         END
                     ),
                 0)
-                + COALESCE(MAX(tmbn.montant), 0)
-                + COALESCE(MAX(tmbn1.montant), 0)
+                + COALESCE(MAX(tmbn.MONTANTNET_BILAN_N), 0)
+                + COALESCE(MAX(tmbn1.MONTANTNET_BILAN_N1), 0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTS A
@@ -1474,10 +1498,10 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
             LEFT JOIN balance_n b
                 ON b.COMPTE LIKE CR2.COMPTE::text || '%'
 
-            LEFT JOIN totalmixte_bilan_tftd_n tmbn 
+            LEFT JOIN totalmixte_bilan_to_tftd_sum_n tmbn 
                 ON tmbn.ID_TOTALMIXTE = CR.ID_RUBRIQUE
 
-            LEFT JOIN totalmixte_bilan_tftd_n1 tmbn1
+            LEFT JOIN totalmixte_bilan_to_tftd_sum_n1 tmbn1
                 ON tmbn1.ID_TOTALMIXTE = CR.ID_RUBRIQUE
 
             GROUP BY CR.ID_RUBRIQUE
@@ -2040,7 +2064,7 @@ const getEbilanComplet = async (id_compte, id_dossier, id_exercice, id_etat) => 
         id_dossier,
         id_exercice
     }));
-    
+
     return finalRows;
     // return rowsN;
 };
@@ -2109,6 +2133,7 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
                     AND R.ID_ETAT = :id_etat
                     AND R.SUBTABLE = :subtable
                     AND CR.ACTIVE = true
+                    AND TRIM(R.NATURE) NOT LIKE 'TOTAL%'
             ),
 
             ligne_detail AS (
@@ -2199,12 +2224,9 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
             SELECT *
             FROM ligne_detail
             WHERE
-                CASE
-                    WHEN :id_etat = 'TFTD'
-                        THEN (SOLDEDEBIT <> 0 OR SOLDECREDIT <> 0)
-                    ELSE
-                        (SOLDEDEBIT <> 0 OR SOLDECREDIT <> 0)
-                END;
+                SOLDEDEBIT <> 0
+                OR SOLDECREDIT <> 0
+
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
@@ -2215,7 +2237,92 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
     return rows;
 }
 
+const getListeCompteNonAssocieTFTD = async (id_compte, id_dossier, id_exercice, id_etat) => {
+    const data = await db.sequelize.query(`
+        WITH
+            BALANCE AS (
+                SELECT
+                    MIN(J.COMPTEGEN) AS COMPTEGEN,
+                    J.COMPTEAUX AS COMPTE,
+                    MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTEFILTER, 
+                    MIN(J.LIBELLEAUX) AS LIBELLE
+                FROM
+                    JOURNALS J
+                    LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+                WHERE
+                    J.ID_DOSSIER = :id_dossier
+                    AND J.ID_EXERCICE = :id_exercice
+                    AND J.ID_COMPTE = :id_compte
+                    AND NOT EXISTS (
+                        SELECT
+                            1
+                        FROM
+                            DOSSIERPLANCOMPTABLES DPC
+                        WHERE
+                            DPC.COMPTE = J.COMPTEAUX
+                            AND DPC.ID_DOSSIER = :id_dossier
+                            AND DPC.ID_COMPTE = :id_compte
+                            AND DPC.NATURE = 'Collectif'
+                    )
+                    AND NOT EXISTS (
+                        SELECT
+                            1
+                        FROM
+                            CODEJOURNALS CJ2
+                        WHERE
+                            CJ2.COMPTEASSOCIE IS NOT NULL
+                            AND CJ2.COMPTEASSOCIE = J.COMPTEAUX
+                    )
+                GROUP BY
+                    J.COMPTEAUX
+                ORDER BY
+                    COMPTEGEN,
+                    COMPTE
+            ),
+            RUBRIQUE_COMPTES AS (
+                SELECT DISTINCT
+                    CR.COMPTE
+                FROM
+                    RUBRIQUES R
+                    JOIN COMPTERUBRIQUES CR ON CR.ID_RUBRIQUE = R.ID_RUBRIQUE
+                WHERE
+                    R.ID_DOSSIER = :id_dossier
+                    AND R.ID_COMPTE = :id_compte
+                    AND R.ID_EXERCICE = :id_exercice
+                    AND R.ID_ETAT = :id_etat
+                    AND R.SUBTABLE = 0
+                    AND TRIM(R.NATURE) IN ('BRUT', 'AMORT')
+                    AND CR.ID_DOSSIER = :id_dossier
+                    AND CR.ID_COMPTE = :id_compte
+                    AND CR.ID_EXERCICE = :id_exercice
+                    AND CR.ID_ETAT = :id_etat
+                    AND CR.ACTIVE = TRUE
+            )
+        SELECT
+            B.*
+        FROM
+            BALANCE B
+        WHERE
+            NOT EXISTS (
+                SELECT
+                    1
+                FROM
+                    RUBRIQUE_COMPTES RC
+                WHERE
+                    B.COMPTEFILTER LIKE RC.COMPTE || '%'
+            )
+        ORDER BY
+            B.COMPTE ASC;
+    `, {
+        type: db.Sequelize.QueryTypes.SELECT,
+        replacements: { id_compte, id_dossier, id_exercice, id_etat }
+    })
+
+    return data;
+}
+
 module.exports = {
     getEbilanComplet,
-    getDetailLigne
+    getDetailLigne,
+    getListeCompteNonAssocieTFTD
 };
