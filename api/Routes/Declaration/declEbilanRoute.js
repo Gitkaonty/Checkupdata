@@ -10,6 +10,9 @@ const router = express.Router();
 //récupérer liste des rubriques globale
 router.post('/listeRubriqueGlobal', declEbilanController.getListeRubriqueGlobal);
 
+// Récupération des listes des comptes non associés dans la balance par rapport aux comptes rubriques
+router.post('/getListeCompteNonAssocie', declEbilanController.getListeCompteNonAssocie);
+
 //récupérer liste des rubriques getListeCompteRubrique
 //router.post('/listeRubriqueIndividual', declEbilanController.getListeRubriqueIndividual);
 router.post('/listeOneTable', declEbilanController.getListeOneTable);

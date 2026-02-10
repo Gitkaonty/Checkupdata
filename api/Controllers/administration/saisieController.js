@@ -2321,207 +2321,166 @@ exports.getAllJournal = async (req, res) => {
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
-        const dossierData = await dossiers.findByPk(id_dossier);
-        const exerciceData = await exercices.findByPk(id_exercice);
+        const query = `
+        WITH base_dossier AS (
+            SELECT
+                d.id AS id_dossier,
+                d.consolidation,
+                e.date_debut,
+                e.date_fin
+            FROM dossiers d
+            JOIN exercices e ON e.id = :id_exercice
+            WHERE d.id = :id_dossier
+        ),
+        dossiers_utiles AS (
+            SELECT :id_dossier::int AS id_dossier
+            UNION
+            SELECT cd.id_dossier_autre
+            FROM consolidationdossiers cd
+            JOIN base_dossier bd ON bd.consolidation = true
+            WHERE cd.id_dossier = :id_dossier
+              AND cd.id_compte = :id_compte
+        ),
+        exercices_utiles AS (
+            SELECT e.id
+            FROM exercices e
+            JOIN base_dossier bd ON true
+            WHERE e.id_compte = :id_compte
+              AND e.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+              AND e.date_debut <= bd.date_fin
+              AND e.date_fin >= bd.date_debut
+        )
+        SELECT
+            j.*,
+            cj.code AS journal,
+            d.dossier AS dossier
+        FROM journals j
+        JOIN dossiers d ON d.id = j.id_dossier
+        JOIN codejournals cj ON cj.id = j.id_journal
+        WHERE j.id_compte = :id_compte
+          AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+          AND j.id_exercice IN (SELECT id FROM exercices_utiles)
+        ORDER BY j."createdAt" DESC
+        `;
 
-        const consolidation = dossierData?.consolidation || false;
-        const date_debut_exercice = new Date(exerciceData?.date_debut);
-        const date_fin_exercice = new Date(exerciceData?.date_fin);
-
-        let id_dossiers_a_utiliser = [Number(id_dossier)];
-
-        if (consolidation) {
-            const consolidationDossierData = await consolidationDossier.findAll({
-                where: {
-                    id_dossier,
-                    id_compte
-                }
-            });
-
-            if (!consolidationDossierData.length) {
-                return res.json({
-                    state: true,
-                    msg: "Consolidation de dossier vide",
-                    liste: []
-                });
-            }
-
-            id_dossiers_a_utiliser = [...new Set(
-                consolidationDossierData.map(val => Number(val.id_dossier_autre))
-            ), Number(id_dossier)];
-        }
-
-        const exerciceDataToUse = await exercices.findAll({
-            where: {
+        const result = await db.sequelize.query(query, {
+            replacements: {
                 id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                [Op.and]: [
-                    { date_debut: { [Op.lte]: date_fin_exercice } },
-                    { date_fin: { [Op.gte]: date_debut_exercice } }
-                ]
-            }
-        })
-
-        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
-
-        const whereClause = {
-            id_compte,
-            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-            id_exercice: { [Op.in]: id_exercices_a_utiliser }
-        };
-
-        const journalData = await journals.findAll({
-            where: whereClause,
-            include: [
-                { model: dossierplancomptable, attributes: ['compte'] },
-                { model: codejournals, attributes: ['code'] },
-                { model: dossiers, attributes: ['dossier'] },
-            ],
-            order: [
-                // ['id_ecriture', 'ASC'],
-                // ['dateecriture', 'ASC'],
-                // ['id', 'ASC']
-                ['createdAt', 'DESC']
-            ]
+                id_dossier,
+                id_exercice
+            },
+            type: db.Sequelize.QueryTypes.SELECT
         });
 
-        const mappedData = journalData.map(journal => {
-            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-                journal: codejournal?.code || null,
-                dossier: dossier?.dossier || null
-            };
-        });
-
-        return res.json(mappedData);
+        return res.json(result);
 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+        return res.status(500).json({
+            state: false,
+            msg: 'Erreur serveur',
+            error: error.message
+        });
     }
-}
+};
 
 exports.getJournalFiltered = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, journal, compte, piece, libelle, debut, fin } = req.body;
-        const compteaux = compte?.compte;
 
         if (!id_dossier) return res.status(400).json({ state: false, message: 'Dossier non trouvé' });
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
-        const dossierData = await dossiers.findByPk(id_dossier);
-        const exerciceData = await exercices.findByPk(id_exercice);
+        const query = `
+            WITH base_dossier AS (
+                SELECT
+                    d.id AS id_dossier,
+                    d.consolidation,
+                    e.date_debut,
+                    e.date_fin
+                FROM dossiers d
+                JOIN exercices e ON e.id = :id_exercice
+                WHERE d.id = :id_dossier
+            ),
 
-        const consolidation = dossierData?.consolidation || false;
-        const date_debut_exercice = new Date(exerciceData?.date_debut);
-        const date_fin_exercice = new Date(exerciceData?.date_fin);
+            dossiers_utiles AS (
+                SELECT :id_dossier::int AS id_dossier
+                UNION
+                SELECT cd.id_dossier_autre
+                FROM consolidationdossiers cd
+                JOIN base_dossier bd ON bd.consolidation = true
+                WHERE cd.id_dossier = :id_dossier
+                AND cd.id_compte = :id_compte
+            ),
 
-        let id_dossiers_a_utiliser = [Number(id_dossier)];
+            exercices_utiles AS (
+                SELECT e.id
+                FROM exercices e
+                JOIN base_dossier bd ON true
+                WHERE e.id_compte = :id_compte
+                AND e.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+                AND e.date_debut <= bd.date_fin
+                AND e.date_fin >= bd.date_debut
+            ),
 
-        if (consolidation) {
-            const consolidationDossierData = await consolidationDossier.findAll({
-                where: {
-                    id_dossier,
-                    id_compte
-                }
-            });
+            journals_filtres AS (
+                SELECT DISTINCT j.id_ecriture
+                FROM journals j
+                JOIN codejournals cj ON cj.id = j.id_journal
+                JOIN base_dossier bd ON true
+                WHERE j.id_compte = :id_compte
+                AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+                AND j.id_exercice IN (SELECT id FROM exercices_utiles)
 
-            if (!consolidationDossierData.length) {
-                return res.json({
-                    state: true,
-                    msg: "Consolidation de dossier vide",
-                    liste: []
-                });
-            }
+                AND (:piece IS NULL OR j.piece ILIKE '%' || :piece || '%')
+                AND (:libelle IS NULL OR j.libelle ILIKE '%' || :libelle || '%')
+                AND (:compteaux IS NULL OR j.compteaux = :compteaux)
+                AND (:journal IS NULL OR cj.code = :journal)
 
-            id_dossiers_a_utiliser = [...new Set(
-                consolidationDossierData.map(val => Number(val.id_dossier_autre))
-            ), Number(id_dossier)];
-        }
+                AND (
+                        (:debut IS NOT NULL AND :fin IS NOT NULL AND j.dateecriture BETWEEN :debut AND :fin)
+                    OR (:debut IS NOT NULL AND :fin IS NULL AND j.dateecriture >= :debut)
+                    OR (:debut IS NULL AND :fin IS NOT NULL AND j.dateecriture <= :fin)
+                    OR (
+                            :debut IS NULL AND :fin IS NULL
+                            AND bd.consolidation = true
+                            AND j.dateecriture BETWEEN bd.date_debut AND bd.date_fin
+                        )
+                    OR (:debut IS NULL AND :fin IS NULL AND bd.consolidation = false)
+                )
+            )
+            SELECT
+                j.*,
+                cj.code AS journal,
+                d.dossier
+            FROM journals j
+            JOIN journals_filtres jf ON jf.id_ecriture = j.id_ecriture
+            JOIN codejournals cj ON cj.id = j.id_journal
+            JOIN dossiers d ON d.id = j.id_dossier
+            WHERE j.id_compte = :id_compte
+            AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+            AND j.id_exercice IN (SELECT id FROM exercices_utiles)
+            ORDER BY j."createdAt" DESC
+        `;
 
-        const exerciceDataToUse = await exercices.findAll({
-            where: {
+        const result = await db.sequelize.query(query, {
+            replacements: {
                 id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                [Op.and]: [
-                    { date_debut: { [Op.lte]: date_fin_exercice } },
-                    { date_fin: { [Op.gte]: date_debut_exercice } }
-                ]
-            }
-        })
-
-        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
-
-        const whereClause = {
-            id_compte,
-            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-            id_exercice: { [Op.in]: id_exercices_a_utiliser }
-        };
-
-        if (piece) whereClause.piece = { [Op.iLike]: `%${piece}%` };
-        if (libelle) whereClause.libelle = { [Op.iLike]: `%${libelle}%` };
-        if (compteaux) whereClause.compteaux = compteaux;
-        if (debut && fin) {
-            whereClause.dateecriture = { [Op.between]: [debut, fin] };
-        } else if (debut) {
-            whereClause.dateecriture = { [Op.gte]: debut };
-        } else if (fin) {
-            whereClause.dateecriture = { [Op.lte]: fin };
-        } else if (date_debut_exercice && date_fin_exercice && consolidation) {
-            whereClause.dateecriture = { [Op.between]: [date_debut_exercice, date_fin_exercice] };
-        }
-
-        const journalData = await journals.findAll({
-            where: whereClause,
-            order: [['createdAt', 'DESC']],
-            include: [
-                {
-                    model: codejournals,
-                    attributes: ['code'],
-                    where:
-                    {
-                        ...(journal ? { code: journal } : {}),
-                    }
-                }
-            ]
-        });
-
-        const id_ecritures = [...new Set(journalData.map(val => val.id_ecriture))];
-
-        const journalFinal = await journals.findAll({
-            where: {
-                id_ecriture: id_ecritures,
-                id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                id_exercice: { [Op.in]: id_exercices_a_utiliser }
+                id_dossier,
+                id_exercice,
+                journal: journal?.code || null,
+                compteaux: compte?.compte || null,
+                piece: piece || null,
+                libelle: libelle || null,
+                debut: debut || null,
+                fin: fin || null
             },
-            include: [
-                { model: dossierplancomptable, attributes: ['compte'] },
-                { model: codejournals, attributes: ['code'] },
-                { model: dossiers, attributes: ['dossier'] },
-            ],
-            order: [
-                // ['id_ecriture', 'ASC'],
-                // ['dateecriture', 'ASC'],
-                // ['id', 'ASC']
-                ['createdAt', 'DESC']
-            ]
-        })
-
-        const mappedData = journalFinal.map(journal => {
-            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-                journal: codejournal?.code || null,
-                dossier: dossier?.dossier || null,
-            };
+            type: db.Sequelize.QueryTypes.SELECT
         });
 
-        return res.json({ state: true, list: mappedData });
+        return res.json({ state: true, list: result });
+
     } catch (error) {
         console.error(error);
         return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });

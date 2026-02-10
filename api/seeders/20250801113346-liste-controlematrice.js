@@ -11,7 +11,7 @@ module.exports = {
         typecontrol: 'COMPARAISON',
         typecomparaison: 'EGAL',
         nbrgroup: 2,
-        comments: 'bilan déséquilibré pour l\'exercice N (total actif différent du total passif).',
+        comments: 'Bilan déséquilibré pour l\'exercice N (total actif différent du total passif).',
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -22,7 +22,7 @@ module.exports = {
         typecontrol: 'COMPARAISON',
         typecomparaison: 'EGAL',
         nbrgroup: 2,
-        comments: 'bilan déséquilibré pour l\'exercice N-1 (total actif différent du total passif).',
+        comments: 'Bilan déséquilibré pour l\'exercice N-1 (total actif différent du total passif).',
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -33,7 +33,7 @@ module.exports = {
         typecontrol: 'COMPARAISON',
         typecomparaison: 'EGAL',
         nbrgroup: 2,
-        comments: 'résultat net différent de celui du Bilan pour la colonne exercice N.',
+        comments: 'Résultat net différent de celui du Bilan pour la colonne exercice N.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -44,7 +44,7 @@ module.exports = {
         typecontrol: 'COMPARAISON',
         typecomparaison: 'EGAL',
         nbrgroup: 2,
-        comments: 'résultat net différent de celui du Bilan pour la colonne exercice N-1.',
+        comments: 'Résultat net différent de celui du Bilan pour la colonne exercice N-1.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -55,7 +55,7 @@ module.exports = {
         typecontrol: 'COMPARAISON',
         typecomparaison: 'EGAL',
         nbrgroup: 2,
-        comments: 'résultat net différent de celui du tableau CRN pour la colonne exercice N.',
+        comments: 'Résultat net différent de celui du tableau CRN pour la colonne exercice N.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -66,7 +66,7 @@ module.exports = {
         typecontrol: 'COMPARAISON',
         typecomparaison: 'EGAL',
         nbrgroup: 2,
-        comments: 'résultat net différent de celui du tableau CRN pour la colonne exercice N-1.',
+        comments: 'Résultat net différent de celui du tableau CRN pour la colonne exercice N-1.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
