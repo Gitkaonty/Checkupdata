@@ -17,7 +17,7 @@ Userscomptes.hasMany(User, { foreignKey: 'compte_id' });
 
 const handleRefreshToken = async (req, res) => {
     const cookies = req.cookies;
-    if (!cookies?.jwt) return res.sendStatus(401);
+    if (!cookies?.jwt) return res.status(401).json({ message: 'TOken invalide' });
 
     const refreshToken = cookies.jwt;
 

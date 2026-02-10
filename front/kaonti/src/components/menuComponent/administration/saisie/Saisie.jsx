@@ -289,11 +289,11 @@ export default function SaisieComponent() {
             headerClassName: 'HeaderbackColor',
         },
         {
-            field: 'fichier',
+            field: 'Fichier',
             headerName: 'Voir',
             type: 'string',
             sortable: false,
-            flex: 0.3,
+            flex: 0.4,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',
@@ -399,7 +399,7 @@ export default function SaisieComponent() {
     //Formik recherche saisie
     const formSaisieRecherche = useFormik({
         initialValues: {
-            journal: "",
+            journal: null,
             compte: null,
             piece: "",
             libelle: '',
@@ -415,7 +415,7 @@ export default function SaisieComponent() {
         const { journal, compte, piece, libelle, debut, fin } = formSaisieRecherche.values;
 
         const hasFilters =
-            (journal && journal !== "") ||
+            (journal && journal.id !== "") ||
             (compte && compte.compte) ||
             (piece && piece !== "") ||
             (libelle && libelle !== "") ||
@@ -658,7 +658,6 @@ export default function SaisieComponent() {
 
     return (
         <>
-
             {
                 noFile ?
                     <PopupTestSelectedFile
@@ -881,28 +880,35 @@ export default function SaisieComponent() {
                                     sx={{ flexGrow: 1, flexWrap: 'wrap' }}
                                 >
                                     <FormControl variant="standard" sx={{ width: '13%', marginRight: 5 }}>
-                                        <InputLabel>Code journal</InputLabel>
-                                        <Select
+                                        <Autocomplete
+                                            options={Array.from(
+                                                new Map(listeCodeJournaux.map(item => [item.id, item])).values()
+                                            )}
+                                            getOptionLabel={(option) => `${option.code || ''} - ${option.libelle || ''}`}
+                                            renderOption={(props, option, { index }) => (
+                                                <li {...props} key={`${option.id}-${index}`}>
+                                                    <span>
+                                                        {option.code} - {option.libelle}
+                                                    </span>
+                                                </li>
+                                            )}
+                                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                                            PaperComponent={(props) => (
+                                                <div {...props} style={{ width: 280, backgroundColor: 'white' }} />
+                                            )}
                                             value={formSaisieRecherche.values.journal}
-                                            onChange={formSaisieRecherche.handleChange}
-                                            name="journal"
-                                            MenuProps={{
-                                                disableScrollLock: true,
-                                                MenuListProps: {
-                                                    sx: {
-                                                        display: "flex",
-                                                        flexDirection: "column",
-                                                        alignItems: "flex-start",
-                                                    }
-                                                }
+                                            onChange={(e, value) => {
+                                                formSaisieRecherche.setFieldValue('journal', value);
                                             }}
-                                        >
-                                            {listeCodeJournaux.map((value, index) => (
-                                                <MenuItem sx={{ width: '100%' }} key={index} value={value.code}>
-                                                    {`${value.code} - ${value.libelle}`}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    variant="standard"
+                                                    name="journal"
+                                                    label="Code journal"
+                                                />
+                                            )}
+                                        />
                                     </FormControl>
 
                                     <FormControl variant="standard" sx={{ width: '13%', marginRight: 5 }}>
@@ -917,8 +923,8 @@ export default function SaisieComponent() {
                                             onChange={(e, value) => {
                                                 formSaisieRecherche.setFieldValue('compte', value);
                                             }}
-                                            renderOption={(props, option) => (
-                                                <li {...props}>
+                                            renderOption={(props, option, { index }) => (
+                                                <li {...props} key={`${option.id}-${index}`}>
                                                     <span>
                                                         {option.compte} - {option.libelle}{' '}
                                                         <span style={{ color: '#1976d2', fontWeight: 600, fontSize: 14 }}>
