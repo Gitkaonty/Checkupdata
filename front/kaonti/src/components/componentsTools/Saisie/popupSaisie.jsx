@@ -39,6 +39,8 @@ import { MdAccountBalance } from "react-icons/md";
 import PopupAjustCa from './popupAjustCa';
 
 import useAxiosPrivate from '../../../../config/axiosPrivate';
+import { BsFillInfoCircleFill } from "react-icons/bs";
+import { useCallback } from 'react';
 
 let initial = init[0];
 
@@ -334,64 +336,81 @@ const PopupSaisie = ({
     };
 
     //Ajouter une ligne
-    const ajouterNouvelleLigne = async () => {
-        if (!formSaisie.values.valSelectCodeJnl && !formSaisie.values.valSelectMois && !formSaisie.values.valSelectAnnee) {
-            toast.error("Veuillez remplir les formulaires s'il vous plaît !");
-        } else if (!formSaisie.values.valSelectCodeJnl) {
-            toast.error("Sélectionner le code journal s'il vous plaît !");
-        } else if (!formSaisie.values.valSelectMois) {
-            toast.error("Sélectionner le mois s'il vous plaît !");
-        } else if (!formSaisie.values.valSelectAnnee) {
-            toast.error("Sélectionner l'année s'il vous plaît !");
-        } else if (formSaisie.values.choixDevise !== 'MGA' && !formSaisie.values.currency) {
-            toast.error("Veuillez sélectionner une devise s'il vous plaît !");
-        } else {
-            const minId = Math.min(...tableRows.map(r => r.id), -1);
-            const newId = minId <= 0 ? minId - 1 : -1;
-            // const newId = -Date.now();
-
-            let dernierJour = '';
-            let dernierLibelle = '';
-            let dernierPiece = '';
-            let dernierNumfacture = '';
-
-            for (let i = tableRows.length - 1; i >= 0; i--) {
-                const row = tableRows[i];
-
-                if (row.jour !== null && row.jour !== '' && dernierJour === '') {
-                    dernierJour = row.jour;
-                }
-
-                if (row.libelle !== null && row.libelle !== '' && dernierLibelle === '') {
-                    dernierLibelle = row.libelle;
-                }
-
-                if (row.piece !== null && row.piece !== '' && dernierPiece === '') {
-                    dernierPiece = row.piece;
-                }
-
-                if (row.num_facture !== null && row.num_facture !== '' && dernierNumfacture === '') {
-                    dernierNumfacture = row.num_facture;
-                }
-
-                if (dernierJour !== '' && dernierLibelle !== '' && dernierPiece !== '' && dernierNumfacture !== '') break;
-            }
-
-            const newRow = {
-                id: newId,
-                jour: dernierJour,
-                piece: dernierPiece,
-                libelle: dernierLibelle,
-                num_facture: dernierNumfacture,
-                debit: 0,
-                credit: 0,
-            };
-
-            setTableRows([...tableRows, newRow]);
-            setRowModesModel({ ...rowModesModel, [newId]: { mode: GridRowModes.Edit } });
-            apiRef.current.setCellFocus(newId, 'jour');
+    const ajouterNouvelleLigne = useCallback(() => {
+        if (isDisabledAddButton) {
+            toast.error("Impossible d'ajouter une ligne dans le mode édition");
+            return;
         }
-    };
+
+        if (!formSaisie.values.valSelectCodeJnl &&
+            !formSaisie.values.valSelectMois &&
+            !formSaisie.values.valSelectAnnee) {
+            toast.error("Veuillez remplir les formulaires s'il vous plaît !");
+            return;
+        }
+
+        if (!formSaisie.values.valSelectCodeJnl) {
+            toast.error("Sélectionner le code journal s'il vous plaît !");
+            return;
+        }
+
+        if (!formSaisie.values.valSelectMois) {
+            toast.error("Sélectionner le mois s'il vous plaît !");
+            return;
+        }
+
+        if (!formSaisie.values.valSelectAnnee) {
+            toast.error("Sélectionner l'année s'il vous plaît !");
+            return;
+        }
+
+        if (formSaisie.values.choixDevise !== 'MGA' &&
+            !formSaisie.values.currency) {
+            toast.error("Veuillez sélectionner une devise s'il vous plaît !");
+            return;
+        }
+
+        const minId = Math.min(...tableRows.map(r => r.id), -1);
+        const newId = minId <= 0 ? minId - 1 : -1;
+
+        let dernierJour = '';
+        let dernierLibelle = '';
+        let dernierPiece = '';
+        let dernierNumfacture = '';
+
+        for (let i = tableRows.length - 1; i >= 0; i--) {
+            const row = tableRows[i];
+
+            if (!dernierJour && row.jour) dernierJour = row.jour;
+            if (!dernierLibelle && row.libelle) dernierLibelle = row.libelle;
+            if (!dernierPiece && row.piece) dernierPiece = row.piece;
+            if (!dernierNumfacture && row.num_facture) dernierNumfacture = row.num_facture;
+
+            if (dernierJour && dernierLibelle && dernierPiece && dernierNumfacture) break;
+        }
+
+        const newRow = {
+            id: newId,
+            jour: dernierJour,
+            piece: dernierPiece,
+            libelle: dernierLibelle,
+            num_facture: dernierNumfacture,
+            debit: 0,
+            credit: 0,
+        };
+
+        setTableRows(prev => [...prev, newRow]);
+
+        setRowModesModel(prev => ({
+            ...prev,
+            [newId]: { mode: GridRowModes.Edit }
+        }));
+
+        setTimeout(() => {
+            apiRef.current?.setCellFocus(newId, 'jour');
+        });
+
+    }, [tableRows, formSaisie.values, isDisabledAddButton]);
 
     const handleClose = () => {
         confirmationState(false);
@@ -878,18 +897,17 @@ const PopupSaisie = ({
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'l') {
+                event.preventDefault();
                 ajouterNouvelleLigne();
             }
         };
 
-        if (!isDisabledAddButton) {
-            window.addEventListener('keydown', handleKeyDown);
-        }
+        window.addEventListener('keydown', handleKeyDown);
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [isDisabledAddButton, tableRows, ajouterNouvelleLigne]);
+    }, [ajouterNouvelleLigne]);
 
     return (
         <>
@@ -949,18 +967,56 @@ const PopupSaisie = ({
                         alignItems="center"
                         justifyContent="space-between"
                     >
-                        <Typography
-                            variant="h6"
-                            component="div"
-                            fontWeight="bold"
-                            color="text.primary"
+                        <Stack
+                            direction={'row'}
+                            alignItems={'center'}
+                            spacing={2}
                         >
-                            {
-                                type === "ajout"
-                                    ? "Ajout d'une nouvelle écriture "
-                                    : "Modification d'une écriture "
-                            }
-                        </Typography>
+                            <Typography
+                                variant="h6"
+                                component="div"
+                                fontWeight="bold"
+                                color="text.primary"
+                            >
+                                {
+                                    type === "ajout"
+                                        ? "Ajout d'une nouvelle écriture"
+                                        : "Modification d'une écriture"
+                                }
+                            </Typography>
+                            <Stack>
+                                <Tooltip
+                                    title={
+                                        `Raccourcis clavier disponibles :
+
+                                        • Ctrl + Espace :
+                                        Équilibrer automatiquement les montants Débit et Crédit.
+
+                                        • Ctrl + Shift + L :
+                                        Ajouter une nouvelle ligne d'écriture.`
+                                    }
+                                    arrow
+                                    placement="bottom-start"
+                                    slotProps={{
+                                        tooltip: {
+                                            sx: {
+                                                fontSize: '14px',
+                                                maxWidth: 400,
+                                                whiteSpace: 'pre-line'
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <span style={{ marginBottom: -2 }}>
+                                        <BsFillInfoCircleFill
+                                            size={18}
+                                            style={{ color: '#6c757d', cursor: 'pointer' }}
+                                        />
+                                    </span>
+                                </Tooltip>
+
+                            </Stack>
+                        </Stack>
 
                         <IconButton
                             onClick={handleClose}

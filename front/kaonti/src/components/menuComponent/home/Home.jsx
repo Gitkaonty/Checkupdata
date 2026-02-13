@@ -254,7 +254,6 @@ export default function Home() {
         try {
           const response = await axios.get(`/home/file/${compteId}`, { params: { userId } });
           const resData = response.data;
-          console.log('resData : ', resData);
           setListeDossier(resData.fileList);
           canView ? setFinalListeDossier(resData.fileList) : setFinalListeDossier([]);
         } catch (err) {

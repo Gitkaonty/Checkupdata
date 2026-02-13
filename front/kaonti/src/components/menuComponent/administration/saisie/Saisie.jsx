@@ -589,49 +589,51 @@ export default function SaisieComponent() {
         })
     }
 
-    //récupérer les informations du dossier sélectionné
     useEffect(() => {
+        let idFile = fileId || 0;
         const navigationEntries = performance.getEntriesByType('navigation');
-        let idFile = 0;
-
         if (navigationEntries.length > 0) {
             const navigationType = navigationEntries[0].type;
             if (navigationType === 'reload') {
-                const idDossier = sessionStorage.getItem("fileId");
-                setFileId(idDossier);
-                idFile = idDossier;
-            } else {
+                idFile = sessionStorage.getItem("fileId");
+                setFileId(idFile);
+            } else if (!fileId) {
                 sessionStorage.setItem('fileId', id);
-                setFileId(id);
                 idFile = id;
+                setFileId(idFile);
             }
         }
 
-        GetInfosIdDossier(idFile);
-        GetListeExercice(idFile);
-    }, []);
-
-    // Liste saisie
-    useEffect(() => {
-        if (selectedExerciceId) {
-            getDateDebutFinExercice();
+        if (idFile) {
+            GetInfosIdDossier(idFile);
+            GetListeExercice(idFile);
         }
 
-        getListeSaisie();
-    }, [selectedPeriodeId, refresh])
+        if (selectedExerciceId && idFile && compteId) {
+            getDateDebutFinExercice();
+            getListeSaisie();
+        }
 
-    useEffect(() => {
-        getListAxeSection();
-    }, [selectedPeriodeId, refreshListAxeSection])
+        if (idFile && compteId) {
+            getListAxeSection();
+        }
 
-    // Liste code journaux
-    useEffect(() => {
-        if (fileId && compteId && typeComptabilite !== null) {
+        if (idFile && compteId && typeComptabilite !== null) {
             GetListeCodeJournaux();
             getPc();
             getListeDevises();
         }
-    }, [fileId, compteId, isRefreshedPlanComptable, selectedExerciceId]);
+
+    }, [
+        id,
+        fileId,
+        compteId,
+        selectedExerciceId,
+        typeComptabilite,
+        refresh,
+        refreshListAxeSection,
+        isRefreshedPlanComptable
+    ]);
 
     useEffect(() => {
         const el = gridRef.current?.querySelector('.MuiDataGrid-virtualScroller');

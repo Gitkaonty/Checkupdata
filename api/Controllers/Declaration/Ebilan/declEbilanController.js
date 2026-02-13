@@ -1772,6 +1772,7 @@ const exportAllToPDF = async (req, res) => {
 const importBhiapc = async (req, res) => {
   try {
     const { data } = req.body;
+    return console.log('data : ', data);
 
     if (!data || !Array.isArray(data)) {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
@@ -2559,6 +2560,21 @@ const importEbilanWithProgressLogic = (tableModel, label) => {
       if (!data || !Array.isArray(data) || data.length === 0) {
         progress.error("Données manquantes ou invalides");
         return;
+      }
+
+      const ecraser = data[0]?.ecraser || false;
+      const id_compte = data[0]?.id_compte;
+      const id_dossier = data[0]?.id_dossier;
+      const id_exercice = data[0]?.id_exercice;
+
+      if (ecraser) {
+        await tableModel.destroy({
+          where: {
+            id_compte,
+            id_dossier,
+            id_exercice
+          }
+        })
       }
 
       const totalLines = data.length;
