@@ -401,11 +401,7 @@ export default function ConsultationComponent() {
             align: 'center',
             headerClassName: 'HeaderbackColor',
             renderCell: (params) => {
-                // const compte = String(params.row?.compte || '');
-                // const disabled = !canView || !/^(2|6|7)/.test(compte);
-
                 return (
-                    // <Tooltip title={disabled ? "Non applicable pour ce compte" : "Voir les répartitions analytiques"}>
                     <Tooltip title={"Voir les répartitions analytiques"}>
                         <span>
                             <Button
@@ -417,11 +413,8 @@ export default function ConsultationComponent() {
                                     '&:focus': { outline: 'none', boxShadow: 'none' },
                                     '&:focus-visible': { outline: 'none', boxShadow: 'none' },
                                 }}
-                                disabled={disabled}
                                 onClick={() => {
-                                    // if (!disabled) {
                                     handleOpenPopupShowAnalytique(params.row.id);
-                                    // }
                                 }}
                             >
                                 <LuView style={{ width: 85, height: 30 }} />
@@ -1078,16 +1071,20 @@ export default function ConsultationComponent() {
                                                 PaperComponent={(props) => (
                                                     <div {...props} style={{ width: 600, backgroundColor: 'white' }} />
                                                 )}
-                                                renderOption={(props, option) => (
-                                                    <li {...props}>
-                                                        <span>
-                                                            {option.compte} - {option.libelle}{' '}
-                                                            <span style={{ color: '#1976d2', fontWeight: 600, fontSize: 14 }}>
-                                                                ({option.dossier})
+                                                renderOption={(props, option) => {
+                                                    // Extraire la clé
+                                                    const { key, ...otherProps } = props;
+                                                    return (
+                                                        <li key={option.id} {...otherProps}>
+                                                            <span>
+                                                                {option.compte} - {option.libelle}{' '}
+                                                                <span style={{ color: '#1976d2', fontWeight: 600, fontSize: 14 }}>
+                                                                    ({option.dossier})
+                                                                </span>
                                                             </span>
-                                                        </span>
-                                                    </li>
-                                                )}
+                                                        </li>
+                                                    );
+                                                }}
                                                 options={listePlanComptable}
                                                 getOptionLabel={(option) => `${option.compte || ''} - ${option.libelle || ''}`}
                                                 renderInput={(params) => <TextField {...params} label="Compte" variant="standard" />}

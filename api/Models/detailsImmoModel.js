@@ -6,13 +6,14 @@ module.exports = (sequelize, DataTypes) => {
     id_compte: { type: DataTypes.INTEGER, allowNull: false },
     id_exercice: { type: DataTypes.INTEGER, allowNull: false },
     pc_id: { type: DataTypes.INTEGER, allowNull: false },
+    pc_id_amort: { type: DataTypes.INTEGER, allowNull: false },
 
     code: { type: DataTypes.STRING(255), allowNull: false },
     intitule: { type: DataTypes.STRING(255) },
     lien_ecriture_id: { type: DataTypes.INTEGER },
     fournisseur: { type: DataTypes.STRING(255) },
 
-    date_acquisition: { type: DataTypes.DATEONLY }, 
+    date_acquisition: { type: DataTypes.DATEONLY },
     date_mise_service: { type: DataTypes.DATEONLY },
 
     // Comptables (généraux)

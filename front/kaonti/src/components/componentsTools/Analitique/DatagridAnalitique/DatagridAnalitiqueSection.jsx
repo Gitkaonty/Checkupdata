@@ -784,10 +784,10 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                 >
                     {pourcentageError && (
                         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                            <Typography 
-                                variant="body2" 
-                                sx={{ 
-                                    color: '#d32f2f', 
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: '#d32f2f',
                                     backgroundColor: '#ffebee',
                                     padding: '6px 10px',
                                     borderRadius: '4px',

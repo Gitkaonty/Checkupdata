@@ -632,7 +632,7 @@ exports.importSections = async (req, res) => {
 
 const importSectionsWithProgressLogic = async (req, res, progress) => {
     try {
-        const { compteId, fileId, axeId, sectionsData, recalcPourcentages } = req.body;
+        const { compteId, fileId, axeId, sectionsData, recalcPourcentages, ecraser } = req.body;
 
         let resData = {
             state: false,
@@ -650,6 +650,16 @@ const importSectionsWithProgressLogic = async (req, res, progress) => {
         const id_compte = parseInt(compteId);
         const id_dossier = parseInt(fileId);
         const id_axe = parseInt(axeId);
+
+        if (ecraser) {
+            await caSections.destroy({
+                where: {
+                    id_compte,
+                    id_dossier,
+                    id_exercice
+                }
+            })
+        }
 
         if (isNaN(id_compte) || isNaN(id_dossier) || isNaN(id_axe)) {
             resData.state = false;
