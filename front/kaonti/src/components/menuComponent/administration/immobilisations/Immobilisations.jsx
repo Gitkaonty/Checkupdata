@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Stack, FormControl, InputLabel, Select, MenuItem, CircularProgress, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
+import { Box, Typography, Stack, FormControl, InputLabel, Select, MenuItem, CircularProgress, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, RadioGroup, FormControlLabel, Radio } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { GoAlert } from "react-icons/go";
 import { DataGrid } from '@mui/x-data-grid';
@@ -100,6 +100,8 @@ const Immobilisations = () => {
   const { auth } = useAuth();
   const compteId = auth?.accessToken ? (jwtDecode(auth.accessToken)?.UserInfo?.compteId || null) : null;
 
+  const [filtrageCompte, setFiltrageCompte] = useState('0');
+
   const [openConfirmGenerateEcritures, setOpenConfirmGenerateEcritures] = useState(false);
   const [openConfirmCancelEcritures, setOpenConfirmCancelEcritures] = useState(false);
   const [openConfirmDelete, setOpenConfirmDelete] = useState(false);
@@ -119,28 +121,6 @@ const Immobilisations = () => {
   const [rows, setRows] = useState([]);
   const [selectionModel, setSelectionModel] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const rowsWithTotal = useMemo(() => {
-    if (!Array.isArray(rows) || rows.length === 0) return [];
-    const totalSolde = rows.reduce((s, r) => s + (Number(r.solde) || 0), 0);
-    const totalAmortAnt = rows.reduce((s, r) => s + (Number(r.amort_ant) || 0), 0);
-    const totalDotation = rows.reduce((s, r) => s + (Number(r.dotation) || 0), 0);
-    const totalValeurNette = rows.reduce((s, r) => s + (Number(r.valeur_nette) || 0), 0);
-    const totalVncImmo = rows.reduce((s, r) => s + (Number(r.vnc_immo) || 0), 0);
-    const totalRow = {
-      id: 'total-row',
-      isTotal: true,
-      compte: '',
-      libelle: 'Total',
-      compte_amort: '',
-      solde: totalSolde,
-      amort_ant: totalAmortAnt,
-      dotation: totalDotation,
-      valeur_nette: totalValeurNette,
-      vnc_immo: totalVncImmo,
-    };
-    return [...rows, totalRow];
-  }, [rows]);
 
   // Helper to extract a safe message from Axios/unknown errors
   const getErrMsg = (e) => {
@@ -175,7 +155,7 @@ const Immobilisations = () => {
         setLienDialogOpen(true);
         return;
       }
-      
+
       const { data } = await axios.get('/paramTva/journals/byCompte', {
         params: { id_numcpt: idNumcpt, id_dossier: fid, id_exercice: exoId }, timeout: 60000,
       });
@@ -444,7 +424,7 @@ const Immobilisations = () => {
         toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
         return;
       }
-      
+
       // Récupérer les lignes affichées selon l'onglet actuel
       const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
       if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
@@ -462,11 +442,11 @@ const Immobilisations = () => {
         ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
         : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
       await axios.post(url,
-        { 
-          fileId: fid, 
-          compteId: compteId, 
-          exerciceId: exoId, 
-          detailId: selectedDetailId, 
+        {
+          fileId: fid,
+          compteId: compteId,
+          exerciceId: exoId,
+          detailId: selectedDetailId,
           mode: autoMode,
           lignes: lignesAEnvoyer
         },
@@ -480,10 +460,10 @@ const Immobilisations = () => {
 
   // Fetch details_immo from backend and filter by selected PCs
   const fetchDetails = useCallback(async () => {
-    if (!id || !compteId || !selectedExerciceId) { 
+    if (!id || !compteId || !selectedExerciceId) {
       console.log('[FETCH_DETAILS] Paramètres manquants:', { id, compteId, selectedExerciceId });
-      setDetailsRows([]); 
-      return; 
+      setDetailsRows([]);
+      return;
     }
     const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
     console.log('[FETCH_DETAILS] Requête avec params:', { fileId: id, compteId: onePcId ?? compteId, exerciceId: selectedExerciceId, pcId: onePcId, selectedPcIds });
@@ -495,7 +475,7 @@ const Immobilisations = () => {
     const list = Array.isArray(data?.list) ? data.list : [];
     console.log('[FETCH_DETAILS] Liste extraite:', list, 'Longueur:', list.length);
     const sel = selectedPcIds;
-   // const filtered = sel && sel.length > 0 ? list.filter(d => sel.includes(d.pc_id)) : list;
+    // const filtered = sel && sel.length > 0 ? list.filter(d => sel.includes(d.pc_id)) : list;
     const filtered = list; // Temporaire : afficher toutes les immobilisations sans filtrage
     setDetailsRows(filtered);
   }, [id, compteId, selectedExerciceId, selectedPcIds]);
@@ -514,6 +494,7 @@ const Immobilisations = () => {
     setDetailsDialogMode('add');
     setDetailsForm({
       pc_id: pcId,
+      pc_id_amort: pcRow?.id_amort,
       code: '',
       intitule: pcRow?.libelle || '',
       compte_id: pcRow?.compte || '',
@@ -589,7 +570,7 @@ const Immobilisations = () => {
       const url = `/administration/traitementSaisie/immobilisations/details/${idSel}`;
       const params = { fileId: fid, compteId: onePcId ?? compteId, exerciceId: exoId };
       console.log('[DELETE] URL:', url, 'Params:', params);
-      
+
       await axios.delete(url, { params });
 
       toast.success('Détail supprimé');
@@ -628,6 +609,7 @@ const Immobilisations = () => {
       });
       dateKeys.forEach(k => { const v = cleaned[k]; if (!v || v === '') cleaned[k] = null; });
       cleaned.pc_id = Number(cleaned.pc_id || 0);
+      cleaned.pc_id_amort = Number(cleaned.pc_id_amort || 0);
       cleaned.lien_ecriture_id = cleaned.lien_ecriture_id ? Number(cleaned.lien_ecriture_id) : null;
 
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
@@ -818,6 +800,46 @@ const Immobilisations = () => {
     loadImmobilisations();
   }, [id, compteId, selectedExerciceId]);
 
+  const rowsFiltered = useMemo(() => {
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+
+    return rows.filter((row) => {
+      switch (filtrageCompte) {
+        case "0":
+          return true;
+        case "1":
+          return row.mvtdebit !== 0 || row.mvtcredit !== 0;
+        default:
+          return true;
+      }
+    });
+  }, [rows, filtrageCompte]);
+
+  const rowsWithTotal = useMemo(() => {
+    if (!rowsFiltered || rowsFiltered.length === 0) return [];
+
+    const totalSolde = rowsFiltered.reduce((s, r) => s + (Number(r.solde) || 0), 0);
+    const totalAmortAnt = rowsFiltered.reduce((s, r) => s + (Number(r.amort_ant) || 0), 0);
+    const totalDotation = rowsFiltered.reduce((s, r) => s + (Number(r.dotation) || 0), 0);
+    const totalValeurNette = rowsFiltered.reduce((s, r) => s + (Number(r.valeur_nette) || 0), 0);
+    const totalVncImmo = rowsFiltered.reduce((s, r) => s + (Number(r.vnc_immo) || 0), 0);
+
+    const totalRow = {
+      id: 'total-row',
+      isTotal: true,
+      compte: 'Total',
+      libelle: '',
+      compte_amort: '',
+      solde: totalSolde,
+      amort_ant: totalAmortAnt,
+      dotation: totalDotation,
+      valeur_nette: totalValeurNette,
+      vnc_immo: totalVncImmo,
+    };
+
+    return [...rowsFiltered, totalRow];
+  }, [rowsFiltered]);
+
   const handleOpenConfirmGenerateEcritures = () => {
     if (!selectedExerciceId) {
       toast('Sélectionnez un exercice', { icon: 'ℹ️' });
@@ -862,9 +884,9 @@ const Immobilisations = () => {
 
               setLoadingEcritures(true);
               console.log('[IMMO][FRONTEND] Envoi de la requête de génération:', {
-                fileId: fid, 
-                compteId, 
-                exerciceId: exoId, 
+                fileId: fid,
+                compteId,
+                exerciceId: exoId,
                 detailedByMonth
               });
               const { data } = await axios.post(
@@ -947,15 +969,15 @@ const Immobilisations = () => {
                   }, {});
                   const uniqueList = Object.values(mapByCompte);
                   setRows(uniqueList);
-                  
+
                   // Sélectionner automatiquement le premier compte pour afficher les détails
                   if (uniqueList.length > 0) {
                     const firstRow = uniqueList[0];
                     setSelectionModel([firstRow.id]);
-                    
+
                     // Attendre un peu pour que la sélection soit prise en compte
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    
+
                     // Forcer le rechargement des détails avec le bon pcId
                     const { data: detailsData } = await axios.get('/administration/traitementSaisie/immobilisations/details', {
                       params: { fileId: fid, compteId: firstRow.id, exerciceId: exoId, pcId: firstRow.id },
@@ -966,7 +988,7 @@ const Immobilisations = () => {
                     setDetailsRows(detailsList);
                   }
                 }
-                
+
                 // Recharger les détails
                 await fetchDetails();
               } catch (e) {
@@ -1070,15 +1092,21 @@ const Immobilisations = () => {
               </Stack>
             </Stack>
 
+            <RadioGroup
+              row
+              aria-labelledby="filtrageCompte"
+              name="filtrageCompte"
+              onChange={(e) => {
+                setFiltrageCompte(e.target.value);
+                toast.success(`Filtre appliqué : ${rowsFiltered.length} lignes trouvées`);
+              }}
+              value={filtrageCompte}
+            >
+              <FormControlLabel value="0" control={<Radio disabled={false} />} label="Tous" style={{ marginLeft: "5px" }} />
+              <FormControlLabel value="1" control={<Radio disabled={false} />} label="Comptes peuplés" style={{ marginLeft: "5px" }} />
+            </RadioGroup>
+
             <Box sx={{ flex: 1 }}>
-              {loading && (
-                <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mb: 1 }}>
-                  <CircularProgress size={20} />
-                  <Typography variant="body2" sx={{ color: initial.theme }}>
-                    Chargement des immobilisations...
-                  </Typography>
-                </Stack>
-              )}
               <DataGrid
                 rows={rowsWithTotal}
                 columns={columns}
@@ -1124,6 +1152,9 @@ const Immobilisations = () => {
                   },
                   '& .MuiDataGrid-columnHeader:focus-within': {
                     outline: 'none !important',
+                  },
+                  '& .MuiDataGrid-row.total-row .MuiDataGrid-checkboxInput': {
+                    display: 'none',
                   },
                 }}
                 getRowClassName={(params) => (params.row?.isTotal ? 'total-row' : '')}
@@ -1603,8 +1634,8 @@ const Immobilisations = () => {
                         density="compact"
                         sx={{
                           '& .MuiDataGrid-columnHeaders': {
-                            backgroundColor: initial.theme, 
-                            color: '#fff',              
+                            backgroundColor: initial.theme,
+                            color: '#fff',
                             fontWeight: 'bold',
                           }
                         }}
@@ -1613,23 +1644,23 @@ const Immobilisations = () => {
                     <DialogActions>
                       <Button autoFocus
                         variant="outlined"
-                         style={{
-                            backgroundColor: "transparent",
-                            color: initial.theme,
-                            width: "100px",
-                            textTransform: 'none',
-                            //outline: 'none',
+                        style={{
+                          backgroundColor: "transparent",
+                          color: initial.theme,
+                          width: "100px",
+                          textTransform: 'none',
+                          //outline: 'none',
                         }}
                         onClick={() => setLienDialogOpen(false)}>
-                          Annuler
+                        Annuler
                       </Button>
 
                       <Button autoFocus
-                      variant="contained"
-                       onClick={handleConfirmLienEcriture} 
-                       disabled={journalSelection.length === 0}
+                        variant="contained"
+                        onClick={handleConfirmLienEcriture}
+                        disabled={journalSelection.length === 0}
                         style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}>
-                          Valider
+                        Valider
                       </Button>
                     </DialogActions>
                   </Dialog>

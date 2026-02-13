@@ -1,5 +1,4 @@
 ﻿const db = require("../../Models");
-const { Op } = require("sequelize");
 require('dotenv').config();
 
 const devises = db.devises;
@@ -305,7 +304,7 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const pcId = Number(req.query?.pcId);
         const endDateParam = req.query?.endDate; // optionnel, sinon on prend fin d'exercice
-        const compte = req.querry?.compte;
+        const compte = req.query?.compte;
         if (!fileId || !compteId || !exerciceId || !pcId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -337,11 +336,11 @@ exports.listEcrituresForRapprochement = async (req, res) => {
                 j.compteaux AS compte_ecriture,
                 cj.code AS code_journal
             FROM journals j
-            JOIN codejournals cj 
-                ON cj.id = j.id_journal
+            JOIN codejournals cj ON cj.id = j.id_journal
             WHERE j.id_compte = :compteId
             AND j.id_dossier = :fileId
             AND j.id_exercice = :exerciceId
+            AND cj.compteassocie = j.compteaux
             AND j.compteaux <> :compte
             AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
@@ -351,6 +350,7 @@ exports.listEcrituresForRapprochement = async (req, res) => {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
             type: db.Sequelize.QueryTypes.SELECT,
         });
+        console.log('rows : ', rows);
         return res.json({ state: true, list: rows || [] });
     } catch (err) {
         console.error('[RAPPRO][ECRITURES] error:', err);
@@ -368,137 +368,29 @@ exports.listImmobilisationsPc2 = async (req, res) => {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
 
-        // Lister tous les comptes d'immobilisations (classe 2 hors 28 et 29)
-        // Solde calculé directement à partir des journaux: SUM(debit) - SUM(credit)
-        // Compte d'amortissement déduit (ex: 20100 -> 28010) puis recherché dans le plan comptable.
         const sql = `
-            SELECT
-              pc.pc_id AS id,
-              pc.compte,
-              pc.libelle,
-              pc_amort.id AS compte_amort_id,
-              pc_amort.compte AS compte_amort,
-              -- Solde sur le compte d'immobilisation (journals j)
-              (
-                SELECT COALESCE(SUM(j1.debit), 0)
-                FROM journals j1
-                WHERE j1.id_numcpt = pc.pc_id
-                  AND j1.id_compte = :compteId
-                  AND j1.id_dossier = :fileId
-                  AND j1.id_exercice = :exerciceId
-              ) AS mvtdebit,
-              (
-                SELECT COALESCE(SUM(j1.credit), 0)
-                FROM journals j1
-                WHERE j1.id_numcpt = pc.pc_id
-                  AND j1.id_compte = :compteId
-                  AND j1.id_dossier = :fileId
-                  AND j1.id_exercice = :exerciceId
-              ) AS mvtcredit,
-              (
-                SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
-                FROM journals j1
-                WHERE j1.id_numcpt = pc.pc_id
-                  AND j1.id_compte = :compteId
-                  AND j1.id_dossier = :fileId
-                  AND j1.id_exercice = :exerciceId
-              ) AS solde,
-              -- Amortissement antérieur: compte d'amort, journaux type RAN
-              (
+            WITH journal_agg AS (
                 SELECT
-                  COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
-                  - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
-                FROM journals ja1
-                LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
-                WHERE ja1.id_numcpt = pc_amort.id
-                  AND ja1.id_compte = :compteId
-                  AND ja1.id_dossier = :fileId
-                  AND ja1.id_exercice = :exerciceId
-              ) AS amort_ant,
-              -- Dotation: compte d'amort, journaux type <> RAN (ou sans type)
-              (
+                    j.compteaux,
+                    SUM(j.debit) AS total_debit,
+                    SUM(j.credit) AS total_credit,
+                    SUM(CASE WHEN cj.type = 'RAN' THEN j.credit - j.debit ELSE 0 END) AS amort_ant,
+                    SUM(CASE WHEN cj.type <> 'RAN' OR cj.type IS NULL THEN j.credit - j.debit ELSE 0 END) AS dotation
+                FROM journals j
+                LEFT JOIN codejournals cj ON cj.id = j.id_journal
+                WHERE j.id_compte = :compteId
+                AND j.id_dossier = :fileId
+                AND j.id_exercice = :exerciceId
+                GROUP BY j.compteaux
+            ),
+
+            pc AS (
                 SELECT
-                  COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
-                  - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
-                FROM journals ja2
-                LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
-                WHERE ja2.id_numcpt = pc_amort.id
-                  AND ja2.id_compte = :compteId
-                  AND ja2.id_dossier = :fileId
-                  AND ja2.id_exercice = :exerciceId
-              ) AS dotation,
-              -- Valeur nette et VNC immo: solde - amort_ant - dotation
-              (
-                (
-                  SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
-                  FROM journals j1
-                  WHERE j1.id_numcpt = pc.pc_id
-                    AND j1.id_compte = :compteId
-                    AND j1.id_dossier = :fileId
-                    AND j1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
-                  FROM journals ja1
-                  LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
-                  WHERE ja1.id_numcpt = pc_amort.id
-                    AND ja1.id_compte = :compteId
-                    AND ja1.id_dossier = :fileId
-                    AND ja1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
-                  FROM journals ja2
-                  LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
-                  WHERE ja2.id_numcpt = pc_amort.id
-                    AND ja2.id_compte = :compteId
-                    AND ja2.id_dossier = :fileId
-                    AND ja2.id_exercice = :exerciceId
-                )
-              ) AS valeur_nette,
-              (
-                (
-                  SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
-                  FROM journals j1
-                  WHERE j1.id_numcpt = pc.pc_id
-                    AND j1.id_compte = :compteId
-                    AND j1.id_dossier = :fileId
-                    AND j1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
-                  FROM journals ja1
-                  LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
-                  WHERE ja1.id_numcpt = pc_amort.id
-                    AND ja1.id_compte = :compteId
-                    AND ja1.id_dossier = :fileId
-                    AND ja1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
-                  FROM journals ja2
-                  LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
-                  WHERE ja2.id_numcpt = pc_amort.id
-                    AND ja2.id_compte = :compteId
-                    AND ja2.id_dossier = :fileId
-                    AND ja2.id_exercice = :exerciceId
-                )
-              ) AS vnc_immo
-            FROM (
-              SELECT
-                MIN(id) AS pc_id,
-                compte,
-                MIN(libelle) AS libelle,
-                id_compte,
-                id_dossier
+                    MIN(id) AS pc_id,
+                    compte,
+                    MIN(libelle) AS libelle,
+                    id_compte,
+                    id_dossier
                 FROM dossierplancomptables
                 WHERE id_dossier = :fileId
                 AND id_compte = :compteId
@@ -506,17 +398,49 @@ exports.listImmobilisationsPc2 = async (req, res) => {
                 AND compte NOT LIKE '28%'
                 AND compte NOT LIKE '29%'
                 GROUP BY compte, id_compte, id_dossier
-            ) pc
-            LEFT JOIN dossierplancomptables pc_amort
-              ON pc_amort.id_compte = pc.id_compte
-              AND pc_amort.id_dossier = pc.id_dossier
-              AND pc_amort.compte = CONCAT(
+            )
+
+        SELECT
+            pc.pc_id AS id,
+            pc.compte,
+            pc.libelle AS libelle,
+            pc_amort.compte AS compte_amort,
+            pc_amort.id AS id_amort,
+
+            COALESCE(j_immo.total_debit, 0) AS mvtdebit,
+            COALESCE(j_immo.total_credit, 0) AS mvtcredit,
+            COALESCE(j_immo.total_debit, 0) - COALESCE(j_immo.total_credit, 0) AS solde,
+
+            COALESCE(j_amort.amort_ant, 0) AS amort_ant,
+            COALESCE(j_amort.dotation, 0) AS dotation,
+
+            (COALESCE(j_immo.total_debit,0) - COALESCE(j_immo.total_credit,0)
+            - COALESCE(j_amort.amort_ant,0)
+            - COALESCE(j_amort.dotation,0)) AS valeur_nette,
+
+            (COALESCE(j_immo.total_debit,0) - COALESCE(j_immo.total_credit,0)
+            - COALESCE(j_amort.amort_ant,0)
+            - COALESCE(j_amort.dotation,0)) AS vnc_immo,
+
+            CASE WHEN COALESCE(j_immo.total_debit,0) + COALESCE(j_immo.total_credit,0) > 0 THEN true ELSE false END AS hasmovement
+
+        FROM pc
+        LEFT JOIN dossierplancomptables pc_amort
+            ON pc_amort.id_compte = pc.id_compte
+        AND pc_amort.id_dossier = pc.id_dossier
+        AND pc_amort.compte = CONCAT(
                 SUBSTRING(pc.compte, 1, 1),
                 '8',
                 SUBSTRING(pc.compte, 2, CHAR_LENGTH(pc.compte) - 2)
-              )
-            ORDER BY pc.compte ASC
+            )
+        LEFT JOIN journal_agg j_immo
+            ON j_immo.compteaux = pc.compte
+        LEFT JOIN journal_agg j_amort
+            ON j_amort.compteaux = pc_amort.compte
+        ORDER BY pc.compte ASC;
+
         `;
+
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId },
             type: db.Sequelize.QueryTypes.SELECT,
@@ -921,18 +845,58 @@ exports.generateImmoEcritures = async (req, res) => {
                             id_immob: detailId,
                         };
 
+                        // Compte Charge
+                        const dossierPcCharge = await dossierplancomptable.findByPk(rowCharge.id);
+                        const libelleCompteCharge = dossierPcCharge?.libelle;
+                        const compteauxCharge = dossierPcCharge?.compte;
+                        const comptebaseauxCharge = dossierPcCharge?.baseaux_id;
+
+                        let id_numcptcentraliseCharge = null;
+                        let libelleauxCharge = '';
+                        let comptegenCharge = '';
+                        if (comptebaseauxCharge) {
+                            const cpt = await dossierplancomptable.findByPk(comptebaseauxCharge);
+                            id_numcptcentraliseCharge = cpt?.id || null;
+                            comptegenCharge = cpt?.compte;
+                            libelleauxCharge = cpt?.libelle;
+                        }
+
+                        // Compte amort
+                        const dossierPcAmort = await dossierplancomptable.findByPk(rowCharge.id);
+                        const libelleCompteAmort = dossierPcAmort?.libelle;
+                        const compteauxAmort = dossierPcAmort?.compte;
+                        const comptebaseauxAmort = dossierPcAmort?.baseaux_id;
+
+                        let id_numcptcentraliseAmort = null;
+                        let libelleauxAmort = '';
+                        let comptegenAmort = '';
+                        if (comptebaseauxAmort) {
+                            const cpt = await dossierplancomptable.findByPk(comptebaseauxAmort);
+                            id_numcptcentraliseAmort = cpt?.id || null;
+                            comptegenAmort = cpt?.compte;
+                            libelleauxAmort = cpt?.libelle;
+                        }
+
                         const [lDebit, lCredit] = await Promise.all([
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowCharge.id,
                                 debit: montantMois,
                                 credit: 0,
+                                comptegen: comptegenCharge,
+                                compteaux: compteauxCharge,
+                                libellecompte: libelleCompteCharge,
+                                libelleaux: libelleauxCharge
                             }),
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowAmort.id,
                                 debit: 0,
                                 credit: montantMois,
+                                comptegen: comptegenAmort,
+                                compteaux: compteauxAmort,
+                                libelleCompte: libelleCompteAmort,
+                                libelleaux: libelleauxAmort
                             })
                         ]);
 
@@ -1055,18 +1019,58 @@ exports.generateImmoEcritures = async (req, res) => {
                     id_immob: null,
                 };
 
+                // Compte Charge
+                const dossierPcCharge = await dossierplancomptable.findByPk(rowCharge.id);
+                const libelleCompteCharge = dossierPcCharge?.libelle;
+                const compteauxCharge = dossierPcCharge?.compte;
+                const comptebaseauxCharge = dossierPcCharge?.baseaux_id;
+
+                let id_numcptcentraliseCharge = null;
+                let libelleauxCharge = '';
+                let comptegenCharge = '';
+                if (comptebaseauxCharge) {
+                    const cpt = await dossierplancomptable.findByPk(comptebaseauxCharge);
+                    id_numcptcentraliseCharge = cpt?.id || null;
+                    comptegenCharge = cpt?.compte;
+                    libelleauxCharge = cpt?.libelle;
+                }
+
+                // Compte amort
+                const dossierPcAmort = await dossierplancomptable.findByPk(rowCharge.id);
+                const libelleCompteAmort = dossierPcAmort?.libelle;
+                const compteauxAmort = dossierPcAmort?.compte;
+                const comptebaseauxAmort = dossierPcAmort?.baseaux_id;
+
+                let id_numcptcentraliseAmort = null;
+                let libelleauxAmort = '';
+                let comptegenAmort = '';
+                if (comptebaseauxAmort) {
+                    const cpt = await dossierplancomptable.findByPk(comptebaseauxAmort);
+                    id_numcptcentraliseAmort = cpt?.id || null;
+                    comptegenAmort = cpt?.compte;
+                    libelleauxAmort = cpt?.libelle;
+                }
+
                 const [lDebit, lCredit] = await Promise.all([
                     db.journals.create({
                         ...common,
                         id_numcpt: rowCharge.id,
                         debit: montantTotal,
                         credit: 0,
+                        comptegen: comptegenCharge,
+                        compteaux: compteauxCharge,
+                        libellecompte: libelleCompteCharge,
+                        libelleaux: libelleauxCharge
                     }),
                     db.journals.create({
                         ...common,
                         id_numcpt: rowAmort.id,
                         debit: 0,
                         credit: montantTotal,
+                        comptegen: comptegenAmort,
+                        compteaux: compteauxAmort,
+                        libelleCompte: libelleCompteAmort,
+                        libelleaux: libelleauxAmort
                     })
                 ]);
 
@@ -2700,6 +2704,7 @@ exports.createDetailsImmo = async (req, res) => {
             amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
             duree_amort_mois_fisc, type_amort_fisc,
             compte_amortissement, vnc, date_sortie, prix_vente,
+            pc_id_amort
         } = req.body || {};
 
         if (!fileId || !compteId || !exerciceId || !pcId || !code) {
@@ -2745,7 +2750,7 @@ exports.createDetailsImmo = async (req, res) => {
 
         const insertSql = `
             INSERT INTO details_immo (
-                id_dossier, id_compte, id_exercice, pc_id,
+                id_dossier, id_compte, id_exercice, pc_id, pc_id_amort,
                 code, intitule, lien_ecriture_id, fournisseur,
                 date_acquisition, date_mise_service, duree_amort_mois, type_amort,
                 montant, taux_tva, montant_tva, montant_ht,
@@ -2758,7 +2763,7 @@ exports.createDetailsImmo = async (req, res) => {
                 duree_amort_mois_fisc, type_amort_fisc,
                 created_at, updated_at
             ) VALUES (
-                :fileId, :compteId, :exerciceId, :pcId,
+                :fileId, :compteId, :exerciceId, :pcId, :pc_id_amort,
                 :code, :intitule, :lien_ecriture_id, :fournisseur,
                 :date_acquisition, :date_mise_service, :duree_amort_mois, :type_amort,
                 :montant, :taux_tva, :montant_tva, :montant_ht,
@@ -2774,7 +2779,7 @@ exports.createDetailsImmo = async (req, res) => {
         `;
         const [ret] = await db.sequelize.query(insertSql, {
             replacements: {
-                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId),
+                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId), pc_id_amort: Number(pc_id_amort),
                 code: String(code), intitule: intitule ?? null, lien_ecriture_id: lien_ecriture_id ?? null, fournisseur: fournisseur ?? null,
                 date_acquisition: date_acquisition ? String(date_acquisition).substring(0, 10) : null,
                 date_mise_service: date_mise_service ? String(date_mise_service).substring(0, 10) : null,
@@ -3448,7 +3453,7 @@ exports.addEcriture = async (req, res) => {
         const comptegen_cp = dossierPc_cp?.compte;
 
         if (!dossierPc_pc || !dossierPc_cp) {
-            throw new Error("Compte de contrepartie introuvable");
+            throw new Error("Compte introuvable");
         }
 
         const comptebaseaux_pc = dossierPc_pc?.baseaux_id;

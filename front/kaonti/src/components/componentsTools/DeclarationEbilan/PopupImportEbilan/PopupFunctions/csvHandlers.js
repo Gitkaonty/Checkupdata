@@ -15,6 +15,7 @@ export const parseCsvFile = async ({
     file,
     type,
     expectedHeaders,
+    ecraser,
     processRow,
     startImport,
     setCsvFile,

@@ -1,5 +1,5 @@
 import { React, useState, useEffect } from 'react';
-import { Typography, Stack, Button, Dialog, DialogTitle, DialogContent, DialogActions, Badge, Box, CircularProgress, TextField } from '@mui/material';
+import { Typography, Stack, Button, Dialog, DialogTitle, DialogContent, DialogActions, Badge, Box, CircularProgress, TextField, FormControlLabel, Checkbox } from '@mui/material';
 import { init } from '../../../../../init';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
@@ -14,6 +14,8 @@ import ImportProgressBar from '../../../componentsTools/ImportProgressBar';
 
 export default function PopupImportAnalitique({ open, onClose, fileId, compteId, axeId, onImportSuccess }) {
     let initial = init[0];
+
+    const [ecraser, setEcraser] = useState(false);
     const [nbrAnomalie, setNbrAnomalie] = useState(0);
     const [openDetailsAnomalie, setOpenDetailsAnomalie] = useState(false);
     const [couleurBoutonAnomalie, setCouleurBoutonAnomalie] = useState('white');
@@ -196,14 +198,14 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
-        
+
         link.setAttribute('href', url);
         link.setAttribute('download', 'modele_import_analytique.csv');
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         toast.success('Modèle téléchargé avec succès');
     }
 
@@ -275,7 +277,8 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
             fileId: fileId,
             axeId: axeId,
             sectionsData: sectionsData,
-            recalcPourcentages: choice
+            recalcPourcentages: choice,
+            ecraser
         };
 
         startImport(
@@ -391,8 +394,8 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                     </DialogActions>
                 </Dialog>
             )}
-            <Dialog 
-                open={open} 
+            <Dialog
+                open={open}
                 onClose={handleClose}
                 maxWidth="lg"
                 fullWidth
@@ -403,8 +406,20 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                     </Typography>
                 </DialogTitle>
                 <DialogContent>
+                    <Stack flexDirection="row" alignItems="center" >
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={ecraser}
+                                    onChange={(e) => setEcraser(e.target.checked)}
+                                    color="primary"
+                                />
+                            }
+                            label="Ecraser les anciennes données"
+                        />
+                    </Stack>
                     <Stack spacing={2} sx={{ mt: 2 }}>
-                        <Box>            
+                        <Box>
                             <Stack direction="row" spacing={2}>
                                 <Button
                                     variant="outlined"

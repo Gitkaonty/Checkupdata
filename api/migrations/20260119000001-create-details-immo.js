@@ -49,6 +49,16 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
+      pc_id_amort: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'dossierplancomptables',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
       code: {
         type: Sequelize.STRING(255),
         allowNull: false
