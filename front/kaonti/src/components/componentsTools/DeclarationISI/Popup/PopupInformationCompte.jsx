@@ -21,8 +21,6 @@ const PopupInformationCompte = ({ row, confirmOpen }) => {
         }
     }, [open]);
 
-    console.log('row : ', row);
-
     return (
         <Dialog
             open={open}

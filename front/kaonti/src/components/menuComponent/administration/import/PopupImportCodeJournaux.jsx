@@ -1,5 +1,5 @@
 import { React, useState } from 'react';
-import { Typography, Stack, Button, Dialog, DialogTitle, DialogContent, DialogActions, Badge, Box, IconButton } from '@mui/material';
+import { Typography, Stack, Button, Dialog, DialogTitle, DialogContent, DialogActions, Badge, Box, IconButton, Checkbox, FormControlLabel } from '@mui/material';
 import ImportProgressBar from '../../../componentsTools/ImportProgressBar';
 import { init } from '../../../../../init';
 import toast from 'react-hot-toast';
@@ -17,6 +17,8 @@ import useAxiosPrivate from '../../../../../config/axiosPrivate';
 
 export default function PopupImportCodeJournaux({ open, onClose, fileId, compteId, onImportSuccess }) {
     let initial = init[0];
+    const [ecraser, setEcraser] = useState(false);
+
     const axiosPrivate = useAxiosPrivate();
     const [nbrAnomalie, setNbrAnomalie] = useState(0);
     const [openDetailsAnomalie, setOpenDetailsAnomalie] = useState(false);
@@ -152,7 +154,7 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
             nbrAnom = nbrAnom + 1;
         }
 
-        const banqueOrCaisse = data.filter(item => 
+        const banqueOrCaisse = data.filter(item =>
             item.type && (item.type.toUpperCase() === 'BANQUE' || item.type.toUpperCase() === 'CAISSE')
         );
         const missingCompteAssocie = banqueOrCaisse.filter(item => !item.compteassocie || item.compteassocie.trim() === '');
@@ -198,7 +200,7 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                                     if (value === null || value === undefined) return '';
                                     return String(value).trim();
                                 };
-                                
+
                                 const mappedRow = {
                                     id: index,
                                     code: getValue(row.code),
@@ -209,7 +211,7 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                                     stat: getValue(row.stat),
                                     adresse: getValue(row.adresse)
                                 };
-                                
+
                                 // Debug: log first 3 rows to see what's being read
                                 if (index < 3) {
                                     console.log(`Row ${index}:`, {
@@ -217,7 +219,7 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                                         mapped: mappedRow
                                     });
                                 }
-                                
+
                                 return mappedRow;
                             });
 
@@ -267,14 +269,14 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
-        
+
         link.setAttribute('href', url);
         link.setAttribute('download', 'modele_import_code_journaux.csv');
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         toast.success('Modèle téléchargé avec succès');
     }
 
@@ -291,7 +293,8 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
         const dataToSend = {
             idCompte: compteId,
             idDossier: fileId,
-            codeJournauxData: codeJournauxData
+            codeJournauxData: codeJournauxData,
+            ecraser
         };
 
         axiosPrivate.post('/paramCodeJournaux/importCodeJournaux', dataToSend)
@@ -345,8 +348,8 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                     confirmationState={handleCloseAnomalieDetails}
                 />
             )}
-            <Dialog 
-                open={open} 
+            <Dialog
+                open={open}
                 onClose={handleClose}
                 maxWidth="md"
                 PaperProps={{
@@ -367,18 +370,18 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                                 <Button
                                     onClick={handleOpenAnomalieDetails}
                                     startIcon={
-                                        <Badge 
+                                        <Badge
                                             badgeContent={nbrAnomalie}
                                             color="error"
                                             overlap="circular"
                                         >
-                                            <IoWarningOutline size={22}/>
+                                            <IoWarningOutline size={22} />
                                         </Badge>
                                     }
-                                    sx={{ 
+                                    sx={{
                                         minWidth: "auto",
                                         padding: 0.5,
-                                        color: 'red', 
+                                        color: 'red',
                                         backgroundColor: 'transparent',
                                         marginTop: -0.5
                                     }}
@@ -391,6 +394,18 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                     </Box>
                 </DialogTitle>
                 <DialogContent>
+                    <Stack flexDirection="row" alignItems="center" >
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={ecraser}
+                                    onChange={(e) => setEcraser(e.target.checked)}
+                                    color="primary"
+                                />
+                            }
+                            label="Ecraser les anciennes données"
+                        />
+                    </Stack>
                     <Stack spacing={2} sx={{ mt: 2 }}>
                         <Stack
                             spacing={4}
@@ -446,7 +461,7 @@ export default function PopupImportCodeJournaux({ open, onClose, fileId, compteI
                             </label>
                         </Stack>
 
-                        <ImportProgressBar 
+                        <ImportProgressBar
                             isVisible={traitementWaiting}
                             message={traitementMsg}
                             variant="determinate"

@@ -233,7 +233,7 @@ export const getSaisieColumnHeader = ({
             renderCell: (params) => {
                 const pc = listePlanComptable.find((item) => item.id === params.value);
 
-                if (!pc) return params.value || '';
+                if (!pc) return '';
 
                 return `${pc.compte}`;
             },
@@ -739,7 +739,7 @@ export const getSaisieColumnHeader = ({
                 const pc = listePlanComptable.find((item) => item.id === params.row.compte);
                 const valueDebit = params.row.debit;
                 if (!pc) return null
-                const compteValue = String(pc?.compte || '');
+                // const compteValue = String(pc?.compte || '');
 
                 if (!isCaActive
                     || tableRows.length === 0
@@ -879,8 +879,8 @@ export const getSaisieColumnHeader = ({
             renderCell: (params) => {
                 const pc = listePlanComptable.find((item) => item.id === params.row.compte);
                 if (!pc) return null
-                const compteValue = String(pc?.compte || '');
                 const valueCredit = params.row.credit;
+                // const compteValue = String(pc?.compte || '');
 
                 if (!isCaActive
                     || tableRows.length === 0
@@ -967,19 +967,21 @@ export const getSaisieColumnHeader = ({
 
                         {isLastRow && (
                             <Tooltip title="Ajouter une ligne">
-                                <Button
-                                    onClick={ajouterNouvelleLigne}
-                                    sx={{
-                                        boxShadow: 'none',
-                                        '&:focus': {
-                                            outline: 'none',
+                                <span>
+                                    <Button
+                                        onClick={ajouterNouvelleLigne}
+                                        sx={{
                                             boxShadow: 'none',
-                                        }
-                                    }}
-                                    disabled={isDatagridEditing()}
-                                >
-                                    <IoAddSharp style={{ width: '30px', height: '30px' }} />
-                                </Button>
+                                            '&:focus': {
+                                                outline: 'none',
+                                                boxShadow: 'none',
+                                            }
+                                        }}
+                                        disabled={isDatagridEditing()}
+                                    >
+                                        <IoAddSharp style={{ width: '30px', height: '30px' }} />
+                                    </Button>
+                                </span>
                             </Tooltip>
                         )}
                     </>
