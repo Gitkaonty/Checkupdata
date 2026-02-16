@@ -30,6 +30,7 @@ import ImportProgressBar from '../../../componentsTools/ImportProgressBar';
 import VirtualTableImportJournal from '../../../componentsTools/Administration/VirtualTableImportJournal';
 import usePermission from '../../../../hooks/usePermission';
 import useSSEImport from '../../../../hooks/useSSEImport';
+import PopupCodeJouralNotExist from './PopupCodeJouralNotExist';
 
 export default function ImportJournal() {
     const [valSelectCptDispatch, setValSelectCptDispatch] = useState('None');
@@ -46,6 +47,7 @@ export default function ImportJournal() {
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
+    const [openPopupCodejournal, setOpenPopupCodeJournal] = useState(false);
 
     const [journalData, setJournalData] = useState([]);
     const [planComptable, setPlanComptable] = useState([]);
@@ -480,7 +482,7 @@ export default function ImportJournal() {
         if (nbr === 1) {
             return `Ce devise n'existe`;
         }
-        if (nbr > 0) {
+        if (nbr > 1) {
             return `Ces ${nbr} devises n'existent`;
         }
     }
@@ -489,7 +491,7 @@ export default function ImportJournal() {
         if (nbr === 1) {
             return `Ce code journal n'existe`;
         }
-        if (nbr > 0) {
+        if (nbr > 1) {
             return `Ces ${nbr} codes journaux n'existent`;
         }
     }
@@ -502,12 +504,49 @@ export default function ImportJournal() {
         return `${day}/${month}/${year}`;
     };
 
+    const testIfRanExist = async () => {
+        try {
+            const response = await axios.post('/administration/ImportJournal/testIfRanExist', {
+                id_dossier: Number(fileId),
+                id_compte: Number(compteId)
+            });
+            const resData = response?.data;
 
-    const handleFileSelect = (event) => {
+            if (resData?.state) {
+                return resData?.exist;
+            } else {
+                toast.error(resData?.message || "Erreur inconnue");
+                return false;
+            }
+        } catch (error) {
+            toast.error(error.message);
+            return false;
+        }
+    };
+
+    const getAllCodeRan = async () => {
+        try {
+            const response = await axios.post('/administration/ImportJournal/getAllCodeRan', {
+                id_dossier: Number(fileId),
+                id_compte: Number(compteId)
+            });
+            const resData = response?.data;
+            return resData?.list;
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
+
+    const handleFileSelect = async (event) => {
         const file = event.target.files[0];
 
         if (file) {
-            // Utilise PapaParse pour parser le fichier CSV
+            const ranExist = await testIfRanExist();
+            if (!ranExist) {
+                setOpenPopupCodeJournal(true);
+                return console.log('Code journal de report à nouveau non trouvé, veuillez en créer un');
+            }
+            const codeJournauxRan = await getAllCodeRan();
             Papa.parse(file, {
                 complete: (result) => {
                     const headers = result.meta.fields;
@@ -538,7 +577,9 @@ export default function ImportJournal() {
                             )
                         ];
 
-                        const listeUniqueCompte = listeUniqueCompteInitial.filter(item => item !== '');
+                        const listeUniqueCompte = listeUniqueCompteInitial
+                            .filter(item => item !== '')
+                            .map(val => val.toString().padEnd(longeurCompteStd, "0").slice(0, longeurCompteStd))
 
                         let DataWithId = [];
                         if (fileTypeCSV) {
@@ -546,6 +587,19 @@ export default function ImportJournal() {
                         } else {
                             DataWithId = result.data;
                         }
+
+                        const activeData = DataWithId.filter(r => {
+                            return (
+                                r &&
+                                (
+                                    r.EcritureNum ||
+                                    r.CompteNum ||
+                                    r.JournalCode ||
+                                    r.Debit ||
+                                    r.Credit
+                                )
+                            );
+                        });
 
                         const totalDebit = DataWithId.reduce((acc, item) => acc + parseCSVNumber(item.Debit), 0);
                         const totalCredit = DataWithId.reduce((acc, item) => acc + parseCSVNumber(item.Credit), 0);
@@ -589,7 +643,7 @@ export default function ImportJournal() {
                         //stocker en 2 variables les comptes généraux et comptesaux pour la création
                         const listeUniqueCompteGenInitial = [
                             ...new Set(
-                                result.data
+                                activeData
                                     .map(item => item.CompteNum)
                                     .filter(val => val && val !== 0)
                                     .map(val => val.toString().padEnd(longeurCompteStd, "0").slice(0, longeurCompteStd))
@@ -599,7 +653,7 @@ export default function ImportJournal() {
 
                         const listeUniqueCompteAuxInitial = [
                             ...new Set(
-                                result.data
+                                activeData
                                     .map(item => item.CompAuxNum)
                                     .filter(val => val && val !== 0)
                                     .map(val => val.toString().padEnd(longeurCompteStd, "0").slice(0, longeurCompteStd))
@@ -619,24 +673,24 @@ export default function ImportJournal() {
                         const compteNotInParamsAux = existance(ListeCompteParams, listeUniqueCompteAux);
 
                         // Devises: détecter les codes manquants et les vides
-                        const listeUniqueDevisesInitial = [...new Set(result.data.map(item => (item.Idevise || '').trim()))];
+                        const listeUniqueDevisesInitial = [...new Set(activeData.map(item => (item.Idevise || '').trim()))];
                         const listeUniqueDevises = listeUniqueDevisesInitial.filter(item => item !== '');
                         const listeDevisesParams = [...new Set((devises || []).map(d => d.code))];
                         const devisesNotInParams = existance(listeDevisesParams, listeUniqueDevises);
                         // const devisesNotInParams = [];
-                        const numberOfEmptyDevises = result.data.filter(row => !row.Idevise || row.Idevise.trim() === '').length;
+                        const numberOfEmptyDevises = activeData.filter(row => !row.Idevise || row.Idevise.trim() === '').length;
 
                         const codeJournalNotInParamsFiltered = [...new Set(codeJournalNotInParams.map(val => val))];
 
                         if (codeJournalNotInParamsFiltered.length > 0) {
-                            msg.push(`${pluralizeCodeJournal} pas encore dans votre dossier : ${codeJournalNotInParamsFiltered.join(', ')}`);
+                            msg.push(`${pluralizeCodeJournal(codeJournalNotInParamsFiltered.length)} pas encore dans votre dossier : ${codeJournalNotInParamsFiltered.join(', ')}`);
                             nbrAnom = nbrAnom + 1;
                             setNbrAnomalie(nbrAnom);
                             setCouleurBoutonAnomalie(couleurAnom);
 
                             // Construire { code, libelle } à partir du fichier importé (JournalLib si présent)
                             const missingCodeWithLib = codeJournalNotInParamsFiltered.map((code) => {
-                                const row = result.data.find(r => normalizeCode(r.JournalCode) === code);
+                                const row = activeData.find(r => normalizeCode(r.JournalCode) === code);
                                 const libelle = row && (row.JournalLib || row.JournalLabel || row.Journal || '')
                                     ? (row.JournalLib || row.JournalLabel || row.Journal)
                                     : `Journal ${code}`;
@@ -717,14 +771,16 @@ export default function ImportJournal() {
                         const dateFin = formatDate(end);
 
                         if (dStart || dEnd) {
-                            // Séparer dates manquantes et hors bornes pour des messages cohérents
-                            const missingDate = DataWithId.filter(r => !parseToDate(r.EcritureDate));
-                            const withDate = DataWithId.filter(r => !!parseToDate(r.EcritureDate));
+                            const missingDate = activeData.filter(r => !parseToDate(r.EcritureDate) && !codeJournauxRan.includes(r.JournalCode));
+                            const withDate = activeData.filter(r => !!parseToDate(r.EcritureDate));
 
                             const outOfRange = withDate.filter(r => {
                                 const d = parseToDate(r.EcritureDate);
                                 const afterStart = dStart ? (d && d >= dStart) : true;
                                 const beforeEnd = dEnd ? (d && d <= dEnd) : true;
+
+                                if (codeJournauxRan.includes(r.JournalCode)) return false;
+
                                 return !(afterStart && beforeEnd);
                             });
 
@@ -745,15 +801,24 @@ export default function ImportJournal() {
                                 const d = parseToDate(r.EcritureDate);
                                 const afterStart = dStart ? (d && d >= dStart) : true;
                                 const beforeEnd = dEnd ? (d && d <= dEnd) : true;
+
+                                if (codeJournauxRan.includes(r.JournalCode)) return true;
+
                                 return afterStart && beforeEnd;
                             });
                         }
 
-                        const finalDataCompteFormatted = finalData.map(item => ({
-                            ...item,
-                            CompteNum: padCompte(item.CompteNum),
-                            CompAuxNum: padCompte(item.CompAuxNum)
-                        }));
+                        const finalDataCompteFormatted = finalData.map(item => {
+                            const date = new Date(start);
+                            const exerciceStartFormatted = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+
+                            return {
+                                ...item,
+                                CompteNum: padCompte(item.CompteNum),
+                                CompAuxNum: padCompte(item.CompAuxNum),
+                                exerciceStart: exerciceStartFormatted
+                            };
+                        });
 
                         setJournalData(finalDataCompteFormatted);
                         formikImport.setFieldValue('journalData', finalDataCompteFormatted);
@@ -800,6 +865,7 @@ export default function ImportJournal() {
 
                         event.target.value = null;
                         setProgressValue(100);
+
                         setTimeout(() => {
                             setTraitementJournalWaiting(false);
                             setProgressValue(0);
@@ -881,6 +947,7 @@ export default function ImportJournal() {
                 const selectedObj = allPeriods.find(x => x.id === selectedPeriodeId) || {};
                 const periodeStart = selectedObj.datedebut || selectedObj.date_debut || selectedObj.debut || selectedObj.startDate || null;
                 const periodeEnd = selectedObj.datefin || selectedObj.date_fin || selectedObj.fin || selectedObj.endDate || null;
+
                 // Utiliser SSE pour la progression en temps réel
                 startImport(
                     '/administration/importJournal/importJournalWithProgress',
@@ -950,7 +1017,13 @@ export default function ImportJournal() {
                     :
                     null
             }
-
+            {
+                openPopupCodejournal && (
+                    <PopupCodeJouralNotExist
+                        handleClose={() => setOpenPopupCodeJournal(false)}
+                    />
+                )
+            }
             <TabContext value={"1"}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <TabList aria-label="lab API tabs example">

@@ -20,4 +20,10 @@ router.post('/importJournalWithProgress', importJournalController.importJournalW
 // Récupération de la liste des journals importés
 router.post('/recupListeImporte', upload.single("file"), importJournalController.recupListeImporte);
 
+// Tester si il y a une code journal à nouveau
+router.post('/testIfRanExist', importJournalController.testIfRanExist);
+
+// Récupération des codes journaux reports à nouveau
+router.post('/getAllCodeRan',importJournalController.getAllCodeRan);
+
 module.exports = router;

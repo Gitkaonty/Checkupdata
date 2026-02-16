@@ -8,40 +8,6 @@ const runEtatFinancier = async (id_compte, id_dossier, id_exercice) => {
 
     const rows = await db.sequelize.query(
         `
-CREATE OR REPLACE FUNCTION calc_totalmix_liaison(
-    p_tableau text,
-    p_table_name text,
-    p_id_compte int,
-    p_id_dossier int,
-    p_id_exercice int
-)
-RETURNS TABLE(
-    id_totalmixte int,
-    id_rubrique int,
-    coeff int
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        cr.id_rubrique AS id_totalmixte,
-        cr.compte AS id_rubrique,
-        CASE WHEN cr.equation = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS coeff
-    FROM compterubriqueexternes cr
-    LEFT JOIN rubriquesexternes r
-        ON r.id_rubrique = cr.id_rubrique
-        AND r.id_etat = 'TFTI'
-        AND r.id_compte = p_id_compte
-        AND r.id_dossier = p_id_dossier
-        AND r.id_exercice = p_id_exercice
-    WHERE cr.id_etat = 'TFTI'
-      AND cr.tableau = p_tableau
-      AND cr.compte ~ '^[0-9]+$'
-      AND cr.id_compte = p_id_compte
-      AND cr.id_dossier = p_id_dossier
-      AND cr.id_exercice = p_id_exercice
-      AND r.type = 'LIAISON';
-END;
-$$ LANGUAGE plpgsql;
         -- BALANCE N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N 
         WITH RECURSIVE BALANCE_N AS (
             SELECT
@@ -2450,193 +2416,6 @@ $$ LANGUAGE plpgsql;
 
         -- TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI TFTI N N N N N N N N N N N N N N N N N N N 
 
-        -- LIAISON N BILAN ACTTIF N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N
-
-        TOTALMIXTE_LIAISON_N_BILAN_ACTIF_TFTI AS (
-            SELECT
-                CR.ID_RUBRIQUE AS ID_TOTALMIXTE,
-                CR.COMPTE AS ID_RUBRIQUE,
-                CASE
-                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
-                    ELSE 1
-                END AS COEFF
-            FROM
-                COMPTERUBRIQUEEXTERNES CR
-                LEFT JOIN RUBRIQUESEXTERNES R ON R.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                AND R.ID_ETAT = 'TFTI'
-                AND R.ID_COMPTE = :id_compte
-                AND R.ID_DOSSIER = :id_dossier
-                AND R.ID_EXERCICE = :id_exercice
-            WHERE
-                CR.ID_ETAT = 'TFTI'
-                AND CR.TABLEAU = 'BILAN_ACTIF'
-                AND CR.COMPTE ~ '^[0-9]+$'
-                AND CR.ID_COMPTE = :id_compte
-                AND CR.ID_DOSSIER = :id_dossier
-                AND CR.ID_EXERCICE = :id_exercice
-                AND R.TYPE = 'LIAISON'
-        ),
-
-        TOTAL_MIXTE_LIAISON_N_BILAN_ACTIF_SUM_TFTI AS (
-            SELECT
-                totalmixte.ID_TOTALMIXTE,
-                SUM(tableau.MONTANTNET * totalmixte.COEFF) AS MONTANTNET
-            FROM TOTALMIXTE_LIAISON_N_BILAN_ACTIF_TFTI totalmixte
-            LEFT JOIN BILAN_ACTIF_N tableau
-                ON tableau.ID_RUBRIQUE = totalmixte.ID_RUBRIQUE
-            GROUP BY totalmixte.ID_TOTALMIXTE
-        ),
-
-        -- LIAISON N BILAN PASSIF N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N
-
-        TOTALMIXTE_LIAISON_N_BILAN_PASSIF_TFTI AS (
-            SELECT
-                CR.ID_RUBRIQUE AS ID_TOTALMIXTE,
-                CR.COMPTE AS ID_RUBRIQUE,
-                CASE
-                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
-                    ELSE 1
-                END AS COEFF
-            FROM
-                COMPTERUBRIQUEEXTERNES CR
-                LEFT JOIN RUBRIQUESEXTERNES R ON R.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                AND R.ID_ETAT = 'TFTI'
-                AND R.ID_COMPTE = :id_compte
-                AND R.ID_DOSSIER = :id_dossier
-                AND R.ID_EXERCICE = :id_exercice
-            WHERE
-                CR.ID_ETAT = 'TFTI'
-                AND CR.TABLEAU = 'BILAN_PASSIF'
-                AND CR.COMPTE ~ '^[0-9]+$'
-                AND CR.ID_COMPTE = :id_compte
-                AND CR.ID_DOSSIER = :id_dossier
-                AND CR.ID_EXERCICE = :id_exercice
-                AND R.TYPE = 'LIAISON'
-        ),
-
-        TOTAL_MIXTE_LIAISON_N_BILAN_PASSIF_SUM_TFTI AS (
-            SELECT
-                totalmixte.ID_TOTALMIXTE,
-                SUM(tableau.MONTANTNET * totalmixte.COEFF) AS MONTANTNET
-            FROM TOTALMIXTE_LIAISON_N_BILAN_PASSIF_TFTI totalmixte
-            LEFT JOIN BILAN_PASSIF_N tableau
-                ON tableau.ID_RUBRIQUE = totalmixte.ID_RUBRIQUE
-            GROUP BY totalmixte.ID_TOTALMIXTE
-        ),
-        
-        -- LIAISON N CRN N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N
-
-        TOTALMIXTE_LIAISON_N_CRN_TFTI AS (
-            SELECT
-                CR.ID_RUBRIQUE AS ID_TOTALMIXTE,
-                CR.COMPTE AS ID_RUBRIQUE,
-                CASE
-                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
-                    ELSE 1
-                END AS COEFF
-            FROM
-                COMPTERUBRIQUEEXTERNES CR
-                LEFT JOIN RUBRIQUESEXTERNES R ON R.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                AND R.ID_ETAT = 'TFTI'
-                AND R.ID_COMPTE = :id_compte
-                AND R.ID_DOSSIER = :id_dossier
-                AND R.ID_EXERCICE = :id_exercice
-            WHERE
-                CR.ID_ETAT = 'TFTI'
-                AND CR.TABLEAU = 'CRN'
-                AND CR.COMPTE ~ '^[0-9]+$'
-                AND CR.ID_COMPTE = :id_compte
-                AND CR.ID_DOSSIER = :id_dossier
-                AND CR.ID_EXERCICE = :id_exercice
-                AND R.TYPE = 'LIAISON'
-        ),
-
-        TOTAL_MIXTE_LIAISON_N_CRN_SUM_TFTI AS (
-            SELECT
-                totalmixte.ID_TOTALMIXTE,
-                SUM(tableau.MONTANTNET * totalmixte.COEFF) AS MONTANTNET
-            FROM TOTALMIXTE_LIAISON_N_CRN_TFTI totalmixte
-            LEFT JOIN CRN_N tableau
-                ON tableau.ID_RUBRIQUE = totalmixte.ID_RUBRIQUE
-            GROUP BY totalmixte.ID_TOTALMIXTE
-        ),
-
-        -- LIAISON N CRF N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N
-
-        TOTALMIXTE_LIAISON_N_CRF_TFTI AS (
-            SELECT
-                CR.ID_RUBRIQUE AS ID_TOTALMIXTE,
-                CR.COMPTE AS ID_RUBRIQUE,
-                CASE
-                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
-                    ELSE 1
-                END AS COEFF
-            FROM
-                COMPTERUBRIQUEEXTERNES CR
-                LEFT JOIN RUBRIQUESEXTERNES R ON R.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                AND R.ID_ETAT = 'TFTI'
-                AND R.ID_COMPTE = :id_compte
-                AND R.ID_DOSSIER = :id_dossier
-                AND R.ID_EXERCICE = :id_exercice
-            WHERE
-                CR.ID_ETAT = 'TFTI'
-                AND CR.TABLEAU = 'CRF'
-                AND CR.COMPTE ~ '^[0-9]+$'
-                AND CR.ID_COMPTE = :id_compte
-                AND CR.ID_DOSSIER = :id_dossier
-                AND CR.ID_EXERCICE = :id_exercice
-                AND R.TYPE = 'LIAISON'
-        ),
-
-        TOTAL_MIXTE_LIAISON_N_CRF_SUM_TFTI AS (
-            SELECT
-                totalmixte.ID_TOTALMIXTE,
-                SUM(tableau.MONTANTNET * totalmixte.COEFF) AS MONTANTNET
-            FROM TOTALMIXTE_LIAISON_N_CRF_TFTI totalmixte
-            LEFT JOIN CRF_N tableau
-                ON tableau.ID_RUBRIQUE = totalmixte.ID_RUBRIQUE
-            GROUP BY totalmixte.ID_TOTALMIXTE
-        ),
-
-        -- LIAISON N TFTD N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N
-
-        TOTALMIXTE_LIAISON_N_TFTD_TFTI AS (
-            SELECT
-                CR.ID_RUBRIQUE AS ID_TOTALMIXTE,
-                CR.COMPTE AS ID_RUBRIQUE,
-                CASE
-                    WHEN CR.EQUATION = 'SOUSTRACTIF' THEN -1
-                    ELSE 1
-                END AS COEFF
-            FROM
-                COMPTERUBRIQUEEXTERNES CR
-                LEFT JOIN RUBRIQUESEXTERNES R ON R.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                AND R.ID_ETAT = 'TFTI'
-                AND R.ID_COMPTE = :id_compte
-                AND R.ID_DOSSIER = :id_dossier
-                AND R.ID_EXERCICE = :id_exercice
-            WHERE
-                CR.ID_ETAT = 'TFTI'
-                AND CR.TABLEAU = 'TFTD'
-                AND CR.COMPTE ~ '^[0-9]+$'
-                AND CR.ID_COMPTE = :id_compte
-                AND CR.ID_DOSSIER = :id_dossier
-                AND CR.ID_EXERCICE = :id_exercice
-                AND R.TYPE = 'LIAISON'
-        ),
-
-        TOTAL_MIXTE_LIAISON_N_TFTD_SUM_TFTI AS (
-            SELECT
-                totalmixte.ID_TOTALMIXTE,
-                SUM(tableau.MONTANTNET * totalmixte.COEFF) AS MONTANTNET
-            FROM TOTALMIXTE_LIAISON_N_TFTD_TFTI totalmixte
-            LEFT JOIN TFTD_N tableau
-                ON tableau.ID_RUBRIQUE = totalmixte.ID_RUBRIQUE
-            GROUP BY totalmixte.ID_TOTALMIXTE
-        ),
-
-        -- LIAISON N TFTD N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N
-
         COMPTE_RUBRIQUES_TFTI_N AS (
             SELECT DISTINCT ID_RUBRIQUE
             FROM RUBRIQUESEXTERNES
@@ -2670,17 +2449,25 @@ $$ LANGUAGE plpgsql;
                                     OR (CR2.CONDITION = 'SiC' AND COALESCE(b.SOLDECREDIT,0) <> 0)
                                 )
                             THEN
-                                CASE CR2.SENSCALCUL
-                                    WHEN 'D-C' THEN (COALESCE(b.SOLDEDEBIT,0) - COALESCE(b.SOLDECREDIT,0))
-                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                    WHEN 'C-D' THEN (COALESCE(b.SOLDECREDIT,0) - COALESCE(b.SOLDEDEBIT,0))
-                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                    ELSE 0
-                                END
+                                CASE 
+                                    WHEN r.TYPE IN ('LIAISON','LIAISON N','LIAISON VAR ACTIF','LIAISON VAR PASSIF') THEN
+                                        CASE r.TYPE
+                                            WHEN 'LIAISON' THEN COALESCE(tbl.MONTANTNET,0)
+                                            WHEN 'LIAISON N' THEN COALESCE(tbl.MONTANTNETN1,0)
+                                            WHEN 'LIAISON VAR ACTIF' THEN COALESCE(tbl.MONTANTNETN1,0) - COALESCE(tbl.MONTANTNET,0)
+                                            WHEN 'LIAISON VAR PASSIF' THEN COALESCE(tbl.MONTANTNET,0) - COALESCE(tbl.MONTANTNETN1,0)
+                                        END
+                                    ELSE
+                                        CASE CR2.SENSCALCUL
+                                            WHEN 'D-C' THEN COALESCE(b.SOLDEDEBIT,0) - COALESCE(b.SOLDECREDIT,0)
+                                            WHEN 'C-D' THEN COALESCE(b.SOLDECREDIT,0) - COALESCE(b.SOLDEDEBIT,0)
+                                            ELSE 0
+                                        END
+                                END * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                             ELSE 0
                         END
                     ),0
-                ) 
+                )
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
                     FROM AJUSTEMENTEXTERNES A
@@ -2692,65 +2479,48 @@ $$ LANGUAGE plpgsql;
                     AND A.NATURE = 'BRUT'
                 ),0) AS MONTANTBRUT,
 
-                COALESCE(
-                    SUM(
-                        CASE
-                            WHEN CR2.NATURE = 'AMORT'
-                                AND (
-                                    CR2.CONDITION = 'SOLDE'
-                                    OR (CR2.CONDITION = 'SiD' AND COALESCE(b.SOLDEDEBIT,0) <> 0)
-                                    OR (CR2.CONDITION = 'SiC' AND COALESCE(b.SOLDECREDIT,0) <> 0)
-                                )
-                            THEN
-                                CASE CR2.SENSCALCUL
-                                    WHEN 'D-C' THEN (COALESCE(b.SOLDEDEBIT,0) - COALESCE(b.SOLDECREDIT,0))
-                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                    WHEN 'C-D' THEN (COALESCE(b.SOLDECREDIT,0) - COALESCE(b.SOLDEDEBIT,0))
-                                        * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                    ELSE 0
-                                END
-                            ELSE 0
-                        END
-                    ),0
-                ) 
-                + COALESCE((
-                    SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
-                    WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                    AND A.ID_COMPTE = :id_compte
-                    AND A.ID_DOSSIER = :id_dossier
-                    AND A.ID_EXERCICE = :id_exercice
-                    AND A.ID_ETAT = 'TFTI'
-                    AND A.NATURE = 'AMORT'
-                ),0) AS MONTANTAMORT
+                0 AS MONTANTAMORT
 
             FROM COMPTE_RUBRIQUES_TFTI_N CR
 
             LEFT JOIN COMPTERUBRIQUEEXTERNES CR2
                 ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
-            AND CR2.ID_COMPTE = :id_compte
-            AND CR2.ID_DOSSIER = :id_dossier
-            AND CR2.ID_EXERCICE = :id_exercice
-            AND CR2.ID_ETAT = 'TFTI'
-            AND CR2.ACTIVE = true
+                AND CR2.ID_COMPTE = :id_compte
+                AND CR2.ID_DOSSIER = :id_dossier
+                AND CR2.ID_EXERCICE = :id_exercice
+                AND CR2.ID_ETAT = 'TFTI'
+                AND CR2.ACTIVE = TRUE
+
+            LEFT JOIN RUBRIQUESEXTERNES r
+                ON r.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                AND r.ID_COMPTE = :id_compte
+                AND r.ID_DOSSIER = :id_dossier
+                AND r.ID_EXERCICE = :id_exercice
+                AND r.ID_ETAT = 'TFTI'
 
             LEFT JOIN BALANCE_N b
                 ON CR2.COMPTE IS NOT NULL
-            AND b.COMPTE LIKE CR2.COMPTE || '%'
+                AND b.COMPTE LIKE CR2.COMPTE || '%'
+
+            LEFT JOIN (
+                SELECT ID_RUBRIQUE, MONTANTNET, MONTANTNETN1
+                FROM BILAN_ACTIF_COMPLET
+                UNION ALL
+                SELECT ID_RUBRIQUE, MONTANTNET, MONTANTNETN1
+                FROM BILAN_PASSIF_COMPLET
+                UNION ALL
+                SELECT ID_RUBRIQUE, MONTANTNET, MONTANTNETN1
+                FROM CRN_COMPLET
+                UNION ALL
+                SELECT ID_RUBRIQUE, MONTANTNET, MONTANTNETN1
+                FROM CRF_COMPLET
+                UNION ALL
+                SELECT ID_RUBRIQUE, MONTANTNET, MONTANTNETN1
+                FROM TFTD_COMPLET
+            ) tbl
+                ON tbl.ID_RUBRIQUE = CR2.ID_RUBRIQUE
 
             GROUP BY CR.ID_RUBRIQUE
-        ),
-
-        RUBRIQUE_UNIQUE_TFTI_N AS (
-            SELECT DISTINCT ON (ID_RUBRIQUE) *
-            FROM RUBRIQUESEXTERNES
-            WHERE 
-                ID_COMPTE = :id_compte
-                AND ID_DOSSIER = :id_dossier
-                AND ID_EXERCICE = :id_exercice
-                AND ID_ETAT = 'TFTI'
-                AND SUBTABLE = 0
-            ORDER BY ID_RUBRIQUE, ID_ETAT, ORDRE
         ),
 
         COMPTERUBRIQUES_UNIQUE_TFTI_N AS (
@@ -3098,7 +2868,7 @@ $$ LANGUAGE plpgsql;
                 ON n1.ID_RUBRIQUE = n.ID_RUBRIQUE
         )
 
-        SELECT * FROM TOTAL_MIXTE_LIAISON_N_BILAN_ACTIF_SUM_TFTI
+        SELECT * FROM LIGNE_DETAIL_TFTI_N
 
         `,
         {

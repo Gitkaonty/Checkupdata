@@ -180,7 +180,12 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING(250),
             unique: false,
             allowNull: true
-        }
+        },
+        vraiedate: {
+            type: DataTypes.DATE,
+            unique: false,
+            allowNull: true
+        },
     }, { timestamps: true },)
     return journals
 }
