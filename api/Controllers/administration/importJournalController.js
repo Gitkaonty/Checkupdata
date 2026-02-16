@@ -595,6 +595,13 @@ const recupListeImporte = async (req, res) => {
   }
 }
 
+const parseDateDMYLocal = (str) => {
+  if (!str) return null;
+  const [day, month, year] = str.split('/').map(Number);
+  if (!day || !month || !year) return null;
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+};
+
 const importJournalWithProgressLogic = async (req, res, progress) => {
   try {
     const { compteId, userId, fileId, selectedPeriodeId, fileTypeCSV, valSelectCptDispatch, journalData, longeurCompteStd, periodeStart, periodeEnd } = req.body;
@@ -882,30 +889,41 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               const n = parseFloat(s);
               return isNaN(n) ? 0 : n;
             };
+
             const debit = normalizeAmount(item.Debit);
             const credit = normalizeAmount(item.Credit);
 
-            const dateEcrit = toMidnight(parseDate(item.EcritureDate));
-            const datePiece = toMidnight(parseDate(item.PieceDate));
-            const datelettrage = toMidnight(parseDate(item.DateLet));
+            let dateEcriture = null;
+            let vraiedate = null;
 
-            // Ignorer les lignes sans date d'écriture
-            if (!dateEcrit) {
+            if (idCodeJournal && idCodeJournal.type === 'RAN') {
+
+              if (item.exerciceStart && item.exerciceStart.includes('/')) {
+                const [dayExercice, monthExercice, yearExercice] = item.exerciceStart.split('/');
+                dateEcriture = `${yearExercice}-${monthExercice}-${dayExercice}`;
+              }
+
+              if (item.EcritureDate && item.EcritureDate.includes('/')) {
+                const [dayEcriture, monthEcriture, yearEcriture] = item.EcritureDate.split('/');
+                vraiedate = `${yearEcriture}-${monthEcriture}-${dayEcriture}`;
+              }
+            }
+            else {
+              if (item.EcritureDate && item.EcritureDate.includes('/')) {
+                const [dayEcriture, monthEcriture, yearEcriture] = item.EcritureDate.split('/');
+                dateEcriture = `${yearEcriture}-${monthEcriture}-${dayEcriture}`;
+                vraiedate = dateEcriture;
+              }
+            }
+
+            if (!dateEcriture) {
               skippedCount++;
               processedLines++;
               continue;
             }
 
-            if (debutExo || finExo) {
-              const afterStart = debutExo ? (dateEcrit && dateEcrit >= debutExo) : true;
-              const beforeEnd = finExo ? (dateEcrit && dateEcrit <= finExo) : true;
-              if (!(afterStart && beforeEnd)) {
-                skippedCount++;
-                processedLines++;
-                continue;
-              }
-            }
-
+            const datePiece = toMidnight(parseDate(item.PieceDate));
+            const datelettrage = toMidnight(parseDate(item.DateLet));
             const devCode = String(item.Idevise || '').trim() || 'MGA';
             const devId = deviseMap.get(devCode) || defaultDeviseId || 0;
 
@@ -916,7 +934,7 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               id_dossier: Number(fileId),
               id_exercice: Number(selectedPeriodeId),
               id_ecriture: newIdEcriture,
-              dateecriture: dateEcrit,
+              dateecriture: dateEcriture,
               id_journal: codeJournalId,
               id_numcpt: compteNumId,
               id_numcptcentralise: IdCompAuxNum,
@@ -934,7 +952,8 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               comptegen: rawGen,
               compteaux: rawAuxToAdd,
               libelleaux: rawGen === rawAuxToAdd ? foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100) : foundAux?.libelle || String(item.EcritureLib || '').substring(0, 100),
-              libellecompte: foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100)
+              libellecompte: foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100),
+              vraiedate: vraiedate
             });
 
             // Gestion de la colonne analytique
@@ -969,14 +988,9 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
         }
       }
 
-      // Mettre à jour la progression après chaque lot
       const batchProgress = 15 + Math.floor((processedLines / totalLines) * 70);
       progress.update(processedLines, totalLines, 'Importation des écritures...', batchProgress);
     }
-
-    // progress.step('Mise à jour des soldes...', 90);
-    // fonctionUpdateBalanceSold.updateSold(compteId, fileId, selectedPeriodeId, [], true);
-
     progress.step('Finalisation...', 95);
 
     const finalMsg = skippedCount > 0
@@ -997,6 +1011,62 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
   }
 };
 
+const testIfRanExist = async (req, res) => {
+  try {
+    const { id_dossier, id_compte } = req.body;
+    if (!id_dossier) {
+      return res.json({ state: false, exist: false, message: 'Dossier non trouvé' });
+    }
+    if (!id_compte) {
+      return res.json({ state: false, exist: false, message: 'Compte non trouvé' });
+    }
+    const resData = {
+      exist: false,
+      state: true
+    }
+    const codeJournalsRAN = await codejournals.findOne({
+      where: {
+        id_dossier,
+        id_compte,
+        type: 'RAN',
+      }
+    })
+    if (codeJournalsRAN) {
+      resData.exist = true;
+      resData.state = true
+    }
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+    return res.json({ existe: false, state: false, message: error.message });
+  }
+}
+
+const getAllCodeRan = async (req, res) => {
+  try {
+    const { id_dossier, id_compte } = req.body;
+    if (!id_dossier) {
+      return res.json({ state: false, exist: false, message: 'Dossier non trouvé' });
+    }
+    if (!id_compte) {
+      return res.json({ state: false, exist: false, message: 'Compte non trouvé' });
+    }
+
+    const codeJournalsRan = await codejournals.findAll({
+      where: { id_dossier, id_compte, type: 'RAN' },
+      attributes: ['code'],
+    });
+
+    const codes = codeJournalsRan.map(item => item.code);
+
+    return res.json({ list: codes });
+
+  } catch (error) {
+    console.log(error);
+    return res.json({ existe: false, state: false, message: error.message });
+  }
+}
+
 const importJournalWithProgress = withSSEProgress(importJournalWithProgressLogic, {
   batchSize: 20
 });
@@ -1006,5 +1076,7 @@ module.exports = {
   createNotExistingCompte,
   importJournal,
   importJournalWithProgress,
-  recupListeImporte
+  recupListeImporte,
+  testIfRanExist,
+  getAllCodeRan
 };

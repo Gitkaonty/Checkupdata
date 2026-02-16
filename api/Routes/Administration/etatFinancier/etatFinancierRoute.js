@@ -19,7 +19,7 @@ router.post('/addModifyAjustementExterne', verifyJWT, verifyPermission('ADD', 'E
 router.get('/getAjustementExterne', etatFinancierController.getAjustementExterne);
 
 // Suppréssion ajustement externe
-router.delete('/deleteAjustementExterne/:id', verifyJWT, verifyPermission('DELETE') , etatFinancierController.deleteAjustementExterne);
+router.delete('/deleteAjustementExterne/:id', verifyJWT, verifyPermission('DELETE'), etatFinancierController.deleteAjustementExterne);
 
 // Exportation en pdf
 router.get('/exportEtatFinancierToPdf/:id_compte/:id_dossier/:id_exercice/:id_etat', etatFinancierController.exportEtatFinancierToPdf);
@@ -38,5 +38,11 @@ router.post('/getVerouillageEtatFinancier', etatFinancierController.getVerouilla
 
 // Vérouiller une tableau états financier
 router.post('/lockEtatFinancier', etatFinancierController.lockEtatFinancier);
+
+// Récupération état financier 2
+router.post('/getEtatFinancier', etatFinancierController.getEtatFinancier);
+
+// Récupération de la détail des lignes
+router.post('/getEtatFinancierDetail', etatFinancierController.getEtatFinancierDetail);
 
 module.exports = router;
