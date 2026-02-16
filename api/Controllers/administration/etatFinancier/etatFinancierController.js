@@ -20,6 +20,10 @@ const copyRubriqueExterne = fonctionCopyRubrique.copyRubriqueExterne;
 const fonctionAjoutEtat = require('../../../Middlewares/EtatFinanciere/etatEtatFinancier');
 const createEtatsEtatFinancierIfNotExist = fonctionAjoutEtat.createEtatsEtatFinancierIfNotExist;
 
+const recupEtatFinancier = require('../../../Middlewares/Administration/EtatFinancier');
+const getEtatFinancierComplet = recupEtatFinancier.getEtatFinancierComplet;
+const getDetailLigneEtatFinancier = recupEtatFinancier.getDetailLigneEtatFinancier;
+
 const rubriquesExternes = db.rubriquesExternes;
 const dossierplancomptableModel = db.dossierplancomptable;
 const compteRubriquesExternes = db.compteRubriquesExternes;
@@ -973,6 +977,54 @@ exports.lockEtatFinancier = async (req, res) => {
         }
 
         return res.json(resData);
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+exports.getEtatFinancier = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, id_etat } = req.body;
+        // if (!id_etat) {
+        //   return res.json({ state: false, message: 'Tableau non trouvé' });
+        // }
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Compte non trouvé' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Dossier non trouvé' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: ('Exercice non trouvé') });
+        }
+
+        const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice, id_etat);
+        return res.json({ data, nbr: data.length });
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+exports.getEtatFinancierDetail = async (req, res) => {
+    try {
+        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable } = req.body;
+        if (!id_etat) {
+            return res.json({ state: false, message: 'Tableau non trouvé' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Dossier non trouvé' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: 'Exercice non trouvé' });
+        }
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Compte non trouvé' });
+        }
+        if (!id_rubrique) {
+            return res.json({ state: false, message: 'Rubrique non trouvé' });
+        }
+        const data = await getDetailLigneEtatFinancier(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable);
+        return res.json({ state: true, detail: data });
     } catch (error) {
         console.log(error);
     }

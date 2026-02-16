@@ -2762,7 +2762,7 @@ const getDetailLigneEbilan = async (req, res) => {
     //   return res.json({ state: false, message: 'Subtable non trouvé' })
     // }
     const data = await getDetailLigne(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable);
-    return res.json({ state: true, detail: data })
+    return res.json({ state: true, detail: data });
   } catch (error) {
     console.error(error);
     return res.status(500).json({

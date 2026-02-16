@@ -34,7 +34,7 @@ const PopupViewDetailsImportJournal = ({ msg, confirmationState }) => {
             maxWidth="md"
             fullWidth={true}
         >
-            <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title" style={{ fontWeight: 'bold', width: '600px', height: '50px', backgroundColor: 'transparent' }}>
+            <DialogTitle sx={{ m: 0, p: 0 }} id="customized-dialog-title" style={{ fontWeight: 'bold', width: '600px', height: '40px', backgroundColor: 'transparent' }}>
 
             </DialogTitle>
 
@@ -55,22 +55,27 @@ const PopupViewDetailsImportJournal = ({ msg, confirmationState }) => {
 
                 <Stack width={"95%"} height={"500px"} spacing={0} alignItems={'flex-start'}
                     direction={"column"} style={{ marginLeft: '20px' }}>
-                    <Typography sx={{ ml: 2, mb: 1, mt: 2, color: 'red' }} variant="h7" component="div" >
+                    <Typography sx={{ ml: 2, mb: 1, mt: 0, color: 'red' }} variant="h7" component="div" >
                         Listes des anomalies:
                     </Typography>
 
                     <ul>
-                        {msg.map((anom, index) => (
-                            <li key={index}>
-                                <Typography key={index} sx={{ ml: 2, mb: 2 }} variant="h7" component="div" >
-                                    {anom}
-                                </Typography>
-                            </li>
+                        {msg.length > 0 ?
+                            msg.map((anom, index) => (
+                                <li key={index}>
+                                    <Typography key={index} sx={{ ml: 2, mb: 2 }} variant="h7" component="div" >
+                                        {anom}
+                                    </Typography>
+                                </li>
 
-                        ))}
+                            )) :
+                            <li>
+                                Aucune anomalie trouvée
+                            </li>
+                        }
                     </ul>
 
-                    <Typography sx={{ ml: 2, mb: 1, mt: 5, color: 'red' }} variant="h7" component="div" >
+                    <Typography sx={{ ml: 2, mb: 1, mt: 2, color: 'red' }} variant="h7" component="div" >
                         Attention:
                     </Typography>
 
