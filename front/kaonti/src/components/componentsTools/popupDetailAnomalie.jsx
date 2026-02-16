@@ -1,6 +1,5 @@
-import React from 'react';
 import { useState, useRef } from 'react';
-import { Typography, Stack, Tooltip } from '@mui/material';
+import { Stack, Tooltip } from '@mui/material';
 import Button from '@mui/material/Button';
 import { styled } from '@mui/material/styles';
 import Dialog from '@mui/material/Dialog';
@@ -10,30 +9,29 @@ import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import { init } from '../../../init';
-import { CiWarning } from "react-icons/ci"; 
-import { IoIosWarning } from "react-icons/io";
 import { DataGridStyle } from './DatagridToolsStyle';
 import QuickFilter from './DatagridToolsStyle';
-import { DataGrid, frFR, GridRowEditStopReasons, GridRowModes } from '@mui/x-data-grid';
+import { DataGrid, frFR, GridRowModes } from '@mui/x-data-grid';
 import { FaRegPenToSquare } from "react-icons/fa6";
 import { VscClose } from "react-icons/vsc";
 import { TfiSave } from "react-icons/tfi";
 import axios from '../../../../kaonti/config/axios';
 import toast from 'react-hot-toast';
 import { BsCheckLg } from "react-icons/bs";
+import ListeCompteNonAssocie from './DeclarationEbilan/ListeCompteNonAssocie';
 
 let initial = init[0];
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialogContent-root': {
-      padding: theme.spacing(2),
-        },
-        '& .MuiDialogActions-root': {
+        padding: theme.spacing(2),
+    },
+    '& .MuiDialogActions-root': {
         padding: theme.spacing(1),
-        },
-    }));  
+    },
+}));
 
-    const PopupDetailAnomalie = ({title, rows, confirmationState}) =>{
+const PopupDetailAnomalie = ({ id_compte, id_dossier, id_exercice, title, rows, confirmationState, tableToRefresh }) => {
     const handleCloseDeleteModel = () => {
         confirmationState(true);
     }
@@ -51,44 +49,44 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
     //colonne du tableau
     const columns = [
-        { 
-            field: 'id', 
-            headerName: 'ID', 
-            width: 80, 
-            editable: false 
+        {
+            field: 'id',
+            headerName: 'ID',
+            width: 80,
+            editable: false
         },
-        { 
-            field: 'anomalie', 
-            headerName: 'Anomalies', 
-            width: 900, 
-            editable: false 
+        {
+            field: 'anomalie',
+            headerName: 'Anomalies',
+            width: 900,
+            editable: false
         },
-        { 
-            field: 'valide', 
-            headerName: 'Validée', 
-            width: 80, 
-            editable: true, 
+        {
+            field: 'valide',
+            headerName: 'Validée',
+            width: 80,
+            editable: true,
             type: 'boolean',
             renderCell: (params) => (
-            <span style={{
-                color: params.value ? 'green' : 'red',
-                fontWeight: 'bold'
-            }}>
-                {params.value ? <BsCheckLg style={{width: 25, height: 25}}/> : <CloseIcon />}
-            </span>
-            ) 
+                <span style={{
+                    color: params.value ? 'green' : 'red',
+                    fontWeight: 'bold'
+                }}>
+                    {params.value ? <BsCheckLg style={{ width: 25, height: 25 }} /> : <CloseIcon />}
+                </span>
+            )
         },
-        { 
-            field: 'comments', 
-            headerName: 'Commentaires', 
-            width: 470, 
-            editable: true,  
+        {
+            field: 'comments',
+            headerName: 'Commentaires',
+            width: 470,
+            editable: true,
         },
     ];
-   
+
     //save modification
     const handleEditClick = (ids) => () => {
-        if(ids.length === 1){
+        if (ids.length === 1) {
             const row = rows.find(r => r.id === ids[0]);
             setEditRow(row);
             setNewRow(null);
@@ -108,21 +106,21 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     }
 
     const saveSelectedRow = (ids) => {
-        if(ids.length === 1){
+        if (ids.length === 1) {
             setSelectedRowId(ids);
             setDisableModifyBouton(false);
             setDisableSaveBouton(false);
             setDisableCancelBouton(false);
-        }else{
+        } else {
             setSelectedRowId([]);
             setDisableModifyBouton(true);
             setDisableSaveBouton(true);
             setDisableCancelBouton(true);
         }
-      }
- 
+    }
+
     const handleSaveClick = (ids) => () => {
-         if (ids.length === 1) {
+        if (ids.length === 1) {
             const id = ids[0];
 
             // Étape 1 : forcer la fin d’édition
@@ -133,10 +131,10 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
             setTimeout(() => {
                 const rowToSave = editRowRef.current;
-                if(rowToSave){
+                if (rowToSave) {
                     axios.put(`/declaration/ebilan/savemodifAnom/${rowToSave.id}`, rowToSave)
                         .then(res => {
-                            if(res.data && res.data.state){
+                            if (res.data && res.data.state) {
                                 //fetchPersonnels();
                                 setEditRow(null);
                                 setNewRow(null);
@@ -148,11 +146,11 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
                                 setListeAnomalie(res.data.liste);
                                 editRowRef.current = null;
                                 toast.success(res.data.msg || 'Modifications effectuées avec succès.');
-                            }else{
+                            } else {
                                 toast.error(res.data.msg || 'Erreur lors de la modification');
                             }
                         })
-                    .catch(() => toast.error('Erreur lors de la modification'));
+                        .catch(() => toast.error('Erreur lors de la modification'));
                 }
             }, 100);
         }
@@ -164,7 +162,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
             [id]: { mode: GridRowModes.View, ignoreModifications: true },
         });
     };
- 
+
     return (
         <BootstrapDialog
             onClose={handleCloseDeleteModel}
@@ -173,12 +171,12 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
             maxWidth='xl'
             fullWidth={true}
         >
-            <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title" style={{fontWeight:'normal', width:'600px', height:'50px',backgroundColor : 'transparent'}}>
+            <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title" style={{ fontWeight: 'normal', width: '600px', height: '50px', backgroundColor: 'transparent' }}>
                 Liste des anomalies du tableau {title}
             </DialogTitle>
-            
+
             <IconButton
-                style={{color:'red', textTransform: 'none', outline: 'none'}}
+                style={{ color: 'red', textTransform: 'none', outline: 'none' }}
                 aria-label="close"
                 onClick={handleCloseDeleteModel}
                 sx={{
@@ -187,75 +185,97 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
                     top: 8,
                     color: (theme) => theme.palette.grey[500],
                 }}
-                >
-            <CloseIcon />
+            >
+                <CloseIcon />
             </IconButton>
             <DialogContent >
                 <Stack width={'100%'} height={'30vw'}>
                     <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                        direction={"row"} justifyContent={"right"}>
-                       
-                        <Tooltip title="Modifier la ligne sélectionnée">
-                            <IconButton
-                            disabled={disableModifyBouton}
-                            variant="contained" 
-                            onClick={handleEditClick(selectedRowId)}
-                            style={{width:"35px", height:'35px', 
-                                borderRadius:"2px", borderColor: "transparent",
-                                backgroundColor: initial.theme,
-                                textTransform: 'none', outline: 'none'
-                                }}
-                            >
-                                <FaRegPenToSquare style={{width:'25px', height:'25px', color:'white'}}/>
-                            </IconButton>
-                        </Tooltip>
+                        direction={"row"} justifyContent={'space-between'} >
+                        <Stack
+                            width={'50%'}
+                        >
+                            {
+                                ['TFTD'].includes(tableToRefresh) && (
+                                    <ListeCompteNonAssocie
+                                        id_compte={id_compte}
+                                        id_dossier={id_dossier}
+                                        id_exercice={id_exercice}
+                                        id_etat={tableToRefresh}
+                                    />
+                                )
+                            }
+                        </Stack>
+                        <Stack
+                            direction={'row'} spacing={0.5}
+                        >
+                            <Tooltip title="Modifier la ligne sélectionnée">
+                                <span>
+                                    <IconButton
+                                        disabled={disableModifyBouton}
+                                        variant="contained"
+                                        onClick={handleEditClick(selectedRowId)}
+                                        style={{
+                                            width: "35px", height: '35px',
+                                            borderRadius: "2px", borderColor: "transparent",
+                                            backgroundColor: initial.theme,
+                                            textTransform: 'none', outline: 'none'
+                                        }}
+                                    >
+                                        <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
 
-                        <Tooltip title="Sauvegarder les modifications">
-                            <span>
-                                <IconButton 
-                                disabled={disableSaveBouton}
-                                variant="contained" 
-                                onClick={handleSaveClick(selectedRowId)}
-                                style={{width:"35px", height:'35px', 
-                                    borderRadius:"2px", borderColor: "transparent",
-                                    backgroundColor: initial.theme,
-                                    textTransform: 'none', outline: 'none'
-                                }}
-                                >
-                                    <TfiSave style={{width:'50px', height:'50px',color: 'white'}}/>
-                                </IconButton>
-                            </span>
-                        </Tooltip>
+                            <Tooltip title="Sauvegarder les modifications">
+                                <span>
+                                    <IconButton
+                                        disabled={disableSaveBouton}
+                                        variant="contained"
+                                        onClick={handleSaveClick(selectedRowId)}
+                                        style={{
+                                            width: "35px", height: '35px',
+                                            borderRadius: "2px", borderColor: "transparent",
+                                            backgroundColor: initial.theme,
+                                            textTransform: 'none', outline: 'none'
+                                        }}
+                                    >
+                                        <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
 
-                        <Tooltip title="Annuler les modifications">
-                            <span>
-                                <IconButton 
-                                disabled={disableCancelBouton}
-                                variant="contained" 
-                                onClick={handleCancelClick(selectedRowId)}
-                                style={{width:"35px", height:'35px', 
-                                    borderRadius:"2px", borderColor: "transparent",
-                                    backgroundColor: initial.button_delete_color,
-                                    textTransform: 'none', outline: 'none'
-                                }}
-                                >
-                                    <VscClose style={{width:'50px', height:'50px', color: 'white'}}/>
-                                </IconButton>
-                            </span>
-                        </Tooltip>
+                            <Tooltip title="Annuler les modifications">
+                                <span>
+                                    <IconButton
+                                        disabled={disableCancelBouton}
+                                        variant="contained"
+                                        onClick={handleCancelClick(selectedRowId)}
+                                        style={{
+                                            width: "35px", height: '35px',
+                                            borderRadius: "2px", borderColor: "transparent",
+                                            backgroundColor: initial.button_delete_color,
+                                            textTransform: 'none', outline: 'none'
+                                        }}
+                                    >
+                                        <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        </Stack>
                     </Stack>
 
                     <DataGrid
-                        disableMultipleSelection = {DataGridStyle.disableMultipleSelection}
-                        disableColumnSelector = {DataGridStyle.disableColumnSelector}
-                        disableDensitySelector = {DataGridStyle.disableDensitySelector}
+                        disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                        disableColumnSelector={DataGridStyle.disableColumnSelector}
+                        disableDensitySelector={DataGridStyle.disableDensitySelector}
                         disableRowSelectionOnClick
                         disableSelectionOnClick={true}
                         localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                        slots={{toolbar : QuickFilter}}
-                        sx={ DataGridStyle.sx}
-                        rowHeight= {DataGridStyle.rowHeight}
-                        columnHeaderHeight= {DataGridStyle.columnHeaderHeight}
+                        slots={{ toolbar: QuickFilter }}
+                        sx={DataGridStyle.sx}
+                        rowHeight={DataGridStyle.rowHeight}
+                        columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                         editMode='row'
                         columns={columns}
                         rows={listeAnomalie}
@@ -273,7 +293,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
                         experimentalFeatures={{ newEditingApi: true }}
                         pageSizeOptions={[50, 100]}
                         pagination={DataGridStyle.pagination}
-                        checkboxSelection = {DataGridStyle.checkboxSelection}
+                        checkboxSelection={DataGridStyle.checkboxSelection}
                         columnVisibilityModel={{
                             id: false,
                         }}
@@ -281,8 +301,8 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button autoFocus onClick={handleCloseDeleteModel} 
-                style={{backgroundColor: initial.theme , color:'white', width:"100px", textTransform: 'none', outline: 'none'}}
+                <Button autoFocus onClick={handleCloseDeleteModel}
+                    style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}
                 >
                     Fermer
                 </Button>

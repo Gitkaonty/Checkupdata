@@ -1,20 +1,29 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import useRefreshToken from "../hooks/useRefreshToken";
 import useAuth from "../hooks/useAuth";
+import useLogout from "../hooks/useLogout";
 
 const PersistLogin = () => {
     const [isLoading, setIsLoading] = useState(true);
     const { auth } = useAuth();
     const refresh = useRefreshToken();
+    const navigate = useNavigate();
+    const logout = useLogout();
 
     useEffect(() => {
         const verifyRefreshToken = async () => {
             try {
-                await refresh(); // rafraîchit et met à jour auth
+                await refresh();
             } catch (err) {
-                console.error("Refresh token failed:", err);
+                setIsLoading(false);
+                try {
+                    await logout();
+                    navigate('/', { replace: true });
+                } catch (err) {
+                    console.error(err);
+                }
             } finally {
                 setIsLoading(false);
             }

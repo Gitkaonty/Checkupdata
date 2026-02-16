@@ -199,7 +199,7 @@ const codeJournauxDelete = async (req, res) => {
 
 const importCodeJournaux = async (req, res) => {
   try {
-    const { idCompte, idDossier, codeJournauxData } = req.body;
+    const { idCompte, idDossier, codeJournauxData, ecraser } = req.body;
 
     let resData = {
       state: false,
@@ -210,6 +210,35 @@ const importCodeJournaux = async (req, res) => {
     const validTypes = ['ACHAT', 'BANQUE', 'CAISSE', 'OD', 'RAN', 'VENTE'];
     let anomalies = [];
     let validData = [];
+
+    if (ecraser) {
+      const existingCodes = await codejournals.findAll({
+        where: {
+          id_compte: idCompte,
+          id_dossier: idDossier
+        }
+      });
+
+      for (const code of existingCodes) {
+        const usageCount = await journals.count({
+          where: {
+            id_compte: idCompte,
+            id_dossier: idDossier,
+            id_journal: code.id
+          }
+        });
+
+        if (usageCount === 0) {
+          await codejournals.destroy({
+            where: {
+              id: code.id,
+              id_compte: idCompte,
+              id_dossier: idDossier
+            }
+          });
+        }
+      }
+    }
 
     const existingCodes = await codejournals.findAll({
       where: { id_dossier: idDossier },
@@ -299,7 +328,7 @@ const importCodeJournaux = async (req, res) => {
         const nifValue = compteInfo ? compteInfo.nif : (row.nif ? row.nif.trim() : '');
         const statValue = compteInfo ? compteInfo.stat : (row.stat ? row.stat.trim() : '');
         const adresseValue = compteInfo ? compteInfo.adresse : (row.adresse ? row.adresse.trim() : '');
-        
+
         validData.push({
           id_compte: idCompte,
           id_dossier: idDossier,

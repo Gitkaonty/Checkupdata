@@ -11,7 +11,9 @@ import {
     IconButton,
     styled,
     Badge,
-    Tooltip
+    Tooltip,
+    FormControlLabel,
+    Checkbox
 } from '@mui/material';
 
 import CloseIcon from '@mui/icons-material/Close';
@@ -69,6 +71,7 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
     const [traitementMsg, setTraitementMsg] = useState('');
     const [progressValue, setProgressValue] = useState(0);
     const [importedCount, setImportedCount] = useState(0);
+    const [ecraser, setEcraser] = useState(false);
 
     const { isImporting, progress: sseProgress, message: sseMessage, currentLine, totalLines, startImport } = useSSEImport();
 
@@ -122,7 +125,8 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         ...data,
                         id_compte: Number(id_compte),
                         id_dossier: Number(id_dossier),
-                        id_exercice: Number(id_exercice)
+                        id_exercice: Number(id_exercice),
+                        ecraser,
                     };
                 },
                 startImport,
@@ -148,7 +152,8 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         ...data,
                         id_compte: Number(id_compte),
                         id_dossier: Number(id_dossier),
-                        id_exercice: Number(id_exercice)
+                        id_exercice: Number(id_exercice),
+                        ecraser,
                     };
                 },
                 startImport,
@@ -174,7 +179,8 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         ...data,
                         id_compte: Number(id_compte),
                         id_dossier: Number(id_dossier),
-                        id_exercice: Number(id_exercice)
+                        id_exercice: Number(id_exercice),
+                        ecraser,
                     };
                 },
                 startImport,
@@ -201,7 +207,8 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         ...data,
                         id_compte: Number(id_compte),
                         id_dossier: Number(id_dossier),
-                        id_exercice: Number(id_exercice)
+                        id_exercice: Number(id_exercice),
+                        ecraser,
                     };
                 },
                 startImport,
@@ -231,7 +238,8 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                         ...data,
                         id_compte: Number(id_compte),
                         id_dossier: Number(id_dossier),
-                        id_exercice: Number(id_exercice)
+                        id_exercice: Number(id_exercice),
+                        ecraser,
                     };
                 },
                 startImport,
@@ -315,6 +323,21 @@ const PopupImportToCsv = ({ type, closePopup, id_compte, id_dossier, id_exercice
                 </IconButton>
 
                 <DialogContent>
+                    <Stack flexDirection="row" alignItems="center" >
+                        <FormControlLabel sx={{
+                            mb: 5,
+                            mt: -3
+                        }}
+                            control={
+                                <Checkbox
+                                    checked={ecraser}
+                                    onChange={(e) => setEcraser(e.target.checked)}
+                                    color="primary"
+                                />
+                            }
+                            label="Ecraser les anciennes données"
+                        />
+                    </Stack>
                     <Stack
                         style={{
                             marginTop: '0px'

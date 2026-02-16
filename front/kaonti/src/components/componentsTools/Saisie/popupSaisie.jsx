@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Typography, Stack, Box, Button, Divider, DialogTitle, Tooltip } from '@mui/material';
+import { Typography, Stack, Box, Button, Divider, DialogTitle, Tooltip, Autocomplete, TextField } from '@mui/material';
 import { TabContext, TabPanel } from '@mui/lab';
 import { styled } from '@mui/material/styles';
 import Dialog from '@mui/material/Dialog';
@@ -39,6 +39,8 @@ import { MdAccountBalance } from "react-icons/md";
 import PopupAjustCa from './popupAjustCa';
 
 import useAxiosPrivate from '../../../../config/axiosPrivate';
+import { BsFillInfoCircleFill } from "react-icons/bs";
+import { useCallback } from 'react';
 
 let initial = init[0];
 
@@ -168,7 +170,9 @@ const PopupSaisie = ({
 
     const formSaisie = useFormik({
         initialValues: {
-            valSelectCodeJnl: parseInt(rowsEdit[0]?.id_journal) || "",
+            valSelectCodeJnl: listeCodeJournaux.find(
+                j => j.id === Number(rowsEdit[0]?.id_journal)
+            ) || null,
             valSelectMois: parseInt(rowsEdit[0]?.dateecriture?.split('-')[1]) || "",
             valSelectAnnee: rowsEdit[0]?.dateecriture?.split('-')[0] || "",
             choixDevise: rowsEdit[0]?.devise || defaultDevise,
@@ -182,6 +186,8 @@ const PopupSaisie = ({
             id_devise: '',
         }
     })
+
+    const compteAssocieCodeJournal = formSaisie.values.valSelectCodeJnl?.compteassocie;
 
     const handleRowModesModelChange = (newRowModesModel) => {
         setRowModesModel(newRowModesModel);
@@ -330,63 +336,81 @@ const PopupSaisie = ({
     };
 
     //Ajouter une ligne
-    const ajouterNouvelleLigne = async () => {
-        if (!formSaisie.values.valSelectCodeJnl && !formSaisie.values.valSelectMois && !formSaisie.values.valSelectAnnee) {
-            toast.error("Veuillez remplir les formulaires s'il vous plaît !");
-        } else if (!formSaisie.values.valSelectCodeJnl) {
-            toast.error("Sélectionner le code journal s'il vous plaît !");
-        } else if (!formSaisie.values.valSelectMois) {
-            toast.error("Sélectionner le mois s'il vous plaît !");
-        } else if (!formSaisie.values.valSelectAnnee) {
-            toast.error("Sélectionner l'année s'il vous plaît !");
-        } else if (formSaisie.values.choixDevise !== 'MGA' && !formSaisie.values.currency) {
-            toast.error("Veuillez sélectionner une devise s'il vous plaît !");
-        } else {
-            const minId = Math.min(...tableRows.map(r => r.id), -1);
-            const newId = minId <= 0 ? minId - 1 : -1;
-
-            let dernierJour = '';
-            let dernierLibelle = '';
-            let dernierPiece = '';
-            let dernierNumfacture = '';
-
-            for (let i = tableRows.length - 1; i >= 0; i--) {
-                const row = tableRows[i];
-
-                if (row.jour !== null && row.jour !== '' && dernierJour === '') {
-                    dernierJour = row.jour;
-                }
-
-                if (row.libelle !== null && row.libelle !== '' && dernierLibelle === '') {
-                    dernierLibelle = row.libelle;
-                }
-
-                if (row.piece !== null && row.piece !== '' && dernierPiece === '') {
-                    dernierPiece = row.piece;
-                }
-
-                if (row.num_facture !== null && row.num_facture !== '' && dernierNumfacture === '') {
-                    dernierNumfacture = row.num_facture;
-                }
-
-                if (dernierJour !== '' && dernierLibelle !== '' && dernierPiece !== '' && dernierNumfacture !== '') break;
-            }
-
-            const newRow = {
-                id: newId,
-                jour: dernierJour,
-                piece: dernierPiece,
-                libelle: dernierLibelle,
-                num_facture: dernierNumfacture,
-                debit: 0,
-                credit: 0,
-            };
-
-            setTableRows([...tableRows, newRow]);
-            setRowModesModel({ ...rowModesModel, [newId]: { mode: GridRowModes.Edit } });
-            apiRef.current.setCellFocus(newId, 'jour');
+    const ajouterNouvelleLigne = useCallback(() => {
+        if (isDisabledAddButton) {
+            toast.error("Impossible d'ajouter une ligne dans le mode édition");
+            return;
         }
-    };
+
+        if (!formSaisie.values.valSelectCodeJnl &&
+            !formSaisie.values.valSelectMois &&
+            !formSaisie.values.valSelectAnnee) {
+            toast.error("Veuillez remplir les formulaires s'il vous plaît !");
+            return;
+        }
+
+        if (!formSaisie.values.valSelectCodeJnl) {
+            toast.error("Sélectionner le code journal s'il vous plaît !");
+            return;
+        }
+
+        if (!formSaisie.values.valSelectMois) {
+            toast.error("Sélectionner le mois s'il vous plaît !");
+            return;
+        }
+
+        if (!formSaisie.values.valSelectAnnee) {
+            toast.error("Sélectionner l'année s'il vous plaît !");
+            return;
+        }
+
+        if (formSaisie.values.choixDevise !== 'MGA' &&
+            !formSaisie.values.currency) {
+            toast.error("Veuillez sélectionner une devise s'il vous plaît !");
+            return;
+        }
+
+        const minId = Math.min(...tableRows.map(r => r.id), -1);
+        const newId = minId <= 0 ? minId - 1 : -1;
+
+        let dernierJour = '';
+        let dernierLibelle = '';
+        let dernierPiece = '';
+        let dernierNumfacture = '';
+
+        for (let i = tableRows.length - 1; i >= 0; i--) {
+            const row = tableRows[i];
+
+            if (!dernierJour && row.jour) dernierJour = row.jour;
+            if (!dernierLibelle && row.libelle) dernierLibelle = row.libelle;
+            if (!dernierPiece && row.piece) dernierPiece = row.piece;
+            if (!dernierNumfacture && row.num_facture) dernierNumfacture = row.num_facture;
+
+            if (dernierJour && dernierLibelle && dernierPiece && dernierNumfacture) break;
+        }
+
+        const newRow = {
+            id: newId,
+            jour: dernierJour,
+            piece: dernierPiece,
+            libelle: dernierLibelle,
+            num_facture: dernierNumfacture,
+            debit: 0,
+            credit: 0,
+        };
+
+        setTableRows(prev => [...prev, newRow]);
+
+        setRowModesModel(prev => ({
+            ...prev,
+            [newId]: { mode: GridRowModes.Edit }
+        }));
+
+        setTimeout(() => {
+            apiRef.current?.setCellFocus(newId, 'jour');
+        });
+
+    }, [tableRows, formSaisie.values, isDisabledAddButton]);
 
     const handleClose = () => {
         confirmationState(false);
@@ -397,7 +421,7 @@ const PopupSaisie = ({
         setInvalidRows,
         invalidRows,
         selectedCell,
-        listePlanComptable,
+        listePlanComptable: compteAssocieCodeJournal ? listePlanComptable.filter(val => val.compte !== compteAssocieCodeJournal) : listePlanComptable,
         taux,
         equilibrateDebitCredit,
         tableRows,
@@ -416,6 +440,7 @@ const PopupSaisie = ({
             setTableRows((prevRows) => prevRows.filter((row) => row.id !== selectedIdToDelete));
             setListCaFinal(prev => prev.filter(item => item.id_ligne_ecriture !== selectedIdToDelete));
             setOpenDialogDeleteSaisie(false);
+            toast.success('Ligne supprimée avec succès');
         } else {
             setOpenDialogDeleteSaisie(false);
         }
@@ -430,6 +455,7 @@ const PopupSaisie = ({
             if (selectedIdToDelete > 0) {
                 setDeletedRowIds(prev => [...prev, selectedIdToDelete]);
             }
+            toast.success('Ligne supprimée avec succès');
         } else {
             setOpenDialogDeleteSaisie(false);
         }
@@ -470,7 +496,7 @@ const PopupSaisie = ({
                                 Raccourci disponible !
                             </Typography>
                             <Typography variant="body2">
-                                Appuyez sur <b>Ctrl + Entrée</b> pour équilibrer automatiquement le solde du
+                                Appuyez sur <b>Ctrl + Espace</b> pour équilibrer automatiquement le solde du
                                 <b> {params.field === 'debit' ? 'débit' : 'crédit'}</b>.
                             </Typography>
                         </Box>
@@ -556,6 +582,7 @@ const PopupSaisie = ({
             const valeursSansFichier = {
                 ...formSaisie.values,
                 file: undefined,
+                valSelectCodeJnl: formSaisie.values.valSelectCodeJnl?.id,
                 tableRows,
                 listCa: listCaFinalFiltered,
                 ...(type === 'modification' ? { conserverFichier, deletedIds: deletedRowIds } : {})
@@ -867,6 +894,21 @@ const PopupSaisie = ({
         setIsDisabledAddButton(isDatagridEditing());
     }, [tableRows, apiRef.current?.state?.editRows]);
 
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'l') {
+                event.preventDefault();
+                ajouterNouvelleLigne();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [ajouterNouvelleLigne]);
+
     return (
         <>
             {
@@ -925,18 +967,56 @@ const PopupSaisie = ({
                         alignItems="center"
                         justifyContent="space-between"
                     >
-                        <Typography
-                            variant="h6"
-                            component="div"
-                            fontWeight="bold"
-                            color="text.primary"
+                        <Stack
+                            direction={'row'}
+                            alignItems={'center'}
+                            spacing={2}
                         >
-                            {
-                                type === "ajout"
-                                    ? "Ajout d'une nouvelle écriture "
-                                    : "Modification d'une écriture "
-                            }
-                        </Typography>
+                            <Typography
+                                variant="h6"
+                                component="div"
+                                fontWeight="bold"
+                                color="text.primary"
+                            >
+                                {
+                                    type === "ajout"
+                                        ? "Ajout d'une nouvelle écriture"
+                                        : "Modification d'une écriture"
+                                }
+                            </Typography>
+                            <Stack>
+                                <Tooltip
+                                    title={
+                                        `Raccourcis clavier disponibles :
+
+                                        • Ctrl + Espace :
+                                        Équilibrer automatiquement les montants Débit et Crédit.
+
+                                        • Ctrl + Shift + L :
+                                        Ajouter une nouvelle ligne d'écriture.`
+                                    }
+                                    arrow
+                                    placement="bottom-start"
+                                    slotProps={{
+                                        tooltip: {
+                                            sx: {
+                                                fontSize: '14px',
+                                                maxWidth: 400,
+                                                whiteSpace: 'pre-line'
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <span style={{ marginBottom: -2 }}>
+                                        <BsFillInfoCircleFill
+                                            size={18}
+                                            style={{ color: '#6c757d', cursor: 'pointer' }}
+                                        />
+                                    </span>
+                                </Tooltip>
+
+                            </Stack>
+                        </Stack>
 
                         <IconButton
                             onClick={handleClose}
@@ -971,18 +1051,35 @@ const PopupSaisie = ({
                                     >
                                         {/* Code Journal */}
                                         <FormControl variant="standard" sx={{ width: 250 }}>
-                                            <InputLabel>Code journal</InputLabel>
-                                            <Select
+                                            <Autocomplete
+                                                options={Array.from(
+                                                    new Map(listeCodeJournaux.map(item => [item.id, item])).values()
+                                                )}
+                                                getOptionLabel={(option) => `${option.code || ''} - ${option.libelle || ''}`}
+                                                renderOption={(props, option, { index }) => (
+                                                    <li {...props} key={`${option.id}-${index}`}>
+                                                        <span>
+                                                            {option.code} - {option.libelle}
+                                                        </span>
+                                                    </li>
+                                                )}
+                                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                                PaperComponent={(props) => (
+                                                    <div {...props} style={{ width: 280, backgroundColor: 'white' }} />
+                                                )}
                                                 value={formSaisie.values.valSelectCodeJnl}
-                                                onChange={formSaisie.handleChange}
-                                                name="valSelectCodeJnl"
-                                            >
-                                                {listeCodeJournaux.map((value, index) => (
-                                                    <MenuItem sx={{ flex: 0.18 }} key={index} value={value.id}>
-                                                        {`${value.code} - ${value.libelle}`}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
+                                                onChange={(e, value) => {
+                                                    formSaisie.setFieldValue('valSelectCodeJnl', value);
+                                                }}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        variant="standard"
+                                                        name="valSelectCodeJnl"
+                                                        label="Code journal"
+                                                    />
+                                                )}
+                                            />
                                         </FormControl>
 
                                         {/* Mois */}

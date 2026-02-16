@@ -892,33 +892,341 @@ const totalRubriqueEVCP = async (compte_id, dossier_id, exercice_id) => {
 
         //copie du résultat
         await db.sequelize.query(`
-            UPDATE liasseevcps as tabA SET
+            -- BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE BALANCE
+            WITH RECURSIVE
+            balance_n AS (
+                SELECT
+                MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
+                GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
+                GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
+                GREATEST(
+                    SUM(J.DEBIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - SUM(J.CREDIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ),
+                    0
+                ) AS SOLDEDEBITTRESO,
+                GREATEST(
+                    SUM(J.CREDIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - SUM(J.DEBIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ),
+                    0
+                ) AS SOLDECREDITTRESO
+            FROM
+                JOURNALS J
+                LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+            WHERE
+                J.ID_DOSSIER = :dossier_id
+                AND J.ID_EXERCICE = :exercice_id
+                AND J.ID_COMPTE = :compte_id
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM DOSSIERPLANCOMPTABLES DPC
+                    WHERE DPC.COMPTE = J.COMPTEAUX
+                    AND DPC.ID_DOSSIER = :dossier_id
+                    AND DPC.ID_COMPTE = :compte_id
+                    AND DPC.NATURE = 'Collectif'
+                )
 
-            resultat = (SELECT COALESCE(SUM(montantnet),0) FROM rubriques as tabB WHERE tabB.id_rubrique = 29
-            AND tabB.id_compte = :compte_id AND tabB.id_dossier = :dossier_id AND tabB.id_exercice = :exercice_id
-            AND tabB.id_etat='BILAN') 
-            + (SELECT COALESCE(SUM(montant),0) FROM ajustements WHERE ajustements.id_rubrique = 14
-            AND ajustements.id_compte = :compte_id AND ajustements.id_dossier = :dossier_id AND ajustements.id_exercice = :exercice_id
-            AND ajustements.id_etat = 'EVCP' AND ajustements.nature = 'RESULT'),
+            GROUP BY
+                J.COMPTEAUX
+            ),
 
-            capitalsocial = (SELECT COALESCE(SUM(montant),0) FROM ajustements WHERE ajustements.id_rubrique = 14
-            AND ajustements.id_compte = :compte_id AND ajustements.id_dossier = :dossier_id AND ajustements.id_exercice = :exercice_id
-            AND ajustements.id_etat = 'EVCP' AND ajustements.nature = 'CAPSOC'),
+            COMPTE_RUBRIQUES_BILAN_A_P_N AS (
+                SELECT DISTINCT ID_RUBRIQUE
+                FROM COMPTERUBRIQUES
+                WHERE ID_COMPTE = :compte_id
+                AND ID_DOSSIER = :dossier_id
+                AND ID_EXERCICE = :exercice_id
+                AND ID_ETAT = 'BILAN'
+                AND ACTIVE = true
 
-            primereserve = (SELECT COALESCE(SUM(montant),0) FROM ajustements WHERE ajustements.id_rubrique = 14
-            AND ajustements.id_compte = :compte_id AND ajustements.id_dossier = :dossier_id AND ajustements.id_exercice = :exercice_id
-            AND ajustements.id_etat = 'EVCP' AND ajustements.nature = 'PRIME'),
+                UNION
 
-            ecartdevaluation = (SELECT COALESCE(SUM(montant),0) FROM ajustements WHERE ajustements.id_rubrique = 14
-            AND ajustements.id_compte = :compte_id AND ajustements.id_dossier = :dossier_id AND ajustements.id_exercice = :exercice_id
-            AND ajustements.id_etat = 'EVCP' AND ajustements.nature = 'ECART'),
+                SELECT DISTINCT ID_RUBRIQUE
+                FROM AJUSTEMENTS
+                WHERE ID_COMPTE = :compte_id
+                AND ID_DOSSIER = :dossier_id
+                AND ID_EXERCICE = :exercice_id
+                AND ID_ETAT = 'BILAN'
+            ),
 
-            report_anouveau = (SELECT COALESCE(SUM(montant),0) FROM ajustements WHERE ajustements.id_rubrique = 14
-            AND ajustements.id_compte = :compte_id AND ajustements.id_dossier = :dossier_id AND ajustements.id_exercice = :exercice_id
-            AND ajustements.id_etat = 'EVCP' AND ajustements.nature = 'REPORT')
+            ligne_detail_bilan_a_p_n AS (
+                SELECT
+                    CR.ID_RUBRIQUE,
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN CR2.NATURE = 'BRUT'
+                                    AND (
+                                        CR2.CONDITION = 'SOLDE'
+                                        OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                        OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    )
+                                THEN
+                                    CASE CR2.SENSCALCUL
+                                        WHEN 'D-C' THEN
+                                            (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        WHEN 'C-D' THEN
+                                            (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        ELSE 0
+                                    END
+                                ELSE 0
+                            END
+                        ),
+                    0)
+                    + COALESCE((
+                        SELECT SUM(A.MONTANT)
+                        FROM AJUSTEMENTS A
+                        WHERE
+                            A.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                            AND A.ID_COMPTE = :compte_id
+                            AND A.ID_DOSSIER = :dossier_id
+                            AND A.ID_EXERCICE = :exercice_id
+                            AND A.ID_ETAT = 'BILAN'
+                            AND A.NATURE = 'BRUT'
+                    ), 0) AS MONTANTBRUT,
 
-            WHERE tabA.id_compte = :compte_id AND tabA.id_dossier = :dossier_id AND tabA.id_exercice = :exercice_id
-            AND tabA.id_etat = 'EVCP' AND tabA.id_rubrique = 14
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN CR2.NATURE = 'AMORT'
+                                    AND (
+                                        CR2.CONDITION = 'SOLDE'
+                                        OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                        OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                    )
+                                THEN
+                                    CASE CR2.SENSCALCUL
+                                        WHEN 'D-C' THEN
+                                            (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        WHEN 'C-D' THEN
+                                            (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                        ELSE 0
+                                    END
+                                ELSE 0
+                            END
+                        ),
+                    0)
+                    + COALESCE((
+                        SELECT SUM(A.MONTANT)
+                        FROM AJUSTEMENTS A
+                        WHERE
+                            A.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                            AND A.ID_COMPTE = :compte_id
+                            AND A.ID_DOSSIER = :dossier_id
+                            AND A.ID_EXERCICE = :exercice_id
+                            AND A.ID_ETAT = 'BILAN'
+                            AND A.NATURE = 'AMORT'
+                    ), 0) AS MONTANTAMORT
+
+                FROM COMPTE_RUBRIQUES_BILAN_A_P_N CR
+
+                LEFT JOIN COMPTERUBRIQUES CR2
+                    ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                AND CR2.ID_COMPTE = :compte_id
+                AND CR2.ID_DOSSIER = :dossier_id
+                AND CR2.ID_EXERCICE = :exercice_id
+                AND CR2.ID_ETAT = 'BILAN'
+                AND CR2.ACTIVE = true
+
+                LEFT JOIN balance_n b
+                    ON CR2.COMPTE IS NOT NULL
+                AND b.COMPTE LIKE CR2.COMPTE || '%'
+
+                GROUP BY CR.ID_RUBRIQUE
+            ),
+
+            rubrique_unique_bilan_a_p_n AS (
+                SELECT DISTINCT ON (ID_RUBRIQUE) *
+                FROM rubriques
+                WHERE ID_COMPTE = :compte_id
+                    AND ID_DOSSIER = :dossier_id
+                    AND ID_EXERCICE = :exercice_id
+                    AND ID_ETAT = 'BILAN'
+                    AND SUBTABLE IN (1, 2)
+                ORDER BY ID_RUBRIQUE, ORDRE
+            ),
+
+            compterubriques_unique_bilan_a_p_n AS (
+                SELECT
+                    cr.ID_RUBRIQUE,
+                    cr.ID_COMPTE,
+                    cr.ID_DOSSIER,
+                    cr.ID_EXERCICE,
+                    json_agg(
+                        json_build_object(
+                            'compte', cr.COMPTE::int,
+                            'equation', cr.EQUATION
+                        )
+                    ) AS comptes,
+                    cr.ACTIVE,
+                    cr.ID_ETAT
+                FROM compterubriques cr
+                JOIN rubrique_unique_bilan_a_p_n r
+                    ON r.ID_RUBRIQUE = cr.ID_RUBRIQUE
+                    AND r.ID_COMPTE = cr.ID_COMPTE
+                    AND r.ID_DOSSIER = cr.ID_DOSSIER
+                    AND r.ID_EXERCICE = cr.ID_EXERCICE
+                WHERE 
+                    cr.ACTIVE = TRUE
+                    AND cr.ID_ETAT = 'BILAN'
+                GROUP BY cr.ID_RUBRIQUE, cr.ID_COMPTE, cr.ID_DOSSIER, cr.ID_EXERCICE, cr.ACTIVE, cr.ID_ETAT
+            ),
+
+            liens_total_bilan_a_p_n AS (
+                SELECT
+                    cr.ID_RUBRIQUE::int AS ID_TOTAL,
+                    (elem ->> 'compte')::int AS ID_ENFANT,
+                    elem ->> 'equation' AS EQUATION
+                FROM compterubriques_unique_bilan_a_p_n cr
+                JOIN rubrique_unique_bilan_a_p_n r
+                    ON r.ID_RUBRIQUE = cr.ID_RUBRIQUE
+                CROSS JOIN LATERAL jsonb_array_elements(cr.comptes::jsonb) AS elem
+                WHERE r.NATURE = 'TOTAL'
+            ),
+
+            total_recursive_bilan_a_p_n AS (
+                SELECT
+                    ld.ID_RUBRIQUE,
+                    ld.MONTANTBRUT,
+                    ld.MONTANTAMORT
+                FROM ligne_detail_bilan_a_p_n ld
+                JOIN rubriques r
+                    ON r.ID_RUBRIQUE = ld.ID_RUBRIQUE
+                WHERE 
+                    r.ID_COMPTE = :compte_id
+                    AND r.ID_DOSSIER = :dossier_id
+                    AND r.ID_EXERCICE = :exercice_id
+                    AND r.ID_ETAT = 'BILAN'
+                    AND SUBTABLE IN (1, 2)
+                    AND r.NATURE NOT IN ('TOTAL', 'TITRE')
+
+                UNION ALL
+
+                SELECT
+                    lt.ID_TOTAL AS ID_RUBRIQUE,
+                    tr.MONTANTBRUT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTBRUT,
+                    tr.MONTANTAMORT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTAMORT
+                FROM total_recursive_bilan_a_p_n tr
+                JOIN liens_total_bilan_a_p_n lt
+                    ON lt.ID_ENFANT = tr.ID_RUBRIQUE
+            ),
+
+            BILAN_A_P_N AS (
+                SELECT
+                    r.ID_RUBRIQUE,
+                    r.NOTE,
+                    r.LIBELLE,
+                    r.NATURE,
+                    r.ORDRE,
+                    r.NIVEAU,
+                    r.SUBTABLE,
+                    r.ID_ETAT,
+                    COALESCE(SUM(tr.MONTANTBRUT), 0) AS MONTANTBRUT,
+                    COALESCE(SUM(tr.MONTANTAMORT), 0) AS MONTANTAMORT,
+                    COALESCE(SUM(tr.MONTANTBRUT), 0) - COALESCE(SUM(tr.MONTANTAMORT), 0) AS MONTANTNET,
+                    r.id AS id,
+                    COALESCE(
+                    (
+                        SELECT json_agg(json_build_object(
+                            'id', aj.id,
+                            'id_compte', aj.id_compte,
+                            'id_dossier', aj.id_dossier,
+                            'id_etat', aj.id_etat,
+                            'id_exercice', aj.id_exercice,
+                            'id_rubrique', aj.id_rubrique,
+                            'montant', aj.montant,
+                            'motif', aj.motif,
+                            'nature', aj.nature
+                        ))
+                        FROM ajustements aj
+                        WHERE aj.id_rubrique = r.ID_RUBRIQUE
+                        AND aj.ID_ETAT = 'BILAN'
+                        AND aj.ID_DOSSIER = :dossier_id
+                        AND aj.ID_EXERCICE = :exercice_id
+                        AND aj.ID_COMPTE = :compte_id
+                    ), '[]'::json) AS ajusts
+                FROM rubriquesmatrices r
+                LEFT JOIN total_recursive_bilan_a_p_n tr
+                    ON tr.ID_RUBRIQUE = r.ID_RUBRIQUE
+                WHERE 
+                    r.ID_ETAT = 'BILAN'
+                    AND SUBTABLE IN (1, 2)
+                GROUP BY
+                    r.ID_RUBRIQUE,
+                    r.NOTE,
+                    r.LIBELLE,
+                    r.NATURE,
+                    r.ORDRE,
+                    r.NIVEAU,
+                    r.SUBTABLE,
+                    r.id,
+                    r.ID_ETAT
+                ORDER BY r.ORDRE
+            )
+
+            UPDATE liasseevcps AS tabA
+            SET
+                resultat = COALESCE(b.MONTANTNET,0)
+                        + (SELECT COALESCE(SUM(montant),0) 
+                            FROM ajustements 
+                            WHERE id_rubrique = 14
+                                AND id_compte = :compte_id
+                                AND id_dossier = :dossier_id
+                                AND id_exercice = :exercice_id
+                                AND id_etat = 'EVCP'
+                                AND nature = 'RESULT'),
+                capitalsocial = (SELECT COALESCE(SUM(montant),0) 
+                                FROM ajustements 
+                                WHERE id_rubrique = 14
+                                AND id_compte = :compte_id
+                                AND id_dossier = :dossier_id
+                                AND id_exercice = :exercice_id
+                                AND id_etat = 'EVCP'
+                                AND nature = 'CAPSOC'),
+                primereserve = (SELECT COALESCE(SUM(montant),0) 
+                                FROM ajustements 
+                                WHERE id_rubrique = 14
+                                AND id_compte = :compte_id
+                                AND id_dossier = :dossier_id
+                                AND id_exercice = :exercice_id
+                                AND id_etat = 'EVCP'
+                                AND nature = 'PRIME'),
+                ecartdevaluation = (SELECT COALESCE(SUM(montant),0) 
+                                    FROM ajustements 
+                                    WHERE id_rubrique = 14
+                                    AND id_compte = :compte_id
+                                    AND id_dossier = :dossier_id
+                                    AND id_exercice = :exercice_id
+                                    AND id_etat = 'EVCP'
+                                    AND nature = 'ECART'),
+                report_anouveau = (SELECT COALESCE(SUM(montant),0) 
+                                FROM ajustements 
+                                WHERE id_rubrique = 14
+                                    AND id_compte = :compte_id
+                                    AND id_dossier = :dossier_id
+                                    AND id_exercice = :exercice_id
+                                    AND id_etat = 'EVCP'
+                                    AND nature = 'REPORT')
+            FROM BILAN_A_P_N b
+            WHERE tabA.id_compte = :compte_id
+            AND tabA.id_dossier = :dossier_id
+            AND tabA.id_exercice = :exercice_id
+            AND tabA.id_etat = 'EVCP'
+            AND tabA.id_rubrique = 14
+            AND b.ID_RUBRIQUE = 29;
         `,
             {
                 replacements: { compte_id, dossier_id, exercice_id, exercice_idN1 },
@@ -1359,17 +1667,279 @@ const totalRubriqueDRF = async (compte_id, dossier_id, exercice_id) => {
 
                             if (rubrik.nature === 'CRN') {
                                 await db.sequelize.query(`
-                                    UPDATE liassedrfs as tabA SET
-                                    montant_brut = montant_brut ${equation} (SELECT COALESCE(SUM(montantnet),0) FROM rubriques as tabB 
-                                    WHERE tabB.id_rubrique = ${rubrik.compte}
-                                    AND tabB.id_compte = :compte_id AND tabB.id_dossier = :dossier_id AND tabB.id_exercice = :exerciceAnterieur
-                                    AND tabB.id_etat='${rubrik.nature}')
-                                    + (SELECT COALESCE(SUM(montant),0) FROM ajustements WHERE ajustements.id_rubrique = tabA.id_rubrique
-                                    AND ajustements.id_compte = :compte_id AND ajustements.id_dossier = :dossier_id AND ajustements.id_exercice = :exercice_id
-                                    AND ajustements.id_etat = 'DRF' AND ajustements.nature = 'BRUT')
+                                    WITH RECURSIVE balance_n AS (
+                                        SELECT
+                                            MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
+                                            GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
+                                            GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
+                                            GREATEST(
+                                                SUM(J.DEBIT) FILTER (
+                                                    WHERE
+                                                        CJ.TYPE IN ('BANQUE', 'CAISSE')
+                                                ) - SUM(J.CREDIT) FILTER (
+                                                    WHERE
+                                                        CJ.TYPE IN ('BANQUE', 'CAISSE')
+                                                ),
+                                                0
+                                            ) AS SOLDEDEBITTRESO,
+                                            GREATEST(
+                                                SUM(J.CREDIT) FILTER (
+                                                    WHERE
+                                                        CJ.TYPE IN ('BANQUE', 'CAISSE')
+                                                ) - SUM(J.DEBIT) FILTER (
+                                                    WHERE
+                                                        CJ.TYPE IN ('BANQUE', 'CAISSE')
+                                                ),
+                                                0
+                                            ) AS SOLDECREDITTRESO
+                                        FROM
+                                            JOURNALS J
+                                            LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+                                        WHERE
+                                            J.ID_DOSSIER = :dossier_id
+                                            AND J.ID_EXERCICE = :exerciceAnterieur
+                                            AND J.ID_COMPTE = :compte_id
+                                            AND NOT EXISTS (
+                                                SELECT 1
+                                                FROM DOSSIERPLANCOMPTABLES DPC
+                                                WHERE DPC.COMPTE = J.COMPTEAUX
+                                                AND DPC.ID_DOSSIER = :dossier_id
+                                                AND DPC.ID_COMPTE = :compte_id
+                                                AND DPC.NATURE = 'Collectif'
+                                            )
 
-                                    WHERE tabA.id_compte = :compte_id AND tabA.id_dossier = :dossier_id AND tabA.id_exercice = :exercice_id
-                                    AND tabA.id_etat = 'DRF' AND tabA.nature = 'TOTALMIXTE' AND tabA.id = ${total.id}
+                                        GROUP BY
+                                            J.COMPTEAUX
+                                    ),
+
+                                    COMPTE_RUBRIQUES_CRN AS (
+                                        SELECT DISTINCT ID_RUBRIQUE
+                                        FROM COMPTERUBRIQUES
+                                        WHERE ID_COMPTE = :compte_id
+                                            AND ID_DOSSIER = :dossier_id
+                                            AND ID_EXERCICE = :exerciceAnterieur
+                                            AND ID_ETAT = 'CRN'
+                                            AND ACTIVE = true
+
+                                        UNION
+
+                                        SELECT DISTINCT ID_RUBRIQUE
+                                        FROM AJUSTEMENTS
+                                        WHERE ID_COMPTE = :compte_id
+                                            AND ID_DOSSIER = :dossier_id
+                                            AND ID_EXERCICE = :exerciceAnterieur
+                                            AND ID_ETAT = 'CRN'
+                                            AND NATURE = 'BRUT'
+                                    ),
+
+                                    ligne_detail_crn_n AS (
+                                        SELECT
+                                            CR.ID_RUBRIQUE,
+                                            COALESCE(
+                                                SUM(
+                                                    CASE
+                                                        WHEN CR2.NATURE = 'BRUT'
+                                                            AND (
+                                                                CR2.CONDITION = 'SOLDE'
+                                                                OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                                                OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                                            )
+                                                        THEN
+                                                            CASE CR2.SENSCALCUL
+                                                                WHEN 'D-C' THEN
+                                                                    (b.SOLDEDEBIT - b.SOLDECREDIT)
+                                                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                                                WHEN 'C-D' THEN
+                                                                    (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
+                                                                ELSE 0
+                                                            END
+                                                        ELSE 0
+                                                    END
+                                                ),
+                                            0)
+                                            + COALESCE((
+                                                SELECT SUM(A.MONTANT)
+                                                FROM AJUSTEMENTS A
+                                                WHERE
+                                                    A.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                                                    AND A.ID_COMPTE = :compte_id
+                                                    AND A.ID_DOSSIER = :dossier_id
+                                                    AND A.ID_EXERCICE = :exerciceAnterieur
+                                                    AND A.ID_ETAT = 'CRN'
+                                                    AND A.NATURE = 'BRUT'
+                                            ), 0) AS MONTANTBRUT
+
+                                        FROM COMPTE_RUBRIQUES_CRN CR
+
+                                        LEFT JOIN COMPTERUBRIQUES CR2
+                                            ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                                        AND CR2.ID_COMPTE = :compte_id
+                                        AND CR2.ID_DOSSIER = :dossier_id
+                                        AND CR2.ID_EXERCICE = :exerciceAnterieur
+                                        AND CR2.ID_ETAT = 'CRN'
+                                        AND CR2.ACTIVE = true
+
+                                        LEFT JOIN balance_n b
+                                            ON CR2.COMPTE IS NOT NULL
+                                        AND b.COMPTE LIKE CR2.COMPTE || '%'
+
+                                        GROUP BY CR.ID_RUBRIQUE
+                                    ),
+
+                                    rubrique_unique_crn_n AS (
+                                        SELECT DISTINCT ON (ID_RUBRIQUE) *
+                                        FROM rubriques
+                                        WHERE ID_COMPTE = :compte_id
+                                            AND ID_DOSSIER = :dossier_id
+                                            AND ID_EXERCICE = :exerciceAnterieur
+                                            AND ID_ETAT = 'CRN'
+                                            AND SUBTABLE = 0
+                                        ORDER BY ID_RUBRIQUE, ORDRE
+                                    ),
+
+                                    compterubriques_unique_crn_n AS (
+                                        SELECT
+                                            cr.ID_RUBRIQUE,
+                                            cr.ID_COMPTE,
+                                            cr.ID_DOSSIER,
+                                            cr.ID_EXERCICE,
+                                            json_agg(
+                                                json_build_object(
+                                                    'compte', cr.COMPTE::int,
+                                                    'equation', cr.EQUATION
+                                                )
+                                            ) AS comptes,
+                                            cr.ACTIVE,
+                                            cr.ID_ETAT
+                                        FROM compterubriques cr
+                                        JOIN rubrique_unique_crn_n r
+                                            ON r.ID_RUBRIQUE = cr.ID_RUBRIQUE
+                                            AND r.ID_COMPTE = cr.ID_COMPTE
+                                            AND r.ID_DOSSIER = cr.ID_DOSSIER
+                                            AND r.ID_EXERCICE = cr.ID_EXERCICE
+                                        WHERE 
+                                            cr.ACTIVE = TRUE
+                                            AND cr.ID_ETAT = 'CRN'
+                                        GROUP BY cr.ID_RUBRIQUE, cr.ID_COMPTE, cr.ID_DOSSIER, cr.ID_EXERCICE, cr.ACTIVE, cr.ID_ETAT
+                                    ),
+
+                                    liens_total_crn_n AS (
+                                        SELECT
+                                            cr.ID_RUBRIQUE::int AS ID_TOTAL,
+                                            (elem ->> 'compte')::int AS ID_ENFANT,
+                                            elem ->> 'equation' as EQUATION
+                                        FROM compterubriques_unique_crn_n cr
+                                        JOIN rubrique_unique_crn_n r
+                                            ON r.ID_RUBRIQUE = cr.ID_RUBRIQUE
+                                        CROSS JOIN LATERAL jsonb_array_elements(cr.comptes::jsonb) AS elem
+                                        WHERE r.NATURE = 'TOTAL'
+                                    ),
+
+                                    total_recursive_crn_n AS (
+                                        SELECT
+                                            ld.ID_RUBRIQUE,
+                                            ld.MONTANTBRUT,
+                                            0::numeric AS MONTANTAMORT
+                                        FROM ligne_detail_crn_n ld
+                                        JOIN rubriques r
+                                            ON r.ID_RUBRIQUE = ld.ID_RUBRIQUE
+                                        WHERE 
+                                            r.ID_COMPTE = :compte_id
+                                            AND r.ID_DOSSIER = :dossier_id
+                                            AND r.ID_EXERCICE = :exerciceAnterieur
+                                            AND r.ID_ETAT = 'CRN'
+                                            AND SUBTABLE = 0
+                                            AND r.NATURE NOT IN ('TOTAL', 'TITRE')
+
+                                        UNION ALL
+
+                                        SELECT
+                                            lt.ID_TOTAL AS ID_RUBRIQUE,
+                                            tr.MONTANTBRUT * CASE WHEN lt.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END AS MONTANTBRUT,
+                                            0::numeric AS MONTANTAMORT
+                                        FROM total_recursive_crn_n tr
+                                        JOIN liens_total_crn_n lt
+                                            ON lt.ID_ENFANT = tr.ID_RUBRIQUE
+                                    ),
+
+                                    CRN_N AS (
+                                        SELECT
+                                            r.ID_RUBRIQUE,
+                                            r.NOTE,
+                                            r.LIBELLE,
+                                            r.NATURE,
+                                            r.ORDRE,
+                                            r.NIVEAU,
+                                            r.SUBTABLE,
+                                            r.ID_ETAT,
+                                            COALESCE(SUM(tr.MONTANTBRUT), 0) AS MONTANTBRUT,
+                                            COALESCE(SUM(tr.MONTANTAMORT), 0) AS MONTANTAMORT,
+                                            COALESCE(SUM(tr.MONTANTBRUT), 0) - COALESCE(SUM(tr.MONTANTAMORT), 0) AS MONTANTNET,
+                                            0::numeric AS MONTANTNETN1,
+                                            r.id AS id,
+                                            COALESCE(
+                                                (
+                                                    SELECT json_agg(json_build_object(
+                                                        'id', aj.id,
+                                                        'id_compte', aj.id_compte,
+                                                        'id_dossier', aj.id_dossier,
+                                                        'id_etat', aj.id_etat,
+                                                        'id_exercice', aj.id_exercice,
+                                                        'id_rubrique', aj.id_rubrique,
+                                                        'montant', aj.montant,
+                                                        'motif', aj.motif,
+                                                        'nature', aj.nature
+                                                    ))
+                                                    FROM ajustements aj
+                                                    WHERE 
+                                                        aj.id_rubrique = r.ID_RUBRIQUE
+                                                        AND aj.ID_ETAT = 'CRN'
+                                                        AND aj.ID_DOSSIER = :dossier_id
+                                                        AND aj.ID_EXERCICE = :exerciceAnterieur
+                                                        AND aj.ID_COMPTE = :compte_id
+                                                ), '[]'::json
+                                            ) AS ajusts
+                                        FROM rubriquesmatrices r
+                                        LEFT JOIN total_recursive_crn_n tr
+                                            ON tr.ID_RUBRIQUE = r.ID_RUBRIQUE
+                                        WHERE 
+                                            r.ID_ETAT = 'CRN'
+                                            AND SUBTABLE = 0
+                                        GROUP BY
+                                            r.ID_RUBRIQUE,
+                                            r.NOTE,
+                                            r.LIBELLE,
+                                            r.NATURE,
+                                            r.ORDRE,
+                                            r.NIVEAU,
+                                            r.SUBTABLE,
+                                            r.id,
+                                            r.ID_ETAT
+                                        ORDER BY r.ORDRE
+                                    )
+
+                                    UPDATE liassedrfs AS tabA
+                                    SET
+                                        montant_brut = montant_brut ${equation} COALESCE(c.MONTANTNET,0)
+                                            + (
+                                                SELECT COALESCE(SUM(montant),0)
+                                                FROM ajustements
+                                                WHERE id_rubrique = tabA.id_rubrique
+                                                    AND id_compte = :compte_id
+                                                    AND id_dossier = :dossier_id
+                                                    AND id_exercice = :exercice_id
+                                                    AND id_etat = 'DRF'
+                                                    AND nature = 'BRUT'
+                                            )
+                                    FROM CRN_N c
+                                    WHERE tabA.id_compte = :compte_id
+                                    AND tabA.id_dossier = :dossier_id
+                                    AND tabA.id_exercice = :exercice_id
+                                    AND tabA.id_etat = 'DRF'
+                                    AND tabA.nature = 'TOTALMIXTE'
+                                    AND tabA.id = ${total.id}
+                                    AND c.ID_RUBRIQUE = ${rubrik.compte}
                                     `,
                                     {
                                         replacements: { compte_id, dossier_id, exercice_id, exerciceAnterieur },
@@ -1592,10 +2162,6 @@ const totalRubriqueSDR = async (compte_id, dossier_id, exercice_id) => {
                 type: db.Sequelize.QueryTypes.UPDATE
             }
         );
-
-
-
-
 
         await db.sequelize.query(`
             UPDATE liassesdrs as TabA SET

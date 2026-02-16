@@ -1,5 +1,4 @@
 ﻿const db = require("../../Models");
-const { Op } = require("sequelize");
 require('dotenv').config();
 
 const devises = db.devises;
@@ -305,7 +304,7 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const pcId = Number(req.query?.pcId);
         const endDateParam = req.query?.endDate; // optionnel, sinon on prend fin d'exercice
-        const compte = req.querry?.compte;
+        const compte = req.query?.compte;
         if (!fileId || !compteId || !exerciceId || !pcId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -337,11 +336,11 @@ exports.listEcrituresForRapprochement = async (req, res) => {
                 j.compteaux AS compte_ecriture,
                 cj.code AS code_journal
             FROM journals j
-            JOIN codejournals cj 
-                ON cj.id = j.id_journal
+            JOIN codejournals cj ON cj.id = j.id_journal
             WHERE j.id_compte = :compteId
             AND j.id_dossier = :fileId
             AND j.id_exercice = :exerciceId
+            AND cj.compteassocie = j.compteaux
             AND j.compteaux <> :compte
             AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
@@ -351,6 +350,7 @@ exports.listEcrituresForRapprochement = async (req, res) => {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
             type: db.Sequelize.QueryTypes.SELECT,
         });
+        console.log('rows : ', rows);
         return res.json({ state: true, list: rows || [] });
     } catch (err) {
         console.error('[RAPPRO][ECRITURES] error:', err);
@@ -368,137 +368,29 @@ exports.listImmobilisationsPc2 = async (req, res) => {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
 
-        // Lister tous les comptes d'immobilisations (classe 2 hors 28 et 29)
-        // Solde calculé directement à partir des journaux: SUM(debit) - SUM(credit)
-        // Compte d'amortissement déduit (ex: 20100 -> 28010) puis recherché dans le plan comptable.
         const sql = `
-            SELECT
-              pc.pc_id AS id,
-              pc.compte,
-              pc.libelle,
-              pc_amort.id AS compte_amort_id,
-              pc_amort.compte AS compte_amort,
-              -- Solde sur le compte d'immobilisation (journals j)
-              (
-                SELECT COALESCE(SUM(j1.debit), 0)
-                FROM journals j1
-                WHERE j1.id_numcpt = pc.pc_id
-                  AND j1.id_compte = :compteId
-                  AND j1.id_dossier = :fileId
-                  AND j1.id_exercice = :exerciceId
-              ) AS mvtdebit,
-              (
-                SELECT COALESCE(SUM(j1.credit), 0)
-                FROM journals j1
-                WHERE j1.id_numcpt = pc.pc_id
-                  AND j1.id_compte = :compteId
-                  AND j1.id_dossier = :fileId
-                  AND j1.id_exercice = :exerciceId
-              ) AS mvtcredit,
-              (
-                SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
-                FROM journals j1
-                WHERE j1.id_numcpt = pc.pc_id
-                  AND j1.id_compte = :compteId
-                  AND j1.id_dossier = :fileId
-                  AND j1.id_exercice = :exerciceId
-              ) AS solde,
-              -- Amortissement antérieur: compte d'amort, journaux type RAN
-              (
+            WITH journal_agg AS (
                 SELECT
-                  COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
-                  - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
-                FROM journals ja1
-                LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
-                WHERE ja1.id_numcpt = pc_amort.id
-                  AND ja1.id_compte = :compteId
-                  AND ja1.id_dossier = :fileId
-                  AND ja1.id_exercice = :exerciceId
-              ) AS amort_ant,
-              -- Dotation: compte d'amort, journaux type <> RAN (ou sans type)
-              (
+                    j.compteaux,
+                    SUM(j.debit) AS total_debit,
+                    SUM(j.credit) AS total_credit,
+                    SUM(CASE WHEN cj.type = 'RAN' THEN j.credit - j.debit ELSE 0 END) AS amort_ant,
+                    SUM(CASE WHEN cj.type <> 'RAN' OR cj.type IS NULL THEN j.credit - j.debit ELSE 0 END) AS dotation
+                FROM journals j
+                LEFT JOIN codejournals cj ON cj.id = j.id_journal
+                WHERE j.id_compte = :compteId
+                AND j.id_dossier = :fileId
+                AND j.id_exercice = :exerciceId
+                GROUP BY j.compteaux
+            ),
+
+            pc AS (
                 SELECT
-                  COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
-                  - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
-                FROM journals ja2
-                LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
-                WHERE ja2.id_numcpt = pc_amort.id
-                  AND ja2.id_compte = :compteId
-                  AND ja2.id_dossier = :fileId
-                  AND ja2.id_exercice = :exerciceId
-              ) AS dotation,
-              -- Valeur nette et VNC immo: solde - amort_ant - dotation
-              (
-                (
-                  SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
-                  FROM journals j1
-                  WHERE j1.id_numcpt = pc.pc_id
-                    AND j1.id_compte = :compteId
-                    AND j1.id_dossier = :fileId
-                    AND j1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
-                  FROM journals ja1
-                  LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
-                  WHERE ja1.id_numcpt = pc_amort.id
-                    AND ja1.id_compte = :compteId
-                    AND ja1.id_dossier = :fileId
-                    AND ja1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
-                  FROM journals ja2
-                  LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
-                  WHERE ja2.id_numcpt = pc_amort.id
-                    AND ja2.id_compte = :compteId
-                    AND ja2.id_dossier = :fileId
-                    AND ja2.id_exercice = :exerciceId
-                )
-              ) AS valeur_nette,
-              (
-                (
-                  SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
-                  FROM journals j1
-                  WHERE j1.id_numcpt = pc.pc_id
-                    AND j1.id_compte = :compteId
-                    AND j1.id_dossier = :fileId
-                    AND j1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
-                  FROM journals ja1
-                  LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
-                  WHERE ja1.id_numcpt = pc_amort.id
-                    AND ja1.id_compte = :compteId
-                    AND ja1.id_dossier = :fileId
-                    AND ja1.id_exercice = :exerciceId
-                )
-                - (
-                  SELECT
-                    COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
-                    - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
-                  FROM journals ja2
-                  LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
-                  WHERE ja2.id_numcpt = pc_amort.id
-                    AND ja2.id_compte = :compteId
-                    AND ja2.id_dossier = :fileId
-                    AND ja2.id_exercice = :exerciceId
-                )
-              ) AS vnc_immo
-            FROM (
-              SELECT
-                MIN(id) AS pc_id,
-                compte,
-                MIN(libelle) AS libelle,
-                id_compte,
-                id_dossier
+                    MIN(id) AS pc_id,
+                    compte,
+                    MIN(libelle) AS libelle,
+                    id_compte,
+                    id_dossier
                 FROM dossierplancomptables
                 WHERE id_dossier = :fileId
                 AND id_compte = :compteId
@@ -506,17 +398,49 @@ exports.listImmobilisationsPc2 = async (req, res) => {
                 AND compte NOT LIKE '28%'
                 AND compte NOT LIKE '29%'
                 GROUP BY compte, id_compte, id_dossier
-            ) pc
-            LEFT JOIN dossierplancomptables pc_amort
-              ON pc_amort.id_compte = pc.id_compte
-              AND pc_amort.id_dossier = pc.id_dossier
-              AND pc_amort.compte = CONCAT(
+            )
+
+        SELECT
+            pc.pc_id AS id,
+            pc.compte,
+            pc.libelle AS libelle,
+            pc_amort.compte AS compte_amort,
+            pc_amort.id AS id_amort,
+
+            COALESCE(j_immo.total_debit, 0) AS mvtdebit,
+            COALESCE(j_immo.total_credit, 0) AS mvtcredit,
+            COALESCE(j_immo.total_debit, 0) - COALESCE(j_immo.total_credit, 0) AS solde,
+
+            COALESCE(j_amort.amort_ant, 0) AS amort_ant,
+            COALESCE(j_amort.dotation, 0) AS dotation,
+
+            (COALESCE(j_immo.total_debit,0) - COALESCE(j_immo.total_credit,0)
+            - COALESCE(j_amort.amort_ant,0)
+            - COALESCE(j_amort.dotation,0)) AS valeur_nette,
+
+            (COALESCE(j_immo.total_debit,0) - COALESCE(j_immo.total_credit,0)
+            - COALESCE(j_amort.amort_ant,0)
+            - COALESCE(j_amort.dotation,0)) AS vnc_immo,
+
+            CASE WHEN COALESCE(j_immo.total_debit,0) + COALESCE(j_immo.total_credit,0) > 0 THEN true ELSE false END AS hasmovement
+
+        FROM pc
+        LEFT JOIN dossierplancomptables pc_amort
+            ON pc_amort.id_compte = pc.id_compte
+        AND pc_amort.id_dossier = pc.id_dossier
+        AND pc_amort.compte = CONCAT(
                 SUBSTRING(pc.compte, 1, 1),
                 '8',
                 SUBSTRING(pc.compte, 2, CHAR_LENGTH(pc.compte) - 2)
-              )
-            ORDER BY pc.compte ASC
+            )
+        LEFT JOIN journal_agg j_immo
+            ON j_immo.compteaux = pc.compte
+        LEFT JOIN journal_agg j_amort
+            ON j_amort.compteaux = pc_amort.compte
+        ORDER BY pc.compte ASC;
+
         `;
+
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId },
             type: db.Sequelize.QueryTypes.SELECT,
@@ -921,18 +845,58 @@ exports.generateImmoEcritures = async (req, res) => {
                             id_immob: detailId,
                         };
 
+                        // Compte Charge
+                        const dossierPcCharge = await dossierplancomptable.findByPk(rowCharge.id);
+                        const libelleCompteCharge = dossierPcCharge?.libelle;
+                        const compteauxCharge = dossierPcCharge?.compte;
+                        const comptebaseauxCharge = dossierPcCharge?.baseaux_id;
+
+                        let id_numcptcentraliseCharge = null;
+                        let libelleauxCharge = '';
+                        let comptegenCharge = '';
+                        if (comptebaseauxCharge) {
+                            const cpt = await dossierplancomptable.findByPk(comptebaseauxCharge);
+                            id_numcptcentraliseCharge = cpt?.id || null;
+                            comptegenCharge = cpt?.compte;
+                            libelleauxCharge = cpt?.libelle;
+                        }
+
+                        // Compte amort
+                        const dossierPcAmort = await dossierplancomptable.findByPk(rowCharge.id);
+                        const libelleCompteAmort = dossierPcAmort?.libelle;
+                        const compteauxAmort = dossierPcAmort?.compte;
+                        const comptebaseauxAmort = dossierPcAmort?.baseaux_id;
+
+                        let id_numcptcentraliseAmort = null;
+                        let libelleauxAmort = '';
+                        let comptegenAmort = '';
+                        if (comptebaseauxAmort) {
+                            const cpt = await dossierplancomptable.findByPk(comptebaseauxAmort);
+                            id_numcptcentraliseAmort = cpt?.id || null;
+                            comptegenAmort = cpt?.compte;
+                            libelleauxAmort = cpt?.libelle;
+                        }
+
                         const [lDebit, lCredit] = await Promise.all([
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowCharge.id,
                                 debit: montantMois,
                                 credit: 0,
+                                comptegen: comptegenCharge,
+                                compteaux: compteauxCharge,
+                                libellecompte: libelleCompteCharge,
+                                libelleaux: libelleauxCharge
                             }),
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowAmort.id,
                                 debit: 0,
                                 credit: montantMois,
+                                comptegen: comptegenAmort,
+                                compteaux: compteauxAmort,
+                                libelleCompte: libelleCompteAmort,
+                                libelleaux: libelleauxAmort
                             })
                         ]);
 
@@ -1055,18 +1019,58 @@ exports.generateImmoEcritures = async (req, res) => {
                     id_immob: null,
                 };
 
+                // Compte Charge
+                const dossierPcCharge = await dossierplancomptable.findByPk(rowCharge.id);
+                const libelleCompteCharge = dossierPcCharge?.libelle;
+                const compteauxCharge = dossierPcCharge?.compte;
+                const comptebaseauxCharge = dossierPcCharge?.baseaux_id;
+
+                let id_numcptcentraliseCharge = null;
+                let libelleauxCharge = '';
+                let comptegenCharge = '';
+                if (comptebaseauxCharge) {
+                    const cpt = await dossierplancomptable.findByPk(comptebaseauxCharge);
+                    id_numcptcentraliseCharge = cpt?.id || null;
+                    comptegenCharge = cpt?.compte;
+                    libelleauxCharge = cpt?.libelle;
+                }
+
+                // Compte amort
+                const dossierPcAmort = await dossierplancomptable.findByPk(rowCharge.id);
+                const libelleCompteAmort = dossierPcAmort?.libelle;
+                const compteauxAmort = dossierPcAmort?.compte;
+                const comptebaseauxAmort = dossierPcAmort?.baseaux_id;
+
+                let id_numcptcentraliseAmort = null;
+                let libelleauxAmort = '';
+                let comptegenAmort = '';
+                if (comptebaseauxAmort) {
+                    const cpt = await dossierplancomptable.findByPk(comptebaseauxAmort);
+                    id_numcptcentraliseAmort = cpt?.id || null;
+                    comptegenAmort = cpt?.compte;
+                    libelleauxAmort = cpt?.libelle;
+                }
+
                 const [lDebit, lCredit] = await Promise.all([
                     db.journals.create({
                         ...common,
                         id_numcpt: rowCharge.id,
                         debit: montantTotal,
                         credit: 0,
+                        comptegen: comptegenCharge,
+                        compteaux: compteauxCharge,
+                        libellecompte: libelleCompteCharge,
+                        libelleaux: libelleauxCharge
                     }),
                     db.journals.create({
                         ...common,
                         id_numcpt: rowAmort.id,
                         debit: 0,
                         credit: montantTotal,
+                        comptegen: comptegenAmort,
+                        compteaux: compteauxAmort,
+                        libelleCompte: libelleCompteAmort,
+                        libelleaux: libelleauxAmort
                     })
                 ]);
 
@@ -2321,207 +2325,166 @@ exports.getAllJournal = async (req, res) => {
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
-        const dossierData = await dossiers.findByPk(id_dossier);
-        const exerciceData = await exercices.findByPk(id_exercice);
+        const query = `
+        WITH base_dossier AS (
+            SELECT
+                d.id AS id_dossier,
+                d.consolidation,
+                e.date_debut,
+                e.date_fin
+            FROM dossiers d
+            JOIN exercices e ON e.id = :id_exercice
+            WHERE d.id = :id_dossier
+        ),
+        dossiers_utiles AS (
+            SELECT :id_dossier::int AS id_dossier
+            UNION
+            SELECT cd.id_dossier_autre
+            FROM consolidationdossiers cd
+            JOIN base_dossier bd ON bd.consolidation = true
+            WHERE cd.id_dossier = :id_dossier
+              AND cd.id_compte = :id_compte
+        ),
+        exercices_utiles AS (
+            SELECT e.id
+            FROM exercices e
+            JOIN base_dossier bd ON true
+            WHERE e.id_compte = :id_compte
+              AND e.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+              AND e.date_debut <= bd.date_fin
+              AND e.date_fin >= bd.date_debut
+        )
+        SELECT
+            j.*,
+            cj.code AS journal,
+            d.dossier AS dossier
+        FROM journals j
+        JOIN dossiers d ON d.id = j.id_dossier
+        JOIN codejournals cj ON cj.id = j.id_journal
+        WHERE j.id_compte = :id_compte
+          AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+          AND j.id_exercice IN (SELECT id FROM exercices_utiles)
+        ORDER BY j."createdAt" DESC
+        `;
 
-        const consolidation = dossierData?.consolidation || false;
-        const date_debut_exercice = new Date(exerciceData?.date_debut);
-        const date_fin_exercice = new Date(exerciceData?.date_fin);
-
-        let id_dossiers_a_utiliser = [Number(id_dossier)];
-
-        if (consolidation) {
-            const consolidationDossierData = await consolidationDossier.findAll({
-                where: {
-                    id_dossier,
-                    id_compte
-                }
-            });
-
-            if (!consolidationDossierData.length) {
-                return res.json({
-                    state: true,
-                    msg: "Consolidation de dossier vide",
-                    liste: []
-                });
-            }
-
-            id_dossiers_a_utiliser = [...new Set(
-                consolidationDossierData.map(val => Number(val.id_dossier_autre))
-            ), Number(id_dossier)];
-        }
-
-        const exerciceDataToUse = await exercices.findAll({
-            where: {
+        const result = await db.sequelize.query(query, {
+            replacements: {
                 id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                [Op.and]: [
-                    { date_debut: { [Op.lte]: date_fin_exercice } },
-                    { date_fin: { [Op.gte]: date_debut_exercice } }
-                ]
-            }
-        })
-
-        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
-
-        const whereClause = {
-            id_compte,
-            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-            id_exercice: { [Op.in]: id_exercices_a_utiliser }
-        };
-
-        const journalData = await journals.findAll({
-            where: whereClause,
-            include: [
-                { model: dossierplancomptable, attributes: ['compte'] },
-                { model: codejournals, attributes: ['code'] },
-                { model: dossiers, attributes: ['dossier'] },
-            ],
-            order: [
-                // ['id_ecriture', 'ASC'],
-                // ['dateecriture', 'ASC'],
-                // ['id', 'ASC']
-                ['createdAt', 'DESC']
-            ]
+                id_dossier,
+                id_exercice
+            },
+            type: db.Sequelize.QueryTypes.SELECT
         });
 
-        const mappedData = journalData.map(journal => {
-            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-                journal: codejournal?.code || null,
-                dossier: dossier?.dossier || null
-            };
-        });
-
-        return res.json(mappedData);
+        return res.json(result);
 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+        return res.status(500).json({
+            state: false,
+            msg: 'Erreur serveur',
+            error: error.message
+        });
     }
-}
+};
 
 exports.getJournalFiltered = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, journal, compte, piece, libelle, debut, fin } = req.body;
-        const compteaux = compte?.compte;
 
         if (!id_dossier) return res.status(400).json({ state: false, message: 'Dossier non trouvé' });
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
-        const dossierData = await dossiers.findByPk(id_dossier);
-        const exerciceData = await exercices.findByPk(id_exercice);
+        const query = `
+            WITH base_dossier AS (
+                SELECT
+                    d.id AS id_dossier,
+                    d.consolidation,
+                    e.date_debut,
+                    e.date_fin
+                FROM dossiers d
+                JOIN exercices e ON e.id = :id_exercice
+                WHERE d.id = :id_dossier
+            ),
 
-        const consolidation = dossierData?.consolidation || false;
-        const date_debut_exercice = new Date(exerciceData?.date_debut);
-        const date_fin_exercice = new Date(exerciceData?.date_fin);
+            dossiers_utiles AS (
+                SELECT :id_dossier::int AS id_dossier
+                UNION
+                SELECT cd.id_dossier_autre
+                FROM consolidationdossiers cd
+                JOIN base_dossier bd ON bd.consolidation = true
+                WHERE cd.id_dossier = :id_dossier
+                AND cd.id_compte = :id_compte
+            ),
 
-        let id_dossiers_a_utiliser = [Number(id_dossier)];
+            exercices_utiles AS (
+                SELECT e.id
+                FROM exercices e
+                JOIN base_dossier bd ON true
+                WHERE e.id_compte = :id_compte
+                AND e.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+                AND e.date_debut <= bd.date_fin
+                AND e.date_fin >= bd.date_debut
+            ),
 
-        if (consolidation) {
-            const consolidationDossierData = await consolidationDossier.findAll({
-                where: {
-                    id_dossier,
-                    id_compte
-                }
-            });
+            journals_filtres AS (
+                SELECT DISTINCT j.id_ecriture
+                FROM journals j
+                JOIN codejournals cj ON cj.id = j.id_journal
+                JOIN base_dossier bd ON true
+                WHERE j.id_compte = :id_compte
+                AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+                AND j.id_exercice IN (SELECT id FROM exercices_utiles)
 
-            if (!consolidationDossierData.length) {
-                return res.json({
-                    state: true,
-                    msg: "Consolidation de dossier vide",
-                    liste: []
-                });
-            }
+                AND (:piece IS NULL OR j.piece ILIKE '%' || :piece || '%')
+                AND (:libelle IS NULL OR j.libelle ILIKE '%' || :libelle || '%')
+                AND (:compteaux IS NULL OR j.compteaux = :compteaux)
+                AND (:journal IS NULL OR cj.code = :journal)
 
-            id_dossiers_a_utiliser = [...new Set(
-                consolidationDossierData.map(val => Number(val.id_dossier_autre))
-            ), Number(id_dossier)];
-        }
+                AND (
+                        (:debut IS NOT NULL AND :fin IS NOT NULL AND j.dateecriture BETWEEN :debut AND :fin)
+                    OR (:debut IS NOT NULL AND :fin IS NULL AND j.dateecriture >= :debut)
+                    OR (:debut IS NULL AND :fin IS NOT NULL AND j.dateecriture <= :fin)
+                    OR (
+                            :debut IS NULL AND :fin IS NULL
+                            AND bd.consolidation = true
+                            AND j.dateecriture BETWEEN bd.date_debut AND bd.date_fin
+                        )
+                    OR (:debut IS NULL AND :fin IS NULL AND bd.consolidation = false)
+                )
+            )
+            SELECT
+                j.*,
+                cj.code AS journal,
+                d.dossier
+            FROM journals j
+            JOIN journals_filtres jf ON jf.id_ecriture = j.id_ecriture
+            JOIN codejournals cj ON cj.id = j.id_journal
+            JOIN dossiers d ON d.id = j.id_dossier
+            WHERE j.id_compte = :id_compte
+            AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+            AND j.id_exercice IN (SELECT id FROM exercices_utiles)
+            ORDER BY j."createdAt" DESC
+        `;
 
-        const exerciceDataToUse = await exercices.findAll({
-            where: {
+        const result = await db.sequelize.query(query, {
+            replacements: {
                 id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                [Op.and]: [
-                    { date_debut: { [Op.lte]: date_fin_exercice } },
-                    { date_fin: { [Op.gte]: date_debut_exercice } }
-                ]
-            }
-        })
-
-        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
-
-        const whereClause = {
-            id_compte,
-            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-            id_exercice: { [Op.in]: id_exercices_a_utiliser }
-        };
-
-        if (piece) whereClause.piece = { [Op.iLike]: `%${piece}%` };
-        if (libelle) whereClause.libelle = { [Op.iLike]: `%${libelle}%` };
-        if (compteaux) whereClause.compteaux = compteaux;
-        if (debut && fin) {
-            whereClause.dateecriture = { [Op.between]: [debut, fin] };
-        } else if (debut) {
-            whereClause.dateecriture = { [Op.gte]: debut };
-        } else if (fin) {
-            whereClause.dateecriture = { [Op.lte]: fin };
-        } else if (date_debut_exercice && date_fin_exercice && consolidation) {
-            whereClause.dateecriture = { [Op.between]: [date_debut_exercice, date_fin_exercice] };
-        }
-
-        const journalData = await journals.findAll({
-            where: whereClause,
-            order: [['createdAt', 'DESC']],
-            include: [
-                {
-                    model: codejournals,
-                    attributes: ['code'],
-                    where:
-                    {
-                        ...(journal ? { code: journal } : {}),
-                    }
-                }
-            ]
-        });
-
-        const id_ecritures = [...new Set(journalData.map(val => val.id_ecriture))];
-
-        const journalFinal = await journals.findAll({
-            where: {
-                id_ecriture: id_ecritures,
-                id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                id_exercice: { [Op.in]: id_exercices_a_utiliser }
+                id_dossier,
+                id_exercice,
+                journal: journal?.code || null,
+                compteaux: compte?.compte || null,
+                piece: piece || null,
+                libelle: libelle || null,
+                debut: debut || null,
+                fin: fin || null
             },
-            include: [
-                { model: dossierplancomptable, attributes: ['compte'] },
-                { model: codejournals, attributes: ['code'] },
-                { model: dossiers, attributes: ['dossier'] },
-            ],
-            order: [
-                // ['id_ecriture', 'ASC'],
-                // ['dateecriture', 'ASC'],
-                // ['id', 'ASC']
-                ['createdAt', 'DESC']
-            ]
-        })
-
-        const mappedData = journalFinal.map(journal => {
-            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-                journal: codejournal?.code || null,
-                dossier: dossier?.dossier || null,
-            };
+            type: db.Sequelize.QueryTypes.SELECT
         });
 
-        return res.json({ state: true, list: mappedData });
+        return res.json({ state: true, list: result });
+
     } catch (error) {
         console.error(error);
         return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
@@ -2741,6 +2704,7 @@ exports.createDetailsImmo = async (req, res) => {
             amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
             duree_amort_mois_fisc, type_amort_fisc,
             compte_amortissement, vnc, date_sortie, prix_vente,
+            pc_id_amort
         } = req.body || {};
 
         if (!fileId || !compteId || !exerciceId || !pcId || !code) {
@@ -2786,7 +2750,7 @@ exports.createDetailsImmo = async (req, res) => {
 
         const insertSql = `
             INSERT INTO details_immo (
-                id_dossier, id_compte, id_exercice, pc_id,
+                id_dossier, id_compte, id_exercice, pc_id, pc_id_amort,
                 code, intitule, lien_ecriture_id, fournisseur,
                 date_acquisition, date_mise_service, duree_amort_mois, type_amort,
                 montant, taux_tva, montant_tva, montant_ht,
@@ -2799,7 +2763,7 @@ exports.createDetailsImmo = async (req, res) => {
                 duree_amort_mois_fisc, type_amort_fisc,
                 created_at, updated_at
             ) VALUES (
-                :fileId, :compteId, :exerciceId, :pcId,
+                :fileId, :compteId, :exerciceId, :pcId, :pc_id_amort,
                 :code, :intitule, :lien_ecriture_id, :fournisseur,
                 :date_acquisition, :date_mise_service, :duree_amort_mois, :type_amort,
                 :montant, :taux_tva, :montant_tva, :montant_ht,
@@ -2815,7 +2779,7 @@ exports.createDetailsImmo = async (req, res) => {
         `;
         const [ret] = await db.sequelize.query(insertSql, {
             replacements: {
-                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId),
+                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId), pc_id_amort: Number(pc_id_amort),
                 code: String(code), intitule: intitule ?? null, lien_ecriture_id: lien_ecriture_id ?? null, fournisseur: fournisseur ?? null,
                 date_acquisition: date_acquisition ? String(date_acquisition).substring(0, 10) : null,
                 date_mise_service: date_mise_service ? String(date_mise_service).substring(0, 10) : null,
@@ -3489,7 +3453,7 @@ exports.addEcriture = async (req, res) => {
         const comptegen_cp = dossierPc_cp?.compte;
 
         if (!dossierPc_pc || !dossierPc_cp) {
-            throw new Error("Compte de contrepartie introuvable");
+            throw new Error("Compte introuvable");
         }
 
         const comptebaseaux_pc = dossierPc_pc?.baseaux_id;
