@@ -340,11 +340,11 @@ exports.listEcrituresForRapprochement = async (req, res) => {
             WHERE j.id_compte = :compteId
             AND j.id_dossier = :fileId
             AND j.id_exercice = :exerciceId
-            AND cj.compteassocie = j.compteaux
+            AND cj.compteassocie = :compte
             AND j.compteaux <> :compte
             AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
-        `;
+        `
 
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
@@ -845,59 +845,71 @@ exports.generateImmoEcritures = async (req, res) => {
                             id_immob: detailId,
                         };
 
-                        // Compte Charge
-                        const dossierPcCharge = await dossierplancomptable.findByPk(rowCharge.id);
-                        const libelleCompteCharge = dossierPcCharge?.libelle;
-                        const compteauxCharge = dossierPcCharge?.compte;
-                        const comptebaseauxCharge = dossierPcCharge?.baseaux_id;
+                        // CHARGE 
+                        const dossier_pc_charge = await dossierplancomptable.findByPk(rowCharge.id);
 
-                        let id_numcptcentraliseCharge = null;
-                        let libelleauxCharge = '';
-                        let comptegenCharge = '';
-                        if (comptebaseauxCharge) {
-                            const cpt = await dossierplancomptable.findByPk(comptebaseauxCharge);
-                            id_numcptcentraliseCharge = cpt?.id || null;
-                            comptegenCharge = cpt?.compte;
-                            libelleauxCharge = cpt?.libelle;
+                        if (!dossier_pc_charge) throw new Error("Compte introuvable");
+
+                        const libelleAuxCharge = dossier_pc_charge.libelle;
+                        const compteAuxCharge = dossier_pc_charge.compte;
+
+                        let libelleGenCharge = '';
+                        let compteGenCharge = '';
+                        let id_numcptcentralise_charge = null;
+
+                        if (dossier_pc_charge.baseaux_id) {
+                            const cpt = await dossierplancomptable.findByPk(dossier_pc_charge.baseaux_id);
+                            libelleGenCharge = cpt?.libelle || '';
+                            compteGenCharge = cpt?.compte || '';
+                            id_numcptcentralise_charge = cpt?.id || null;
                         }
 
-                        // Compte amort
-                        const dossierPcAmort = await dossierplancomptable.findByPk(rowCharge.id);
-                        const libelleCompteAmort = dossierPcAmort?.libelle;
-                        const compteauxAmort = dossierPcAmort?.compte;
-                        const comptebaseauxAmort = dossierPcAmort?.baseaux_id;
+                        // AMORT
+                        const dossier_pc_amort = await dossierplancomptable.findByPk(rowAmort.id);
 
-                        let id_numcptcentraliseAmort = null;
-                        let libelleauxAmort = '';
-                        let comptegenAmort = '';
-                        if (comptebaseauxAmort) {
-                            const cpt = await dossierplancomptable.findByPk(comptebaseauxAmort);
-                            id_numcptcentraliseAmort = cpt?.id || null;
-                            comptegenAmort = cpt?.compte;
-                            libelleauxAmort = cpt?.libelle;
+                        if (!dossier_pc_amort) throw new Error("Compte introuvable");
+
+                        const libelleAuxAmort = dossier_pc_amort.libelle;
+                        const compteAuxAmort = dossier_pc_amort.compte;
+
+                        let libelleGenAmort = '';
+                        let compteGenAmort = '';
+                        let id_numcptcentralise_amort = null;
+
+                        if (dossier_pc_amort.baseaux_id) {
+                            const cpt = await dossierplancomptable.findByPk(dossier_pc_amort.baseaux_id);
+                            libelleGenAmort = cpt?.libelle || '';
+                            compteGenAmort = cpt?.compte || '';
+                            id_numcptcentralise_amort = cpt?.id || null;
                         }
 
                         const [lDebit, lCredit] = await Promise.all([
+                            // CHARGE
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowCharge.id,
+                                id_numcptcentralise: id_numcptcentralise_charge,
                                 debit: montantMois,
                                 credit: 0,
-                                comptegen: comptegenCharge,
-                                compteaux: compteauxCharge,
-                                libellecompte: libelleCompteCharge,
-                                libelleaux: libelleauxCharge
+                                comptegen: compteGenCharge,
+                                compteaux: compteAuxCharge,
+                                libellecompte: libelleGenCharge,
+                                libelleaux: libelleAuxCharge
                             }),
+
+                            // AMORT
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowAmort.id,
+                                id_numcptcentralise: id_numcptcentralise_amort,
                                 debit: 0,
                                 credit: montantMois,
-                                comptegen: comptegenAmort,
-                                compteaux: compteauxAmort,
-                                libelleCompte: libelleCompteAmort,
-                                libelleaux: libelleauxAmort
+                                comptegen: compteGenAmort,
+                                compteaux: compteAuxAmort,
+                                libellecompte: libelleGenAmort,
+                                libelleaux: libelleAuxAmort
                             })
+
                         ]);
 
                         inserted.push(lDebit, lCredit);
@@ -1019,58 +1031,66 @@ exports.generateImmoEcritures = async (req, res) => {
                     id_immob: null,
                 };
 
-                // Compte Charge
-                const dossierPcCharge = await dossierplancomptable.findByPk(rowCharge.id);
-                const libelleCompteCharge = dossierPcCharge?.libelle;
-                const compteauxCharge = dossierPcCharge?.compte;
-                const comptebaseauxCharge = dossierPcCharge?.baseaux_id;
+                // CHARGE
+                const dossier_pc_charge = await dossierplancomptable.findByPk(rowCharge.id);
 
-                let id_numcptcentraliseCharge = null;
-                let libelleauxCharge = '';
-                let comptegenCharge = '';
-                if (comptebaseauxCharge) {
-                    const cpt = await dossierplancomptable.findByPk(comptebaseauxCharge);
-                    id_numcptcentraliseCharge = cpt?.id || null;
-                    comptegenCharge = cpt?.compte;
-                    libelleauxCharge = cpt?.libelle;
+                if (!dossier_pc_charge) throw new Error("Compte introuvable");
+
+                const libelleAuxCharge = dossier_pc_charge.libelle;
+                const compteAuxCharge = dossier_pc_charge.compte;
+
+                let libelleGenCharge = '';
+                const compteGenCharge = '';
+                let id_numcptcentralise_charge = null;
+
+                if (dossier_pc_charge.baseaux_id) {
+                    const cpt = await dossierplancomptable.findByPk(dossier_pc_charge.baseaux_id);
+                    libelleGenCharge = cpt?.libelle || '';
+                    compteGenCharge = cpt?.compte || '';
+                    id_numcptcentralise_charge = cpt?.id || null;
                 }
 
-                // Compte amort
-                const dossierPcAmort = await dossierplancomptable.findByPk(rowCharge.id);
-                const libelleCompteAmort = dossierPcAmort?.libelle;
-                const compteauxAmort = dossierPcAmort?.compte;
-                const comptebaseauxAmort = dossierPcAmort?.baseaux_id;
+                // AMORT
+                const dossier_pc_amort = await dossierplancomptable.findByPk(rowAmort.id);
 
-                let id_numcptcentraliseAmort = null;
-                let libelleauxAmort = '';
-                let comptegenAmort = '';
-                if (comptebaseauxAmort) {
-                    const cpt = await dossierplancomptable.findByPk(comptebaseauxAmort);
-                    id_numcptcentraliseAmort = cpt?.id || null;
-                    comptegenAmort = cpt?.compte;
-                    libelleauxAmort = cpt?.libelle;
+                if (!dossier_pc_amort) throw new Error("Compte introuvable");
+
+                const libelleAuxAmort = dossier_pc_amort.libelle;
+                const compteAuxAmort = dossier_pc_amort.compte;
+
+                let libelleGenAmort = '';
+                let compteGenAmort = '';
+                let id_numcptcentralise_amort = null;
+
+                if (dossier_pc_amort.baseaux_id) {
+                    const cpt = await dossierplancomptable.findByPk(dossier_pc_amort.baseaux_id);
+                    libelleGenAmort = cpt?.libelle || '';
+                    compteGenAmort = cpt?.compte || '';
+                    id_numcptcentralise_amort = cpt?.id || null;
                 }
 
                 const [lDebit, lCredit] = await Promise.all([
                     db.journals.create({
                         ...common,
                         id_numcpt: rowCharge.id,
+                        id_numcptcentralise: id_numcptcentralise_charge,
                         debit: montantTotal,
                         credit: 0,
-                        comptegen: comptegenCharge,
-                        compteaux: compteauxCharge,
-                        libellecompte: libelleCompteCharge,
-                        libelleaux: libelleauxCharge
+                        comptegen: compteGenCharge,
+                        compteaux: compteAuxCharge,
+                        libellecompte: libelleGenCharge,
+                        libelleaux: libelleAuxCharge
                     }),
                     db.journals.create({
                         ...common,
                         id_numcpt: rowAmort.id,
+                        id_numcptcentralise: id_numcptcentralise_amort,
                         debit: 0,
                         credit: montantTotal,
-                        comptegen: comptegenAmort,
-                        compteaux: compteauxAmort,
-                        libelleCompte: libelleCompteAmort,
-                        libelleaux: libelleauxAmort
+                        comptegen: compteGenAmort,
+                        compteaux: compteAuxAmort,
+                        libellecompte: libelleGenAmort,
+                        libelleaux: libelleAuxAmort
                     })
                 ]);
 
@@ -2326,46 +2346,56 @@ exports.getAllJournal = async (req, res) => {
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
         const query = `
-        WITH base_dossier AS (
+            WITH base_dossier AS (
+                SELECT
+                    d.id AS id_dossier,
+                    d.consolidation,
+                    e.date_debut,
+                    e.date_fin
+                FROM dossiers d
+                JOIN exercices e ON e.id = :id_exercice
+                WHERE 
+                    d.id = :id_dossier
+            ),
+            dossiers_utiles AS (
+                SELECT :id_dossier::int AS id_dossier
+                UNION
+                SELECT cd.id_dossier_autre
+                FROM consolidationdossiers cd
+                JOIN 
+                    base_dossier bd ON bd.consolidation = true
+                WHERE
+                    cd.id_dossier = :id_dossier
+                    AND cd.id_compte = :id_compte
+            ),
+            exercices_utiles AS (
+                SELECT e.id
+                FROM exercices e
+                JOIN base_dossier bd ON true
+                WHERE 
+                    e.id_compte = :id_compte
+                    AND e.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+                    AND e.date_debut <= bd.date_fin
+                    AND e.date_fin >= bd.date_debut
+            )
             SELECT
-                d.id AS id_dossier,
-                d.consolidation,
-                e.date_debut,
-                e.date_fin
-            FROM dossiers d
-            JOIN exercices e ON e.id = :id_exercice
-            WHERE d.id = :id_dossier
-        ),
-        dossiers_utiles AS (
-            SELECT :id_dossier::int AS id_dossier
-            UNION
-            SELECT cd.id_dossier_autre
-            FROM consolidationdossiers cd
-            JOIN base_dossier bd ON bd.consolidation = true
-            WHERE cd.id_dossier = :id_dossier
-              AND cd.id_compte = :id_compte
-        ),
-        exercices_utiles AS (
-            SELECT e.id
-            FROM exercices e
-            JOIN base_dossier bd ON true
-            WHERE e.id_compte = :id_compte
-              AND e.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
-              AND e.date_debut <= bd.date_fin
-              AND e.date_fin >= bd.date_debut
-        )
-        SELECT
-            j.*,
-            cj.code AS journal,
-            d.dossier AS dossier
-        FROM journals j
-        JOIN dossiers d ON d.id = j.id_dossier
-        JOIN codejournals cj ON cj.id = j.id_journal
-        WHERE j.id_compte = :id_compte
-          AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
-          AND j.id_exercice IN (SELECT id FROM exercices_utiles)
-        ORDER BY j."createdAt" DESC
-        `;
+                j.*,
+                cj.code AS journal,
+                d.dossier AS dossier
+            FROM journals j
+            JOIN dossiers d ON d.id = j.id_dossier
+            JOIN codejournals cj ON cj.id = j.id_journal
+            WHERE 
+                j.id_compte = :id_compte
+                AND j.id_dossier IN (SELECT id_dossier FROM dossiers_utiles)
+                AND j.id_exercice IN (SELECT id FROM exercices_utiles)
+            ORDER BY 
+                CASE 
+                    WHEN cj.type = 'RAN' THEN 0
+                    ELSE 1
+                END,
+                j.dateecriture ASC
+            `;
 
         const result = await db.sequelize.query(query, {
             replacements: {
@@ -2537,10 +2567,15 @@ exports.addLettrage = async (req, res) => {
             }
         );
 
+        const list = await journals.findAll({
+            where: { id: data }
+        })
+
         return res.status(200).json({
             state: true,
             message: `Lettrage "${nouveauLettrage}" ajouté avec succès à ${data.length} lignes`,
-            lettrage: nouveauLettrage
+            lettrage: nouveauLettrage,
+            list
         });
 
     } catch (error) {
@@ -2560,7 +2595,6 @@ exports.deleteLettrage = async (req, res) => {
             return res.status(400).json({ state: false, message: 'Données manquantes ou invalides' });
         }
 
-        // journals.update retourne un tableau dont la première valeur est le nombre de lignes affectées
         const [affectedRows] = await journals.update(
             { lettrage: "" },
             {
@@ -2570,11 +2604,16 @@ exports.deleteLettrage = async (req, res) => {
             }
         );
 
+        const list = await journals.findAll({
+            where: { id: data }
+        })
+
         return res.status(200).json({
             state: true,
             message: `Lettrage supprimé avec succès sur ${Number(affectedRows) || 0} ${pluralize(Number(affectedRows), 'ligne')}`,
             affected: Number(affectedRows) || 0,
-            lettrage: ""
+            lettrage: "",
+            list
         });
 
     } catch (error) {
@@ -3447,36 +3486,38 @@ exports.addEcriture = async (req, res) => {
         let id_devise = null;
 
         const dossierPc_pc = await dossierplancomptable.findByPk(id_plan_comptable);
-        const comptegen_pc = dossierPc_pc?.compte;
+        const compteAux_pc = dossierPc_pc?.compte;
+        const libelleAux_pc = dossierPc_pc?.libelle;
 
         const dossierPc_cp = await dossierplancomptable.findByPk(id_contre_partie);
-        const comptegen_cp = dossierPc_cp?.compte;
+        const compteAux_cp = dossierPc_cp?.compte;
+        const libelleAux_cp = dossierPc_cp?.libelle;
 
         if (!dossierPc_pc || !dossierPc_cp) {
             throw new Error("Compte introuvable");
         }
 
         const comptebaseaux_pc = dossierPc_pc?.baseaux_id;
-        let libelleaux_pc = '';
-        let compteaux_pc = '';
+        let libelleGen_pc = '';
+        let compteGen_pc = '';
 
         const comptebaseaux_cp = dossierPc_cp?.baseaux_id;
-        let libelleaux_cp = '';
-        let compteaux_cp = '';
+        let libelleGen_cp = '';
+        let compteGen_cp = '';
 
         let id_numcptcentralise_pc = null;
         if (comptebaseaux_pc) {
             const cpt = await dossierplancomptable.findByPk(comptebaseaux_pc);
-            libelleaux_pc = cpt?.libelle;
-            compteaux_pc = cpt?.compte;
+            libelleGen_pc = cpt?.libelle;
+            compteGen_pc = cpt?.compte;
             id_numcptcentralise_pc = cpt?.id || null;
         }
 
         let id_numcptcentralise_cp = null;
         if (comptebaseaux_cp) {
             const cpt = await dossierplancomptable.findByPk(comptebaseaux_cp);
-            libelleaux_cp = cpt?.libelle;
-            compteaux_pc = cpt?.compte;
+            libelleGen_cp = cpt?.libelle;
+            compteGen_cp = cpt?.compte;
             id_numcptcentralise_cp = cpt?.id || null;
         }
 
@@ -3548,9 +3589,10 @@ exports.addEcriture = async (req, res) => {
             saisiepar: id_compte,
             devise: 'MGA',
             id_numcptcentralise: id_numcptcentralise_pc,
-            comptegen: comptegen_pc,
-            compteaux: compteaux_pc,
-            libelleaux: libelleaux_pc
+            comptegen: compteGen_pc,
+            compteaux: compteAux_pc,
+            libelleaux: libelleAux_pc,
+            libellecompte: libelleGen_pc
         }, { transaction });
 
         await journals.create({
@@ -3568,9 +3610,10 @@ exports.addEcriture = async (req, res) => {
             saisiepar: id_compte,
             devise: 'MGA',
             id_numcptcentralise: id_numcptcentralise_cp,
-            comptegen: comptegen_cp,
-            compteaux: compteaux_cp,
-            libelleaux: libelleaux_cp
+            comptegen: compteGen_cp,
+            compteaux: compteAux_cp,
+            libelleaux: libelleAux_cp,
+            libellecompte: libelleGen_cp
         }, { transaction });
 
         await transaction.commit();
@@ -3578,6 +3621,71 @@ exports.addEcriture = async (req, res) => {
         return res.status(200).json({
             state: true,
             message: "Écriture comptable générée avec succès"
+        });
+
+    } catch (error) {
+        await transaction.rollback();
+        console.error(error);
+        return res.status(400).json({
+            state: false,
+            message: error.message
+        });
+    }
+};
+
+exports.reaffecterLigne = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const {
+            id_numcpt_nouveau,
+            selectedRows
+        } = req.body;
+
+        if (!id_numcpt_nouveau) return res.json({ state: false, message: 'Numéro de compte non trouvé' });
+        if (!Array.isArray(selectedRows) || selectedRows.length === 0) {
+            return res.json({ state: false, message: 'Aucune ligne sélectionnée' });
+        }
+
+        const dossier_pc = await dossierplancomptable.findByPk(id_numcpt_nouveau, { transaction });
+
+        if (!dossier_pc) throw new Error("Compte introuvable");
+
+        const libelleAux = dossier_pc.libelle;
+        const compteAux = dossier_pc.compte;
+
+        let libelleGen = '';
+        let compteGen = '';
+        let id_numcptcentralise = null;
+
+        if (dossier_pc.baseaux_id) {
+            const cpt = await dossierplancomptable.findByPk(dossier_pc.baseaux_id, { transaction });
+            libelleGen = cpt?.libelle || '';
+            compteGen = cpt?.compte || '';
+            id_numcptcentralise = cpt?.id || null;
+        }
+
+        for (const row of selectedRows) {
+            await journals.update(
+                {
+                    id_numcpt: id_numcpt_nouveau,
+                    id_numcptcentralise: id_numcptcentralise,
+                    comptegen: compteGen,
+                    compteaux: compteAux,
+                    libellecompte: libelleGen,
+                    libelleaux: libelleAux
+                },
+                {
+                    where: { id: row.id },
+                    transaction
+                }
+            );
+        }
+
+        await transaction.commit();
+
+        return res.json({
+            state: true,
+            message: "Réaffectation effectuée avec succès"
         });
 
     } catch (error) {

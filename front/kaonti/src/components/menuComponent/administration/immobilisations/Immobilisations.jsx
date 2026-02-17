@@ -524,6 +524,7 @@ const Immobilisations = () => {
       compte_amortissement: deriveCompteAmort(pcRow?.compte),
       vnc: Number(pcRow?.vnc_immo ?? pcRow?.valeur_nette) || 0,
       date_sortie: '', prix_vente: '',
+      etat: 'enService'
     });
     setDetailsDialogOpen(true);
   };
@@ -545,8 +546,6 @@ const Immobilisations = () => {
     setDetailsForm(mapped);
     setDetailsDialogOpen(true);
   };
-
-  const handleDetailsSave = () => { /* save handled inside dialog */ };
 
   const handleDetailsCancel = () => { setDetailsDialogOpen(false); };
 
@@ -1080,7 +1079,7 @@ const Immobilisations = () => {
                   variant="contained"
                   sx={{ backgroundColor: initial.theme, textTransform: 'none', whiteSpace: 'nowrap' }}
                 >
-                  Générer écriture
+                  Générer écritures
                 </Button>
                 <Button
                   onClick={handleOpenConfirmCancelEcritures}
@@ -1180,7 +1179,20 @@ const Immobilisations = () => {
                       </Tooltip>
                       <Tooltip title="Sauvegarder">
                         <span>
-                          <IconButton onClick={handleDetailsSave} disabled={!detailsEditingRowId} style={{ width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme }}>
+                          <IconButton
+                            onClick={handleSaveLignes}
+                            disabled={
+                              savingLignes ||
+                              ligneLoading ||
+                              !(Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0)
+                            }
+                            style={{
+                              width: 35,
+                              height: 35,
+                              borderRadius: 2,
+                              backgroundColor: initial.theme
+                            }}
+                          >
                             <TfiSave style={{ width: 20, height: 20, color: 'white' }} />
                           </IconButton>
                         </span>
@@ -1264,8 +1276,8 @@ const Immobilisations = () => {
                   />
                   {Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 && (
                     <Box sx={{ mt: 2 }}>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                        <Typography variant="subtitle1">Tableau des lignes d'amortissement</Typography>
+                      {/* <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                        <Typography variant="subtitle1">Plan d'amortissement</Typography>
                         <Button
                           variant="contained"
                           onClick={handleSaveLignes}
@@ -1278,7 +1290,7 @@ const Immobilisations = () => {
                         >
                           {savingLignes ? 'Enregistrement...' : 'Enregistrer les lignes'}
                         </Button>
-                      </Stack>
+                      </Stack> */}
 
                       <TabContext value={ligneTab}>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -1599,7 +1611,7 @@ const Immobilisations = () => {
                     onOpenLienEcriture={handleOpenLienEcriture}
                   />
 
-                  <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md" fullWidth>
+                  <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md" fullWidh>
                     <DialogTitle>Choisir une écriture du journal</DialogTitle>
                     <DialogContent dividers>
                       {/* <Typography variant="body2" sx={{ mb: 1 }}>Compte: {detailsForm?.compte_id || ''}</Typography> */}
@@ -1614,7 +1626,7 @@ const Immobilisations = () => {
                             }
                           },
                           { field: 'journal', headerName: 'Jnl', width: 50, valueGetter: (p) => p?.row?.journal ?? p?.row?.id_journal ?? '' },
-                          { field: 'piece', headerName: 'Pièce', width: 100 },
+                          { field: 'piece', headerName: 'Pièce', width: 150 },
                           { field: 'libelle', headerName: 'Libellé', width: 160 },
                           { field: 'debit', headerName: 'Débit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                           { field: 'credit', headerName: 'Crédit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
