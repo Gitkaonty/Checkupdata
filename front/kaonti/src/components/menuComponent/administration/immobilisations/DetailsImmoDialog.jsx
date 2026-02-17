@@ -109,10 +109,10 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
         const amortAnt = numOrZero(next.amort_ant_comp);
         const dotPer = numOrZero(next.dotation_periode_comp);
         const amortEx = numOrZero(next.amort_exceptionnel_comp);
-        const total = round2(amortAnt + dotPer + amortEx);
+        const derog = numOrZero(next.derogatoire_comp);
+        const total = round2(amortAnt + dotPer + amortEx + derog);
         next.total_amortissement_comp = total;
         const ht = numOrZero(next.montant_ht);
-        const derog = numOrZero(next.derogatoire_comp);
         next.vnc = round2(ht - total - derog);
         onChange(next);
     };
@@ -136,7 +136,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
             const amortAnt = numOrZero(next.amort_ant_fisc);
             const dotPer = numOrZero(next.dotation_periode_fisc);
             const amortEx = numOrZero(next.amort_exceptionnel_fisc);
-            next.total_amortissement_fisc = round2(amortAnt + dotPer + amortEx);
+            const derog = numOrZero(next.derogatoire_fisc);
+            next.total_amortissement_fisc = round2(amortAnt + dotPer + amortEx + derog);
             onChange(next);
         }
     }
@@ -382,7 +383,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                                     }
                                                     onChange(next);
                                                 }}
-                                                sx={{ p: 0.5 }}
+                                                sx={{ p: 0.5, ml: 1 }}
                                             />
                                         }
                                         label="Reprise immobilisation"
@@ -406,8 +407,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                     <TextField disabled={amortDisabledComp} label="Amort ant" type="text" value={form.amort_ant_comp ?? ''} onChange={handleAmortComp('amort_ant_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
                                     <TextField disabled={amortDisabledComp} label="Dotation période" type="text" value={form.dotation_periode_comp ?? ''} onChange={handleAmortComp('dotation_periode_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
                                     <TextField disabled={amortDisabledComp} label="Amort exceptionnel" type="text" value={form.amort_exceptionnel_comp ?? ''} onChange={handleAmortComp('amort_exceptionnel_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
-                                    <TextField disabled={amortDisabledComp} label="Dérogatoire" type="text" value={form.derogatoire_comp ?? ''} onChange={handleDerogComp} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
-                                    <TextField label="Total amortissement" type="text" value={form.total_amortissement_comp ?? ''} onChange={handleNumber('total_amortissement_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={amortDisabledComp} label="Dérogatoire" type="text" value={form.derogatoire_comp ?? ''} onChange={handleAmortComp('derogatoire_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={true} label="Total amortissement" type="text" value={form.total_amortissement_comp ?? ''} onChange={handleNumber('total_amortissement_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
 
                                 </Box>
                             </TabPanel>
@@ -475,9 +476,9 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                     <TextField disabled={amortDisabledFisc} label="Amort ant" type="text" value={form.amort_ant_fisc ?? ''} onChange={handleAmortFisc('amort_ant_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
                                     <TextField disabled={amortDisabledFisc} label="Dotation période" type="text" value={form.dotation_periode_fisc ?? ''} onChange={handleAmortFisc('dotation_periode_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
                                     <TextField disabled={amortDisabledFisc} label="Amort exceptionnel" type="text" value={form.amort_exceptionnel_fisc ?? ''} onChange={handleAmortFisc('amort_exceptionnel_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
-                                    <TextField disabled={amortDisabledFisc} label="Dérogatoire" type="text" value={form.derogatoire_fisc ?? ''} onChange={handleNumber('derogatoire_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={amortDisabledFisc} label="Dérogatoire" type="text" value={form.derogatoire_fisc ?? ''} onChange={handleAmortFisc('derogatoire_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
 
-                                    <TextField label="Total amortissement" type="text" value={form.total_amortissement_fisc ?? ''} onChange={handleNumber('total_amortissement_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={true} label="Total amortissement" type="text" value={form.total_amortissement_fisc ?? ''} onChange={handleNumber('total_amortissement_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
 
                                 </Box>
                             </TabPanel>
@@ -534,7 +535,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 >
                                     <MenuItem value={'enService'}>En service</MenuItem>
                                     <MenuItem value={'horsService'}>Hors service</MenuItem>
-                                    <MenuItem value={'misEnRebus'}>Mis en rébus</MenuItem>
+                                    <MenuItem value={'misEnRebus'}>Mis au rébus</MenuItem>
                                     <MenuItem value={'cassee'}>Cassée</MenuItem>
                                     <MenuItem value={'miseEnVente'}>Mise en vente</MenuItem>
                                 </Select>
