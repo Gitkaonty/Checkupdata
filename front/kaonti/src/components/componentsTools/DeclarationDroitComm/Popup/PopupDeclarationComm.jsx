@@ -577,18 +577,18 @@ const PopupDeclarationComm = ({ confirmationState, setIsRefreshed, fileId, selec
                             fullWidth
                             style={{ width: '28%' }}
                         >
-                            <InputLabel>Type de tier</InputLabel>
+                            <InputLabel
+                                sx={{
+                                    color: '#1976d2',
+                                    fontSize: '13px',
+                                }}
+                            >
+                                Type de tier
+                            </InputLabel>
                             <Select
                                 value={formData.values.typeTier}
                                 onChange={handleTypeTierChange}
                                 name="typeTier"
-                                InputLabelProps={{
-                                    style: {
-                                        color: '#1976d2',
-                                        fontSize: '13px',
-                                        marginTop: '-2px',
-                                    },
-                                }}
                             >
                                 <MenuItem value={'avecNif'}>Possedant un NIF</MenuItem>
                                 <MenuItem value={'sansNif'}>Ne possendant pas de NIF</MenuItem>

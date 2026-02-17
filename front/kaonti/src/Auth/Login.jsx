@@ -98,7 +98,7 @@ const Login = () => {
               justifyContent="center"
             >
               <img
-                src="/src/img/Logo Kaonty_2.png"
+                src="/Logo Kaonty_2.png"
                 alt="Logo Kaonty"
                 style={{
                   border: '1px solid #FFF',

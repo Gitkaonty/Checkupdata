@@ -169,7 +169,12 @@ module.exports = {
                 type: Sequelize.STRING(50),
                 unique: false,
                 allowNull: true
-            }
+            },
+            vraiedate: {
+                type: Sequelize.DATE,
+                unique: false,
+                allowNull: true
+            },
         },
             { timestamps: true }
         );

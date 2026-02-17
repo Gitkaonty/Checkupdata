@@ -96,4 +96,7 @@ router.put('/deleteLettrage', verifyJWT, verifyPermission('DELETE'), saisieContr
 // Léttrage avec écart
 router.post('/addEcriture', saisieController.addEcriture);
 
+// Réaffection des lignes
+router.post('/reaffecterLigne', saisieController.reaffecterLigne);
+
 module.exports = router;
