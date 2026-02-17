@@ -35,6 +35,7 @@ import { jwtDecode } from 'jwt-decode';
 
 import { GrPrevious } from "react-icons/gr";
 import { GrNext } from "react-icons/gr";
+import { CgAssign } from "react-icons/cg";
 
 import PopupSaisie from '../../../componentsTools/Saisie/popupSaisie';
 import PopupInfoAnalytique from '../../../componentsTools/Saisie/PopupInfoAnalytique';
@@ -42,7 +43,9 @@ import PopupInfoAnalytique from '../../../componentsTools/Saisie/PopupInfoAnalyt
 import usePermission from '../../../../hooks/usePermission';
 import useAxiosPrivate from '../../../../../config/axiosPrivate';
 import PopupConfirmDelete from '../../../componentsTools/popupConfirmDelete';
+
 import PopupAddSaisieFromConsultation from '../../../componentsTools/Saisie/PopupAddSaisieFromConsultation';
+import PopupReaffecterLigne from '../../../componentsTools/Saisie/PopupReaffecterLigne';
 
 export default function ConsultationComponent() {
     let initial = init[0];
@@ -65,6 +68,7 @@ export default function ConsultationComponent() {
     const [openSaisiePopup, setOpenSaisiePopup] = useState(false);
     const [openAnalytiquePopup, setOpenAnalytiquePopup] = useState(false);
     const [openPopupAddEcriture, setOpenPopupAddEcriture] = useState(false);
+    const [openPopupReaffecter, setOpenPopupReaffecter] = useState(false);
     const [idJournal, setIdJournal] = useState(null);
 
     const [selectedRows, setSelectedRows] = useState([]);
@@ -517,9 +521,9 @@ export default function ConsultationComponent() {
                 ).then((response) => {
                     const resData = response.data;
                     if (resData.state) {
-                        toast.success('Lignes lettrés avec success');
                         setIsRefreshed(!isRefresehed);
-                        setSelectedRows(selectedRows);
+                        setSelectedRows(resData?.list);
+                        toast.success('Lignes lettrés avec success');
                     } else {
                         toast.error(resData.message);
                     }
@@ -559,9 +563,9 @@ export default function ConsultationComponent() {
             }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
-                    toast.success('Ligne délettrés avec succès');
                     setIsRefreshed(!isRefresehed);
-                    setSelectedRows(selectedRows);
+                    setSelectedRows(resData?.list);
+                    toast.success('Ligne délettrés avec succès');
                 } else {
                     toast.error(resData.message);
                 }
@@ -577,11 +581,23 @@ export default function ConsultationComponent() {
         setOpenPopupAddEcriture(true);
     }
 
-    const createEcriture = (value) => {
+    const confirmationStateCreateEcriture = (value) => {
         if (value) {
             setOpenPopupAddEcriture(false);
         } else {
             setOpenPopupAddEcriture(false);
+        }
+    }
+
+    const handleOpenPopupReaffecter = () => {
+        setOpenPopupReaffecter(true);
+    }
+
+    const confirmationStateReaffecter = (value) => {
+        if (value) {
+            setOpenPopupReaffecter(false);
+        } else {
+            setOpenPopupReaffecter(false);
         }
     }
 
@@ -923,7 +939,7 @@ export default function ConsultationComponent() {
             {
                 openPopupAddEcriture && (
                     <PopupAddSaisieFromConsultation
-                        confirmationState={createEcriture}
+                        confirmationState={confirmationStateCreateEcriture}
                         listePlanComptable={listePlanComptableInitiale}
                         valSelectedCompte={valSelectedCompte}
                         id_dossier={Number(fileId)}
@@ -931,6 +947,20 @@ export default function ConsultationComponent() {
                         id_compte={Number(compteId)}
                         solde={solde}
                         refresh={() => setIsRefreshed(prev => !prev)}
+                    />
+                )
+            }
+            {
+                openPopupReaffecter && (
+                    <PopupReaffecterLigne
+                        confirmationState={confirmationStateReaffecter}
+                        listePlanComptable={listePlanComptableInitiale}
+                        id_dossier={Number(fileId)}
+                        id_exercice={Number(selectedExerciceId)}
+                        id_compte={Number(compteId)}
+                        refresh={() => setIsRefreshed(prev => !prev)}
+                        selectedRows={selectedRows}
+                        selectedCompte={valSelectedCompte}
                     />
                 )
             }
@@ -1072,7 +1102,6 @@ export default function ConsultationComponent() {
                                                     <div {...props} style={{ width: 600, backgroundColor: 'white' }} />
                                                 )}
                                                 renderOption={(props, option) => {
-                                                    // Extraire la clé
                                                     const { key, ...otherProps } = props;
                                                     return (
                                                         <li key={option.id} {...otherProps}>
@@ -1214,6 +1243,22 @@ export default function ConsultationComponent() {
                                         borderRadius: "5px"
                                     }}>
 
+                                    <Button
+                                        disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        variant="contained"
+                                        style={{
+                                            textTransform: 'none',
+                                            outline: 'none',
+                                            backgroundColor: initial.theme,
+                                            color: "white",
+                                            height: "39px",
+                                            marginTop: '10px'
+                                        }}
+                                        onClick={handleOpenPopupReaffecter}
+                                        startIcon={<CgAssign size={20} />}
+                                    >
+                                        Réaffecter
+                                    </Button>
                                     <Button
                                         disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
