@@ -136,7 +136,7 @@ exports.computeSoldesRapprochement = async (req, res) => {
         });
 
         // Utiliser la même convention que le grid: Débit - Crédit
-        const totalAll = (Number(totAll.sum_debit) || 0) - (Number(totAll.sum_credit) || 0);
+        const totalAll = (Number(totAll.sum_credit) || 0) - (Number(totAll.sum_debit) || 0);
         const totalNonRapp = (Number(totNonRapp.sum_debit) || 0) - (Number(totNonRapp.sum_credit) || 0);
 
         // solde comptable = total Débit - Crédit sur TOUTES les écritures
