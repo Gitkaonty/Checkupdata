@@ -1295,8 +1295,8 @@ const Immobilisations = () => {
                       <TabContext value={ligneTab}>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                           <TabList onChange={(_, v) => setLigneTab(v)} aria-label="tabs amort">
-                            <Tab label="comptable" value="comp" sx={{ textTransform: 'none' }} />
-                            <Tab label="fiscal" value="fisc" sx={{ textTransform: 'none' }} />
+                            <Tab label="comptable" value="comp"style={{ textTransform: 'none', outline: 'none', border: 'none', }} />
+                            <Tab label="fiscal" value="fisc" style={{ textTransform: 'none', outline: 'none', border: 'none', }} />
                           </TabList>
                         </Box>
 
