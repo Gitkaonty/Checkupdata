@@ -338,8 +338,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                     onChange={(e, v) => onChange({ ...form, __amortTab: v })}
                                     aria-label="tabs amortissement"
                                 >
-                                    <Tab label="Comptable" value="comp" sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
-                                    <Tab label="Fiscal" value="fisc" sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
+                                    <Tab label="Comptable" value="comp" style={{ textTransform: 'none', outline: 'none', border: 'none', }} sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
+                                    <Tab label="Fiscal" value="fisc" style={{ textTransform: 'none', outline: 'none', border: 'none', }} sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
                                 </TabList>
                             </Box>
 
@@ -451,7 +451,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                                     }
                                                     onChange(next);
                                                 }}
-                                                sx={{ p: 0.5 }}
+                                                sx={{ p: 0.5, ml: 1 }}
                                             />
                                         }
                                         label="Reprise immobilisation"
