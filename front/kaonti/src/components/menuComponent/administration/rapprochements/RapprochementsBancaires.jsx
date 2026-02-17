@@ -1145,7 +1145,7 @@ function RapprochementsBancaires() {
                           }
                           sx={{ backgroundColor: 'error.main', '&:hover': { backgroundColor: 'error.dark' }, textTransform: 'none' }}
                         >
-                          Annulé rapprochement
+                          Annuler rapprochement
                         </Button>
                       </Stack>
                     </Stack>

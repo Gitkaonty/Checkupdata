@@ -2,7 +2,10 @@ import React, { useEffect } from 'react';
 
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
-    Stack, TextField, Button, InputAdornment, MenuItem, Typography, Box, Tab, IconButton, Checkbox, FormControlLabel
+    Stack, TextField, Button, InputAdornment, MenuItem, Typography, Box, Tab, IconButton, Checkbox, FormControlLabel,
+    FormControl,
+    InputLabel,
+    Select
 } from '@mui/material';
 import { TabContext, TabList, TabPanel } from '@mui/lab';
 
@@ -503,12 +506,42 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                     {/* -------------------------------------------------- */}
                     {/*  GROUPE 05 : AUTRES */}
                     {/* -------------------------------------------------- */}
-                    <Box>
-                        <Typography style={{ fontWeight: 'normal', fontSize: '16px', marginBottom: '10px' }}>Autres</Typography>
-
-                        <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
-
+                    <Box
+                        sx={{
+                            mt: -3,
+                            mb: 3
+                        }}
+                    >
+                        <Stack direction={'row'} alignItems={'baseline'} justifyContent={'space-between'}>
+                            <FormControl
+                                size="small"
+                                variant="standard"
+                                fullWidth
+                                style={{ width: '32%' }}
+                            >
+                                <InputLabel
+                                    sx={{
+                                        color: '#1976d2',
+                                        fontSize: '13px',
+                                    }}
+                                >
+                                    Etat
+                                </InputLabel>
+                                <Select
+                                    value={form.etat || 'enService'}
+                                    onChange={handleField('etat')}
+                                    name="typeTier"
+                                >
+                                    <MenuItem value={'enService'}>En service</MenuItem>
+                                    <MenuItem value={'horsService'}>Hors service</MenuItem>
+                                    <MenuItem value={'misEnRebus'}>Mis en rébus</MenuItem>
+                                    <MenuItem value={'cassee'}>Cassée</MenuItem>
+                                    <MenuItem value={'miseEnVente'}>Mise en vente</MenuItem>
+                                </Select>
+                            </FormControl>
                             <TextField
+                                style={{ width: '32%' }}
+                                disabled={form.etat === 'enService'}
                                 label="Date de sortie"
                                 placeholder="jj/mm/aaaa"
                                 value={form.date_sortie ? String(form.date_sortie).substring(0, 10) : ''}
@@ -521,6 +554,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                             />
 
                             <TextField
+                                style={{ width: '32%' }}
+                                disabled={form.etat !== 'miseEnVente'}
                                 label="Prix de vente"
                                 type="text"
                                 value={form.prix_vente || ''}
@@ -530,54 +565,55 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 sx={{ input: { textAlign: 'right' }, ...commonSx }}
                                 InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }}
                             />
-
-                            <TextField
-                                label="Lien écriture"
-                                type="text"
-                                value={''}
-                                onClick={() => onOpenLienEcriture && onOpenLienEcriture()}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && onOpenLienEcriture) {
-                                        e.preventDefault();
-                                        onOpenLienEcriture();
-                                    }
-                                }}
-                                variant="standard"
-                                size="small"
-                                disabled
-                                sx={{
-                                    ...commonSx,
-                                    cursor: 'pointer'
-                                }}
-                                InputProps={{
-                                    readOnly: true,
-                                    startAdornment: form?.lien_ecriture_id ? (
-                                        <InputAdornment position="start">
-                                            <GoLink color={initial.theme} size={18} />
-                                        </InputAdornment>
-                                    ) : null,
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
-                                                <IconButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenLienEcriture && onOpenLienEcriture(); }} size="small">
-                                                    <FaSquarePlus style={{ width: 20, height: 20, color: initial.theme }} />
-                                                </IconButton>
-                                                {form?.lien_ecriture_id ? (
-                                                    <IconButton
-                                                        size="small"
-                                                        variant="outlined"
-                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange({ ...form, lien_ecriture_id: null }); }}
-                                                    >
-                                                        <IoMdTrash style={{ width: 20, height: 20, color: 'red' }} />
-                                                    </IconButton>
-                                                ) : null}
-                                            </Box>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-                        </Box>
+                        </Stack>
                     </Box>
+                    <TextField
+                        label="Lien écriture"
+                        type="text"
+                        value={''}
+                        onClick={() => onOpenLienEcriture && onOpenLienEcriture()}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && onOpenLienEcriture) {
+                                e.preventDefault();
+                                onOpenLienEcriture();
+                            }
+                        }}
+                        variant="standard"
+                        size="small"
+                        disabled
+                        sx={{
+                            ...commonSx,
+                            cursor: 'pointer',
+                            mt: -8,
+                            mb: 2
+                        }}
+                        InputProps={{
+                            readOnly: true,
+                            startAdornment: form?.lien_ecriture_id ? (
+                                <InputAdornment position="start">
+                                    <GoLink color={initial.theme} size={18} />
+                                </InputAdornment>
+                            ) : null,
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
+                                        <IconButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenLienEcriture && onOpenLienEcriture(); }} size="small">
+                                            <FaSquarePlus style={{ width: 20, height: 20, color: initial.theme }} />
+                                        </IconButton>
+                                        {form?.lien_ecriture_id ? (
+                                            <IconButton
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange({ ...form, lien_ecriture_id: null }); }}
+                                            >
+                                                <IoMdTrash style={{ width: 20, height: 20, color: 'red' }} />
+                                            </IconButton>
+                                        ) : null}
+                                    </Box>
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
                 </Box >
             </DialogContent >
 

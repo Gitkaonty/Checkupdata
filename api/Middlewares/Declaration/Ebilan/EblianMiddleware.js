@@ -1526,11 +1526,11 @@ const runBilanCompet = async (id_compte, id_dossier, id_exercice) => {
 
             LEFT JOIN COMPTERUBRIQUES CR2
                 ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
-            AND CR2.ID_COMPTE = :id_compte
-            AND CR2.ID_DOSSIER = :id_dossier
-            AND CR2.ID_EXERCICE = :id_exercice
-            AND CR2.ID_ETAT = 'TFTI'
-            AND CR2.ACTIVE = true
+                AND CR2.ID_COMPTE = :id_compte
+                AND CR2.ID_DOSSIER = :id_dossier
+                AND CR2.ID_EXERCICE = :id_exercice
+                AND CR2.ID_ETAT = 'TFTI'
+                AND CR2.ACTIVE = true
 
             LEFT JOIN balance_n b
                 ON b.COMPTE LIKE CR2.COMPTE::text || '%'
