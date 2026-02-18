@@ -1,8 +1,5 @@
-const bcrypt = require("bcrypt");
 const db = require("../../Models");
 require('dotenv').config();
-const Sequelize = require('sequelize');
-const { Op } = require('sequelize');
 const { sequelize } = require('../../Models');
 const { withSSEProgress } = require('../../Middlewares/sseProgressMiddleware');
 
@@ -19,10 +16,6 @@ const testModelePcName = async (req, res) => {
       list: []
     }
 
-    //création des comptes généraux
-
-
-    //récuperer la liste à jour des codes journaux
     const updatedList = await modelePlanComptable.findAll({
       where:
       {
@@ -44,16 +37,16 @@ const testModelePcName = async (req, res) => {
 
 const convertScientificToString = (value) => {
   if (!value || value === '') return '';
-  
+
   const str = String(value);
-  
+
   if (str.includes('E') || str.includes('e')) {
     const num = parseFloat(str);
     if (!isNaN(num)) {
       return num.toFixed(0);
     }
   }
-  
+
   return str;
 };
 
@@ -180,7 +173,7 @@ const importModelePcWithProgressLogic = async (req, res, progress) => {
 
     // Étape 1: Créer le modèle (5%)
     progress.step('Création du modèle de plan comptable...', 5);
-    
+
     const modeleName = await modelePlanComptable.create(
       {
         id_compte: idCompte,
@@ -192,7 +185,7 @@ const importModelePcWithProgressLogic = async (req, res, progress) => {
 
     // Étape 2: Préparer les données (10%)
     progress.step('Préparation des données...', 10);
-    
+
     const rowsToInsert = modelePcData.map(item => {
       let dateCin = null;
 
@@ -245,7 +238,7 @@ const importModelePcWithProgressLogic = async (req, res, progress) => {
 
     // Étape 4: Mise à jour des relations (85%)
     progress.step('Mise à jour des relations...', 85);
-    
+
     await sequelize.query(
       `
       UPDATE modeleplancomptabledetails A
@@ -268,7 +261,7 @@ const importModelePcWithProgressLogic = async (req, res, progress) => {
 
     // Étape 5: Finalisation (95%)
     progress.step('Finalisation...', 95);
-    
+
     await transaction.commit();
 
     // Succès

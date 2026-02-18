@@ -23,7 +23,7 @@ import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
 
 import { AiFillEdit } from "react-icons/ai";
 
-import { DataGrid, frFR } from '@mui/x-data-grid';
+import { DataGrid, frFR, useGridApiRef } from '@mui/x-data-grid';
 
 import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 import QuickFilter from '../../../componentsTools/DatagridToolsStyle';
@@ -48,6 +48,7 @@ import PopupAddSaisieFromConsultation from '../../../componentsTools/Saisie/Popu
 import PopupReaffecterLigne from '../../../componentsTools/Saisie/PopupReaffecterLigne';
 
 export default function ConsultationComponent() {
+    const apiRef = useGridApiRef();
     let initial = init[0];
 
     const { canAdd, canModify, canDelete, canView } = usePermission();
@@ -243,7 +244,7 @@ export default function ConsultationComponent() {
             field: 'dossier',
             headerName: 'Dossier',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.6,
             headerAlign: 'left',
             align: 'left',
@@ -253,7 +254,7 @@ export default function ConsultationComponent() {
             field: 'dateecriture',
             headerName: 'Date',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.6,
             headerAlign: 'left',
             align: 'left',
@@ -275,7 +276,7 @@ export default function ConsultationComponent() {
             field: 'journal',
             headerName: 'Journal',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.43,
             headerAlign: 'left',
             align: 'left',
@@ -285,7 +286,7 @@ export default function ConsultationComponent() {
             field: 'piece',
             headerName: 'Pièce',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.7,
             headerAlign: 'left',
             align: 'left',
@@ -294,7 +295,7 @@ export default function ConsultationComponent() {
             field: 'libelle',
             headerName: 'Libellé',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 2.2,
             headerAlign: 'left',
             align: 'left',
@@ -333,7 +334,7 @@ export default function ConsultationComponent() {
             field: 'debit',
             headerName: 'Débit',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.9,
             headerAlign: 'right',
             align: 'right',
@@ -349,7 +350,7 @@ export default function ConsultationComponent() {
             field: 'credit',
             headerName: 'Crédit',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.9,
             headerAlign: 'right',
             align: 'right',
@@ -366,7 +367,7 @@ export default function ConsultationComponent() {
             field: 'solde',
             headerName: 'Solde',
             type: 'number',
-            sortable: true,
+            sortable: false,
             flex: 1,
             headerAlign: 'right',
             align: 'right',
@@ -387,7 +388,7 @@ export default function ConsultationComponent() {
             field: 'lettrage',
             headerName: 'Lettrage',
             type: 'string',
-            sortable: true,
+            sortable: false,
             flex: 0.45,
             headerAlign: 'left',
             align: 'left',
@@ -1324,6 +1325,7 @@ export default function ConsultationComponent() {
                                 >
                                 </Stack>
                                 <DataGrid
+                                    apiRef={apiRef}
                                     disableMultipleSelection={DataGridStyle.disableMultipleSelection}
                                     disableColumnSelector={DataGridStyle.disableColumnSelector}
                                     disableDensitySelector={DataGridStyle.disableDensitySelector}
