@@ -2980,7 +2980,7 @@ const runEtatFinancier = async (id_compte, id_dossier, id_exercice) => {
                 ON n1.ID_RUBRIQUE = n.ID_RUBRIQUE
         )
 
-        SELECT * FROM TFTI_N
+        SELECT * FROM TFTI_COMPLET
 
         `,
         {
@@ -2993,6 +2993,9 @@ const runEtatFinancier = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const getEtatFinancierComplet = async (id_compte, id_dossier, id_exercice, id_etat) => {
+    const {
+        id_exerciceN1,
+    } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
     const rows = await runEtatFinancier(id_compte, id_dossier, id_exercice);
     return rows;
 };
