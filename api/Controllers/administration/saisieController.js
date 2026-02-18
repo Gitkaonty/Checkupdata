@@ -102,6 +102,12 @@ exports.computeSoldesRapprochement = async (req, res) => {
             console.debug('[RAPPRO][COMPUTE][INPUT]', { fileId, compteId, exerciceId, pcId, rapproId, endDateParam, dateDebut, dateFin, soldeBancaireParam });
         } catch { }
 
+        const rapprochementData = await rapprochements.findByPk(rapproId);
+        if (!rapprochementData) {
+            return res.status(500).json({ state: false, msg: 'Rapprochement non trouvé' });
+        }
+        const dateFinRappro = rapprochementData?.date_fin;
+
         const sqlAggBase = `
             FROM journals j
             JOIN codejournals cj ON cj.id = j.id_journal
@@ -118,16 +124,34 @@ exports.computeSoldesRapprochement = async (req, res) => {
         // Total de TOUTES les écritures (pour solde_comptable)
         // sous-ensemble identique au grid: NON rapprochées
         // + rapprochées dont la date_rapprochement = dateFin sélectionnée
-        const sqlAll = `SELECT COALESCE(SUM(j.credit),0) AS sum_credit, COALESCE(SUM(j.debit),0) AS sum_debit ${sqlAggBase}
-                        AND ( (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 0
-                              OR ( (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 1 AND j.date_rapprochement = :dateFin )
-                            )`;
+
+        const sqlAll = `
+            SELECT 
+                COALESCE(SUM(j.credit),0) AS sum_credit, 
+                COALESCE(SUM(j.debit),0) AS sum_debit 
+            FROM journals j
+                JOIN codejournals cj ON cj.id = j.id_journal
+                JOIN dossierplancomptables pc ON pc.id = :pcId
+                JOIN dossierplancomptables c ON c.id = j.id_numcpt
+                WHERE j.id_compte = :compteId
+                AND j.id_dossier = :fileId
+                AND j.id_exercice = :exerciceId
+                AND cj.compteassocie = pc.compte
+                AND j.dateecriture BETWEEN :dateDebut AND :dateFinRappro
+                AND c.compte <> pc.compte
+        `;
+
         // Total des écritures NON rapprochées uniquement (rapprocher = false)
-        const sqlNonRapp = `SELECT COALESCE(SUM(j.credit),0) AS sum_credit, COALESCE(SUM(j.debit),0) AS sum_debit ${sqlAggBase}
-                            AND (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 0`;
+        const sqlNonRapp = `
+            SELECT 
+                COALESCE(SUM(j.credit),0) AS sum_credit, 
+                COALESCE(SUM(j.debit),0) AS sum_debit 
+                ${sqlAggBase}
+                AND (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 0
+        `;
 
         const [totAll] = await db.sequelize.query(sqlAll, {
-            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin },
+            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin, dateFinRappro },
             type: db.Sequelize.QueryTypes.SELECT,
         });
         const [totNonRapp] = await db.sequelize.query(sqlNonRapp, {
@@ -287,6 +311,27 @@ exports.deleteRapprochement = async (req, res) => {
         if (!id || !fileId || !compteId || !exerciceId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
+
+        const rapprochementData = await rapprochements.findByPk(id);
+        if (!rapprochementData) {
+            return res.status(500).json({ state: false, msg: 'Rapprochement non trouvé' });
+        }
+
+        const dateFinRapprochement = rapprochementData.date_fin;
+
+        await journals.update({
+            rapprocher: false,
+            // date_rapprochement: null
+        }, {
+            where: {
+                id_compte: compteId,
+                id_dossier: fileId,
+                id_exercice: exerciceId,
+                rapprocher: true,
+                date_rapprochement: dateFinRapprochement
+            }
+        })
+
         const affected = await rapprochements.destroy({ where: { id, id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId } });
         if (!affected) return res.status(404).json({ state: false, msg: 'Introuvable' });
         return res.json({ state: true, id });
@@ -345,12 +390,10 @@ exports.listEcrituresForRapprochement = async (req, res) => {
             AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
         `
-
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
             type: db.Sequelize.QueryTypes.SELECT,
         });
-        console.log('rows : ', rows);
         return res.json({ state: true, list: rows || [] });
     } catch (err) {
         console.error('[RAPPRO][ECRITURES] error:', err);
