@@ -706,18 +706,57 @@ const totalRubriqueExterneEVCP = async (id_compte, id_dossier, id_exercice) => {
         });
 
         await db.sequelize.query(`
+            WITH balance_n AS (
+                SELECT
+                MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
+                GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
+                GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
+                GREATEST(
+                    SUM(J.DEBIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - SUM(J.CREDIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ),
+                    0
+                ) AS SOLDEDEBITTRESO,
+                GREATEST(
+                    SUM(J.CREDIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - SUM(J.DEBIT) FILTER (
+                        WHERE
+                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ),
+                    0
+                ) AS SOLDECREDITTRESO
+                FROM
+                    JOURNALS J
+                    LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+                WHERE
+                    J.ID_DOSSIER = :id_dossier
+                    AND J.ID_EXERCICE = :id_exercice
+                    AND J.ID_COMPTE = :id_compte
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM DOSSIERPLANCOMPTABLES DPC
+                        WHERE DPC.COMPTE = J.COMPTEAUX
+                        AND DPC.ID_DOSSIER = :id_dossier
+                        AND DPC.ID_COMPTE = :id_compte
+                        AND DPC.NATURE = 'Collectif'
+                    )
+
+                GROUP BY
+                    J.COMPTEAUX
+            )
+
             UPDATE rubriquesexternesevcps as tabA SET
 
             resultat = (
             SELECT COALESCE(SUM(b.soldecredit - b.soldedebit),0)
-                FROM balances AS b
-                JOIN dossierplancomptables AS dpc
-                    ON b.id_numcompte = dpc.id
-                WHERE (dpc.compte LIKE '6%' OR dpc.compte LIKE '7%')
-                    AND b.id_dossier = :id_dossier
-                    AND b.id_compte = :id_compte
-                    AND dpc.id_dossier = :id_dossier
-                    AND dpc.id_compte = :id_compte
+                FROM balance_n AS b
+                WHERE (b.compte LIKE '6%' OR b.compte LIKE '7%')
             )
 
             + (SELECT COALESCE(SUM(montant),0) FROM ajustementexternes WHERE ajustementexternes.id_rubrique = '14'

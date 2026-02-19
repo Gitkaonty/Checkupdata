@@ -8,10 +8,10 @@ const recupInfos = async (id_compte, id_dossier, id_exerciceN) => {
     try {
         const currentExercice = await exercices.findByPk(id_exerciceN);
 
-        const currentDebutExerciceN = currentExercice.date_debut;
+        const currentDebutExerciceN = currentExercice?.date_debut;
 
         if (!currentDebutExerciceN) {
-            return res.status(401).json({ message: 'Date de début d\'exercice non trouvée', state: false });
+            return { id_exerciceN1: null };
         }
 
         // Calcul date N-1

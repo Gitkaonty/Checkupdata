@@ -17,20 +17,27 @@ import QuickFilter, { DataGridStyle } from '../DatagridToolsStyle';
 import PopupConfirmDelete from '../popupConfirmDelete';
 import useAxiosPrivate from '../../../../config/axiosPrivate';
 
-const listType = [
-    { value: "RUBRIQUE", label: "Rubrique" },
-    { value: "TITRE", label: "Titre" },
-    { value: "LIAISON", label: "Liaison N" },
-    { value: "LIAISON N1", label: "Liaison N-1" },
-    { value: "LIAISON VAR ACTIF", label: "Liaison var actif" },
-    { value: "LIAISON VAR PASSIF", label: "Liaison var passif" },
-    { value: "TOTAL", label: "Total" },
-    { value: "TOTAL SOUS-RUBRIQUES", label: "Total sous-rubriques" },
-    { value: "SOUS-TOTAL", label: "Sous-Total" },
-    { value: "SOUS-RUBRIQUE", label: "Sous-Rubrique" },
-]
-
 const DatagirdBaseExterne = ({ row_id, tableRow, compteId, fileId, exerciceId, id_etat, setTableRow, setIsRefreshed, subtable, canModify, canAdd, canDelete, canView }) => {
+    const listType = [
+        { value: "RUBRIQUE", label: "Rubrique" },
+        { value: "TITRE", label: "Titre" },
+
+    ]
+    if (['TFTD', 'TFTI'].includes(id_etat)) {
+        listType.push(
+            { value: "LIAISON", label: "Liaison N" },
+            { value: "LIAISON N1", label: "Liaison N-1" },
+            { value: "LIAISON VAR ACTIF", label: "Liaison var actif" },
+            { value: "LIAISON VAR PASSIF", label: "Liaison var passif" },
+        )
+    }
+    listType.push(
+        { value: "TOTAL", label: "Total" },
+        { value: "TOTAL SOUS-RUBRIQUES", label: "Total sous-rubriques" },
+        { value: "SOUS-TOTAL", label: "Sous-Total" },
+        { value: "SOUS-RUBRIQUE", label: "Sous-Rubrique" },
+    )
+
     const apiRef = useGridApiRef();
     const axiosPrivate = useAxiosPrivate();
     let initial = init[0];
