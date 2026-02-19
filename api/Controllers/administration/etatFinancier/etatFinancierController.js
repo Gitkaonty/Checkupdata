@@ -11,18 +11,13 @@ const etatFinancierGeneratePdf = require('../../../Middlewares/EtatFinanciere/ad
 const etatFinancierGenerateExcel = require('../../../Middlewares/EtatFinanciere/adminEtatFinancierGenerateExcel');
 
 const fonctionUpdateSoldeEtatFinancier = require('../../../Middlewares/EtatFinanciere/updateSoldeEtatFinancier');
-const fonctionCopyRubrique = require('../../../Middlewares/EtatFinanciere/copyRubriqueExterne');
-
 const updateSolde = fonctionUpdateSoldeEtatFinancier.updateSoldeEtatFinancier;
 const totalRubriqueExterneEVCP = fonctionUpdateSoldeEtatFinancier.totalRubriqueExterneEVCP;
-const copyRubriqueExterne = fonctionCopyRubrique.copyRubriqueExterne;
-
-const fonctionAjoutEtat = require('../../../Middlewares/EtatFinanciere/etatEtatFinancier');
-const createEtatsEtatFinancierIfNotExist = fonctionAjoutEtat.createEtatsEtatFinancierIfNotExist;
 
 const recupEtatFinancier = require('../../../Middlewares/Administration/EtatFinancier');
 const getEtatFinancierComplet = recupEtatFinancier.getEtatFinancierComplet;
 const getDetailLigneEtatFinancier = recupEtatFinancier.getDetailLigneEtatFinancier;
+const getSigComplet = recupEtatFinancier.getSigComplet;
 
 const rubriquesExternes = db.rubriquesExternes;
 const dossierplancomptableModel = db.dossierplancomptable;
@@ -323,7 +318,7 @@ exports.getEtatFinancierGlobal = async (req, res) => {
 
 exports.generateTableEtatFinancier = async (req, res) => {
     try {
-        const { id_dossier, id_exercice, id_compte, id_etat } = req.body;
+        const { id_dossier, id_exercice, id_compte } = req.body;
 
         if (!id_compte) {
             return res.status(400).json({ state: false, message: 'id_compte manquant' });
@@ -334,77 +329,13 @@ exports.generateTableEtatFinancier = async (req, res) => {
         if (!id_exercice) {
             return res.status(400).json({ state: false, message: 'id_exercice manquant' });
         }
-        if (!id_etat) {
-            return res.status(400).json({ state: false, message: 'id_etat manquant' });
-        }
 
-        try {
-            await createEtatsEtatFinancierIfNotExist(id_dossier, id_compte, id_exercice, id_etat);
-        } catch (err) {
-            throw new Error(`Erreur lors de l\'ajout de l'état du tableau : ${err.message}`);
-        }
+        await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
 
-        if (id_etat === "BILAN") {
-            await copyRubriqueExterne(id_dossier, id_exercice, id_compte, "BILAN_ACTIF");
-            await copyRubriqueExterne(id_dossier, id_exercice, id_compte, "BILAN_PASSIF");
-        } else {
-            await copyRubriqueExterne(id_dossier, id_exercice, id_compte, id_etat);
-        }
-
-        const rubriqueData = await rubriquesExternes.findAll({
-            where:
-                id_etat === "BILAN"
-                    ? {
-                        id_dossier,
-                        id_exercice,
-                        id_compte,
-                        id_etat: { [Op.in]: ["BILAN_ACTIF", "BILAN_PASSIF"] },
-                    }
-                    : { id_dossier, id_exercice, id_compte, id_etat },
+        return res.status(200).json({
+            state: true,
+            message: `Génération du tableau EVCP réussie`,
         });
-
-        if (!rubriqueData || rubriqueData.length === 0) {
-            if (id_etat !== 'EVCP') {
-                return res.status(200).json({
-                    state: false,
-                    message:
-                        id_etat === "BILAN"
-                            ? "Aucune rubrique trouvé pour le tableau BILAN ACTIF ou PASSIF"
-                            : `Aucune rubrique trouvé pour le tableau ${id_etat}`,
-                });
-            }
-        }
-
-        let success = false;
-
-        if (id_etat === "BILAN") {
-            const actifSuccess = await generateTableauAuto(id_dossier, id_exercice, id_compte, "BILAN_ACTIF");
-            const passifSuccess = await generateTableauAuto(id_dossier, id_exercice, id_compte, "BILAN_PASSIF");
-
-            success = actifSuccess && passifSuccess;
-        } else if (id_etat === 'EVCP') {
-            success = await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
-        } else {
-            success = await generateTableauAuto(id_dossier, id_exercice, id_compte, id_etat);
-        }
-
-        if (success) {
-            return res.status(200).json({
-                state: true,
-                message:
-                    id_etat === "BILAN"
-                        ? "Génération du BILAN ACTIF et PASSIF automatique réussie"
-                        : `Génération du ${id_etat} automatique réussie`,
-            });
-        } else {
-            return res.status(200).json({
-                state: false,
-                message:
-                    id_etat === "BILAN"
-                        ? "Erreur lors de la génération automatique du BILAN ACTIF ou PASSIF"
-                        : `Erreur lors de la génération automatique du ${id_etat}`,
-            });
-        }
 
     } catch (error) {
         console.error("Erreur dans generateTableEtatFinancier:", error);
@@ -501,8 +432,6 @@ exports.addModifyAjustementExterne = async (req, res) => {
 
         if (id_etat === 'EVCP') {
             await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
-        } else {
-            await updateSolde(id_dossier, id_compte, id_exercice, id_etat);
         }
 
         return res.json(resData);
@@ -575,8 +504,6 @@ exports.deleteAjustementExterne = async (req, res) => {
 
         if (id_etat === 'EVCP') {
             await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
-        } else {
-            await updateSolde(id_dossier, id_compte, id_exercice, id_etat);
         }
 
         if (stateDeleting > 0) {
@@ -999,7 +926,82 @@ exports.getEtatFinancier = async (req, res) => {
         }
 
         const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice, id_etat);
-        return res.json({ data, nbr: data.length });
+
+        const rubriqueExterneEvcpData = (await rubriqueExternesEvcp.findAll({
+            where: {
+                id_dossier: Number(id_dossier),
+                id_exercice: Number(id_exercice),
+                id_compte: Number(id_compte)
+            },
+            include: [
+                {
+                    model: ajustementExternes,
+                    as: 'ajusts',
+                    attributes: ['id', 'id_compte', 'id_dossier', 'id_exercice', 'id_etat', 'id_rubrique', 'nature', 'motif', 'montant'],
+                    required: false,
+                    where: {
+                        id_dossier: Number(id_dossier),
+                        id_exercice: Number(id_exercice),
+                        id_compte: Number(id_compte)
+                    }
+                },
+            ],
+            order: [['ordre', 'ASC']]
+        })).map(r => {
+            const rub = r.toJSON();
+
+            rub.ajusts = rub.ajusts.filter(a => a.id_etat === rub.id_etat);
+            rub.id = Number(rub.id);
+            rub.id_compte = Number(rub.id_compte);
+            rub.id_dossier = Number(rub.id_dossier);
+            rub.id_exercice = Number(rub.id_exercice);
+            return rub;
+        });
+
+        const regrouped = {
+            BILAN_ACTIF: data.filter(el => el.id_etat === 'BILAN_ACTIF'),
+            BILAN_PASSIF: data.filter(el => el.id_etat === 'BILAN_PASSIF'),
+            CRN: data.filter(el => el.id_etat === 'CRN'),
+            CRF: data.filter(el => el.id_etat === 'CRF'),
+            TFTD: data.filter(el => el.id_etat === 'TFTD'),
+            TFTI: data.filter(el => el.id_etat === 'TFTI'),
+            EVCP: rubriqueExterneEvcpData
+        }
+
+        return res.json({
+            liste: regrouped,
+            state: true,
+            message: "Récupéré avec succès"
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+exports.getSig = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, id_etat } = req.body;
+        // if (!id_etat) {
+        //   return res.json({ state: false, message: 'Tableau non trouvé' });
+        // }
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Compte non trouvé' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Dossier non trouvé' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: ('Exercice non trouvé') });
+        }
+
+        const data = await getSigComplet(id_compte, id_dossier, id_exercice, id_etat);
+
+        return res.json({
+            liste: data,
+            state: true,
+            message: "Récupéré avec succès"
+        });
     } catch (error) {
         console.log(error);
     }

@@ -1,6 +1,9 @@
 const db = require("../../Models");
-const { Op } = require('sequelize');
 require('dotenv').config();
+
+const recupEtatFinancier = require('../../Middlewares/Administration/EtatFinancier');
+const getEtatFinancierComplet = recupEtatFinancier.getEtatFinancierComplet;
+const getSigComplet = recupEtatFinancier.getSigComplet;
 
 const rubriquesExternes = db.rubriquesExternes;
 const rubriqueExternesEvcp = db.rubriqueExternesEvcp;
@@ -15,21 +18,10 @@ const formatAmount = (value) => {
     return Number(value) < 0 ? `- ${str}` : str;
 };
 
-const getRubriqueExterneData = async (id_compte, id_dossier, id_exercice, id_etat) => {
-    return rubriquesExternes.findAll({
-        where: {
-            id_dossier,
-            id_exercice,
-            id_compte,
-            id_etat,
-        },
-        order: [['ordre', 'ASC']]
-    })
-}
-
 const generateBilanContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanActifData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
-    const bilanPassifData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
+    const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
 
     const buildTable = (data, type) => {
         const body = [];
@@ -119,7 +111,8 @@ const generateBilanContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateBilanActifContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanActifData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
 
     const buildTable = (data, type) => {
         const body = [];
@@ -166,7 +159,9 @@ const generateBilanActifContent = async (id_compte, id_dossier, id_exercice) => 
 }
 
 const generateBilanPassifContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanPassifData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
+
     const buildTable = (data, type) => {
         const body = [];
 
@@ -225,7 +220,9 @@ const generateBilanPassifContent = async (id_compte, id_dossier, id_exercice) =>
 }
 
 const generateCrnContent = async (id_compte, id_dossier, id_exercice) => {
-    const crnData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'CRN');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const crnData = data.filter(val => val.id_etat === 'CRN');
+
     const buildTable = (data) => {
         const body = [];
 
@@ -285,7 +282,9 @@ const generateCrnContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateCrfContent = async (id_compte, id_dossier, id_exercice) => {
-    const crfData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'CRF');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const crfData = data.filter(val => val.id_etat === 'CRF');
+
     const buildTable = (data) => {
         const body = [];
 
@@ -345,7 +344,9 @@ const generateCrfContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateTftdContent = async (id_compte, id_dossier, id_exercice) => {
-    const tftdData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'TFTD');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const tftdData = data.filter(val => val.id_etat === 'TFTD');
+
     const buildTable = (data) => {
         const body = [];
 
@@ -405,7 +406,9 @@ const generateTftdContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateTftiContent = async (id_compte, id_dossier, id_exercice) => {
-    const tftiData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'TFTI');
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const tftiData = data.filter(val => val.id_etat === 'TFTI');
+
     const buildTable = (data) => {
         const body = [];
 
@@ -569,7 +572,7 @@ const generateEvcpContent = async (id_compte, id_dossier, id_exercice) => {
 }
 
 const generateSigContent = async (id_compte, id_dossier, id_exercice) => {
-    const sigData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'SIG');
+    const sigData = await getSigComplet(id_compte, id_dossier, id_exercice);
     const buildTable = (data) => {
         const body = [];
 

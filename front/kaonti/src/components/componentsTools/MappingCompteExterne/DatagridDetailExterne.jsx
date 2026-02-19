@@ -199,11 +199,36 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
             headerClassName: 'HeaderbackColor',
             editable: editableRow,
             valueFormatter: (params) => {
-                const selectedType = tableau?.find((option) => option.value === params.value);
-                return selectedType ? selectedType.label : params.label;
-            },
+                const typesAvecIdEtat = ['RUBRIQUE', 'TITRE', 'TOTAL', 'TOTAL SOUS-RUBRIQUES', 'SOUS-TOTAL', 'SOUS-RUBRIQUE'];
 
+                if (typesAvecIdEtat.includes(typeRubrique)) {
+                    const selectedType = tableau.find(option => option.value === id_etat);
+                    return selectedType ? selectedType.label : id_etat;
+                } else {
+                    const selectedType = tableau
+                        ?.filter(val => {
+                            if (val.value === id_etat) return false;
+                            if (id_etat === 'TFTD' && val.value === 'TFTI') return false;
+                            if (id_etat === 'TFTI' && val.value === 'TFTD') return false;
+                            return true;
+                        })
+                        .find(option => option.value === params.value);
+
+                    return selectedType ? selectedType.label : params.value;
+                }
+            },
             renderEditCell: (params) => {
+                const typesAvecIdEtat = ['RUBRIQUE', 'TITRE', 'TOTAL', 'TOTAL SOUS-RUBRIQUES', 'SOUS-TOTAL', 'SOUS-RUBRIQUE'];
+
+                const options = typesAvecIdEtat.includes(typeRubrique)
+                    ? tableau.filter(val => val.value === id_etat) 
+                    : tableau.filter(val => {
+                        if (val.value === id_etat) return false;
+                        if (id_etat === 'TFTD' && val.value === 'TFTI') return false;
+                        if (id_etat === 'TFTI' && val.value === 'TFTD') return false; 
+                        return true;
+                    });
+
                 return (
                     <FormControl fullWidth>
                         <InputLabel><em>Choisir...</em></InputLabel>
@@ -214,7 +239,7 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
                             onChange={(e) => handleChangeTableau(e.target.value)}
                             label="tableau"
                         >
-                            {tableau?.map((option) => (
+                            {options.map((option) => (
                                 <MenuItem key={option.value} value={option.value}>
                                     {option.label}
                                 </MenuItem>
@@ -589,7 +614,7 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
             condition: '',
             equation: '',
             id_etat: id_etat,
-            tableau: id_etat,
+            tableau: ['RUBRIQUE', 'TITRE', 'TOTAL', 'TOTAL SOUS-RUBRIQUES', 'SOUS-TOTAL', 'SOUS-RUBRIQUE'].includes(typeRubrique) ? id_etat : '',
             par_default: false,
             active: true,
         };

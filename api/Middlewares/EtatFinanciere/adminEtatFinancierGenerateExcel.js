@@ -1,6 +1,9 @@
 const db = require("../../Models");
-const rubriquesExternes = db.rubriquesExternes;
 const rubriqueExternesEvcp = db.rubriqueExternesEvcp;
+
+const recupEtatFinancier = require('../../Middlewares/Administration/EtatFinancier');
+const getEtatFinancierComplet = recupEtatFinancier.getEtatFinancierComplet;
+const getSigComplet = recupEtatFinancier.getSigComplet;
 
 const generateTitle = (sheetName, label, dossier, compte, date_debut, date_fin, cellEnd) => {
     sheetName.insertRow(1, [label]);
@@ -40,15 +43,8 @@ const generateTitle = (sheetName, label, dossier, compte, date_debut, date_fin, 
 };
 
 const getRubriqueExterneData = async (id_compte, id_dossier, id_exercice, id_etat) => {
-    return rubriquesExternes.findAll({
-        where: {
-            id_dossier,
-            id_exercice,
-            id_compte,
-            id_etat,
-        },
-        order: [['ordre', 'ASC']]
-    })
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    return data.filter(val => val.id_etat === id_etat);
 }
 
 const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
@@ -438,7 +434,7 @@ const exportEvcpToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
 }
 
 const exportSigToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const sigData = await getRubriqueExterneData(id_compte, id_dossier, id_exercice, 'SIG');
+    const sigData = await getSigComplet(id_compte, id_dossier, id_exercice);
     const sheetSig = workbook.addWorksheet('SIG');
 
     sheetSig.columns = [
