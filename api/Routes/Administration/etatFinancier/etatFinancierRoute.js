@@ -45,4 +45,7 @@ router.post('/getEtatFinancier', etatFinancierController.getEtatFinancier);
 // Récupération de la détail des lignes
 router.post('/getEtatFinancierDetail', etatFinancierController.getEtatFinancierDetail);
 
+// Récupération du tableau SIG
+router.post('/getSig', etatFinancierController.getSig);
+
 module.exports = router;

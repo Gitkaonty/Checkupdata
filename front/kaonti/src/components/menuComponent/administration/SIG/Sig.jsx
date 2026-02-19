@@ -287,11 +287,15 @@ export default function Sig() {
     }
 
     const getEtatFinancierGlobal = () => {
-        axios.get(`/administration/etatFinancier/getEtatFinancierGlobal/${compteId}/${fileId}/${selectedExerciceId}`)
+        axios.post(`/administration/etatFinancier/getSig`, {
+            id_compte: Number(compteId),
+            id_dossier: Number(fileId),
+            id_exercice: Number(selectedExerciceId)
+        })
             .then((response) => {
                 if (response?.data?.state) {
                     const resData = response?.data;
-                    setSigData(resData.liste.SIG);
+                    setSigData(resData.liste);
                 } else {
                     toast.error(resData.message);
                 }
@@ -469,22 +473,6 @@ export default function Sig() {
                                         direction={"row"} style={{ marginLeft: "0px", marginTop: "0px" }}>
                                         <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                             direction={"row"} justifyContent={"right"}>
-
-                                            <Tooltip title="Actualiser les calculs">
-                                                <IconButton
-                                                    onClick={refreshSig}
-                                                    variant="contained"
-                                                    style={{
-                                                        width: "45px", height: '45px',
-                                                        borderRadius: "1px", borderColor: "transparent",
-                                                        backgroundColor: initial.theme,
-                                                        textTransform: 'none', outline: 'none',
-                                                        display: verrSig ? 'none' : 'inline-flex',
-                                                    }}
-                                                >
-                                                    <TbRefresh style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                </IconButton>
-                                            </Tooltip>
 
                                             <ExportEtatFinancierButton
                                                 exportToExcel={() => exportFile("EXCEL")}

@@ -1777,7 +1777,8 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
                     R.ID_RUBRIQUE,
                     CR.COMPTE,
                     CR.CONDITION,
-                    R.SENSCALCUL,
+                    CR.SENSCALCUL,
+                    CR.EQUATION,
                     R.ID_DOSSIER, 
                     R.ID_EXERCICE,
                     R.ID_ETAT
@@ -1806,7 +1807,7 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
                     MIN(b.COMPTE) AS COMPTE,
 
                     SUM(
-                        CASE
+                        (CASE
                             WHEN (
                                 rc.CONDITION = 'SOLDE'
                                 OR (
@@ -1837,11 +1838,11 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
                                     ELSE b.SOLDEDEBIT
                                 END
                             ELSE 0
-                        END
+                        END) * CASE WHEN rc.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                     ) AS SOLDEDEBIT,
 
                     SUM(
-                        CASE
+                        (CASE
                             WHEN (
                                 rc.CONDITION = 'SOLDE'
                                 OR (
@@ -1872,7 +1873,7 @@ const getDetailLigne = async (id_compte, id_dossier, id_exercice, id_etat, id_ru
                                     ELSE b.SOLDECREDIT
                                 END
                             ELSE 0
-                        END
+                        END) * CASE WHEN rc.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                     ) AS SOLDECREDIT
 
                 FROM rubrique_comptes rc
