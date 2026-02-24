@@ -334,6 +334,8 @@ const Immobilisations = () => {
           dot_derogatoire: r.dot_derogatoire ?? 0,
         }));
 
+        // await handleSaveLignes();
+
         setLigneRowsComp(normComp);
         setLigneRowsFisc(normFisc);
         setIsCompDegTab(!!compUsesDeg);
@@ -456,7 +458,7 @@ const Immobilisations = () => {
         { timeout: 60000 }
       );
       setIsRefreshed(prev => !prev);
-      toast.success('Lignes d\'amortissement enregistrées');
+      // toast.success('Lignes d\'amortissement enregistrées');
     } catch (e) {
       toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
     } finally { setSavingLignes(false); }
@@ -465,19 +467,15 @@ const Immobilisations = () => {
   // Fetch details_immo from backend and filter by selected PCs
   const fetchDetails = useCallback(async () => {
     if (!id || !compteId || !selectedExerciceId) {
-      console.log('[FETCH_DETAILS] Paramètres manquants:', { id, compteId, selectedExerciceId });
       setDetailsRows([]);
       return;
     }
     const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
-    console.log('[FETCH_DETAILS] Requête avec params:', { fileId: id, compteId: onePcId ?? compteId, exerciceId: selectedExerciceId, pcId: onePcId, selectedPcIds });
     const { data } = await axios.get('/administration/traitementSaisie/immobilisations/details', {
       params: { fileId: id, compteId: compteId, exerciceId: selectedExerciceId, pcId: onePcId || undefined }, timeout: 60000,
     });
 
-    console.log('[FETCH_DETAILS] Réponse du backend:', data);
     const list = Array.isArray(data?.list) ? data.list : [];
-    console.log('[FETCH_DETAILS] Liste extraite:', list, 'Longueur:', list.length);
     const sel = selectedPcIds;
     // const filtered = sel && sel.length > 0 ? list.filter(d => sel.includes(d.pc_id)) : list;
     const filtered = list; // Temporaire : afficher toutes les immobilisations sans filtrage
@@ -532,6 +530,7 @@ const Immobilisations = () => {
     const totalMontant = detailsRows.reduce((s, r) => s + (Number(r.montant) || 0), 0);
     const totalTauxTva = detailsRows.reduce((s, r) => s + (Number(r.taux_tva) || 0), 0);
     const totalMontantTva = detailsRows.reduce((s, r) => s + (Number(r.montant_tva) || 0), 0);
+    const totalAmortAvantReprise = detailsRows.reduce((s, r) => s + (Number(r.amort_avant_reprise) || 0), 0);
     const totalMontanntHt = detailsRows.reduce((s, r) => s + (Number(r.montant_ht) || 0), 0);
     const totalAmortAnt = detailsRows.reduce((s, r) => s + (Number(r.amort_ant_comp) || 0), 0);
     const totalDotationPeriode = detailsRows.reduce((s, r) => s + (Number(r.dotation_periode_comp) || 0), 0);
@@ -556,6 +555,7 @@ const Immobilisations = () => {
       montant: totalMontant,
       taux_tva: totalTauxTva,
       montant_tva: totalMontantTva,
+      amort_avant_reprise: totalAmortAvantReprise,
       montant_ht: totalMontanntHt,
       amort_ant_comp: totalAmortAnt,
       dotation_periode_comp: totalDotationPeriode,
@@ -569,6 +569,14 @@ const Immobilisations = () => {
     }
     return [...detailsRows, totalRow];
   }, [detailsRows])
+
+  const ETAT_LABELS = {
+    enService: 'En service',
+    horsService: 'Hors service',
+    misEnRebus: 'Mis au rébus',
+    cassee: 'Cassée',
+    miseEnVente: 'Mise en vente',
+  };
 
   useEffect(() => { fetchDetails(); }, [fetchDetails, isRefreshed]);
 
@@ -704,6 +712,9 @@ const Immobilisations = () => {
 
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const effectiveCompteId = compteId;
+
+      await handleSaveLignes();
+
       if (detailsDialogMode === 'add') {
         const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
         await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
@@ -1270,7 +1281,7 @@ const Immobilisations = () => {
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title="Sauvegarder">
+                      {/* <Tooltip title="Sauvegarder">
                         <span>
                           <IconButton
                             onClick={handleSaveLignes}
@@ -1301,7 +1312,7 @@ const Immobilisations = () => {
                             <VscClose style={{ width: 20, height: 20, color: 'white' }} />
                           </IconButton>
                         </span>
-                      </Tooltip>
+                      </Tooltip> */}
                       <Tooltip title="Supprimer">
                         <span>
                           <IconButton onClick={handleDetailsDelete} disabled={detailsSelectionModel.length === 0} style={{
@@ -1340,23 +1351,30 @@ const Immobilisations = () => {
                         }
                       },
                       {
-                        field: 'etat', headerName: 'Etat', align: 'center', width: 90,
-                        valueGetter: (p) => {
-                          return p?.row?.etat;
+                        field: 'etat', headerName: 'Etat', align: 'center', width: 120,
+                        valueGetter: (params) => {
+                          const value = params?.row?.etat;
+                          return ETAT_LABELS[value] || value;
                         }
                       },
                       { field: 'duree_amort_mois', headerName: 'Durée amort (mois)', width: 160 },
-                      { field: 'type_amort', headerName: "Type d'amortissement", width: 170 },
-                      { field: 'montant', headerName: 'Montant', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      {
+                        field: 'type_amort', headerName: "Type d'amortissement", width: 170,
+                        valueGetter: (p) => {
+                          return p?.value.toUpperCase();
+                        }
+                      },
+                      { field: 'montant', headerName: 'Montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'taux_tva', headerName: 'Taux TVA', width: 110, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'montant_tva', headerName: 'Montant TVA', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'amort_avant_reprise', headerName: 'Amort avant rep.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'montant_ht', headerName: 'Montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'amort_ant_comp', headerName: 'Amort ant', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'dotation_periode_comp', headerName: 'Dotation période', width: 150, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'amort_exceptionnel_comp', headerName: 'Amort exceptionnel', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'derogatoire_comp', headerName: 'Dérogatoire', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'total_amortissement_comp', headerName: 'Total amortissement', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'compte_amortissement', headerName: 'Compte amortissement', width: 180 },
+                      { field: 'compte_amortissement', headerName: 'Compte amortissement', width: 140 },
                       { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       {
                         field: 'date_sortie', headerName: 'date de sortie', align: 'center', width: 140, valueGetter: (p) => {
@@ -1481,6 +1499,15 @@ const Immobilisations = () => {
                                     renderCell: (p) => formatMoneyFr(p.value),
                                   },
                                   {
+                                    field: 'dot_derogatoire',
+                                    headerName: 'Dot dérogatoire',
+                                    width: 160,
+                                    type: 'number',
+                                    headerAlign: 'right',
+                                    align: 'right',
+                                    renderCell: (p) => formatMoneyFr(p.value),
+                                  },
+                                  {
                                     field: 'dotation_periode',
                                     headerName: 'Dot période',
                                     width: 140,
@@ -1502,15 +1529,6 @@ const Immobilisations = () => {
                                     field: 'vnc',
                                     headerName: 'VNC',
                                     width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'dot_derogatoire',
-                                    headerName: 'Dot dérogatoire',
-                                    width: 160,
                                     type: 'number',
                                     headerAlign: 'right',
                                     align: 'right',
@@ -1542,12 +1560,12 @@ const Immobilisations = () => {
                               { field: 'date_mise_service', headerName: 'Date mise en service', width: 170, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
                               { field: 'date_fin_exercice', headerName: "Date fin de l'exercice", width: 180, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_fin_exercice ? String(p.row.date_fin_exercice).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
                               { field: 'annee_nombre', headerName: 'Année Nombre', width: 130, type: 'number', headerAlign: 'right', align: 'right' },
-                              { field: 'montant_immo_ht', headerName: 'Montant immo HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'montant_immo_ht', headerName: 'Montant HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                               { field: 'amort_ant_comp', headerName: 'Amort Ant', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dotation_periode_comp', headerName: 'Dot période', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'dotation_periode_comp', headerName: 'Dotation compta.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                               { field: 'cumul_amort_comp', headerName: 'Cumul amort', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                               { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                             ]}
                             loading={ligneLoading}
                             disableColumnMenu
@@ -1704,12 +1722,12 @@ const Immobilisations = () => {
                               { field: 'date_mise_service', headerName: 'Date mise en service', width: 170, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
                               { field: 'date_fin_exercice', headerName: "Date fin de l'exercice", width: 180, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_fin_exercice ? String(p.row.date_fin_exercice).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
                               { field: 'annee_nombre', headerName: 'Année Nombre', width: 130, type: 'number', headerAlign: 'right', align: 'right' },
-                              { field: 'montant_immo_ht', headerName: 'Montant immo HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'amort_ant_fisc', headerName: 'Amort fiscal ant', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dotation_periode_fisc', headerName: 'Dot fiscal', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'cumul_amort_fisc', headerName: 'Cumul amort fiscal', width: 180, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'vnc', headerName: 'VNC', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'montant_immo_ht', headerName: 'Montant HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'amort_ant_fisc', headerName: 'Amort Ant', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                               { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'dotation_periode_fisc', headerName: 'Dotation fiscale', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'cumul_amort_fisc', headerName: 'Cumul amort', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                              { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                             ]}
                             loading={ligneLoading}
                             disableColumnMenu
@@ -1752,7 +1770,7 @@ const Immobilisations = () => {
                     onOpenLienEcriture={handleOpenLienEcriture}
                   />
 
-                  <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md" fullwidh>
+                  <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md">
                     <DialogTitle>Choisir une écriture du journal</DialogTitle>
                     <DialogContent dividers>
                       <DataGrid

@@ -6,6 +6,7 @@ const { exportRapprochementExcel } = require('../../Middlewares/rapprochements/R
 const fs = require('fs');
 const path = require('path');
 
+require('dotenv').config();
 const dossiers = db.dossiers;
 const exercices = db.exercices;
 const userscomptes = db.userscomptes;
@@ -22,7 +23,7 @@ const formatDate = (dateString) => {
   return `${dd}/${mm}/${yyyy}`;
 };
 
-const logoPath = path.join(__dirname, '../../public/logo/Logo Kaonty_2.png');
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const logoBase64 = fs.readFileSync(logoPath).toString('base64');
 const logoImage = `data:image/png;base64,${logoBase64}`;

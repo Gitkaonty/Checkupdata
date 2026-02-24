@@ -629,8 +629,8 @@ exports.generateImmoEcritures = async (req, res) => {
 
         const detailsById = new Map((details || []).map(d => [Number(d.id), d]));
         const lignesByDetailId = new Map();
-        for (const l of (lignes || [])) {
-            const did = Number(l.id_detail_immo);
+        for (const l of (details || [])) {
+            const did = Number(l.id);
             if (!lignesByDetailId.has(did)) lignesByDetailId.set(did, []);
             lignesByDetailId.get(did).push(l);
         }
@@ -788,10 +788,10 @@ exports.generateImmoEcritures = async (req, res) => {
                     compteAmort
                 });
 
-                if (!dateMiseService || isNaN(dateMiseService.getTime()) || montantHT <= 0 || dureeMois <= 0) {
+                if (!dateMiseService || isNaN(dateMiseService.getTime()) || dotation <= 0 || dureeMois <= 0) {
                     console.log('[IMMO][DEBUG][MONTHLY] Immobilisation ignorée:', {
                         detailId,
-                        raison: !dateMiseService ? 'pas de date' : isNaN(dateMiseService.getTime()) ? 'date invalide' : montantHT <= 0 ? 'montant invalide' : 'durée invalide'
+                        raison: !dateMiseService ? 'pas de date' : isNaN(dateMiseService.getTime()) ? 'date invalide' : dotation <= 0 ? 'montant invalide' : 'durée invalide'
                     });
                     continue;
                 }
@@ -813,7 +813,7 @@ exports.generateImmoEcritures = async (req, res) => {
                 const libelleCompteImmo = detail?.libelle_compte_immo || detail?.intitule || detail?.code || '';
 
                 // Calculer la dotation mensuelle et journalière
-                const dotationMensuelle = montantHT / dureeMois;
+                const dotationMensuelle = dotation / dureeMois;
                 const dotationJournaliere = baseJours === 360 ? (dotationMensuelle / 30) : (dotationMensuelle / 30.4167); // Moyenne pour 365j
 
                 // Calculer les écritures mois par mois
@@ -825,7 +825,7 @@ exports.generateImmoEcritures = async (req, res) => {
                 finAmort.setMonth(finAmort.getMonth() + dureeMois);
 
                 while (
-                    cumulAmort < montantHT &&
+                    cumulAmort < dotation &&
                     monthIndex < dureeMois &&
                     currentDate < exoFin
                 ) {
@@ -841,9 +841,9 @@ exports.generateImmoEcritures = async (req, res) => {
                     let montantDotation = dotation;
 
                     // Ajustement du dernier mois pour ne pas dépasser le montant total
-                    if (cumulAmort + montantDotation > montantHT) {
-                        montantDotation = Math.round((montantHT - cumulAmort) * 100) / 100;
-                    }
+                    // if (cumulAmort + montantDotation > montantHT) {
+                    //     montantDotation = Math.round((montantHT - cumulAmort) * 100) / 100;
+                    // }
 
                     if (montantDotation > 0) {
                         const idEcriture = String(Date.now() + Math.floor(Math.random() * 1000));
@@ -977,6 +977,7 @@ exports.generateImmoEcritures = async (req, res) => {
 
                 if (!groupedByCompte.has(groupKey)) {
                     groupedByCompte.set(groupKey, {
+                        immo_id: detailId,
                         compteImmo,
                         compteAmort,
                         libelleCompteImmo,
@@ -990,6 +991,7 @@ exports.generateImmoEcritures = async (req, res) => {
             // 🔹 Création des écritures
             for (const [, group] of groupedByCompte.entries()) {
                 const {
+                    immo_id,
                     compteImmo,
                     compteAmort,
                     libelleCompteImmo,
@@ -1031,7 +1033,7 @@ exports.generateImmoEcritures = async (req, res) => {
                     piecedate: null,
                     libelle: libelle || 'Dot amort',
                     devise: 'MGA',
-                    id_immob: null,
+                    id_immob: immo_id,
                 };
 
                 // CHARGE
@@ -1079,12 +1081,20 @@ exports.generateImmoEcritures = async (req, res) => {
                         id_numcpt: rowCharge.id,
                         debit: montantTotal,
                         credit: 0,
+                        comptegen: compteGenCharge,
+                        compteaux: compteAuxCharge,
+                        libellecompte: libelleGenCharge,
+                        libelleaux: libelleAuxCharge
                     }),
                     db.journals.create({
                         ...common,
                         id_numcpt: rowAmort.id,
                         debit: 0,
                         credit: montantTotal,
+                        comptegen: compteGenAmort,
+                        compteaux: compteAuxAmort,
+                        libellecompte: libelleGenAmort,
+                        libelleaux: libelleAuxAmort
                     }),
                 ]);
 
@@ -1249,11 +1259,21 @@ exports.previewImmoLineaire = async (req, res) => {
         let finAmortComp = addDays(addMonths(dateDepartAmortComp, dureeAmortCompEffective), -1);
 
         // Si immobilisation hors service et date_sortie définie → on coupe à la date_sortie
-        if (etat !== 'enService' && detail.date_sortie && !isNaN(new Date(detail.date_sortie).getTime())) {
-            const dateSortieValide = new Date(detail.date_sortie);
-            if (dateSortieValide < finAmortComp) {
-                finAmortComp = dateSortieValide;
-            }
+        // if (etat !== 'enService' && detail.date_sortie && !isNaN(new Date(detail.date_sortie).getTime())) {
+        //     const dateSortieValide = new Date(detail.date_sortie);
+        //     if (dateSortieValide < finAmortComp) {
+        //         finAmortComp = dateSortieValide;
+        //     }
+        // }
+
+        let dateSortieValide = null;
+
+        if (
+            etat !== 'enService' &&
+            detail?.date_sortie &&
+            !isNaN(new Date(detail.date_sortie).getTime())
+        ) {
+            dateSortieValide = new Date(detail.date_sortie);
         }
 
         // Calcul des taux et bases
@@ -1278,9 +1298,14 @@ exports.previewImmoLineaire = async (req, res) => {
                 : addDays(addMonths(debutC, 12), -1);
 
             if (fin > finAmortComp) fin = finAmortComp;
+
             if (fin < debutC) {
                 fin = minDate(addDays(addMonths(debutC, 1), -1), finAmortComp);
                 if (fin < debutC) break;
+            }
+
+            if (dateSortieValide && fin > dateSortieValide) {
+                fin = dateSortieValide;
             }
 
             // Calcul du nombre de jours et dotation
@@ -1310,6 +1335,10 @@ exports.previewImmoLineaire = async (req, res) => {
                 cumul_amort: clamp(cumulC + dot),
                 vnc: clamp(vncC - dot),
             });
+
+            if (dateSortieValide && fin >= dateSortieValide) {
+                break;
+            }
 
             // Mise à jour des variables pour le cycle suivant
             cumulC += dot;
@@ -1349,13 +1378,12 @@ exports.previewImmoLineaire = async (req, res) => {
             // Date de fin fiscale théorique
             let finAmortFisc = addDays(addMonths(debutF, dureeFiscEffective), -1);
 
-            // Si immobilisation sortie → on coupe à la date_sortie
-            if (etat !== 'enService' && detail.date_sortie) {
-                const dateSortieValide = new Date(detail.date_sortie);
-                if (!isNaN(dateSortieValide.getTime()) && dateSortieValide < finAmortFisc) {
-                    finAmortFisc = dateSortieValide;
-                }
-            }
+            // if (etat !== 'enService' && detail.date_sortie) {
+            //     const dateSortieValide = new Date(detail.date_sortie);
+            //     if (!isNaN(dateSortieValide.getTime()) && dateSortieValide < finAmortFisc) {
+            //         finAmortFisc = dateSortieValide;
+            //     }
+            // }
 
             dureeFiscEffectiveOut = dureeFiscEffective;
             finAmortFiscOut = finAmortFisc;
@@ -1377,6 +1405,10 @@ exports.previewImmoLineaire = async (req, res) => {
                 if (fin < debutF) {
                     fin = minDate(addDays(addMonths(debutF, 1), -1), finAmortFisc);
                     if (fin < debutF) break;
+                }
+
+                if (dateSortieValide && fin > dateSortieValide) {
+                    fin = dateSortieValide;
                 }
 
                 const nbJours = nbJoursBetween(debutF, fin);
@@ -1404,6 +1436,10 @@ exports.previewImmoLineaire = async (req, res) => {
                     cumul_amort: clamp(cumulF + dot),
                     vnc: clamp(vncF - dot),
                 });
+
+                if (dateSortieValide && fin >= dateSortieValide) {
+                    break;
+                }
 
                 cumulF += dot;
                 vncF -= dot;
@@ -1528,6 +1564,16 @@ exports.previewImmoDegressif = async (req, res) => {
         const tauxLinAnnuel = 1 / dureeAnnees;
         const tauxDegAnnuel = tauxLinAnnuel * coef;
 
+        let dateSortieValide = null;
+
+        if (
+            etat !== 'enService' &&
+            detail?.date_sortie &&
+            !isNaN(new Date(detail.date_sortie).getTime())
+        ) {
+            dateSortieValide = new Date(detail.date_sortie);
+        }
+
         // 7. Fonctions utilitaires
         const addMonths = (d, m) => { const nd = new Date(d); nd.setMonth(nd.getMonth() + m); return nd; }; // ajoute des mois à une date
         const addDays = (d, n) => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; }; // ajoute des jours à une date
@@ -1549,9 +1595,11 @@ exports.previewImmoDegressif = async (req, res) => {
         const computeRepriseParams = (dureeMoisX, repriseActiveX, dateRepriseX, amortAntX) => {
             const dureeM = Math.max(1, Number(dureeMoisX) || 0);
 
-            const finTheoX = (etat !== "enService" && detail.date_sortie)
-                ? new Date(detail.date_sortie)
-                : addDays(addMonths(dateMS, dureeM), -1);
+            // const finTheoX = (etat !== "enService" && detail.date_sortie)
+            //     ? new Date(detail.date_sortie)
+            //     : addDays(addMonths(dateMS, dureeM), -1);
+
+            const finTheoX = addDays(addMonths(dateMS, dureeM), -1);
 
             let dateDepartX = new Date(dateMS);
             let dureeMEffective = dureeM;
@@ -1565,9 +1613,9 @@ exports.previewImmoDegressif = async (req, res) => {
             }
 
             let finAmortX = addDays(addMonths(dateDepartX, dureeMEffective), -1);
-            if (etat !== "enService" && detail.date_sortie && finAmortX > new Date(detail.date_sortie)) {
-                finAmortX = new Date(detail.date_sortie);
-            }
+            // if (etat !== "enService" && detail.date_sortie && finAmortX > new Date(detail.date_sortie)) {
+            //     finAmortX = new Date(detail.date_sortie);
+            // }
 
             // const baseRestanteX = clamp(montantHT - cumulInitialX);
             const baseRestanteX = clamp(montantHT);
@@ -1614,9 +1662,14 @@ exports.previewImmoDegressif = async (req, res) => {
                     ? (exoFin && exoFin < rp.finAmortX ? exoFin : rp.finAmortX)
                     : addDays(addMonths(debutX, 12), -1);
                 if (finX > rp.finAmortX) finX = rp.finAmortX;
+
                 if (finX < debutX) {
                     finX = minDate(addDays(addMonths(debutX, 1), -1), rp.finAmortX);
                     if (finX < debutX) break;
+                }
+
+                if (dateSortieValide && finX > dateSortieValide) {
+                    finX = dateSortieValide;
                 }
 
                 const isLastX = finX.getTime() === rp.finAmortX.getTime();
@@ -1670,6 +1723,10 @@ exports.previewImmoDegressif = async (req, res) => {
                     vnc: vncX,
                 });
 
+                if (dateSortieValide && finX >= dateSortieValide) {
+                    break;
+                }
+
                 anneeCumuleeX += prorataX;
                 if (vncX <= 0) break;
                 debutX = addDays(finX, 1);
@@ -1719,6 +1776,10 @@ exports.previewImmoDegressif = async (req, res) => {
                     if (finX < debutX) break;
                 }
 
+                if (dateSortieValide && finX > dateSortieValide) {
+                    finX = dateSortieValide;
+                }
+
                 const nbJoursX = nbJoursBetween(debutX, finX);
                 if (!isFinite(nbJoursX) || nbJoursX <= 0) break;
                 const prorataX = nbJoursX / baseJours;
@@ -1745,6 +1806,10 @@ exports.previewImmoDegressif = async (req, res) => {
                     cumul_amort: cumulX,
                     vnc: vncX,
                 });
+
+                if (dateSortieValide && finX >= dateSortieValide) {
+                    break;
+                }
 
                 if (vncX <= 0) break;
                 debutX = addDays(finX, 1);
@@ -2920,6 +2985,8 @@ exports.createDetailsImmo = async (req, res) => {
             );
         }
 
+        await updateMontantImmo(compteId, fileId, exerciceId, insertedId);
+
         return res.json({ state: true, id: insertedId || null });
     } catch (err) {
         console.error('[IMMO][DETAILS][UPDATE] error:', err);
@@ -3080,6 +3147,8 @@ exports.updateDetailsImmo = async (req, res) => {
                 { replacements: { immobId: Number(id), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
             );
         }
+
+        await updateMontantImmo(compteId, fileId, exerciceId, id);
 
         return res.json({ state: true, id });
     } catch (err) {

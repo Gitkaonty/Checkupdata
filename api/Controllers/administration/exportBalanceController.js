@@ -10,6 +10,9 @@ const userscomptes = db.userscomptes;
 const balanceAnalytiques = db.balanceAnalytiques;
 const caSections = db.caSections;
 const caAxes = db.caAxes;
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
 
 const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
@@ -21,6 +24,11 @@ const createAnalytiqueIfNotExist = fonctionUpdateSoldAnalytique.createAnalytique
 
 balances.belongsTo(dossierplancomptable, { as: 'compteLibelle', foreignKey: 'id_numcompte', targetKey: 'id' });
 balances.belongsTo(dossierplancomptable, { as: 'compteCentralisation', foreignKey: 'id_numcomptecentr', targetKey: 'id' });
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 const recupBalance = async (req, res) => {
     try {
@@ -394,6 +402,18 @@ module.exports = {
                         }
                     }
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 60,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     header: { fontSize: 18, bold: true, font: 'Helvetica' },
                     subheader: { fontSize: 18, bold: true, font: 'Helvetica' },
