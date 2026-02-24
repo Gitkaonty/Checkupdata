@@ -26,6 +26,7 @@ import { GoLink } from "react-icons/go";
 import PopupActionConfirmWithCheckbox from '../../../componentsTools/popupActionConfirmWithCheckbox';
 import PopupConfirmDelete from '../../../componentsTools/popupConfirmDelete';
 import PopupImportImmobilisations from '../import/PopupImportImmobilisations';
+import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 
 const keepTotalBottomComparator = (v1, v2, cellParams1, cellParams2) => {
   const r1 = cellParams1?.row;
@@ -209,6 +210,8 @@ const Immobilisations = () => {
   const [journalLoading, setJournalLoading] = useState(false);
   const [journalSelection, setJournalSelection] = useState([]);
 
+  const [isRefreshed, setIsRefreshed] = useState(false);
+
   // Third grid: lignes d'amortissement
   const [ligneRowsComp, setLigneRowsComp] = useState([]);
   const [ligneRowsFisc, setLigneRowsFisc] = useState([]);
@@ -281,8 +284,8 @@ const Immobilisations = () => {
         const linComp = Array.isArray(lin.list_comp) ? lin.list_comp : [];
         const linFisc = Array.isArray(lin.list_fisc) ? lin.list_fisc : [];
 
-        const compUsesDeg = (isCompDeg || degComp.length > 0);
-        const fiscUsesDeg = (isFiscDeg || degFisc.length > 0);
+        const compUsesDeg = (isCompDeg && degComp.length > 0);
+        const fiscUsesDeg = (isFiscDeg && degFisc.length > 0);
 
         const rawComp = compUsesDeg ? degComp : linComp;
         const rawFisc = fiscUsesDeg ? degFisc : linFisc;
@@ -452,6 +455,7 @@ const Immobilisations = () => {
         },
         { timeout: 60000 }
       );
+      setIsRefreshed(prev => !prev);
       toast.success('Lignes d\'amortissement enregistrées');
     } catch (e) {
       toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
@@ -468,7 +472,7 @@ const Immobilisations = () => {
     const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
     console.log('[FETCH_DETAILS] Requête avec params:', { fileId: id, compteId: onePcId ?? compteId, exerciceId: selectedExerciceId, pcId: onePcId, selectedPcIds });
     const { data } = await axios.get('/administration/traitementSaisie/immobilisations/details', {
-      params: { fileId: id, compteId: onePcId ?? compteId, exerciceId: selectedExerciceId, pcId: onePcId || undefined }, timeout: 60000,
+      params: { fileId: id, compteId: compteId, exerciceId: selectedExerciceId, pcId: onePcId || undefined }, timeout: 60000,
     });
 
     console.log('[FETCH_DETAILS] Réponse du backend:', data);
@@ -480,7 +484,93 @@ const Immobilisations = () => {
     setDetailsRows(filtered);
   }, [id, compteId, selectedExerciceId, selectedPcIds]);
 
-  useEffect(() => { fetchDetails(); }, [fetchDetails]);
+  const rowsFiltered = useMemo(() => {
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+
+    return rows.filter((row) => {
+      switch (filtrageCompte) {
+        case "0":
+          return true;
+        case "1":
+          return row.mvtdebit !== 0 || row.mvtcredit !== 0;
+        default:
+          return true;
+      }
+    });
+  }, [rows, filtrageCompte]);
+
+
+  const rowsWithTotal = useMemo(() => {
+    if (!rowsFiltered || rowsFiltered.length === 0) return [];
+
+    const totalSolde = rowsFiltered.reduce((s, r) => s + (Number(r.solde) || 0), 0);
+    const totalAmortAnt = rowsFiltered.reduce((s, r) => s + (Number(r.amort_ant) || 0), 0);
+    const totalDotation = rowsFiltered.reduce((s, r) => s + (Number(r.dotation) || 0), 0);
+    const totalValeurNette = rowsFiltered.reduce((s, r) => s + (Number(r.valeur_nette) || 0), 0);
+    const totalVncImmo = rowsFiltered.reduce((s, r) => s + (Number(r.vnc_immo) || 0), 0);
+
+    const totalRow = {
+      id: 'total-row',
+      isTotal: true,
+      compte: 'Total',
+      libelle: '',
+      compte_amort: '',
+      solde: totalSolde,
+      amort_ant: totalAmortAnt,
+      dotation: totalDotation,
+      valeur_nette: totalValeurNette,
+      vnc_immo: totalVncImmo,
+    };
+
+    return [...rowsFiltered, totalRow];
+  }, [rowsFiltered]);
+
+  const detailRowsWithTotal = useMemo(() => {
+    if (!detailsRows || detailsRows.length === 0) return [];
+
+    const totalDureeAmort = detailsRows.reduce((s, r) => s + (Number(r.duree_amort_mois) || 0), 0);
+    const totalMontant = detailsRows.reduce((s, r) => s + (Number(r.montant) || 0), 0);
+    const totalTauxTva = detailsRows.reduce((s, r) => s + (Number(r.taux_tva) || 0), 0);
+    const totalMontantTva = detailsRows.reduce((s, r) => s + (Number(r.montant_tva) || 0), 0);
+    const totalMontanntHt = detailsRows.reduce((s, r) => s + (Number(r.montant_ht) || 0), 0);
+    const totalAmortAnt = detailsRows.reduce((s, r) => s + (Number(r.amort_ant_comp) || 0), 0);
+    const totalDotationPeriode = detailsRows.reduce((s, r) => s + (Number(r.dotation_periode_comp) || 0), 0);
+    const totalAmortExc = detailsRows.reduce((s, r) => s + (Number(r.amort_exceptionnel_comp) || 0), 0);
+    const totalTotalAmort = detailsRows.reduce((s, r) => s + (Number(r.total_amortissement_comp) || 0), 0);
+    const totalDerog = detailsRows.reduce((s, r) => s + (Number(r.derogatoire_comp) || 0), 0);
+    const totalVnc = detailsRows.reduce((s, r) => s + (Number(r.vnc) || 0), 0);
+    const totalPrixVente = detailsRows.reduce((s, r) => s + (Number(r.prix_vente) || 0), 0);
+
+    const totalRow = {
+      id: 'total-row',
+      isTotal: true,
+      code: 'Total',
+      intitule: '',
+      lien_ecriture_id: '',
+      fournisseur: '',
+      date_acquisition: '',
+      date_mise_service: '',
+      etat: '',
+      duree_amort_mois: totalDureeAmort,
+      type_amort: '',
+      montant: totalMontant,
+      taux_tva: totalTauxTva,
+      montant_tva: totalMontantTva,
+      montant_ht: totalMontanntHt,
+      amort_ant_comp: totalAmortAnt,
+      dotation_periode_comp: totalDotationPeriode,
+      amort_exceptionnel_comp: totalAmortExc,
+      total_amortissement_comp: totalTotalAmort,
+      compte_amortissement: '',
+      derogatoire_comp: totalDerog,
+      vnc: totalVnc,
+      date_sortie: '',
+      prix_vente: totalPrixVente
+    }
+    return [...detailsRows, totalRow];
+  }, [detailsRows])
+
+  useEffect(() => { fetchDetails(); }, [fetchDetails, isRefreshed]);
 
   const handleDetailsAdd = () => {
     if (!selectedPcIds || selectedPcIds.length !== 1) { toast('Sélectionnez un seul compte immo dans le tableau du haut', { icon: 'ℹ️' }); return; }
@@ -505,6 +595,7 @@ const Immobilisations = () => {
       type_amort: '',
       montant: Number(pcRow?.solde) || 0,
       taux_tva: '', montant_tva: '', montant_ht: '',
+      amort_avant_reprise: '',
       // amortissement comptable par défaut: tout à 0
       amort_ant_comp: 0,
       dotation_periode_comp: 0,
@@ -612,7 +703,7 @@ const Immobilisations = () => {
       cleaned.lien_ecriture_id = cleaned.lien_ecriture_id ? Number(cleaned.lien_ecriture_id) : null;
 
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
-      const effectiveCompteId = onePcId ?? compteId;
+      const effectiveCompteId = compteId;
       if (detailsDialogMode === 'add') {
         const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
         await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
@@ -798,46 +889,6 @@ const Immobilisations = () => {
     };
     loadImmobilisations();
   }, [id, compteId, selectedExerciceId]);
-
-  const rowsFiltered = useMemo(() => {
-    if (!Array.isArray(rows) || rows.length === 0) return [];
-
-    return rows.filter((row) => {
-      switch (filtrageCompte) {
-        case "0":
-          return true;
-        case "1":
-          return row.mvtdebit !== 0 || row.mvtcredit !== 0;
-        default:
-          return true;
-      }
-    });
-  }, [rows, filtrageCompte]);
-
-  const rowsWithTotal = useMemo(() => {
-    if (!rowsFiltered || rowsFiltered.length === 0) return [];
-
-    const totalSolde = rowsFiltered.reduce((s, r) => s + (Number(r.solde) || 0), 0);
-    const totalAmortAnt = rowsFiltered.reduce((s, r) => s + (Number(r.amort_ant) || 0), 0);
-    const totalDotation = rowsFiltered.reduce((s, r) => s + (Number(r.dotation) || 0), 0);
-    const totalValeurNette = rowsFiltered.reduce((s, r) => s + (Number(r.valeur_nette) || 0), 0);
-    const totalVncImmo = rowsFiltered.reduce((s, r) => s + (Number(r.vnc_immo) || 0), 0);
-
-    const totalRow = {
-      id: 'total-row',
-      isTotal: true,
-      compte: 'Total',
-      libelle: '',
-      compte_amort: '',
-      solde: totalSolde,
-      amort_ant: totalAmortAnt,
-      dotation: totalDotation,
-      valeur_nette: totalValeurNette,
-      vnc_immo: totalVncImmo,
-    };
-
-    return [...rowsFiltered, totalRow];
-  }, [rowsFiltered]);
 
   const handleOpenConfirmGenerateEcritures = () => {
     if (!selectedExerciceId) {
@@ -1070,21 +1121,48 @@ const Immobilisations = () => {
                   onClick={() => setOpenImportDialog(true)}
                   variant="contained"
                   startIcon={<TbFileImport />}
-                  sx={{ backgroundColor: '#28a745', textTransform: 'none', whiteSpace: 'nowrap' }}
+                  sx={{
+                    backgroundColor: '#28a745', textTransform: 'none', whiteSpace: 'nowrap',
+                    '&:hover': {
+                      backgroundColor: '#28a745',
+                    },
+                  }}
+                  style={{
+                    textTransform: 'none',
+                    outline: 'none',
+                  }}
                 >
                   Importer
                 </Button>
                 <Button
                   onClick={handleOpenConfirmGenerateEcritures}
                   variant="contained"
-                  sx={{ backgroundColor: initial.theme, textTransform: 'none', whiteSpace: 'nowrap' }}
+                  sx={{
+                    backgroundColor: initial.theme, textTransform: 'none', whiteSpace: 'nowrap',
+                    '&:hover': {
+                      backgroundColor: initial.theme,
+                    },
+                  }}
+                  style={{
+                    textTransform: 'none',
+                    outline: 'none',
+                  }}
                 >
                   Générer écritures
                 </Button>
                 <Button
                   onClick={handleOpenConfirmCancelEcritures}
                   variant="contained"
-                  sx={{ backgroundColor: initial.button_delete_color, textTransform: 'none', whiteSpace: 'nowrap' }}
+                  sx={{
+                    backgroundColor: initial.button_delete_color, textTransform: 'none', whiteSpace: 'nowrap',
+                    '&:hover': {
+                      backgroundColor: initial.button_delete_color,
+                    },
+                  }}
+                  style={{
+                    textTransform: 'none',
+                    outline: 'none',
+                  }}
                 >
                   Supprimer écritures
                 </Button>
@@ -1165,14 +1243,29 @@ const Immobilisations = () => {
                     <Stack direction="row" spacing={0.5} alignItems="center">
                       <Tooltip title="Ajouter">
                         <span>
-                          <IconButton onClick={handleDetailsAdd} style={{ width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme }}>
+                          <IconButton
+                            onClick={handleDetailsAdd}
+                            style={{
+                              width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme,
+                              textTransform: 'none',
+                              outline: 'none',
+                            }}
+                          >
                             <TbPlaylistAdd style={{ width: 22, height: 22, color: 'white' }} />
                           </IconButton>
                         </span>
                       </Tooltip>
                       <Tooltip title="Modifier">
                         <span>
-                          <IconButton onClick={handleDetailsEdit} disabled={detailsSelectionModel.length === 0} style={{ width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme }}>
+                          <IconButton
+                            onClick={handleDetailsEdit}
+                            disabled={detailsSelectionModel.length === 0}
+                            style={{
+                              width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme,
+                              textTransform: 'none',
+                              outline: 'none',
+                            }}
+                          >
                             <FaRegPenToSquare style={{ width: 20, height: 20, color: 'white' }} />
                           </IconButton>
                         </span>
@@ -1190,7 +1283,9 @@ const Immobilisations = () => {
                               width: 35,
                               height: 35,
                               borderRadius: 2,
-                              backgroundColor: initial.theme
+                              backgroundColor: initial.theme,
+                              textTransform: 'none',
+                              outline: 'none',
                             }}
                           >
                             <TfiSave style={{ width: 20, height: 20, color: 'white' }} />
@@ -1199,14 +1294,20 @@ const Immobilisations = () => {
                       </Tooltip>
                       <Tooltip title="Annuler">
                         <span>
-                          <IconButton onClick={handleDetailsCancel} disabled={!detailsEditingRowId} style={{ width: 35, height: 35, borderRadius: 2, backgroundColor: initial.button_delete_color }}>
+                          <IconButton onClick={handleDetailsCancel} disabled={!detailsEditingRowId} style={{
+                            width: 35, height: 35, borderRadius: 2, backgroundColor: initial.button_delete_color, textTransform: 'none',
+                            outline: 'none',
+                          }}>
                             <VscClose style={{ width: 20, height: 20, color: 'white' }} />
                           </IconButton>
                         </span>
                       </Tooltip>
                       <Tooltip title="Supprimer">
                         <span>
-                          <IconButton onClick={handleDetailsDelete} disabled={detailsSelectionModel.length === 0} style={{ width: 35, height: 35, borderRadius: 2, backgroundColor: initial.button_delete_color }}>
+                          <IconButton onClick={handleDetailsDelete} disabled={detailsSelectionModel.length === 0} style={{
+                            width: 35, height: 35, borderRadius: 2, backgroundColor: initial.button_delete_color, textTransform: 'none',
+                            outline: 'none',
+                          }}>
                             <IoMdTrash style={{ width: 20, height: 20, color: 'white' }} />
                           </IconButton>
                         </span>
@@ -1214,7 +1315,12 @@ const Immobilisations = () => {
                     </Stack>
                   </Stack>
                   <DataGrid
-                    rows={detailsRows}
+                    disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                    disableColumnSelector={DataGridStyle.disableColumnSelector}
+                    disableDensitySelector={DataGridStyle.disableDensitySelector}
+                    disableRowSelectionOnClick
+                    disableSelectionOnClick={true}
+                    rows={detailRowsWithTotal}
                     columns={[
                       { field: 'code', headerName: 'Code', width: 140 },
                       { field: 'intitule', headerName: 'Intitulé', width: 220 },
@@ -1233,18 +1339,24 @@ const Immobilisations = () => {
                           return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
                         }
                       },
+                      {
+                        field: 'etat', headerName: 'Etat', align: 'center', width: 90,
+                        valueGetter: (p) => {
+                          return p?.row?.etat;
+                        }
+                      },
                       { field: 'duree_amort_mois', headerName: 'Durée amort (mois)', width: 160 },
                       { field: 'type_amort', headerName: "Type d'amortissement", width: 170 },
                       { field: 'montant', headerName: 'Montant', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'taux_tva', headerName: 'taux TVA', width: 110, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'taux_tva', headerName: 'Taux TVA', width: 110, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'montant_tva', headerName: 'Montant TVA', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'montant_ht', headerName: 'montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'montant_ht', headerName: 'Montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'amort_ant_comp', headerName: 'Amort ant', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'dotation_periode_comp', headerName: 'dotation période', width: 150, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'dotation_periode_comp', headerName: 'Dotation période', width: 150, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'amort_exceptionnel_comp', headerName: 'Amort exceptionnel', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'total_amortissement_comp', headerName: 'Total amortissement', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'compte_amortissement', headerName: 'compte amortissement', width: 180 },
                       { field: 'derogatoire_comp', headerName: 'Dérogatoire', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'total_amortissement_comp', headerName: 'Total amortissement', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'compte_amortissement', headerName: 'Compte amortissement', width: 180 },
                       { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       {
                         field: 'date_sortie', headerName: 'date de sortie', align: 'center', width: 140, valueGetter: (p) => {
@@ -1252,11 +1364,11 @@ const Immobilisations = () => {
                           return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
                         }
                       },
-                      { field: 'prix_vente', headerName: 'prix de vente', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'prix_vente', headerName: 'Prix de vente', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                     ]}
                     getRowId={(r) => r.id}
-                    disableColumnMenu
-                    disableRowSelectionOnClick={false}
+                    // disableColumnMenu
+                    // disableRowSelectionOnClick={false}
                     checkboxSelection
                     rowSelectionModel={detailsSelectionModel}
                     onRowSelectionModelChange={(m) => {
@@ -1267,36 +1379,39 @@ const Immobilisations = () => {
                     density="compact"
                     autoHeight
                     sx={{
+                      ...DataGridStyle.sx,
                       '& .MuiDataGrid-columnHeaders': {
                         backgroundColor: initial.theme,
                         color: 'white',
                         fontWeight: 'bold',
                       },
+                      '& .total-row': {
+                        fontWeight: 'bold',
+                        color: 'white',
+                        backgroundColor: initial.theme,
+                      },
+                      '& .MuiDataGrid-row.total-row .MuiDataGrid-cell': {
+                        backgroundColor: `${initial.theme} !important`,
+                      },
+                      '& .MuiDataGrid-row.highlight-separator': {
+                        borderBottom: '1px solid red',
+                      },
+                      '& .MuiDataGrid-virtualScroller': {
+                        maxHeight: '700px',
+                      },
+                      '& .MuiDataGrid-row.total-row .MuiDataGrid-checkboxInput': {
+                        display: 'none',
+                      },
                     }}
+                    getRowClassName={(params) => (params.row?.isTotal ? 'total-row' : '')}
                   />
                   {Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 && (
                     <Box sx={{ mt: 2 }}>
-                      {/* <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                        <Typography variant="subtitle1">Plan d'amortissement</Typography>
-                        <Button
-                          variant="contained"
-                          onClick={handleSaveLignes}
-                          disabled={
-                            savingLignes ||
-                            ligneLoading ||
-                            !(Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0)
-                          }
-                          style={{ backgroundColor: initial.theme, color: 'white', textTransform: 'none' }}
-                        >
-                          {savingLignes ? 'Enregistrement...' : 'Enregistrer les lignes'}
-                        </Button>
-                      </Stack> */}
-
                       <TabContext value={ligneTab}>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                           <TabList onChange={(_, v) => setLigneTab(v)} aria-label="tabs amort">
-                            <Tab label="comptable" value="comp"style={{ textTransform: 'none', outline: 'none', border: 'none', }} />
-                            <Tab label="fiscal" value="fisc" style={{ textTransform: 'none', outline: 'none', border: 'none', }} />
+                            <Tab label="Comptable" value="comp" style={{ textTransform: 'none', outline: 'none', border: 'none', }} />
+                            <Tab label="Fiscal" value="fisc" style={{ textTransform: 'none', outline: 'none', border: 'none', }} />
                           </TabList>
                         </Box>
 
@@ -1439,11 +1554,24 @@ const Immobilisations = () => {
                             disableRowSelectionOnClick
                             density="compact"
                             sx={{
-                              height: 250,
+                              ...DataGridStyle.sx,
                               '& .MuiDataGrid-columnHeaders': {
                                 backgroundColor: initial.theme,
                                 color: 'white',
                                 fontWeight: 'bold',
+                              },
+                              '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                outline: 'none',
+                                border: 'none',
+                              },
+                              '& .highlight-separator': {
+                                borderBottom: '1px solid red'
+                              },
+                              '& .MuiDataGrid-row.highlight-separator': {
+                                borderBottom: '1px solid red',
+                              },
+                              '& .MuiDataGrid-virtualScroller': {
+                                maxHeight: '700px',
                               },
                             }}
                           />
@@ -1588,11 +1716,24 @@ const Immobilisations = () => {
                             disableRowSelectionOnClick
                             density="compact"
                             sx={{
-                              height: 250,
+                              ...DataGridStyle.sx,
                               '& .MuiDataGrid-columnHeaders': {
                                 backgroundColor: initial.theme,
                                 color: 'white',
                                 fontWeight: 'bold',
+                              },
+                              '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                outline: 'none',
+                                border: 'none',
+                              },
+                              '& .highlight-separator': {
+                                borderBottom: '1px solid red'
+                              },
+                              '& .MuiDataGrid-row.highlight-separator': {
+                                borderBottom: '1px solid red',
+                              },
+                              '& .MuiDataGrid-virtualScroller': {
+                                maxHeight: '700px',
                               },
                             }}
                           />
@@ -1611,10 +1752,9 @@ const Immobilisations = () => {
                     onOpenLienEcriture={handleOpenLienEcriture}
                   />
 
-                  <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md" fullWidh>
+                  <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md" fullwidh>
                     <DialogTitle>Choisir une écriture du journal</DialogTitle>
                     <DialogContent dividers>
-                      {/* <Typography variant="body2" sx={{ mb: 1 }}>Compte: {detailsForm?.compte_id || ''}</Typography> */}
                       <DataGrid
                         rows={journalRows}
                         getRowId={(r) => r.id}
@@ -1630,7 +1770,6 @@ const Immobilisations = () => {
                           { field: 'libelle', headerName: 'Libellé', width: 160 },
                           { field: 'debit', headerName: 'Débit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                           { field: 'credit', headerName: 'Crédit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                          // { field: 'solde', headerName: 'Solde', width: 120, type: 'number', headerAlign: 'right', align: 'right', valueGetter: (p) => (Number(p?.row?.debit || 0) - Number(p?.row?.credit || 0)), renderCell: (p) => formatMoneyFr(p.value) },
                           { field: 'lettrage', headerName: 'Lettrage', width: 120, valueGetter: (p) => p?.row?.lettrage ?? '' },
                         ]}
                         loading={journalLoading}
@@ -1645,11 +1784,25 @@ const Immobilisations = () => {
                         autoHeight
                         density="compact"
                         sx={{
+                          ...DataGridStyle.sx,
                           '& .MuiDataGrid-columnHeaders': {
                             backgroundColor: initial.theme,
                             color: '#fff',
                             fontWeight: 'bold',
-                          }
+                          },
+                          '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                            outline: 'none',
+                            border: 'none',
+                          },
+                          '& .highlight-separator': {
+                            borderBottom: '1px solid red'
+                          },
+                          '& .MuiDataGrid-row.highlight-separator': {
+                            borderBottom: '1px solid red',
+                          },
+                          '& .MuiDataGrid-virtualScroller': {
+                            maxHeight: '700px',
+                          },
                         }}
                       />
                     </DialogContent>
@@ -1661,7 +1814,7 @@ const Immobilisations = () => {
                           color: initial.theme,
                           width: "100px",
                           textTransform: 'none',
-                          //outline: 'none',
+                          outline: 'none',
                         }}
                         onClick={() => setLienDialogOpen(false)}>
                         Annuler
@@ -1671,7 +1824,14 @@ const Immobilisations = () => {
                         variant="contained"
                         onClick={handleConfirmLienEcriture}
                         disabled={journalSelection.length === 0}
-                        style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}>
+                        style={{
+                          backgroundColor: initial.theme,
+                          color: 'white',
+                          width: "100px",
+                          textTransform: 'none',
+                          outline: 'none',
+                        }}
+                      >
                         Valider
                       </Button>
                     </DialogActions>

@@ -3,24 +3,29 @@ const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 const { generateRapproContent } = require('../../Middlewares/rapprochements/RapprochementsGeneratePdf');
 const { exportRapprochementExcel } = require('../../Middlewares/rapprochements/RapprochementsGenerateExcel');
+const fs = require('fs');
+const path = require('path');
 
 const dossiers = db.dossiers;
 const exercices = db.exercices;
 const userscomptes = db.userscomptes;
 const dossierplancomptables = db.dossierplancomptable;
 const rapprochements = db.rapprochements;
-const codejournals = db.codejournals;
-const Sequelize = require('sequelize');
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return String(dateString).substring(0,10);
+  if (isNaN(date.getTime())) return String(dateString).substring(0, 10);
   const dd = String(date.getDate()).padStart(2, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const yyyy = date.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
 };
+
+const logoPath = path.join(__dirname, '../../public/logo/Logo Kaonty_2.png');
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 module.exports = {
   exportPdf: async (req, res) => {
@@ -50,8 +55,6 @@ module.exports = {
 
       const dossier = await dossiers.findByPk(fileId);
       const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
-      const pc = await dossierplancomptables.findByPk(pcId);
 
       const fonts = {
         Helvetica: {
@@ -63,10 +66,42 @@ module.exports = {
       };
 
       const headerLines = [
-        { text: 'RAPPROCHEMENT BANCAIRE', style: 'header', alignment: 'center', margin: [0, 0, 0, 8] },
-        { text: `Dossier : ${dossier?.dossier || ''}`, alignment: 'center', fontSize: 15, bold: true, margin: [0, 0, 0, 5] },
-        // { text: `Compte: ${pc?.compte || ''}  |  Utilisateur: ${compte?.nom || ''}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 3] },
-        { text: `Exercice: ${formatDate(exercice?.date_debut)} - ${formatDate(exercice?.date_fin)}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 12] },
+        {
+          columns: [
+            {
+              image: logoImage,
+              width: 60
+            },
+            {
+              stack: [
+                {
+                  text: 'RAPPROCHEMENT BANCAIRE',
+                  style: 'header',
+                  alignment: 'center',
+                  margin: [0, 0, 0, 5]
+                },
+                {
+                  text: `Dossier : ${dossier?.dossier || ''}`,
+                  fontSize: 15,
+                  bold: true,
+                  alignment: 'center',
+                  margin: [0, 0, 0, 5]
+                }
+              ],
+              width: '*'
+            }
+          ],
+          margin: [0, 0, 0, 10]
+        },
+        {
+          text: [
+            { text: 'Exercice : ', bold: true },
+            { text: `${formatDate(exercice?.date_debut)} - ${formatDate(exercice?.date_fin)}` }
+          ],
+          alignment: 'left',
+          fontSize: 9,
+          margin: [0, 10, 0, 6]
+        }
       ];
 
       const { rjson, summary, rapproTable, ecrituresTable } = await generateRapproContent(fileId, compteId, exerciceId, pcId, rapproId, exercice?.date_debut, exercice?.date_fin);
@@ -78,9 +113,40 @@ module.exports = {
         defaultStyle: { font: 'Helvetica', fontSize: 9 },
         content: [
           ...headerLines,
-          { text: `Période: du ${formatDate(rjson?.date_debut)} au ${formatDate(rjson?.date_fin)}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 6] },
+          {
+            text: [
+              { text: 'Période : ', bold: true },
+              { text: `du ${formatDate(rjson?.date_debut)} au ${formatDate(rjson?.date_fin)}` }
+            ], alignment: 'left', fontSize: 9, margin: [0, -1, 0, 6]
+          },
+          {
+            text: [
+              { text: `Date d'édition : `, bold: true },
+              { text: `${formatDate(new Date())}` }
+            ], alignment: 'left', fontSize: 9, margin: [0, -1, 0, 6]
+          },
+          {
+            table: {
+              widths: ['*'],
+              body: [
+                [
+                  {
+                    text: '',
+                    border: [false, true, false, false]
+                  }
+                ]
+              ]
+            },
+            layout: {
+              hLineColor: () => '#1A5276',
+              hLineWidth: () => 2,
+              vLineWidth: () => 0
+            },
+            margin: [0, 10, 0, 0]
+          },
+          { text: '1. Synthèse financière', style: 'subheader', margin: [0, 0, 0, 10] },
           summary,
-          { text: 'Ecritures', style: 'subheader', margin: [0, 0, 0, 6] },
+          { text: '2. Détail des écritures bancaires', style: 'subheader', margin: [0, 20, 0, 10] },
           rapproTable,
           ecrituresTable
         ],
@@ -129,7 +195,7 @@ module.exports = {
 
       const dossier = await dossiers.findByPk(fileId);
       const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const compte = await userscomptes.findByPk(compteId, { attributes: ['id', 'nom'], raw: true });
       const pc = await dossierplancomptables.findByPk(pcId);
 
       const workbook = new ExcelJS.Workbook();

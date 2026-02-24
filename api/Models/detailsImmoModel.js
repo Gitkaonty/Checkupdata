@@ -58,6 +58,9 @@ module.exports = (sequelize, DataTypes) => {
     duree_amort_mois_fisc: { type: DataTypes.DECIMAL(18, 2) },
     type_amort_fisc: { type: DataTypes.STRING(50) },
 
+    etat: { type: DataTypes.STRING(50), allowNull: true },
+    amort_avant_reprise: { type: DataTypes.DECIMAL(18, 2) },
+
     created_at: { type: DataTypes.DATE },
     updated_at: { type: DataTypes.DATE },
   }, {

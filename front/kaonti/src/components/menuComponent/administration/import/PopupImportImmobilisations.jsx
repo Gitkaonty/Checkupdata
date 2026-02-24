@@ -35,7 +35,7 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
     useEffect(() => {
         if (isImporting) {
             setProgressValue(sseProgress);
-            const displayMessage = currentLine > 0 && totalLines > 0 
+            const displayMessage = currentLine > 0 && totalLines > 0
                 ? `${sseMessage} (${currentLine}/${totalLines} lignes)`
                 : sseMessage;
             setTraitementMsg(displayMessage);
@@ -117,19 +117,57 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
             'montant_ht',
             'date_reprise',
             'amort_ant',
+            'dotation',
             'date_sortie'
         ];
 
-        const csvContent = headers.join(';') + '\n';
+        const rows = [
+            [
+                '',
+                '',
+                '',
+                '',
+                'mm/jj/aaaa',
+                '',
+                'linéaire',
+                '',
+                'mm/jj/aaaa',
+                '',
+                '',
+                'mm/jj/aaaa'
+            ],
+            [
+                '',
+                '',
+                '',
+                '',
+                'mm/jj/aaaa',
+                '',
+                'dégressive',
+                '',
+                'mm/jj/aaaa',
+                '',
+                '',
+                'mm/jj/aaaa'
+            ]
+        ];
+
+        const csvContent =
+            headers.join(';') + '\n' +
+            rows.map(row => row.join(';')).join('\n');
+
         const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
+
         link.setAttribute('href', url);
         link.setAttribute('download', 'modele_import_immobilisations.csv');
         link.style.visibility = 'hidden';
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
         toast.success('Modèle téléchargé avec succès');
     };
 
@@ -162,10 +200,10 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
 
     const validerDonnees = () => {
         const anomalies = [];
-        
+
         immobilisationsData.forEach((row, index) => {
             const ligneNum = index + 1;
-            
+
             if (!row.numero_compte || row.numero_compte.trim() === '') {
                 anomalies.push(`Ligne ${ligneNum}: Le numéro de compte est obligatoire`);
             }
@@ -197,7 +235,7 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
 
         setMsgAnomalie(anomalies);
         setNbrAnomalie(anomalies.length);
-        
+
         if (anomalies.length > 0) {
             setCouleurBoutonAnomalie('#ff6b6b');
             setOpenDetailsAnomalie(true); // Ouvrir automatiquement le popup d'anomalies
@@ -250,19 +288,19 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
                 // Erreur
                 setTraitementWaiting(false);
                 setProgressValue(0);
-                
+
                 // Parser les anomalies si elles sont présentes dans le message d'erreur
                 if (typeof error === 'string' && error.includes('anomalie(s) détectée(s)')) {
                     const lines = error.split('\n');
                     const anomaliesArray = lines.slice(1); // Ignorer la première ligne (résumé)
-                    
+
                     if (anomaliesArray.length > 0) {
                         setMsgAnomalie(anomaliesArray);
                         setNbrAnomalie(anomaliesArray.length);
                         setCouleurBoutonAnomalie('#ff6b6b');
                         setOpenDetailsAnomalie(true);
                     }
-                    
+
                     toast.error(lines[0] || error);
                 } else {
                     toast.error(error || "Erreur lors de l'import");
@@ -292,18 +330,18 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
                                 <Button
                                     onClick={() => setOpenDetailsAnomalie(true)}
                                     startIcon={
-                                        <Badge 
+                                        <Badge
                                             badgeContent={nbrAnomalie}
                                             color="error"
                                             overlap="circular"
                                         >
-                                            <IoWarningOutline size={22}/>
+                                            <IoWarningOutline size={22} />
                                         </Badge>
                                     }
-                                    sx={{ 
+                                    sx={{
                                         minWidth: "auto",
                                         padding: 0.5,
-                                        color: 'red', 
+                                        color: 'red',
                                         backgroundColor: 'transparent',
                                         marginTop: -0.5
                                     }}
@@ -371,7 +409,7 @@ export default function PopupImportImmobilisations({ open, onClose, fileId, comp
                             </label>
                         </Stack>
 
-                        <ImportProgressBar 
+                        <ImportProgressBar
                             isVisible={traitementWaiting}
                             message={traitementMsg}
                             variant="determinate"
