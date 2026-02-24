@@ -11,7 +11,7 @@ import Select from '@mui/material/Select';
 import { init } from '../../../../../init';
 import { LuView } from "react-icons/lu";
 import { MdFilePresent } from "react-icons/md";
-
+import { GoLink } from "react-icons/go";
 import axios, { URL } from '../../../../../config/axios';
 import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
 import { TbPlugConnected } from "react-icons/tb";
@@ -62,6 +62,7 @@ export default function ConsultationComponent() {
     const [noFile, setNoFile] = useState(false);
     const [listeExercice, setListeExercice] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
+    const [listCompteAssocie, setListeCompteAssocie] = useState([]);
     const [selectedExerciceId, setSelectedExerciceId] = useState(0);
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
@@ -211,6 +212,14 @@ export default function ConsultationComponent() {
             })
     }
 
+    // Récupération des listes des comptes associés dans le code journal
+    const getCodeJournalsCompteAssocie = () => {
+        axios.post('/administration/traitementSaisie/getCodeJournalsCompteAssocie', { id_dossier: Number(fileId), id_compte: Number(compteId) })
+            .then((response) => {
+                setListeCompteAssocie(response?.data || []);
+            })
+    }
+
     //Liste des sections avec ses axes
     const getListAxeSection = () => {
         axios.get(`/paramCa/getListAxeSection/${Number(compteId)}/${Number(fileId)}`).then((response) => {
@@ -249,6 +258,21 @@ export default function ConsultationComponent() {
             headerAlign: 'left',
             align: 'left',
             headerClassName: 'HeaderbackColor',
+        },
+        {
+            field: 'id_immob',
+            headerName: 'Immo',
+            sortable: false,
+            width: 40,
+            headerAlign: 'center',
+            align: 'center',
+            headerClassName: 'HeaderbackColor',
+            renderCell: (params) => {
+                const exist = params.value !== 0;
+                return (
+                    exist ? <GoLink color={initial.theme} size={18} /> : null
+                );
+            },
         },
         {
             field: 'dateecriture',
@@ -798,6 +822,7 @@ export default function ConsultationComponent() {
     useEffect(() => {
         if (fileId && compteId && typeComptabilite !== null) {
             getPc();
+            getCodeJournalsCompteAssocie();
         }
     }, [fileId, compteId, selectedExerciceId, isRefreshedPlanComptable])
 
@@ -917,6 +942,7 @@ export default function ConsultationComponent() {
                         canDelete={canDelete}
                         canModify={canModify}
                         isTypeComptaAutre={isTypeComptaAutre}
+                        listCompteAssocie={listCompteAssocie}
                     /> : null
             }
             {
@@ -948,6 +974,7 @@ export default function ConsultationComponent() {
                         id_compte={Number(compteId)}
                         solde={solde}
                         refresh={() => setIsRefreshed(prev => !prev)}
+                        selectedRows={selectedRows}
                     />
                 )
             }
@@ -1125,64 +1152,74 @@ export default function ConsultationComponent() {
 
                                         </Stack>
                                         <Stack direction={'row'} spacing={1}>
-                                            <Button
-                                                disabled={!canView || !selectedExerciceId || selectedExerciceId === 0 || valSelectedCompte === 'tout'}
-                                                sx={{
-                                                    minWidth: 0,
-                                                    padding: 1,
-                                                    backgroundColor: 'transparent',
-                                                    boxShadow: 'none',
-                                                    '&:hover': {
-                                                        backgroundColor: 'transparent',
-                                                    },
-                                                    '&:focus': {
-                                                        outline: 'none',
-                                                        backgroundColor: 'transparent',
-                                                        boxShadow: 'none',
-                                                    },
-                                                    '&:active': {
-                                                        backgroundColor: 'transparent',
-                                                        boxShadow: 'none',
-                                                    },
-                                                }}
-                                                onClick={handlePrevious}
-                                            >
-                                                <GrPrevious
-                                                    color="gray"
-                                                    size={20}
-                                                />
-                                            </Button>
-                                            <Button
-                                                disabled={
-                                                    !canView ||
-                                                    !selectedExerciceId || selectedExerciceId === 0 ||
-                                                    listePlanComptable.findIndex(item => item.id === valSelectedCompte) >= listePlanComptable.length - 1
-                                                }
-                                                sx={{
-                                                    minWidth: 0,
-                                                    padding: 1,
-                                                    backgroundColor: 'transparent',
-                                                    boxShadow: 'none',
-                                                    '&:hover': {
-                                                        backgroundColor: 'transparent',
-                                                    },
-                                                    '&:focus': {
-                                                        outline: 'none',
-                                                        backgroundColor: 'transparent',
-                                                        boxShadow: 'none',
-                                                    },
-                                                    '&:active': {
-                                                        backgroundColor: 'transparent',
-                                                        boxShadow: 'none',
-                                                    },
-                                                }}
-                                                onClick={handleNext}
-                                            >
-                                                <GrNext
-                                                    color="gray"
-                                                    size={20}
-                                                />
-                                            </Button>
+                                            <Tooltip title={'Ctrl + <--'}>
+                                                <span>
+                                                    <Button
+                                                        disabled={!canView || !selectedExerciceId || selectedExerciceId === 0 || valSelectedCompte === 'tout'}
+                                                        sx={{
+                                                            minWidth: 0,
+                                                            padding: 1,
+                                                            backgroundColor: 'transparent',
+                                                            boxShadow: 'none',
+                                                            '&:hover': {
+                                                                backgroundColor: 'transparent',
+                                                            },
+                                                            '&:focus': {
+                                                                outline: 'none',
+                                                                backgroundColor: 'transparent',
+                                                                boxShadow: 'none',
+                                                            },
+                                                            '&:active': {
+                                                                backgroundColor: 'transparent',
+                                                                boxShadow: 'none',
+                                                            },
+                                                            height: '100%'
+                                                        }}
+                                                        onClick={handlePrevious}
+                                                    >
+                                                        <GrPrevious
+                                                            color="gray"
+                                                            size={20}
+                                                        />
+                                                    </Button>
+                                                </span>
+                                            </Tooltip>
+                                            <Tooltip title={'Ctrl + -->'}>
+                                                <span>
+                                                    <Button
+                                                        disabled={
+                                                            !canView ||
+                                                            !selectedExerciceId || selectedExerciceId === 0 ||
+                                                            listePlanComptable.findIndex(item => item.id === valSelectedCompte) >= listePlanComptable.length - 1
+                                                        }
+                                                        sx={{
+                                                            minWidth: 0,
+                                                            padding: 1,
+                                                            backgroundColor: 'transparent',
+                                                            boxShadow: 'none',
+                                                            '&:hover': {
+                                                                backgroundColor: 'transparent',
+                                                            },
+                                                            '&:focus': {
+                                                                outline: 'none',
+                                                                backgroundColor: 'transparent',
+                                                                boxShadow: 'none',
+                                                            },
+                                                            '&:active': {
+                                                                backgroundColor: 'transparent',
+                                                                boxShadow: 'none',
+                                                            },
+                                                            height: '100%'
+                                                        }}
+                                                        onClick={handleNext}
+                                                    >
+                                                        <GrNext
+                                                            color="gray"
+                                                            size={20}
+                                                        />
+                                                    </Button>
+                                                </span>
+                                            </Tooltip>
                                         </Stack>
                                     </Stack>
                                 </FormControl>

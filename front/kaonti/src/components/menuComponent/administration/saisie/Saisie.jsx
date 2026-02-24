@@ -53,6 +53,7 @@ export default function SaisieComponent() {
     const [noFile, setNoFile] = useState(false);
 
     const [listSaisie, setListSaisie] = useState([]);
+    const [listCompteAssocie, setListeCompteAssocie] = useState([]);
     const [listCa, setListCa] = useState([]);
     const [filteredList, setFilteredList] = useState(null);
     const [typeComptabilite, setTypeComptabilite] = useState(null);
@@ -186,6 +187,14 @@ export default function SaisieComponent() {
                 } else {
                     toast.error(resData.msg);
                 }
+            })
+    }
+
+    // Récupération des listes des comptes associés dans le code journal
+    const getCodeJournalsCompteAssocie = () => {
+        axios.post('/administration/traitementSaisie/getCodeJournalsCompteAssocie', { id_dossier: Number(fileId), id_compte: Number(compteId) })
+            .then((response) => {
+                setListeCompteAssocie(response?.data || []);
             })
     }
 
@@ -621,6 +630,7 @@ export default function SaisieComponent() {
         if (idFile && compteId && typeComptabilite !== null) {
             GetListeCodeJournaux();
             getPc();
+            getCodeJournalsCompteAssocie();
             getListeDevises();
         }
 
@@ -694,6 +704,7 @@ export default function SaisieComponent() {
                         canDelete={canDelete}
                         canModify={canModify}
                         isTypeComptaAutre={isTypeComptaAutre}
+                        listCompteAssocie={listCompteAssocie}
                     /> : null
             }
             {
