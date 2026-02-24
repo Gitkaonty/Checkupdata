@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Stack, IconButton, FormControl, InputLabel, Select, MenuItem, Input, FormHelperText, Chip } from '@mui/material';
+import { Typography, Stack, IconButton, FormControl, InputLabel, Select, MenuItem, Input, FormHelperText, Chip, Autocomplete, TextField } from '@mui/material';
 import Tooltip from '@mui/material/Tooltip';
 import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
 import { useParams } from 'react-router-dom';
@@ -75,7 +75,6 @@ export default function ParamCodeJournalComponent() {
     const { auth } = useAuth();
     const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
     const compteId = decoded.UserInfo.compteId || null;
-    const userId = decoded.UserInfo.userId || null;
     const navigate = useNavigate();
 
     //sauvegarde de la nouvelle ligne ajoutée
@@ -103,15 +102,6 @@ export default function ParamCodeJournalComponent() {
                     otherwise: () => Yup.string().notRequired(),
                 }),
         }),
-        // validate: (values) => {
-        //     const errors = {};
-        //     const testIfCodeExist = listeCodeJournaux.filter((item) => item.code === values.code);
-        //     if (testIfCodeExist.length > 0) {
-        //         errors.code = 'Ce code journal existe déjà';
-        //     }
-        //     return errors;
-        // },
-
         validateOnChange: false,
         validateOnBlur: true,
     });
@@ -196,23 +186,6 @@ export default function ParamCodeJournalComponent() {
         }
     }, [fileId]);
 
-    // Mettre à jour listeCptAssocie quand pc est chargé et qu'un type BANQUE/CAISSE est sélectionné
-    useEffect(() => {
-        if (pc && pc.length > 0 && formikNewCodeJournal.values.type) {
-            console.log('[useEffect pc] Plan comptable chargé, mise à jour de listeCptAssocie pour type:', formikNewCodeJournal.values.type);
-            const listBank = pc.filter((row) => row.compte.startsWith('512') || row.compte.startsWith('52'));
-            const listCash = pc.filter((row) => row.compte.startsWith('53'));
-            
-            if (formikNewCodeJournal.values.type === 'BANQUE') {
-                console.log('[useEffect pc] Mise à jour liste BANQUE:', listBank.length, 'comptes');
-                setListeCptAssocie(listBank);
-            } else if (formikNewCodeJournal.values.type === 'CAISSE') {
-                console.log('[useEffect pc] Mise à jour liste CAISSE:', listCash.length, 'comptes');
-                setListeCptAssocie(listCash);
-            }
-        }
-    }, [pc, formikNewCodeJournal.values.type]);
-
     //Entete du tableau
     const type = [
         { value: 'ACHAT', label: 'ACHAT' },
@@ -227,10 +200,10 @@ export default function ParamCodeJournalComponent() {
     const recupListeCptBanqueCaisse = (typeTreso) => {
         console.log('[recupListeCptBanqueCaisse] Type sélectionné:', typeTreso);
         console.log('[recupListeCptBanqueCaisse] Plan comptable (pc) length:', pc?.length);
-        
+
         const listBank = pc?.filter((row) => row.compte.startsWith('512') || row.compte.startsWith('52'));
         const listCash = pc?.filter((row) => row.compte.startsWith('53'));
-        
+
         console.log('[recupListeCptBanqueCaisse] Comptes BANQUE (512 ou 52) trouvés:', listBank?.length);
         console.log('[recupListeCptBanqueCaisse] Comptes CAISSE (53) trouvés:', listCash?.length);
 
@@ -546,24 +519,6 @@ export default function ParamCodeJournalComponent() {
                         </Stack>
                     )
                 }
-                // if (params.value === 'RAN') {
-                //     return (
-                //         <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                //             <Chip
-                //                 icon={<MdOutlineSyncLock style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                //                 label={params.value}
-
-                //                 style={{
-                //                     width: "100%",
-                //                     display: 'flex', // ou block, selon le rendu souhaité
-                //                     justifyContent: 'space-between',
-                //                     backgroundColor: '#FFA62F',
-                //                     color: 'white'
-                //                 }}
-                //             />
-                //         </Stack>
-                //     )
-                // }
             }
         },
         {
@@ -587,30 +542,75 @@ export default function ParamCodeJournalComponent() {
                 </span>
             ),
             renderEditCell: (params) => {
+                const listBank = pc.filter(row => row.compte.startsWith('512') || row.compte.startsWith('52'));
+                const listCash = pc.filter(row => row.compte.startsWith('53'));
+
                 const isEditable = formikNewCodeJournal.values.type === 'BANQUE' || formikNewCodeJournal.values.type === 'CAISSE';
+
+                const usedComptes = params.api
+                    .getAllRowIds()
+                    .map(id => params.api.getRow(id))
+                    .filter(row => row.id !== params.id)
+                    .map(row => row.compteassocie)
+                    .filter(Boolean);
+
+                let availableOptions = [];
+                if (formikNewCodeJournal.values.type === 'BANQUE') {
+                    availableOptions = listBank.filter(option => !usedComptes.includes(option.compte));
+                } else if (formikNewCodeJournal.values.type === 'CAISSE') {
+                    availableOptions = listCash.filter(option => !usedComptes.includes(option.compte));
+                }
+
+                if (params.value && !availableOptions.find(opt => opt.compte === params.value)) {
+                    const current = (formikNewCodeJournal.values.type === 'BANQUE' ? listBank : listCash)
+                        .find(opt => opt.compte === params.value);
+                    if (current) availableOptions = [...availableOptions, current];
+                }
+
+                const currentValue = availableOptions.find(opt => opt.compte === params.value) || null;
+
                 return (
-                    <FormControl fullWidth>
-                        <InputLabel><em>Choisir...</em></InputLabel>
-                        <Select
-                            style={{ backgroundColor: isEditable ? '#fff' : '#f0f0f0' }}
-                            value={formikNewCodeJournal.values.compteassocie}
-                            onChange={(e) => formikNewCodeJournal.setFieldValue('compteassocie', e.target.value)}
-                            disabled={!isEditable} // désactive si non éditable
-                        >
-                            {listeCptAssocie?.map((option) => (
-                                <MenuItem key={option.compte} value={option.compte}>
-                                    {option.compte} {option.libelle}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                        <FormHelperText style={{ color: 'red' }}>
-                            {formikNewCodeJournal.errors.compteassocie &&
-                                formikNewCodeJournal.touched.compteassocie &&
-                                formikNewCodeJournal.errors.compteassocie}
-                        </FormHelperText>
-                    </FormControl>
+                    <Autocomplete
+                        sx={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                        key={params.id}
+                        options={availableOptions}
+                        autoHighlight
+                        openOnFocus
+                        getOptionLabel={(option) =>
+                            option ? `${option.compte} ${option.libelle}` : ''
+                        }
+                        isOptionEqualToValue={(option, value) =>
+                            option.compte === value?.compte
+                        }
+                        value={currentValue}
+                        onChange={(e, newValue) => {
+                            const newCompte = newValue ? newValue.compte : null;
+                            params.api.setEditCellValue(
+                                { id: params.id, field: 'compteassocie', value: newCompte },
+                                e
+                            );
+                            formikNewCodeJournal.setFieldValue('compteassocie', newCompte)
+                        }}
+                        noOptionsText="Aucun compte disponible"
+                        disabled={!isEditable}
+                        renderInput={(paramsInput) => (
+                            <TextField
+                                {...paramsInput}
+                                variant="standard"
+                                placeholder="Choisir un compte"
+                                fullWidth
+                                InputProps={{
+                                    ...paramsInput.InputProps,
+                                    disableUnderline: true,
+                                }}
+                                style={{
+                                    backgroundColor: isEditable ? compteAssocieValidationColor : '#f0f0f0'
+                                }}
+                            />
+                        )}
+                    />
                 );
-            },
+            }
         },
 
         {
@@ -666,7 +666,7 @@ export default function ParamCodeJournalComponent() {
                             style={{
                                 height: '100%', alignItems: 'center',
                                 outline: 'none',
-                                backgroundColor: isEditable ? '#fff' : '#f0f0f0', // gris si non éditable
+                                backgroundColor: isEditable ? statValidationColor : '#f0f0f0', // gris si non éditable
                             }}
                             type="text"
                             value={formikNewCodeJournal.values.stat}
@@ -701,7 +701,7 @@ export default function ParamCodeJournalComponent() {
                             style={{
                                 height: '100%', alignItems: 'center',
                                 outline: 'none',
-                                backgroundColor: isEditable ? '#fff' : '#f0f0f0', // gris si non éditable
+                                backgroundColor: isEditable ? adresseValidationColor : '#f0f0f0', // gris si non éditable
                             }}
                             type="text"
                             value={formikNewCodeJournal.values.adresse}
@@ -1253,7 +1253,7 @@ export default function ParamCodeJournalComponent() {
                                 </Tooltip>
                             </Stack>
 
-                            <Stack width={"100%"} height={'100%'} minHeight={'600px'}>
+                            <Stack width={"100%"} height={'100%'} minHeight={'800px'}>
                                 <DataGrid
                                     apiRef={apiRef}
                                     disableMultipleSelection={DataGridStyle.disableMultipleSelection}
@@ -1263,14 +1263,17 @@ export default function ParamCodeJournalComponent() {
                                     disableSelectionOnClick={true}
                                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                     slots={{ toolbar: QuickFilter }}
-                                    sx={DataGridStyle.sx}
+                                    sx={{
+                                        ...DataGridStyle.sx,
+                                        '& .MuiDataGrid-main': { width: '100%' },
+                                        '& .MuiDataGrid-viewport': { overflowX: 'hidden' }
+                                    }}
                                     rowHeight={DataGridStyle.rowHeight}
                                     columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                     editMode='row'
                                     columns={CodeJournauxColumnHeader}
                                     rows={listeCodeJournaux}
                                     onRowClick={(e) => handleCellEditCommit(e.row)}
-                                    // onCellClick={(e) => test(e.row)}
                                     onRowSelectionModelChange={ids => {
                                         const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
                                         setSelectedRow(single);
