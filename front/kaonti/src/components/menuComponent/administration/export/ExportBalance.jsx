@@ -703,6 +703,10 @@ export default function ExportBalance() {
                                         aria-controls={openExportMenu ? 'export-menu' : undefined}
                                         aria-haspopup="true"
                                         aria-expanded={openExportMenu ? 'true' : undefined}
+                                        style={{
+                                            textTransform: 'none',
+                                            outline: 'none',
+                                        }}
                                     >
                                         <CiExport style={{ width: 35, height: 35, color: "#D32F2F" }} />
                                     </IconButton>
@@ -727,7 +731,6 @@ export default function ExportBalance() {
                 </TabPanel>
             </TabContext>
 
-            {/* Hoisted Export Menu for faster open (less layout work) */}
             <Menu
                 id="export-menu"
                 anchorEl={anchorElExport}

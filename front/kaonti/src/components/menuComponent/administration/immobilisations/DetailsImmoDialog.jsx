@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Stack, TextField, Button, InputAdornment, MenuItem, Typography, Box, Tab, IconButton, Checkbox, FormControlLabel,
@@ -15,6 +15,7 @@ import FormatedInput from '../../../componentsTools/FormatedInput';
 import { FaSquarePlus } from "react-icons/fa6";
 
 const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, onSubmit, loading = false, onOpenLienEcriture }) => {
+    const ancienneDateSortieRef = useRef(form.date_sortie);
     const initial = init[0];
 
     const handleField = (key) => (e) => onChange({ ...form, [key]: e.target.value });
@@ -384,6 +385,11 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                     />
                                 }
                                 label="Reprise immobilisation"
+                                componentsProps={{
+                                    typography: {
+                                        fontSize: 14,
+                                    },
+                                }}
                                 sx={{ alignItems: 'center' }}
                             />
                         </Stack>
@@ -423,8 +429,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                     onChange={(e, v) => onChange({ ...form, __amortTab: v })}
                                     aria-label="tabs amortissement"
                                 >
-                                    <Tab label="Comptable" value="comp" style={{ textTransform: 'none', outline: 'none', border: 'none', }} sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
-                                    <Tab label="Fiscal" value="fisc" style={{ textTransform: 'none', outline: 'none', border: 'none', }} sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
+                                    <Tab label="Comptable" value="comp" style={{ outline: 'none', border: 'none', }} sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
+                                    <Tab label="Fiscal" value="fisc" style={{ outline: 'none', border: 'none', }} sx={{ textTransform: 'none', minHeight: 26, padding: '0px 8px', fontSize: 12, lineHeight: 1.2, '&.Mui-selected': { backgroundColor: initial.theme, color: 'white' } }} />
                                 </TabList>
                             </Box>
 
@@ -547,7 +553,20 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 </InputLabel>
                                 <Select
                                     value={form.etat || 'enService'}
-                                    onChange={handleField('etat')}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+
+                                        const next = { ...form, etat: value };
+
+                                        if (value === 'enService') {
+                                            ancienneDateSortieRef.current = form.date_sortie;
+                                            next.date_sortie = '';
+                                        } else {
+                                            next.date_sortie = ancienneDateSortieRef.current;
+                                        }
+
+                                        onChange(next);
+                                    }}
                                     name="typeTier"
                                 >
                                     <MenuItem value={'enService'}>En service</MenuItem>
@@ -656,7 +675,6 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                         color: initial.theme,
                         width: "100px",
                         textTransform: 'none',
-                        textTransform: 'none',
                         outline: 'none',
                         //outline: 'none',
                     }}
@@ -669,8 +687,6 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                         backgroundColor: initial.theme,
                         color: 'white',
                         width: "100px",
-                        textTransform: 'none',
-                        outline: 'none',
                         textTransform: 'none',
                         outline: 'none',
 

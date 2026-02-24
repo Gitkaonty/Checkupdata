@@ -1,11 +1,11 @@
 const db = require("../../Models");
-const fs = require('fs');
 const path = require('path');
 
 const dossierplancomptables = db.dossierplancomptable;
 const rapprochements = db.rapprochements;
+require('dotenv').config();
 
-const logoPath = path.join(__dirname, '../../public/logo/Logo Kaonty_2.png');
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
