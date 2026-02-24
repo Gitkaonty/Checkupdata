@@ -7,14 +7,16 @@ const dossierplancomptable = db.dossierplancomptable;
 const codejournals = db.codejournals;
 const rapprochements = db.rapprochements;
 const analytiques = db.analytiques;
-const consolidationDossier = db.consolidationDossier;
 const dossiers = db.dossiers;
-const exercices = db.exercices;
 const detailsimmo = db.detailsimmo;
 const sequelize = db.sequelize;
+const { Op } = require('sequelize');
 
 const fs = require('fs');
 const path = require('path');
+
+const updateDetailImmo = require('../../Middlewares/Immobilisation/updateDetailImmo');
+const updateMontantImmo = updateDetailImmo.updateMontantImmo;
 
 // Fonction pour plurieliser un mot
 function pluralize(count, word) {
@@ -502,6 +504,7 @@ exports.listDetailsImmoLignes = async (req, res) => {
         const compteId = Number(req.query?.compteId);
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
+        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -587,6 +590,7 @@ exports.generateImmoEcritures = async (req, res) => {
             where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId }
         });
 
+        // ON N'A PLUS BESOIN DE detailsImmoLignes
         const [details, lignes] = await Promise.all([
             // Utiliser SQL avec JOIN pour récupérer le libellé du compte directement
             db.sequelize.query(`
@@ -772,6 +776,7 @@ exports.generateImmoEcritures = async (req, res) => {
 
                 // Récupérer les données de l'immobilisation
                 const montantHT = Number(detail?.montant_ht || detail?.montant) || 0;
+                const dotation = Number(detail?.dotation_periode_comp) || 0;
                 const dureeMois = Number(detail?.duree_amort_mois) || 0;
                 const dateMiseService = detail?.date_mise_service ? new Date(detail.date_mise_service) : null;
 
@@ -815,61 +820,32 @@ exports.generateImmoEcritures = async (req, res) => {
                 let currentDate = new Date(dateMiseService);
                 let cumulAmort = 0;
                 let monthIndex = 0;
+
                 const finAmort = new Date(dateMiseService);
                 finAmort.setMonth(finAmort.getMonth() + dureeMois);
 
-                console.log('[IMMO][DEBUG][MONTHLY] Début boucle:', {
-                    detailId,
-                    currentDate: currentDate.toISOString(),
-                    exoFin: exoFin.toISOString(),
-                    finAmort: finAmort.toISOString(),
-                    montantHT,
-                    dureeMois,
-                    baseJours
-                });
-
-                let loopCount = 0;
-                while (cumulAmort < montantHT && monthIndex < dureeMois && currentDate < exoFin) {
-                    loopCount++;
-                    if (loopCount > 100) {
-                        console.log('[IMMO][DEBUG][MONTHLY] Boucle infinie détectée, arrêt');
-                        break;
-                    }
-                    let montantMois = 0;
-                    let dateFinMois = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0); // Dernier jour du mois
+                while (
+                    cumulAmort < montantHT &&
+                    monthIndex < dureeMois &&
+                    currentDate < exoFin
+                ) {
+                    let dateFinMois = new Date(
+                        currentDate.getFullYear(),
+                        currentDate.getMonth() + 1,
+                        0
+                    );
 
                     if (dateFinMois > exoFin) dateFinMois = new Date(exoFin);
                     if (dateFinMois > finAmort) dateFinMois = new Date(finAmort);
 
-                    if (monthIndex === 0) {
-                        // Premier mois : proratisation selon date de mise en service
-                        if (baseJours === 360) {
-                            const jourMiseService = currentDate.getDate();
-                            const joursRestants = 30 - jourMiseService + 1;
-                            montantMois = Math.round(dotationJournaliere * joursRestants * 100) / 100;
-                        } else {
-                            // Base 365 : jours réels restants dans le mois
-                            const dernierJourMois = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-                            const joursRestants = dernierJourMois - currentDate.getDate() + 1;
-                            montantMois = Math.round(dotationJournaliere * joursRestants * 100) / 100;
-                        }
-                    } else {
-                        // Mois suivants : dotation complète
-                        if (baseJours === 360) {
-                            montantMois = Math.round(dotationJournaliere * 30 * 100) / 100;
-                        } else {
-                            // Base 365 : nombre de jours réels du mois
-                            const joursRéelsMois = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-                            montantMois = Math.round(dotationJournaliere * joursRéelsMois * 100) / 100;
-                        }
+                    let montantDotation = dotation;
+
+                    // Ajustement du dernier mois pour ne pas dépasser le montant total
+                    if (cumulAmort + montantDotation > montantHT) {
+                        montantDotation = Math.round((montantHT - cumulAmort) * 100) / 100;
                     }
 
-                    // Ajuster le dernier mois pour ne pas dépasser le montant total
-                    if (cumulAmort + montantMois > montantHT) {
-                        montantMois = Math.round((montantHT - cumulAmort) * 100) / 100;
-                    }
-
-                    if (montantMois > 0) {
+                    if (montantDotation > 0) {
                         const idEcriture = String(Date.now() + Math.floor(Math.random() * 1000));
                         const libelle = `Dot amort ${libelleCompteImmo}`.trim();
 
@@ -888,7 +864,7 @@ exports.generateImmoEcritures = async (req, res) => {
                             id_immob: detailId,
                         };
 
-                        // CHARGE 
+                        // CHARGE
                         const dossier_pc_charge = await dossierplancomptable.findByPk(rowCharge.id);
 
                         if (!dossier_pc_charge) throw new Error("Compte introuvable");
@@ -927,12 +903,11 @@ exports.generateImmoEcritures = async (req, res) => {
                         }
 
                         const [lDebit, lCredit] = await Promise.all([
-                            // CHARGE
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowCharge.id,
                                 id_numcptcentralise: id_numcptcentralise_charge,
-                                debit: montantMois,
+                                debit: montantDotation,
                                 credit: 0,
                                 comptegen: compteGenCharge,
                                 compteaux: compteAuxCharge,
@@ -940,28 +915,26 @@ exports.generateImmoEcritures = async (req, res) => {
                                 libelleaux: libelleAuxCharge
                             }),
 
-                            // AMORT
                             db.journals.create({
                                 ...common,
                                 id_numcpt: rowAmort.id,
                                 id_numcptcentralise: id_numcptcentralise_amort,
                                 debit: 0,
-                                credit: montantMois,
+                                credit: montantDotation,
                                 comptegen: compteGenAmort,
                                 compteaux: compteAuxAmort,
                                 libellecompte: libelleGenAmort,
                                 libelleaux: libelleAuxAmort
                             })
-
                         ]);
 
                         inserted.push(lDebit, lCredit);
                         createdEcritures += 1;
                         createdLignes += 2;
-                        cumulAmort += montantMois;
+
+                        cumulAmort += montantDotation;
                     }
 
-                    // Passer au mois suivant
                     currentDate.setMonth(currentDate.getMonth() + 1);
                     currentDate.setDate(1);
                     monthIndex++;
@@ -969,7 +942,6 @@ exports.generateImmoEcritures = async (req, res) => {
 
                 console.log('[IMMO][DEBUG][MONTHLY] Fin boucle:', {
                     detailId,
-                    loopCount,
                     cumulAmort,
                     monthIndex,
                     currentDate: currentDate.toISOString(),
@@ -977,40 +949,30 @@ exports.generateImmoEcritures = async (req, res) => {
                 });
             }
         } else {
-            // Mode simple : une écriture par compte classe 2 (compte_immo)
+            // Mode simple : une écriture par compte classe 2
             const groupedByCompte = new Map();
 
             for (const [detailId, schedule] of lignesByDetailId.entries()) {
                 const detail = detailsById.get(detailId);
                 if (!detail) continue;
 
-                // Utiliser la somme des dotations de l'exercice (lignes sauvegardées)
-                let montant = 0;
-
-                // Trouver la ligne correspondant à la fin de l'exercice
-                const exactLine = exoFinYMD
-                    ? schedule.find(x => String(x.date_fin_exercice || '').substring(0, 10) === exoFinYMD)
-                    : null;
-
-                if (exactLine) {
-                    // Utiliser la dotation de la ligne exacte
-                    montant = Number(exactLine.dotation_periode_comp) || 0;
-                } else {
-                    // Sinon, sommer toutes les lignes de l'exercice
-                    montant = schedule.reduce((sum, ligne) => {
-                        return sum + (Number(ligne.dotation_periode_comp) || 0);
-                    }, 0);
-                }
+                // 🔹 Utiliser uniquement les dotations sauvegardées
+                const montant = schedule.reduce((sum, ligne) => {
+                    return sum + (Number(ligne.dotation_periode_comp) || 0);
+                }, 0);
 
                 if (montant <= 0) continue;
 
                 const compteAmort = String(detail?.compte_amortissement || '').trim();
                 const compteImmo = String(detail?.compte_immo || '').trim();
-                const libelleCompteImmo = detail?.libelle_compte_immo || detail?.intitule || detail?.code || '';
+                const libelleCompteImmo =
+                    detail?.libelle_compte_immo ||
+                    detail?.intitule ||
+                    detail?.code ||
+                    '';
 
                 if (!compteAmort || !compteImmo) continue;
 
-                // Clé de regroupement : compte_immo + compte_amortissement
                 const groupKey = `${compteImmo}|${compteAmort}`;
 
                 if (!groupedByCompte.has(groupKey)) {
@@ -1019,42 +981,40 @@ exports.generateImmoEcritures = async (req, res) => {
                         compteAmort,
                         libelleCompteImmo,
                         montantTotal: 0,
-                        immobilisations: []
                     });
                 }
 
-                const group = groupedByCompte.get(groupKey);
-                group.montantTotal += montant;
-                group.immobilisations.push({ detailId, montant });
+                groupedByCompte.get(groupKey).montantTotal += montant;
             }
 
-            console.log('[IMMO][DEBUG] Groupes créés:', groupedByCompte.size);
-
-            // Créer une écriture par groupe (par compte classe 2)
-            for (const [groupKey, group] of groupedByCompte.entries()) {
-                const { compteImmo, compteAmort, libelleCompteImmo, montantTotal, immobilisations } = group;
-
-                // Détermination compte 681xx selon compte_amortissement
-                let compteCharge = null;
-                if (compteAmort.startsWith('280')) compteCharge = '68111';
-                else if (compteAmort.startsWith('281')) compteCharge = '68112';
-                else if (compteAmort.startsWith('286')) compteCharge = '68113';
-                else if (compteAmort.startsWith('28')) compteCharge = '68112';
-                else compteCharge = '68112';
-
-                const [rowCharge, rowAmort] = await Promise.all([
-                    ensureCompte(compteCharge, 'Dotations amort. immobilisations corporelles'),
-                    ensureCompte(compteAmort, `Amortissement ${libelleCompteImmo}`),
-                ]);
-                if (!rowCharge || !rowAmort) continue;
-
-                console.log('[IMMO][DEBUG][SIMPLE] Groupe traité:', {
+            // 🔹 Création des écritures
+            for (const [, group] of groupedByCompte.entries()) {
+                const {
                     compteImmo,
                     compteAmort,
                     libelleCompteImmo,
-                    nbImmobilisations: immobilisations.length,
-                    montantTotal
-                });
+                    montantTotal,
+                } = group;
+
+                if (montantTotal <= 0) continue;
+
+                // Détermination du compte de charge
+                let compteCharge = '68112';
+                if (compteAmort.startsWith('280')) compteCharge = '68111';
+                else if (compteAmort.startsWith('286')) compteCharge = '68113';
+
+                const [rowCharge, rowAmort] = await Promise.all([
+                    ensureCompte(
+                        compteCharge,
+                        'Dotations amort. immobilisations corporelles'
+                    ),
+                    ensureCompte(
+                        compteAmort,
+                        `Amortissement ${libelleCompteImmo}`
+                    ),
+                ]);
+
+                if (!rowCharge || !rowAmort) continue;
 
                 const idEcriture = String(Date.now() + Math.floor(Math.random() * 1000));
                 const libelle = `Dot amort ${libelleCompteImmo}`.trim();
@@ -1083,7 +1043,7 @@ exports.generateImmoEcritures = async (req, res) => {
                 const compteAuxCharge = dossier_pc_charge.compte;
 
                 let libelleGenCharge = '';
-                const compteGenCharge = '';
+                let compteGenCharge = '';
                 let id_numcptcentralise_charge = null;
 
                 if (dossier_pc_charge.baseaux_id) {
@@ -1112,38 +1072,21 @@ exports.generateImmoEcritures = async (req, res) => {
                     id_numcptcentralise_amort = cpt?.id || null;
                 }
 
+
                 const [lDebit, lCredit] = await Promise.all([
                     db.journals.create({
                         ...common,
                         id_numcpt: rowCharge.id,
-                        id_numcptcentralise: id_numcptcentralise_charge,
                         debit: montantTotal,
                         credit: 0,
-                        comptegen: compteGenCharge,
-                        compteaux: compteAuxCharge,
-                        libellecompte: libelleGenCharge,
-                        libelleaux: libelleAuxCharge
                     }),
                     db.journals.create({
                         ...common,
                         id_numcpt: rowAmort.id,
-                        id_numcptcentralise: id_numcptcentralise_amort,
                         debit: 0,
                         credit: montantTotal,
-                        comptegen: compteGenAmort,
-                        compteaux: compteAuxAmort,
-                        libellecompte: libelleGenAmort,
-                        libelleaux: libelleAuxAmort
-                    })
+                    }),
                 ]);
-
-                console.log('[IMMO][DEBUG] Écriture créée pour groupe:', {
-                    compteImmo,
-                    libelleCompteImmo,
-                    debit: { id: lDebit.id, compte: rowCharge.compte, montant: lDebit.debit },
-                    credit: { id: lCredit.id, compte: rowAmort.compte, montant: lCredit.credit },
-                    nbImmobilisations: immobilisations.length
-                });
 
                 inserted.push(lDebit, lCredit);
                 createdEcritures += 1;
@@ -1207,6 +1150,8 @@ exports.previewImmoLineaire = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
 
+        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -1228,6 +1173,8 @@ exports.previewImmoLineaire = async (req, res) => {
         const dateMS = new Date(detail.date_mise_service);
         const exoDebut = exo.date_debut ? new Date(exo.date_debut) : null;
         const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+        const etat = detail?.etat;
+        const dateSortie = new Date(detail.date_sortie) || null;
 
         const dureeCompInitiale = Math.max(1, Number(detail.duree_amort_mois) || 0);
         const dureeFisc = Math.max(0, Math.floor(Number(detail.duree_amort_mois_fisc) || 0));
@@ -1236,28 +1183,28 @@ exports.previewImmoLineaire = async (req, res) => {
         // DONNÉES DE REPRISE (séparées comptable / fiscal)
         // -----------------------------
         const repriseActiveComp = Number(
-            detail.reprise_immobilisation_comp ?? detail.reprise_immobilisation
+            detail.reprise_immobilisation_comp ?? false
         ) === 1;
         const dateRepriseComp = (detail.date_reprise_comp || detail.date_reprise)
             ? new Date(detail.date_reprise_comp || detail.date_reprise)
             : null;
         const amortAntComp = Number(detail.amort_ant_comp) || 0;
 
-        const repriseActiveFisc = Number(
-            detail.reprise_immobilisation_fisc ?? detail.reprise_immobilisation
-        ) === 1;
-        const dateRepriseFisc = (detail.date_reprise_fisc || detail.date_reprise)
-            ? new Date(detail.date_reprise_fisc || detail.date_reprise)
-            : null;
+        // const repriseActiveFisc = Number(
+        //     detail.reprise_immobilisation_fisc ?? detail.reprise_immobilisation
+        // ) === 1;
+        // const dateRepriseFisc = (detail.date_reprise_fisc || detail.date_reprise)
+        //     ? new Date(detail.date_reprise_fisc || detail.date_reprise)
+        //     : null;
         const amortAntFisc = Number(detail.amort_ant_fisc) || 0;
 
         if (exoDebut && !isNaN(exoDebut.getTime()) && exoFin && !isNaN(exoFin.getTime())) {
             if (repriseActiveComp && dateRepriseComp && !isNaN(dateRepriseComp.getTime()) && (dateRepriseComp < exoDebut || dateRepriseComp > exoFin)) {
-                return res.status(400).json({ state: false, msg: "Date de reprise comptable hors période de l'exercice" });
+                return res.status(400).json({ state: false, msg: "Date de reprise hors période de l'exercice" });
             }
-            if (repriseActiveFisc && dateRepriseFisc && !isNaN(dateRepriseFisc.getTime()) && (dateRepriseFisc < exoDebut || dateRepriseFisc > exoFin)) {
-                return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
-            }
+            // if (repriseActiveComp && dateRepriseFisc && !isNaN(dateRepriseFisc.getTime()) && (dateRepriseFisc < exoDebut || dateRepriseFisc > exoFin)) {
+            //     return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
+            // }
         }
 
         // -----------------------------
@@ -1281,12 +1228,13 @@ exports.previewImmoLineaire = async (req, res) => {
         };
 
         // -----------------------------
-        // CALCUL DE LA REPRISE (COMPTABLE)
+        // AMORTISSEMENT COMPTABLE
         // -----------------------------
         let dateDepartAmortComp = new Date(dateMS);
         let dureeAmortCompEffective = dureeCompInitiale;
         let cumulInitialComp = 0;
 
+        // Gestion reprise comptable
         if (repriseActiveComp && dateRepriseComp && amortAntComp > 0) {
             const finTheo = addDays(addMonths(dateMS, dureeCompInitiale), -1);
             if (dateRepriseComp <= finTheo) {
@@ -1297,34 +1245,45 @@ exports.previewImmoLineaire = async (req, res) => {
             }
         }
 
-        // -----------------------------
-        // AMORTISSEMENT COMPTABLE
-        // -----------------------------
-        const tauxAnnuelComp = 12 / dureeAmortCompEffective;
-        const baseRestanteComp = clamp(montantHT - cumulInitialComp);
-        const compLines = [];
+        // Détermination de la date de fin d'amortissement
+        let finAmortComp = addDays(addMonths(dateDepartAmortComp, dureeAmortCompEffective), -1);
 
+        // Si immobilisation hors service et date_sortie définie → on coupe à la date_sortie
+        if (etat !== 'enService' && detail.date_sortie && !isNaN(new Date(detail.date_sortie).getTime())) {
+            const dateSortieValide = new Date(detail.date_sortie);
+            if (dateSortieValide < finAmortComp) {
+                finAmortComp = dateSortieValide;
+            }
+        }
+
+        // Calcul des taux et bases
+        const tauxAnnuelComp = 12 / dureeAmortCompEffective;
+        // const baseRestanteComp = clamp(montantHT - cumulInitialComp);
+        const baseRestanteComp = clamp(montantHT);
+
+        const compLines = [];
         let debutC = new Date(dateDepartAmortComp);
-        const finAmortComp = addDays(addMonths(dateDepartAmortComp, dureeAmortCompEffective), -1);
         let indexC = 1;
         let cumulC = cumulInitialComp;
         let vncC = clamp(montantHT - cumulInitialComp);
         let safetyC = 0;
 
+        // Boucle d'amortissement annuelle
         while (vncC > 0 && safetyC < 1000) {
             if (debutC > finAmortComp) break;
 
+            // Détermination de la date de fin de période
             let fin = indexC === 1
                 ? (exoFin && exoFin < finAmortComp ? exoFin : finAmortComp)
                 : addDays(addMonths(debutC, 12), -1);
 
             if (fin > finAmortComp) fin = finAmortComp;
-
             if (fin < debutC) {
                 fin = minDate(addDays(addMonths(debutC, 1), -1), finAmortComp);
                 if (fin < debutC) break;
             }
 
+            // Calcul du nombre de jours et dotation
             const nbJours = nbJoursBetween(debutC, fin);
             if (!isFinite(nbJours) || nbJours <= 0) break;
 
@@ -1338,6 +1297,7 @@ exports.previewImmoLineaire = async (req, res) => {
                 dot = Math.min(vncC, dotTheorique);
             }
 
+            // Création de la ligne comptable
             compLines.push({
                 rang: indexC,
                 date_debut: toYMD(debutC),
@@ -1351,6 +1311,7 @@ exports.previewImmoLineaire = async (req, res) => {
                 vnc: clamp(vncC - dot),
             });
 
+            // Mise à jour des variables pour le cycle suivant
             cumulC += dot;
             vncC -= dot;
             debutC = addDays(fin, 1);
@@ -1364,24 +1325,38 @@ exports.previewImmoLineaire = async (req, res) => {
         let fiscLines = [];
         let dureeFiscEffectiveOut = null;
         let finAmortFiscOut = null;
+
         if (dureeFisc > 0) {
             let debutF = new Date(dateMS);
             let dureeFiscEffective = dureeFisc;
             let cumulInitialFisc = 0;
 
-            if (repriseActiveFisc && dateRepriseFisc && amortAntFisc > 0) {
+            // Ajustement si reprise comptable active
+            if (repriseActiveComp && dateRepriseComp && amortAntFisc > 0) {
                 const finTheoF = addDays(addMonths(dateMS, dureeFisc), -1);
-                if (dateRepriseFisc <= finTheoF) {
-                    const joursRestantsF = nbJoursBetween(dateRepriseFisc, finTheoF);
+                if (dateRepriseComp <= finTheoF) {
+                    const joursRestantsF = nbJoursBetween(dateRepriseComp, finTheoF);
                     dureeFiscEffective = clamp((joursRestantsF / baseJours) * 12);
-                    debutF = new Date(dateRepriseFisc);
+                    debutF = new Date(dateRepriseComp);
                     cumulInitialFisc = amortAntFisc;
                 }
             }
 
             const tauxAnnuelFisc = 12 / dureeFiscEffective;
-            const baseRestanteFisc = clamp(montantHT - cumulInitialFisc);
-            const finAmortFisc = addDays(addMonths(debutF, dureeFiscEffective), -1);
+            // const baseRestanteFisc = clamp(montantHT - cumulInitialFisc);
+            const baseRestanteFisc = clamp(montantHT);
+
+            // Date de fin fiscale théorique
+            let finAmortFisc = addDays(addMonths(debutF, dureeFiscEffective), -1);
+
+            // Si immobilisation sortie → on coupe à la date_sortie
+            if (etat !== 'enService' && detail.date_sortie) {
+                const dateSortieValide = new Date(detail.date_sortie);
+                if (!isNaN(dateSortieValide.getTime()) && dateSortieValide < finAmortFisc) {
+                    finAmortFisc = dateSortieValide;
+                }
+            }
+
             dureeFiscEffectiveOut = dureeFiscEffective;
             finAmortFiscOut = finAmortFisc;
 
@@ -1458,8 +1433,8 @@ exports.previewImmoLineaire = async (req, res) => {
                     amort_ant: amortAntComp,
                     duree_restante_mois: dureeAmortCompEffective
                 } : null,
-                reprise_fisc: repriseActiveFisc && dateRepriseFisc ? {
-                    date_reprise: toYMD(dateRepriseFisc),
+                reprise_fisc: repriseActiveComp && dateRepriseComp ? {
+                    date_reprise: toYMD(dateRepriseComp),
                     amort_ant: amortAntFisc,
                     duree_restante_mois: dureeFiscEffectiveOut
                 } : null,
@@ -1486,6 +1461,8 @@ exports.previewImmoDegressif = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
 
+        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -1504,6 +1481,8 @@ exports.previewImmoDegressif = async (req, res) => {
         const baseJours = Number(dossier.immo_amort_base_jours) || 360; // base de calcul (par défaut 360 jours)
         const montantHT = Number(detail.montant_ht) || Number(detail.montant) || 0; // valeur de l'immobilisation
         const dateMS = detail.date_mise_service ? new Date(detail.date_mise_service) : null;
+        const etat = detail?.etat;
+
         if (!dateMS || isNaN(dateMS.getTime())) return res.status(400).json({ state: false, msg: 'date_mise_service invalide' });
         if (montantHT <= 0) return res.status(400).json({ state: false, msg: 'montant HT invalide' });
 
@@ -1518,21 +1497,21 @@ exports.previewImmoDegressif = async (req, res) => {
             : null;
         const amortAntComp = Number(detail.amort_ant_comp) || 0;
 
-        const repriseActiveFisc = Number(
-            detail.reprise_immobilisation_fisc ?? detail.reprise_immobilisation
-        ) === 1;
-        const dateRepriseFisc = (detail.date_reprise_fisc || detail.date_reprise)
-            ? new Date(detail.date_reprise_fisc || detail.date_reprise)
-            : null;
+        // const repriseActiveFisc = Number(
+        //     detail.reprise_immobilisation_fisc ?? detail.reprise_immobilisation
+        // ) === 1;
+        // const dateRepriseFisc = (detail.date_reprise_fisc || detail.date_reprise)
+        //     ? new Date(detail.date_reprise_fisc || detail.date_reprise)
+        //     : null;
         const amortAntFisc = Number(detail.amort_ant_fisc) || 0;
 
         if (exoDebut && !isNaN(exoDebut.getTime()) && exoFin && !isNaN(exoFin.getTime())) {
             if (repriseActiveComp && dateRepriseComp && !isNaN(dateRepriseComp.getTime()) && (dateRepriseComp < exoDebut || dateRepriseComp > exoFin)) {
-                return res.status(400).json({ state: false, msg: "Date de reprise comptable hors période de l'exercice" });
+                return res.status(400).json({ state: false, msg: "Date de reprise hors période de l'exercice" });
             }
-            if (repriseActiveFisc && dateRepriseFisc && !isNaN(dateRepriseFisc.getTime()) && (dateRepriseFisc < exoDebut || dateRepriseFisc > exoFin)) {
-                return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
-            }
+            // if (repriseActiveFisc && dateRepriseFisc && !isNaN(dateRepriseFisc.getTime()) && (dateRepriseFisc < exoDebut || dateRepriseFisc > exoFin)) {
+            //     return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
+            // }
         }
 
         // 4. Durée d'amortissement en mois et en années
@@ -1569,7 +1548,10 @@ exports.previewImmoDegressif = async (req, res) => {
 
         const computeRepriseParams = (dureeMoisX, repriseActiveX, dateRepriseX, amortAntX) => {
             const dureeM = Math.max(1, Number(dureeMoisX) || 0);
-            const finTheoX = addDays(addMonths(dateMS, dureeM), -1);
+
+            const finTheoX = (etat !== "enService" && detail.date_sortie)
+                ? new Date(detail.date_sortie)
+                : addDays(addMonths(dateMS, dureeM), -1);
 
             let dateDepartX = new Date(dateMS);
             let dureeMEffective = dureeM;
@@ -1582,9 +1564,23 @@ exports.previewImmoDegressif = async (req, res) => {
                 cumulInitialX = amortAntX;
             }
 
-            const finAmortX = addDays(addMonths(dateDepartX, dureeMEffective), -1);
-            const baseRestanteX = clamp(montantHT - cumulInitialX);
-            return { dureeM, finTheoX, dateDepartX, dureeMEffective, cumulInitialX, finAmortX, baseRestanteX };
+            let finAmortX = addDays(addMonths(dateDepartX, dureeMEffective), -1);
+            if (etat !== "enService" && detail.date_sortie && finAmortX > new Date(detail.date_sortie)) {
+                finAmortX = new Date(detail.date_sortie);
+            }
+
+            // const baseRestanteX = clamp(montantHT - cumulInitialX);
+            const baseRestanteX = clamp(montantHT);
+
+            return {
+                dureeM,
+                finTheoX,
+                dateDepartX,
+                dureeMEffective,
+                cumulInitialX,
+                finAmortX,
+                baseRestanteX
+            };
         };
 
         // 8. Constructeur générique d'un tableau dégressif avec bascule linéaire
@@ -1787,8 +1783,8 @@ exports.previewImmoDegressif = async (req, res) => {
         const fiscIsDeg = typeFisc.includes('degr');
         const resFisc = hasFisc
             ? (fiscIsDeg
-                ? buildDegSchedule(dureeMoisFisc, repriseActiveFisc, dateRepriseFisc, amortAntFisc, 'fiscal')
-                : buildLinSchedule(dureeMoisFisc, repriseActiveFisc, dateRepriseFisc, amortAntFisc))
+                ? buildDegSchedule(dureeMoisFisc, repriseActiveComp, dateRepriseComp, amortAntFisc, 'fiscal')
+                : buildLinSchedule(dureeMoisFisc, repriseActiveComp, dateRepriseComp, amortAntFisc))
             : null;
 
         return res.json({
@@ -1895,6 +1891,9 @@ exports.saveImmoLineaire = async (req, res) => {
         if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
 
         console.log('[IMMO][SAVE] ===== SAUVEGARDE LINEAIRE TERMINEE =====');
+
+        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+
         return res.json({ state: true, saved: out.length });
     } catch (err) {
         console.error('[IMMO][SAVE][LINEAIRE] error:', err);
@@ -2056,6 +2055,9 @@ exports.saveImmoDegressif = async (req, res) => {
         if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
 
         console.log('[IMMO][SAVE] ===== SAUVEGARDE DEGRESSIVE TERMINEE =====');
+
+        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+
         return res.json({ state: true, saved: out.length });
     } catch (err) {
         console.error('[IMMO][DEGRESSIF][SAVE] error:', err);
@@ -2771,7 +2773,7 @@ exports.listDetailsImmo = async (req, res) => {
 exports.createDetailsImmo = async (req, res) => {
     try {
         const {
-            fileId, compteId, exerciceId, pcId,
+            fileId, compteId, exerciceId, pcId, amort_avant_reprise,
             code, intitule, lien_ecriture_id, fournisseur,
             date_acquisition, date_mise_service, duree_amort_mois, type_amort,
             montant, taux_tva, montant_tva, montant_ht,
@@ -2786,7 +2788,8 @@ exports.createDetailsImmo = async (req, res) => {
             amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
             duree_amort_mois_fisc, type_amort_fisc,
             compte_amortissement, vnc, date_sortie, prix_vente,
-            pc_id_amort
+            pc_id_amort,
+            etat
         } = req.body || {};
 
         if (!fileId || !compteId || !exerciceId || !pcId || !code) {
@@ -2832,7 +2835,7 @@ exports.createDetailsImmo = async (req, res) => {
 
         const insertSql = `
             INSERT INTO details_immo (
-                id_dossier, id_compte, id_exercice, pc_id, pc_id_amort,
+                id_dossier, id_compte, id_exercice, pc_id, pc_id_amort, etat, amort_avant_reprise,
                 code, intitule, lien_ecriture_id, fournisseur,
                 date_acquisition, date_mise_service, duree_amort_mois, type_amort,
                 montant, taux_tva, montant_tva, montant_ht,
@@ -2845,7 +2848,7 @@ exports.createDetailsImmo = async (req, res) => {
                 duree_amort_mois_fisc, type_amort_fisc,
                 created_at, updated_at
             ) VALUES (
-                :fileId, :compteId, :exerciceId, :pcId, :pc_id_amort,
+                :fileId, :compteId, :exerciceId, :pcId, :pc_id_amort, :etat, :amort_avant_reprise,
                 :code, :intitule, :lien_ecriture_id, :fournisseur,
                 :date_acquisition, :date_mise_service, :duree_amort_mois, :type_amort,
                 :montant, :taux_tva, :montant_tva, :montant_ht,
@@ -2861,7 +2864,7 @@ exports.createDetailsImmo = async (req, res) => {
         `;
         const [ret] = await db.sequelize.query(insertSql, {
             replacements: {
-                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId), pc_id_amort: Number(pc_id_amort),
+                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId), pc_id_amort: Number(pc_id_amort), etat,
                 code: String(code), intitule: intitule ?? null, lien_ecriture_id: lien_ecriture_id ?? null, fournisseur: fournisseur ?? null,
                 date_acquisition: date_acquisition ? String(date_acquisition).substring(0, 10) : null,
                 date_mise_service: date_mise_service ? String(date_mise_service).substring(0, 10) : null,
@@ -2888,6 +2891,7 @@ exports.createDetailsImmo = async (req, res) => {
                 derogatoire_fisc: Number(derogatoire_fisc) || 0,
                 duree_amort_mois_fisc: duree_amort_mois_fisc ?? null,
                 type_amort_fisc: type_amort_fisc ?? null,
+                amort_avant_reprise: Number(amort_avant_reprise)
             },
             type: db.Sequelize.QueryTypes.SELECT,
         });
@@ -2927,7 +2931,7 @@ exports.updateDetailsImmo = async (req, res) => {
     try {
         const id = Number(req.params?.id);
         const {
-            fileId, compteId, exerciceId, pcId,
+            fileId, compteId, exerciceId, pcId, amort_avant_reprise,
             code, intitule, lien_ecriture_id, fournisseur,
             date_acquisition, date_mise_service, duree_amort_mois, type_amort,
             montant, taux_tva, montant_tva, montant_ht,
@@ -2939,7 +2943,7 @@ exports.updateDetailsImmo = async (req, res) => {
             // new fiscale suffix
             amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
             duree_amort_mois_fisc, type_amort_fisc,
-            compte_amortissement, vnc, date_sortie, prix_vente,
+            compte_amortissement, vnc, date_sortie, prix_vente, etat
         } = req.body || {};
         if (!id || !fileId || !compteId || !exerciceId || !pcId || !code) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
@@ -3014,13 +3018,15 @@ exports.updateDetailsImmo = async (req, res) => {
                 derogatoire_fisc = :derogatoire_fisc,
                 duree_amort_mois_fisc = :duree_amort_mois_fisc, 
                 type_amort_fisc = :type_amort_fisc,
-                updated_at = NOW()
+                updated_at = NOW(),
+                etat = :etat,
+                amort_avant_reprise = :amort_avant_reprise
             WHERE id = :id AND id_dossier = :fileId AND id_compte = :compteId AND id_exercice = :exerciceId
         `;
 
         await db.sequelize.query(updateSql, {
             replacements: {
-                id: Number(id), fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId),
+                id: Number(id), fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId), amort_avant_reprise: Number(amort_avant_reprise),
                 code: String(code), intitule: intitule ?? null, lien_ecriture_id: lien_ecriture_id ?? null, fournisseur: fournisseur ?? null,
                 date_acquisition: date_acquisition ? String(date_acquisition).substring(0, 10) : null,
                 date_mise_service: date_mise_service ? String(date_mise_service).substring(0, 10) : null,
@@ -3047,6 +3053,7 @@ exports.updateDetailsImmo = async (req, res) => {
                 derogatoire_fisc: Number(derogatoire_fisc) || 0,
                 duree_amort_mois_fisc: duree_amort_mois_fisc ?? null,
                 type_amort_fisc: type_amort_fisc ?? null,
+                etat
             },
             type: db.Sequelize.QueryTypes.UPDATE,
         });
@@ -3518,8 +3525,19 @@ exports.addEcriture = async (req, res) => {
             id_compte,
             id_plan_comptable,
             id_contre_partie,
-            solde
+            solde,
+            selectedIds
         } = req.body;
+
+        const dernierLettrage = await journals.max('lettrage', {
+            where: {
+                id_compte,
+                id_dossier,
+                id_exercice,
+            }
+        });
+
+        const nouveauLettrage = nextLettrage(dernierLettrage);
 
         const id_ecriture = getDateSaisieNow(id_compte);
         const isCrediteur = solde < 0;
@@ -3617,6 +3635,14 @@ exports.addEcriture = async (req, res) => {
             debit_cp = montant;
         }
 
+        await journals.update({
+            lettrage: nouveauLettrage
+        }, {
+            where: {
+                id: { [Op.in]: selectedIds }
+            }
+        }, { transaction })
+
         await journals.create({
             id_compte,
             id_dossier,
@@ -3635,7 +3661,8 @@ exports.addEcriture = async (req, res) => {
             comptegen: compteGen_pc,
             compteaux: compteAux_pc,
             libelleaux: libelleAux_pc,
-            libellecompte: libelleGen_pc
+            libellecompte: libelleGen_pc,
+            lettrage: nouveauLettrage
         }, { transaction });
 
         await journals.create({
@@ -3656,7 +3683,8 @@ exports.addEcriture = async (req, res) => {
             comptegen: compteGen_cp,
             compteaux: compteAux_cp,
             libelleaux: libelleAux_cp,
-            libellecompte: libelleGen_cp
+            libellecompte: libelleGen_cp,
+            lettrage: nouveauLettrage
         }, { transaction });
 
         await transaction.commit();
@@ -3859,6 +3887,11 @@ const importImmobilisationsWithProgressLogic = async (req, res, progress) => {
             const compte_amortissement = deriveCompteAmort(numeroCompte);
             const dateSortie = (row.date_sortie && row.date_sortie.trim() !== '') ? row.date_sortie.trim() : null;
 
+            const amort_avant_reprise =
+                (Number(row.amort_ant) || 0) +
+                (Number(row.dotation) || 0);
+            const montant_ht = Number(row.montant_ht) - amort_avant_reprise;
+
             immobilisationsToInsert.push({
                 id_dossier: Number(id_dossier),
                 id_compte: Number(id_compte),
@@ -3870,11 +3903,13 @@ const importImmobilisationsWithProgressLogic = async (req, res, progress) => {
                 date_acquisition: row.date_acquisition.trim(),
                 duree_amort: parseInt(row.duree_amort.trim(), 10) || 0,
                 type_amort: row.type_amort.trim(),
-                montant_ht: parseFloat(row.montant_ht.trim().replace(',', '.')) || 0,
+                amort_avant_reprise: parseFloat(amort_avant_reprise) || 0,
+                montant_ht: parseFloat(montant_ht) || 0,
                 compte_amortissement: compte_amortissement,
                 date_reprise: row.date_reprise || null,
-                amort_ant: parseFloat(row.amort_ant || 0),
-                date_sortie: dateSortie
+                amort_ant: 0,
+                date_sortie: dateSortie,
+                reprise_immobilisation_comp: amort_avant_reprise !== 0 ? true : false
             });
         }
 
@@ -3914,3 +3949,44 @@ const importImmobilisationsWithProgressLogic = async (req, res, progress) => {
 exports.importImmobilisationsWithProgress = withSSEProgress(importImmobilisationsWithProgressLogic, {
     batchSize: 50
 });
+
+exports.updateMontantImmo = async (req, res) => {
+    try {
+        const { id_dossier, id_exercice, id_compte, id_details_immo } = req.body;
+        const data = await updateMontantImmo(id_compte, id_dossier, id_exercice, id_details_immo);
+        return res.json({ data });
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}
+
+exports.getCodeJournalsCompteAssocie = async (req, res) => {
+    try {
+        const { id_dossier, id_compte } = req.body;
+        const codeJournalsData = await codejournals.findAll({
+            where: {
+                id_dossier,
+                id_compte
+            },
+            raw: true
+        })
+
+        const codeJournalsCompteAssocie = codeJournalsData
+            .map(val => val.compteassocie)
+            .filter(compte => compte && compte.trim() !== "");
+
+        return res.json(codeJournalsCompteAssocie);
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}

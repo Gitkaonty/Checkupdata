@@ -198,6 +198,11 @@ module.exports = {
         type: Sequelize.STRING(50),
         allowNull: true
       },
+      etat: {
+        type: Sequelize.STRING(50),
+        allowNull: true
+      },
+      amort_avant_reprise: { type: Sequelize.DECIMAL(18, 2) },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,

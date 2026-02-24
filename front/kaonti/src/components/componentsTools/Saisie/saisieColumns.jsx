@@ -5,7 +5,7 @@ import { GoX } from "react-icons/go";
 import { useMemo } from 'react';
 import { FaRegEdit } from "react-icons/fa";
 
-function CompteEditCell({ params, listePlanComptable }) {
+function CompteEditCell({ params, listePlanComptable, setRowModesModel }) {
     const options = useMemo(
         () =>
             listePlanComptable.map((pc) => ({
@@ -51,6 +51,15 @@ function CompteEditCell({ params, listePlanComptable }) {
                         );
                     }
                 }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.stopPropagation();
+                        setRowModesModel((prev) => ({
+                            ...prev,
+                            [params.id]: { mode: 'edit' },
+                        }));
+                    }
+                }}
                 noOptionsText="Aucune compte trouvé"
                 renderInput={(paramsInput) => {
                     return (
@@ -89,7 +98,8 @@ export const getSaisieColumnHeader = ({
     ajouterNouvelleLigne,
     isCaActive,
     handleOpenPopupCa,
-    listeCodeJournaux
+    listeCodeJournaux,
+    setRowModesModel
 }) => {
 
     const columns = [
@@ -213,6 +223,7 @@ export const getSaisieColumnHeader = ({
                 <CompteEditCell
                     params={params}
                     listePlanComptable={listePlanComptable}
+                    setRowModesModel={setRowModesModel}
                 />
             ),
             cellClassName: (params) => {
