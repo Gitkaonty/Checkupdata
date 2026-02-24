@@ -21,7 +21,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupAddSaisieFromConsultation = ({ confirmationState, listePlanComptable, valSelectedCompte, id_compte, id_dossier, id_exercice, solde, refresh }) => {
+const PopupAddSaisieFromConsultation = ({ confirmationState, listePlanComptable, valSelectedCompte, id_compte, id_dossier, id_exercice, solde, refresh, selectedRows }) => {
     const handleClose = () => { confirmationState(false) };
     const [valSelectedCompteContrepartie, setValSelectedCompteConterpartie] = useState('');
 
@@ -29,13 +29,15 @@ const PopupAddSaisieFromConsultation = ({ confirmationState, listePlanComptable,
         if (!valSelectedCompteContrepartie) {
             return toast.error("Veuillez sélectionner le compte de contre partie s\'il vous plaît");
         }
+        const selectedIds = selectedRows.map(val => Number(val.id));
         axios.post('/administration/traitementSaisie/addEcriture', {
             id_compte,
             id_dossier,
             id_exercice,
             id_plan_comptable: valSelectedCompte,
             id_contre_partie: valSelectedCompteContrepartie,
-            solde
+            solde,
+            selectedIds
         })
             .then(response => {
                 response.data.state

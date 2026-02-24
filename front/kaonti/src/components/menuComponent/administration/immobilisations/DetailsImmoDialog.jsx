@@ -1,5 +1,4 @@
-import React, { useEffect } from 'react';
-
+import { useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Stack, TextField, Button, InputAdornment, MenuItem, Typography, Box, Tab, IconButton, Checkbox, FormControlLabel,
@@ -35,26 +34,34 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
     const handleMontantCalc = (e) => {
         const montantRaw = e.target.value;
         const montant = isEmpty(montantRaw) ? '' : toNum(montantRaw);
+        const avantReprise = numOrNull(form.amort_avant_reprise);
         const taux = numOrNull(form.taux_tva);
         const tva = numOrNull(form.montant_tva);
         const ht = numOrNull(form.montant_ht);
         const next = { ...form, montant };
 
-        if (montant === '' || isNaN(Number(montant))) { onChange(next); return; }
+        if (montant === '' || isNaN(Number(montant))) {
+            onChange(next);
+            return;
+        }
 
         if (taux !== null) {
-            const nvTva = round2(montant * taux / 100);
-            const nvHt = round2(montant - nvTva);
-            next.montant_tva = nvTva; next.montant_ht = nvHt;
+            const nvTva = round2(montant * taux / (100 + taux));
+            const nvHt = round2(montant - nvTva - avantReprise);
+            next.montant_tva = nvTva;
+            next.montant_ht = nvHt;
         } else if (tva !== null) {
-            const nvHt = round2(montant - tva);
-            const nvTaux = montant ? round2((tva / montant) * 100) : 0;
-            next.montant_ht = nvHt; next.taux_tva = nvTaux;
+            const nvHt = round2(montant - tva - avantReprise);
+            const nvTaux = nvHt ? round2((tva / nvHt) * 100) : 0;
+            next.montant_ht = nvHt;
+            next.taux_tva = nvTaux;
         } else if (ht !== null) {
             const nvTva = round2(montant - ht);
-            const nvTaux = montant ? round2((nvTva / montant) * 100) : 0;
-            next.montant_tva = nvTva; next.taux_tva = nvTaux;
+            const nvTaux = ht ? round2((nvTva / ht) * 100) : 0;
+            next.montant_tva = nvTva;
+            next.taux_tva = nvTaux;
         }
+
         onChange(next);
     };
 
@@ -64,10 +71,17 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
         const montant = numOrNull(form.montant);
         const next = { ...form, taux_tva: taux };
 
-        if (taux === '' || montant === null || isNaN(Number(taux))) { onChange(next); return; }
-        const nvTva = round2(montant * taux / 100);
+        if (taux === '' || montant === null || isNaN(Number(taux))) {
+            onChange(next);
+            return;
+        }
+
+        const nvTva = round2(montant * taux / (100 + taux));
         const nvHt = round2(montant - nvTva);
-        next.montant_tva = nvTva; next.montant_ht = nvHt;
+
+        next.montant_tva = nvTva;
+        next.montant_ht = nvHt;
+
         onChange(next);
     };
 
@@ -77,10 +91,16 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
         const montant = numOrNull(form.montant);
         const next = { ...form, montant_tva: tva };
 
-        if (tva === '' || montant === null || isNaN(Number(tva))) { onChange(next); return; }
+        if (tva === '' || montant === null || isNaN(Number(tva))) {
+            onChange(next);
+            return;
+        }
+
         const nvHt = round2(montant - tva);
-        const nvTaux = montant ? round2((tva / montant) * 100) : 0;
-        next.montant_ht = nvHt; next.taux_tva = nvTaux;
+        const nvTaux = montant ? round2((tva / (montant - tva)) * 100) : 0;
+        next.montant_ht = nvHt;
+        next.taux_tva = nvTaux;
+
         onChange(next);
     };
 
@@ -90,16 +110,33 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
         const montant = numOrNull(form.montant);
         const next = { ...form, montant_ht: ht };
 
-        if (ht === '' || montant === null || isNaN(Number(ht))) { onChange(next); return; }
+        if (ht === '' || montant === null || isNaN(Number(ht))) {
+            onChange(next);
+            return;
+        }
+
         const nvTva = round2(montant - ht);
-        const nvTaux = montant ? round2((nvTva / montant) * 100) : 0;
-        next.montant_tva = nvTva; next.taux_tva = nvTaux;
-        // Recompute VNC (comptable): VNC = montant_ht - total_amortissement_comp - derogatoire_comp
+        const nvTaux = ht ? round2((nvTva / ht) * 100) : 0;
+        next.montant_tva = nvTva;
+        next.taux_tva = nvTaux;
+
         const totalComp = numOrZero(next.total_amortissement_comp);
         const derogComp = numOrZero(next.derogatoire_comp);
         next.vnc = round2(numOrZero(ht) - totalComp - derogComp);
+
         onChange(next);
     };
+
+    const handleMontantAvantReprise = (e) => {
+        const avantRepriseRaw = e.target.value;
+        const avantReprise = isEmpty(avantRepriseRaw) ? '' : toNum(avantRepriseRaw);
+        const next = { ...form };
+
+        next.amort_avant_reprise = avantReprise;
+        next.montant_ht = next.montant_ht - avantReprise;
+
+        onChange(next);
+    }
 
     // Recompute total amortissement (comptable) and VNC when a comptable amort field changes
     const handleAmortComp = (key) => (e) => {
@@ -160,7 +197,9 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
     };
 
     const moneyAdornment = {
-        endAdornment: <InputAdornment position="end">Ar</InputAdornment>,
+        endAdornment: <InputAdornment position="end">
+            <span style={{ fontSize: '14px' }}>Ar</span>
+        </InputAdornment>,
     };
 
     // Initialize numeric fields to zero when starting a new item (force reset)
@@ -270,7 +309,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                             Valeur d'acquisition
                         </Typography>
 
-                        <Box display="flex" flexWrap="wrap" rowGap={2} columnGap={2} mt={2} justifyContent="space-between">
+                        <Stack direction={"row"} spacing={2}>
                             <TextField
                                 label="Montant"
                                 type="text"
@@ -278,7 +317,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 onChange={handleMontantCalc}
                                 variant="standard"
                                 size="small"
-                                sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }}
+                                sx={{ input: { textAlign: 'right' }, ...commonSx }}
                                 InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }}
                             />
 
@@ -289,7 +328,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 onChange={handleTauxTvaCalc}
                                 variant="standard"
                                 size="small"
-                                sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }}
+                                sx={{ input: { textAlign: 'right' }, ...commonSx }}
                                 InputProps={{ inputComponent: FormatedInput }}
                             />
 
@@ -300,10 +339,55 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 onChange={handleMontantTvaCalc}
                                 variant="standard"
                                 size="small"
-                                sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }}
+                                sx={{ input: { textAlign: 'right' }, ...commonSx }}
                                 InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }}
                             />
-
+                        </Stack>
+                        <Stack direction={"row"} spacing={2} sx={{ mt: 2 }}>
+                            <TextField
+                                disabled={!repriseComp}
+                                label="Amortissement avant reprise"
+                                type="text"
+                                value={form.amort_avant_reprise || ''}
+                                onChange={handleMontantAvantReprise}
+                                variant="standard"
+                                size="small"
+                                sx={{ width: '100px', input: { textAlign: 'right' }, ...commonSx }}
+                                InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }}
+                            />
+                            <TextField
+                                disabled={!repriseComp}
+                                label="Date de reprise"
+                                placeholder="jj/mm/aaaa"
+                                value={form.date_reprise_comp ? String(form.date_reprise_comp).substring(0, 10) : ''}
+                                onChange={handleDate('date_reprise_comp')}
+                                variant="standard"
+                                InputLabelProps={{ shrink: true }}
+                                size="small"
+                                type="date"
+                                sx={commonSx}
+                            />
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={repriseComp}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            const next = { ...form, reprise_immobilisation_comp: checked };
+                                            if (!checked) {
+                                                next.date_reprise_comp = '';
+                                                next.montant_ht -= next.amort_avant_reprise;
+                                                next.amort_avant_reprise = 0;
+                                            }
+                                            onChange(next);
+                                        }}
+                                    />
+                                }
+                                label="Reprise immobilisation"
+                                sx={{ alignItems: 'center' }}
+                            />
+                        </Stack>
+                        <Stack sx={{ mt: 2 }}>
                             <TextField
                                 label="Montant HT"
                                 type="text"
@@ -311,10 +395,10 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 onChange={handleMontantHtCalc}
                                 variant="standard"
                                 size="small"
-                                sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }}
+                                sx={{ width: 20, input: { textAlign: 'right' }, ...commonSx }}
                                 InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }}
                             />
-                        </Box>
+                        </Stack>
                     </Box>
 
                     {/* -------------------------------------------------- */}
@@ -332,7 +416,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                         </Typography>
 
                         <TabContext value={form.__amortTab || 'comp'}>
-                            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: -1 }}>
                                 <TabList
                                     sx={{ minHeight: 28, '& .MuiTabs-flexContainer': { gap: 1 } }}
                                     TabIndicatorProps={{ sx: { height: 2 } }}
@@ -344,8 +428,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 </TabList>
                             </Box>
 
-                            <TabPanel value="comp" sx={{ px: 0 }}>
-                                <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
+                            <TabPanel value="comp" sx={{ px: 1 }}>
+                                <Box display="flex" flexWrap="wrap" gap={2}>
                                     <TextField
                                         label="Durée amort (mois)"
                                         type="text"
@@ -365,43 +449,10 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                         size="small"
                                         sx={{ width: '23%', ...commonSx }}
                                     >
-                                        <MenuItem value="linéaire">linéaire</MenuItem>
-                                        <MenuItem value="dégressive">dégressive</MenuItem>
-                                        <MenuItem value="non amortissable">non amortissable</MenuItem>
+                                        <MenuItem value="linéaire">Linéaire</MenuItem>
+                                        <MenuItem value="dégressive">Dégressive</MenuItem>
+                                        <MenuItem value="non amortissable">Non amortissable</MenuItem>
                                     </TextField>
-                                </Box>
-                                <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
-                                    <FormControlLabel
-                                        control={
-                                            <Checkbox
-                                                checked={repriseComp}
-                                                onChange={(e) => {
-                                                    const checked = e.target.checked;
-                                                    const next = { ...form, reprise_immobilisation_comp: checked };
-                                                    if (!checked) {
-                                                        next.date_reprise_comp = '';
-                                                    }
-                                                    onChange(next);
-                                                }}
-                                                sx={{ p: 0.5, ml: 1 }}
-                                            />
-                                        }
-                                        label="Reprise immobilisation"
-                                        sx={{ alignItems: 'center', mt: 0.5, mr: 2 }}
-                                    />
-                                    {repriseComp ? (
-                                        <TextField
-                                            label="Date de reprise"
-                                            placeholder="jj/mm/aaaa"
-                                            value={form.date_reprise_comp ? String(form.date_reprise_comp).substring(0, 10) : ''}
-                                            onChange={handleDate('date_reprise_comp')}
-                                            variant="standard"
-                                            InputLabelProps={{ shrink: true }}
-                                            size="small"
-                                            type="date"
-                                            sx={commonSx}
-                                        />
-                                    ) : null}
                                 </Box>
                                 <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
                                     <TextField disabled={amortDisabledComp} label="Amort ant" type="text" value={form.amort_ant_comp ?? ''} onChange={handleAmortComp('amort_ant_comp')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
@@ -413,8 +464,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 </Box>
                             </TabPanel>
 
-                            <TabPanel value="fisc" sx={{ px: 0 }}>
-                                <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
+                            <TabPanel value="fisc" sx={{ px: 1 }}>
+                                <Box display="flex" flexWrap="wrap" gap={2}>
                                     <TextField
                                         label="Durée amort (mois)"
                                         type="text"
@@ -434,49 +485,16 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                         size="small"
                                         sx={{ width: '23%', ...commonSx }}
                                     >
-                                        <MenuItem value="linéaire">linéaire</MenuItem>
-                                        <MenuItem value="dégressive">dégressive</MenuItem>
-                                        <MenuItem value="non amortissable">non amortissable</MenuItem>
+                                        <MenuItem value="linéaire">Linéaire</MenuItem>
+                                        <MenuItem value="dégressive">Dégressive</MenuItem>
+                                        <MenuItem value="non amortissable">Non amortissable</MenuItem>
                                     </TextField>
                                 </Box>
                                 <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
-                                    <FormControlLabel
-                                        control={
-                                            <Checkbox
-                                                checked={repriseFisc}
-                                                onChange={(e) => {
-                                                    const checked = e.target.checked;
-                                                    const next = { ...form, reprise_immobilisation_fisc: checked };
-                                                    if (!checked) {
-                                                        next.date_reprise_fisc = '';
-                                                    }
-                                                    onChange(next);
-                                                }}
-                                                sx={{ p: 0.5, ml: 1 }}
-                                            />
-                                        }
-                                        label="Reprise immobilisation"
-                                        sx={{ alignItems: 'center', mt: 0.5, mr: 2 }}
-                                    />
-                                    {repriseFisc ? (
-                                        <TextField
-                                            label="Date de reprise"
-                                            placeholder="jj/mm/aaaa"
-                                            value={form.date_reprise_fisc ? String(form.date_reprise_fisc).substring(0, 10) : ''}
-                                            onChange={handleDate('date_reprise_fisc')}
-                                            variant="standard"
-                                            InputLabelProps={{ shrink: true }}
-                                            size="small"
-                                            type="date"
-                                            sx={commonSx}
-                                        />
-                                    ) : null}
-                                </Box>
-                                <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
-                                    <TextField disabled={amortDisabledFisc} label="Amort ant" type="text" value={form.amort_ant_fisc ?? ''} onChange={handleAmortFisc('amort_ant_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
-                                    <TextField disabled={amortDisabledFisc} label="Dotation période" type="text" value={form.dotation_periode_fisc ?? ''} onChange={handleAmortFisc('dotation_periode_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
-                                    <TextField disabled={amortDisabledFisc} label="Amort exceptionnel" type="text" value={form.amort_exceptionnel_fisc ?? ''} onChange={handleAmortFisc('amort_exceptionnel_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
-                                    <TextField disabled={amortDisabledFisc} label="Dérogatoire" type="text" value={form.derogatoire_fisc ?? ''} onChange={handleAmortFisc('derogatoire_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={amortDisabledComp} label="Amort ant" type="text" value={form.amort_ant_fisc ?? ''} onChange={handleAmortFisc('amort_ant_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={amortDisabledComp} label="Dotation période" type="text" value={form.dotation_periode_fisc ?? ''} onChange={handleAmortFisc('dotation_periode_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={amortDisabledComp} label="Amort exceptionnel" type="text" value={form.amort_exceptionnel_fisc ?? ''} onChange={handleAmortFisc('amort_exceptionnel_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
+                                    <TextField disabled={amortDisabledComp} label="Dérogatoire" type="text" value={form.derogatoire_fisc ?? ''} onChange={handleAmortFisc('derogatoire_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
 
                                     <TextField disabled={true} label="Total amortissement" type="text" value={form.total_amortissement_fisc ?? ''} onChange={handleNumber('total_amortissement_fisc')} variant="standard" size="small" sx={{ width: '23%', input: { textAlign: 'right' }, ...commonSx }} InputProps={{ ...moneyAdornment, inputComponent: FormatedInput }} />
 
@@ -487,10 +505,10 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
 
                     {/* -------------------------------------------------- */}
                     {/* GROUPE 04 : VNC */}
-                    <Box sx={{ backgroundColor: '#edf4f8ff', }}>
+                    <Box sx={{ backgroundColor: '#edf4f8ff' }}>
                         <Typography style={{ fontWeight: 'normal', fontSize: '19px', marginBottom: '10px' }}>Valeur Nette Comptable</Typography>
 
-                        <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
+                        <Box display="flex" flexWrap="wrap" gap={2} mt={2} px={1}>
                             <TextField
                                 label="VNC"
                                 type="text"
@@ -513,12 +531,11 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                             mb: 3
                         }}
                     >
-                        <Stack direction={'row'} alignItems={'baseline'} justifyContent={'space-between'}>
+                        <Stack direction={'row'} alignItems={'baseline'} spacing={2}>
                             <FormControl
                                 size="small"
                                 variant="standard"
-                                fullWidth
-                                style={{ width: '32%' }}
+                                style={{ width: '130px' }}
                             >
                                 <InputLabel
                                     sx={{
@@ -541,7 +558,6 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 </Select>
                             </FormControl>
                             <TextField
-                                style={{ width: '32%' }}
                                 disabled={form.etat === 'enService'}
                                 label="Date de sortie"
                                 placeholder="jj/mm/aaaa"
@@ -555,7 +571,6 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                             />
 
                             <TextField
-                                style={{ width: '32%' }}
                                 disabled={form.etat !== 'miseEnVente'}
                                 label="Prix de vente"
                                 type="text"
@@ -586,7 +601,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                             ...commonSx,
                             cursor: 'pointer',
                             mt: -8,
-                            mb: 2
+                            mb: 2,
                         }}
                         InputProps={{
                             readOnly: true,
@@ -598,14 +613,28 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                             endAdornment: (
                                 <InputAdornment position="end">
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
-                                        <IconButton onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenLienEcriture && onOpenLienEcriture(); }} size="small">
+                                        <IconButton
+                                            style={{
+                                                textTransform: 'none',
+                                                outline: 'none',
+                                            }}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onOpenLienEcriture && onOpenLienEcriture();
+                                            }}
+                                            size="small"
+                                        >
                                             <FaSquarePlus style={{ width: 20, height: 20, color: initial.theme }} />
                                         </IconButton>
                                         {form?.lien_ecriture_id ? (
                                             <IconButton
                                                 size="small"
-                                                variant="outlined"
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange({ ...form, lien_ecriture_id: null }); }}
+                                                style={{
+                                                    textTransform: 'none',
+                                                    outline: 'none',
+                                                }}
                                             >
                                                 <IoMdTrash style={{ width: 20, height: 20, color: 'red' }} />
                                             </IconButton>
@@ -627,6 +656,8 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                         color: initial.theme,
                         width: "100px",
                         textTransform: 'none',
+                        textTransform: 'none',
+                        outline: 'none',
                         //outline: 'none',
                     }}
                 >
@@ -634,7 +665,17 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                 </Button>
                 <Button autoFocus
                     variant="contained" onClick={onSubmit} disabled={loading}
-                    style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}>
+                    style={{
+                        backgroundColor: initial.theme,
+                        color: 'white',
+                        width: "100px",
+                        textTransform: 'none',
+                        outline: 'none',
+                        textTransform: 'none',
+                        outline: 'none',
+
+                    }}
+                >
                     {mode === 'add' ? 'Enregistrer' : 'Enregistrer'}
                 </Button>
             </DialogActions>

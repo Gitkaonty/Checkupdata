@@ -91,7 +91,8 @@ const PopupSaisie = ({
     canAdd,
     canDelete,
     canModify,
-    isTypeComptaAutre
+    isTypeComptaAutre,
+    listCompteAssocie
 }) => {
 
     const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
@@ -188,6 +189,10 @@ const PopupSaisie = ({
     })
 
     const compteAssocieCodeJournal = formSaisie.values.valSelectCodeJnl?.compteassocie;
+    const newListeCompteAssocie = listCompteAssocie.filter(val => val !== compteAssocieCodeJournal);
+    const filteredListePlanComptable = compteAssocieCodeJournal
+        ? listePlanComptable.filter(val => !newListeCompteAssocie.includes(val.compte))
+        : listePlanComptable;
 
     const handleRowModesModelChange = (newRowModesModel) => {
         setRowModesModel(newRowModesModel);
@@ -421,7 +426,7 @@ const PopupSaisie = ({
         setInvalidRows,
         invalidRows,
         selectedCell,
-        listePlanComptable: compteAssocieCodeJournal ? listePlanComptable.filter(val => val.compte !== compteAssocieCodeJournal) : listePlanComptable,
+        listePlanComptable: filteredListePlanComptable,
         taux,
         equilibrateDebitCredit,
         tableRows,
@@ -430,7 +435,8 @@ const PopupSaisie = ({
         ajouterNouvelleLigne,
         isCaActive,
         handleOpenPopupCa,
-        listeCodeJournaux
+        listeCodeJournaux,
+        setRowModesModel
     });
 
     //Supprimer la ligne pour ajout

@@ -36,10 +36,10 @@ router.delete('/deleteJournal', verifyJWT, verifyPermission('DELETE'), saisieCon
 
 // Rapprochements bancaires
 router.get('/rapprochements', saisieController.listRapprochements);
-router.get('/rapprochements/pcs', saisieController.listEligiblePc512); 
+router.get('/rapprochements/pcs', saisieController.listEligiblePc512);
 router.get('/rapprochements/ecritures', saisieController.listEcrituresForRapprochement);
 router.post('/rapprochements/ecritures/mark', saisieController.updateEcrituresRapprochement);
-router.get('/rapprochements/soldes', saisieController.computeSoldesRapprochement); 
+router.get('/rapprochements/soldes', saisieController.computeSoldesRapprochement);
 router.post('/rapprochements', saisieController.createRapprochement);
 router.put('/rapprochements/:id', saisieController.updateRapprochement);
 router.delete('/rapprochements/:id', saisieController.deleteRapprochement);
@@ -98,5 +98,11 @@ router.post('/addEcriture', saisieController.addEcriture);
 
 // Réaffection des lignes
 router.post('/reaffecterLigne', saisieController.reaffecterLigne);
+
+// Modification montant immo
+router.post('/updateMontantImmo', saisieController.updateMontantImmo);
+
+// Récupération des comptes associés dans le code journals
+router.post('/getCodeJournalsCompteAssocie', saisieController.getCodeJournalsCompteAssocie);
 
 module.exports = router;

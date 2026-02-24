@@ -25,6 +25,7 @@ import { TfiSave } from 'react-icons/tfi';
 import { VscClose } from 'react-icons/vsc';
 import { IoMdTrash } from 'react-icons/io';
 import usePermission from '../../../../hooks/usePermission';
+import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 
 // Comparator to keep total row at the bottom regardless of sort
 const keepTotalBottomComparator = (v1, v2, cellParams1, cellParams2) => {
@@ -134,7 +135,10 @@ function RapprochementsBancaires() {
           <IconButton
             onClick={() => handleAdd(false)}
             disabled={!pcSelected || !!editingRowId}
-            style={{ width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.theme }}
+            style={{
+              width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.theme, textTransform: 'none',
+              outline: 'none',
+            }}
           >
             <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
           </IconButton>
@@ -145,7 +149,10 @@ function RapprochementsBancaires() {
           <IconButton
             onClick={handleEdit}
             disabled={rapproSelectionModel.length === 0 || !!editingRowId}
-            style={{ width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.theme }}
+            style={{
+              width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.theme, textTransform: 'none',
+              outline: 'none',
+            }}
           >
             <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
           </IconButton>
@@ -156,7 +163,10 @@ function RapprochementsBancaires() {
           <IconButton
             onClick={handleSave}
             disabled={!editingRowId}
-            style={{ width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.theme }}
+            style={{
+              width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.theme, textTransform: 'none',
+              outline: 'none',
+            }}
           >
             <TfiSave style={{ width: '25px', height: '25px', color: 'white' }} />
           </IconButton>
@@ -167,7 +177,10 @@ function RapprochementsBancaires() {
           <IconButton
             onClick={handleCancel}
             disabled={!editingRowId}
-            style={{ width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.button_delete_color }}
+            style={{
+              width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.button_delete_color, textTransform: 'none',
+              outline: 'none',
+            }}
           >
             <VscClose style={{ width: '25px', height: '25px', color: 'white' }} />
           </IconButton>
@@ -178,7 +191,11 @@ function RapprochementsBancaires() {
           <IconButton
             onClick={handleDelete}
             disabled={rapproSelectionModel.length === 0 || !!editingRowId}
-            style={{ width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.button_delete_color }}
+            style={{
+              width: "35px", height: '35px', borderRadius: "2px", backgroundColor: initial.button_delete_color,
+              textTransform: 'none',
+              outline: 'none',
+            }}
           >
             <IoMdTrash style={{ width: '25px', height: '25px', color: 'white' }} />
           </IconButton>
@@ -624,8 +641,15 @@ function RapprochementsBancaires() {
                 setEditingRowId(p.id);
               }}
               sx={{ color: 'error.main' }}
+              style={{
+                textTransform: 'none',
+                outline: 'none',
+              }}
             >
-              <FaRegPenToSquare style={{ width: 16, height: 16 }} />
+              <FaRegPenToSquare style={{
+                width: 16, height: 16, textTransform: 'none',
+                outline: 'none',
+              }} />
             </IconButton>
           </Tooltip>
         </Stack>
@@ -698,6 +722,10 @@ function RapprochementsBancaires() {
                     if (disabled) return;
                     window.open(buildUrl('pdf'), '_blank');
                   }}
+                  style={{
+                    textTransform: 'none',
+                    outline: 'none',
+                  }}
                 >
                   <FaFilePdf style={{ width: 18, height: 18, color: '#d32f2f' }} />
                 </IconButton>
@@ -712,6 +740,10 @@ function RapprochementsBancaires() {
                     e.stopPropagation();
                     if (disabled) return;
                     window.open(buildUrl('excel'), '_blank');
+                  }}
+                  style={{
+                    textTransform: 'none',
+                    outline: 'none',
                   }}
                 >
                   <FaFileExcel style={{ width: 18, height: 18, color: '#2e7d32' }} />
@@ -981,6 +1013,11 @@ function RapprochementsBancaires() {
                 </Stack>
 
                 <DataGrid
+                  disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                  disableColumnSelector={DataGridStyle.disableColumnSelector}
+                  disableDensitySelector={DataGridStyle.disableDensitySelector}
+                  disableRowSelectionOnClick
+                  disableSelectionOnClick={true}
                   rows={pc512Rows}
                   columns={pcColumns}
                   disableColumnMenu
@@ -988,9 +1025,14 @@ function RapprochementsBancaires() {
                   pageSizeOptions={[10, 25, 50]}
                   checkboxSelection
                   sx={{
+                    ...DataGridStyle.sx,
                     flex: 1,
                     '& .MuiDataGrid-columnHeaders': { backgroundColor: initial.theme, color: '#fff' },
                     '& .nonClickable': { pointerEvents: 'none', color: 'text.disabled' },
+                    '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                      outline: 'none',
+                      border: 'none',
+                    }
                   }}
                   onRowClick={(params) => {
                     const idRow = params.id;
@@ -1025,6 +1067,11 @@ function RapprochementsBancaires() {
                 </Stack>
 
                 <DataGrid
+                  disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                  disableColumnSelector={DataGridStyle.disableColumnSelector}
+                  disableDensitySelector={DataGridStyle.disableDensitySelector}
+                  disableRowSelectionOnClick
+                  disableSelectionOnClick={true}
                   rows={rapproRows.map(r => {
                     const sb = (pendingSoldeBancaire[r.id] != null ? Number(pendingSoldeBancaire[r.id]) : r.solde_bancaire);
                     const df = (pendingDateFin[r.id] != null ? pendingDateFin[r.id] : r.date_fin);
@@ -1036,8 +1083,8 @@ function RapprochementsBancaires() {
                   density="compact"
                   pageSizeOptions={[10, 25, 50]}
                   checkboxSelection
-                  disableRowSelectionOnClick
                   sx={{
+                    ...DataGridStyle.sx,
                     flex: 1,
                     '& .MuiDataGrid-columnHeaders': { backgroundColor: initial.theme, color: '#fff' },
                     '& .MuiDataGrid-cell.nonClickable, & .nonClickable': {
@@ -1052,6 +1099,10 @@ function RapprochementsBancaires() {
                       backgroundColor: '#f0f0f0',
                       color: '#9e9e9e',
                     },
+                    '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                      outline: 'none',
+                      border: 'none',
+                    }
                   }}
                   onRowSelectionModelChange={(m) => {
                     const single = Array.isArray(m) && m.length > 0 ? [m[m.length - 1]] : [];
@@ -1074,6 +1125,11 @@ function RapprochementsBancaires() {
             <Box sx={{ mt: 10 }}>
               <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>Ecritures</Typography>
               <DataGrid
+                disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                disableColumnSelector={DataGridStyle.disableColumnSelector}
+                disableDensitySelector={DataGridStyle.disableDensitySelector}
+                disableRowSelectionOnClick
+                disableSelectionOnClick={true}
                 rows={ecrituresRows}
                 columns={[
                   { field: 'dateecriture', headerName: 'Date écriture', width: 140, valueGetter: (p) => p.row.dateecriture ? String(p.row.dateecriture).substring(0, 10) : '', renderCell: (p) => formatFrDate(p.value), sortComparator: keepTotalBottomComparator },
@@ -1103,8 +1159,13 @@ function RapprochementsBancaires() {
                 pageSizeOptions={[10, 25, 50]}
                 autoHeight
                 sx={{
+                  ...DataGridStyle.sx,
                   flex: 1,
                   '& .MuiDataGrid-columnHeaders': { backgroundColor: initial.theme, color: '#fff' },
+                  '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                    outline: 'none',
+                    border: 'none',
+                  }
                 }}
                 checkboxSelection
                 isRowSelectable={(params) => !params.row?.isTotal}
@@ -1129,6 +1190,10 @@ function RapprochementsBancaires() {
                             selectedEcrituresInfo.hasR ||
                             (selectedEcrituresInfo.hasR && selectedEcrituresInfo.hasNR)
                           }
+                          style={{
+                            textTransform: 'none',
+                            outline: 'none',
+                          }}
                           sx={{ backgroundColor: 'success.main', '&:hover': { backgroundColor: 'success.dark' }, textTransform: 'none' }}
                         >
                           Rapprocher
@@ -1143,6 +1208,10 @@ function RapprochementsBancaires() {
                             selectedEcrituresInfo.hasNR ||
                             (selectedEcrituresInfo.hasR && selectedEcrituresInfo.hasNR)
                           }
+                          style={{
+                            textTransform: 'none',
+                            outline: 'none',
+                          }}
                           sx={{ backgroundColor: 'error.main', '&:hover': { backgroundColor: 'error.dark' }, textTransform: 'none' }}
                         >
                           Annuler rapprochement
