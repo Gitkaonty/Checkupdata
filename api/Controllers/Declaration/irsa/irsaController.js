@@ -1,3 +1,4 @@
+require('dotenv').config();
 const db = require('../../../Models');
 const { Op } = require('sequelize');
 const ExcelJS = require('exceljs');
@@ -6,6 +7,14 @@ const { exportIrsaTableExcel } = require('../../../Middlewares/irsa/DeclIrsaGene
 const { generateIrsaContent } = require('../../../Middlewares/irsa/DeclIrsaGeneratePdf');
 const { generateIrsaXml } = require('../../../Middlewares/irsa/DeclIrsaGenerateXml');
 const PdfPrinter = require('pdfmake');
+
+const fs = require('fs');
+const path = require('path');
+
+const logoPath = path.join(__dirname, `../../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 exports.getAll = async (req, res) => {
   try {
@@ -335,6 +344,18 @@ exports.exportIrsaTablePdf = async (req, res) => {
           }
         }
       ],
+      background: function (currentPage, pageSize) {
+        if (currentPage === 1) {
+          return [
+            {
+              image: logoImage,
+              width: 50,
+              absolutePosition: { x: 10, y: 10 }
+            }
+          ];
+        }
+        return [];
+      },
       styles: {
         header: {
           fontSize: 20,
@@ -369,7 +390,6 @@ exports.exportIrsaTablePdf = async (req, res) => {
         }
       }
     };
-
 
     const printer = new PdfPrinter(fonts);
     const pdfDoc = printer.createPdfKitDocument(docDefinition);

@@ -1,8 +1,11 @@
 require('dotenv').config();
+const path = require('path');
 const recupTableau = require('../../Middlewares/Ebilan/recupTableau');
 
 const recupEbilan = require('../../Middlewares/Declaration/Ebilan/EblianMiddleware');
 const getEbilanComplet = recupEbilan.getEbilanComplet;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -48,7 +51,6 @@ const generateTitle = (sheetName, label, dossier, compte, date_debut, date_fin, 
     periodeRow.height = 20;
 };
 
-
 const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
     const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
 
@@ -57,6 +59,12 @@ const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, 
 
     // Feuille Actif
     const sheetActif = workbook.addWorksheet('Bilan Actif');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetActif.columns = [
         { header: 'Actif', width: 45 },
         { header: 'Note', width: 12 },
@@ -67,6 +75,12 @@ const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, 
     ];
 
     generateTitle(sheetActif, 'Bilan actif', dossier, compte, date_debut, date_fin, 'F');
+
+    sheetActif.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerActif = sheetActif.getRow(4);
     headerActif.eachCell((cell, colNumber) => {
@@ -131,6 +145,12 @@ const exportBilanToExcel = async (id_compte, id_dossier, id_exercice, workbook, 
 
     generateTitle(sheetPassif, 'Bilan passif', dossier, compte, date_debut, date_fin, 'D');
 
+    sheetPassif.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
+
     const headerPassif = sheetPassif.getRow(4);
     headerPassif.eachCell((cell, colNumber) => {
         cell.fill = {
@@ -184,6 +204,12 @@ const exportCrnToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     const crn = data.filter(val => val.id_etat === 'CRN' && val.subtable === 0);
 
     const sheetCrn = workbook.addWorksheet('Compte de résultats par nature');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // sheetCrn.views = [
     //     { state: 'frozen', ySplit: 1 }
     // ];
@@ -195,6 +221,12 @@ const exportCrnToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     ];
 
     generateTitle(sheetCrn, 'Compte de résultats par nature', dossier, compte, date_debut, date_fin, 'D');
+
+    sheetCrn.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerCrn = sheetCrn.getRow(4);
     headerCrn.eachCell((cell, colNumber) => {
@@ -242,6 +274,11 @@ const exportCrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
 
     const crf = data.filter(val => val.id_etat === 'CRF' && val.subtable === 0);
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     const sheetCrf = workbook.addWorksheet('Compte de résultats par fonction');
     // sheetCrf.views = [
     //     { state: 'frozen', ySplit: 1 }
@@ -254,6 +291,12 @@ const exportCrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     ];
 
     generateTitle(sheetCrf, 'Compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'D');
+
+    sheetCrf.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerCrf = sheetCrf.getRow(4);
     headerCrf.eachCell((cell, colNumber) => {
@@ -303,6 +346,11 @@ const exportTftdToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
 
     const tftd = data.filter(val => val.id_etat === 'TFTD' && val.subtable === 0);
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Feuille TFTD avec nom court
     const sheetTftd = workbook.addWorksheet('TFTD Méth. Directe');
     // sheetTftd.views = [{ state: 'frozen', ySplit: 1 }];
@@ -317,6 +365,12 @@ const exportTftdToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
     ];
 
     generateTitle(sheetTftd, 'Tableau de flux de trésoreries méthode directe', dossier, compte, date_debut, date_fin, 'E');
+
+    sheetTftd.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetTftd.getRow(4);
@@ -369,6 +423,11 @@ const exportTftiToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
 
     const tfti = data.filter(val => val.id_rubrique === 'TFTI' && val.subtable === 0);
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Feuille TFTI avec nom court
     const sheetTfti = workbook.addWorksheet('TFTI Méth. Indirecte');
     // sheetTfti.views = [{ state: 'frozen', ySplit: 1 }];
@@ -382,6 +441,12 @@ const exportTftiToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
     ];
 
     generateTitle(sheetTfti, 'Tableau de flux de trésoreries méthode indirecte', dossier, compte, date_debut, date_fin, 'D');
+
+    sheetTfti.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetTfti.getRow(4);
@@ -432,6 +497,11 @@ const exportEvcpToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
     const sheetEvcp = workbook.addWorksheet('Etat de variation des capitaux propres');
     // sheetEvcp.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetEvcp.columns = [
         { header: 'Rubriques', width: 50, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -445,6 +515,12 @@ const exportEvcpToExcel = async (id_compte, id_dossier, id_exercice, workbook, d
     ];
 
     generateTitle(sheetEvcp, 'Etat de variation des capitaux propres', dossier, compte, date_debut, date_fin, 'H');
+
+    sheetEvcp.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetEvcp.getRow(4);
@@ -501,6 +577,11 @@ const exportDrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     const sheetDrf = workbook.addWorksheet('Détermination du résultat fiscal');
     // sheetDrf.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetDrf.columns = [
         { header: 'Rubriques', width: 90, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -511,15 +592,11 @@ const exportDrfToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
 
     generateTitle(sheetDrf, 'Détermination du résultat fiscal', dossier, compte, date_debut, date_fin, 'D');
 
-    const sousTitreActif = sheetDrf.getRow(2);
-
-    sousTitreActif.font = { bold: true, size: 12 };
-    sousTitreActif.alignment = {
-        horizontal: 'left',
-        vertical: 'middle',
-        wrapText: true
-    };
-    sousTitreActif.height = 50;
+    sheetDrf.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetDrf.getRow(4);
@@ -570,6 +647,11 @@ const exportBhiapcToExcel = async (id_compte, id_dossier, id_exercice, workbook,
     const sheetBhiapc = workbook.addWorksheet('Etat des bénéficiaires d\'honoraires,d\'intérêts ou d\'arrérages portés en charge');
     // sheetBhiapc.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetBhiapc.columns = [
         { header: 'NIF', width: 35, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -580,6 +662,12 @@ const exportBhiapcToExcel = async (id_compte, id_dossier, id_exercice, workbook,
     ];
 
     generateTitle(sheetBhiapc, 'Etat des bénéficiaires d\'honoraires, d\'intérêts ou d\'arrérages portés en charge', dossier, compte, date_debut, date_fin, 'E');
+
+    sheetBhiapc.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetBhiapc.getRow(4);
@@ -647,6 +735,11 @@ const exportMpToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     const sheetMp = workbook.addWorksheet('Marché public');
     // sheetMp.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetMp.columns = [
         { header: 'Marché', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -659,6 +752,12 @@ const exportMpToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     ];
 
     generateTitle(sheetMp, 'Marché public', dossier, compte, date_debut, date_fin, 'G');
+
+    sheetMp.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetMp.getRow(4);
@@ -732,6 +831,11 @@ const exportDaToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     const sheetDa = workbook.addWorksheet('Détails amortissements');
     // sheetDa.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes
     sheetDa.columns = [
         { header: 'Designation', width: 30, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -748,6 +852,12 @@ const exportDaToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     ];
 
     generateTitle(sheetDa, 'Détails amortissements', dossier, compte, date_debut, date_fin, 'K');
+
+    sheetDa.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style entête
     const headerRow = sheetDa.getRow(4);
@@ -892,6 +1002,11 @@ const exportDpToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     const sheetDp = workbook.addWorksheet('Détails provisions');
     // sheetDp.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes
     sheetDp.columns = [
         { header: 'Désignation', width: 40, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -902,6 +1017,12 @@ const exportDpToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     ];
 
     generateTitle(sheetDp, 'Détails provisions', dossier, compte, date_debut, date_fin, 'E');
+
+    sheetDp.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style entête
     const headerRow = sheetDp.getRow(4);
@@ -1015,6 +1136,11 @@ const exportEiafncToExcel = async (id_compte, id_dossier, id_exercice, workbook,
     const sheetEiafnc = workbook.addWorksheet('Evolution des immobilisations et actifs financiers non courants');
     // sheetEiafnc.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes
     sheetEiafnc.columns = [
         { header: 'N° compte', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -1026,6 +1152,12 @@ const exportEiafncToExcel = async (id_compte, id_dossier, id_exercice, workbook,
     ];
 
     generateTitle(sheetEiafnc, 'Evolution des immobilisations et actifs financiers non courants', dossier, compte, date_debut, date_fin, 'F');
+
+    sheetEiafnc.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style entête
     const headerRow = sheetEiafnc.getRow(4);
@@ -1142,6 +1274,11 @@ const exportSadToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     const sheetSad = workbook.addWorksheet('Suivi des amortissements différés');
     // sheetSad.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetSad.columns = [
         { header: 'Libelle', width: 35, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -1156,6 +1293,12 @@ const exportSadToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     ];
 
     generateTitle(sheetSad, 'Suivi des amortissements différés', dossier, compte, date_debut, date_fin, 'I');
+
+    sheetSad.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetSad.getRow(4);
@@ -1201,6 +1344,11 @@ const exportSdrToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     const sheetSdr = workbook.addWorksheet('Suivi des déficits reportables');
     // sheetSdr.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetSdr.columns = [
         { header: 'Constitution / Imputation', width: 45, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -1217,6 +1365,12 @@ const exportSdrToExcel = async (id_compte, id_dossier, id_exercice, workbook, do
     ];
 
     generateTitle(sheetSdr, 'Suivi des déficits reportables', dossier, compte, date_debut, date_fin, 'K');
+
+    sheetSdr.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetSdr.getRow(4);
@@ -1281,6 +1435,11 @@ const exportSeToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     const sheetSe = workbook.addWorksheet('Suivi des emprunts');
     // sheetSe.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetSe.columns = [
         { header: 'Emprunteurs', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -1297,6 +1456,12 @@ const exportSeToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     ];
 
     generateTitle(sheetSe, 'Suivi des emprunts', dossier, compte, date_debut, date_fin, 'K');
+
+    sheetSe.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetSe.getRow(4);
@@ -1388,6 +1553,11 @@ const exportNeToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     const sheetNe = workbook.addWorksheet('Notes explicatives');
     // sheetNe.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     // Colonnes avec alignement par défaut
     sheetNe.columns = [
         { header: 'Tableau', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -1396,6 +1566,12 @@ const exportNeToExcel = async (id_compte, id_dossier, id_exercice, workbook, dos
     ];
 
     generateTitle(sheetNe, 'Notes explicatives', dossier, compte, date_debut, date_fin, 'C');
+
+    sheetNe.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     // Style de l'entête
     const headerRow = sheetNe.getRow(4);
