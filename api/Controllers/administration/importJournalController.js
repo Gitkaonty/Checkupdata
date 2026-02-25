@@ -949,6 +949,7 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               lettragedate: datelettrage || null,
               saisiepar: Number(userId),
               modifierpar: Number(userId) || 0,
+              datesaisie: new Date(),
               comptegen: rawGen,
               compteaux: rawAuxToAdd,
               libelleaux: rawGen === rawAuxToAdd ? foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100) : foundAux?.libelle || String(item.EcritureLib || '').substring(0, 100),
