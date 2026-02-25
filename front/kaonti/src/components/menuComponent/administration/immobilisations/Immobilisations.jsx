@@ -15,10 +15,8 @@ import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFil
 import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
 import { init } from '../../../../../init';
 import { TbPlaylistAdd } from "react-icons/tb";
-import { TfiSave } from "react-icons/tfi";
 import { FaRegPenToSquare } from "react-icons/fa6";
 import { IoMdTrash } from "react-icons/io";
-import { VscClose } from "react-icons/vsc";
 import { TbFileImport } from "react-icons/tb";
 import { useCallback } from 'react';
 import DetailsImmoDialog from './DetailsImmoDialog';
@@ -198,14 +196,11 @@ const Immobilisations = () => {
   // State for the second (details) grid with its own CRUD
   const [detailsRows, setDetailsRows] = useState([]);
   const [detailsSelectionModel, setDetailsSelectionModel] = useState([]);
-  const [detailsRowModesModel, setDetailsRowModesModel] = useState({});
-  const [detailsEditingRowId, setDetailsEditingRowId] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsDialogMode, setDetailsDialogMode] = useState('add'); // 'add' | 'edit'
   const [detailsForm, setDetailsForm] = useState({});
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [lienDialogOpen, setLienDialogOpen] = useState(false);
-  const [lienTempValue, setLienTempValue] = useState('');
   const [journalRows, setJournalRows] = useState([]);
   const [journalLoading, setJournalLoading] = useState(false);
   const [journalSelection, setJournalSelection] = useState([]);
@@ -421,47 +416,94 @@ const Immobilisations = () => {
   }, [ligneMeta, selectedDetailRow]);
 
   // Enregistrer manuellement les lignes (tableau 3)  
-  const handleSaveLignes = async () => {
+  // const handleSaveLignes = async () => {
+  //   try {
+  //     const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+  //     const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
+  //     if (!fid || !compteId || !exoId || !selectedDetailId) {
+  //       toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
+  //       return;
+  //     }
+
+  //     // Récupérer les lignes affichées selon l'onglet actuel
+  //     const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
+  //     if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
+  //       toast.error('Aucune ligne d\'amortissement à enregistrer. Prévisualisez d\'abord les calculs.');
+  //       return;
+  //     }
+
+  //     // Détecter le mode selon l'onglet actuel
+  //     const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
+  //     const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
+
+  //     setSavingLignes(true);
+  //     const useDeg = (ligneTab === 'comp' ? isCompDegTab : isFiscDegTab);
+  //     const url = useDeg
+  //       ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
+  //       : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
+  //     await axios.post(url,
+  //       {
+  //         fileId: fid,
+  //         compteId: compteId,
+  //         exerciceId: exoId,
+  //         detailId: selectedDetailId,
+  //         mode: autoMode,
+  //         lignes: lignesAEnvoyer
+  //       },
+  //       { timeout: 60000 }
+  //     );
+  //     setIsRefreshed(prev => !prev);
+  //     // toast.success('Lignes d\'amortissement enregistrées');
+  //   } catch (e) {
+  //     toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
+  //   } finally { setSavingLignes(false); }
+  // };
+  const handleSaveLignes = async (lignesComp = null, lignesFisc = null) => {
     try {
-      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-      const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
+      const fid = Number(id) || 0;
+      const exoId = Number(selectedExerciceId) || 0;
+      const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0
+        ? Number(detailsSelectionModel[detailsSelectionModel.length - 1])
+        : 0;
+
       if (!fid || !compteId || !exoId || !selectedDetailId) {
         toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
         return;
       }
 
-      // Récupérer les lignes affichées selon l'onglet actuel
-      const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
+      const lignesAEnvoyer = ligneTab === 'fisc'
+        ? (lignesFisc || ligneRowsFisc)
+        : (lignesComp || ligneRowsComp);
+
       if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
-        toast.error('Aucune ligne d\'amortissement à enregistrer. Prévisualisez d\'abord les calculs.');
+        toast.error("Aucune ligne d'amortissement à enregistrer.");
         return;
       }
 
-      // Détecter le mode selon l'onglet actuel
-      const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
       const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
-
       setSavingLignes(true);
-      const useDeg = (ligneTab === 'comp' ? isCompDegTab : isFiscDegTab);
+
+      const useDeg = ligneTab === 'comp' ? isCompDegTab : isFiscDegTab;
       const url = useDeg
         ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
         : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
-      await axios.post(url,
-        {
-          fileId: fid,
-          compteId: compteId,
-          exerciceId: exoId,
-          detailId: selectedDetailId,
-          mode: autoMode,
-          lignes: lignesAEnvoyer
-        },
-        { timeout: 60000 }
-      );
+
+      await axios.post(url, {
+        fileId: fid,
+        compteId,
+        exerciceId: exoId,
+        detailId: selectedDetailId,
+        mode: autoMode,
+        lignes: lignesAEnvoyer
+      }, { timeout: 60000 });
+
       setIsRefreshed(prev => !prev);
-      // toast.success('Lignes d\'amortissement enregistrées');
+
     } catch (e) {
       toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
-    } finally { setSavingLignes(false); }
+    } finally {
+      setSavingLignes(false);
+    }
   };
 
   // Fetch details_immo from backend and filter by selected PCs
@@ -714,7 +756,7 @@ const Immobilisations = () => {
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const effectiveCompteId = compteId;
 
-      await handleSaveLignes();
+      await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
 
       if (detailsDialogMode === 'add') {
         const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
@@ -1364,7 +1406,9 @@ const Immobilisations = () => {
                     rowSelectionModel={detailsSelectionModel}
                     onRowSelectionModelChange={(m) => {
                       const arr = Array.isArray(m) ? m : [];
-                      setDetailsSelectionModel(arr.slice(-1));
+                      const selected = arr.slice(-1);
+
+                      setDetailsSelectionModel(selected);
                     }}
                     isCellEditable={() => false}
                     density="compact"
