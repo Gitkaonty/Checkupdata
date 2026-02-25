@@ -3,6 +3,9 @@ const db = require("../../../Models");
 const { Op } = require('sequelize');
 const { create } = require('xmlbuilder2');
 
+const fs = require('fs');
+const path = require('path');
+
 const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 
@@ -20,6 +23,11 @@ const declISIGenerateExcel = require('../../../Middlewares/ISI/declISIGenerateEx
 
 const generateISIContent = declISIGeneratePDF.generateISIContent;
 const exportISIToExcel = declISIGenerateExcel.exportISIToExcel;
+
+const logoPath = path.join(__dirname, `../../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 // Fonction pour plurieliser un mot
 function pluralize(count, word) {
@@ -1326,6 +1334,18 @@ exports.exportISIToPDF = async (req, res) => {
                 infoBlock(dossier, exercice, mois, annee),
                 ...buildTable(isi)
             ],
+            background: function (currentPage, pageSize) {
+                if (currentPage === 1) {
+                    return [
+                        {
+                            image: logoImage,
+                            width: 50,
+                            absolutePosition: { x: 10, y: 10 }
+                        }
+                    ];
+                }
+                return [];
+            },
             styles: {
                 title: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                 subTitle: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },

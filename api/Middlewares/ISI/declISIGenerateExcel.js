@@ -1,5 +1,10 @@
+require('dotenv').config();
+const path = require('path');
+
 const db = require("../../Models");
 const isis = db.isi;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -72,6 +77,11 @@ const exportISIToExcel = async (id_compte, id_dossier, id_exercice, mois, annee,
 
     const sheetISI = workbook.addWorksheet('Déclaration ISI');
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetISI.columns = [
         { header: 'Nom', width: 35 },
         { header: 'CIN', width: 20 },
@@ -86,6 +96,12 @@ const exportISIToExcel = async (id_compte, id_dossier, id_exercice, mois, annee,
     ];
 
     generateTitle(sheetISI, 'Déclaration ISI', dossier, moisNoms, annee, date_debut, date_fin, 'J');
+
+    sheetISI.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 60, height: 60 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetISI.getRow(5);
     headerRow.eachCell(cell => {

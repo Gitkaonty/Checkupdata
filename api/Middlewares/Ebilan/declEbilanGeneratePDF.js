@@ -173,7 +173,7 @@ const generateBilanActifContent = async (id_compte, id_dossier, id_exercice) => 
 const generateBilanPassifContent = async (id_compte, id_dossier, id_exercice) => {
     const data = await getEbilanComplet(id_compte, id_dossier, id_exercice);
 
-    const bilanPassif = data.filter(val => val.id_etat === 'BILAN' && subtable === 2);
+    const bilanPassif = data.filter(val => val.id_etat === 'BILAN' && val.subtable === 2);
 
     const buildTable = (data, type) => {
         const body = [];

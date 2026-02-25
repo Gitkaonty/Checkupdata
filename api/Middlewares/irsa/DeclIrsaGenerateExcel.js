@@ -1,6 +1,9 @@
+require('dotenv').config();
+const path = require('path');
 const db = require('../../Models');
-const ExcelJS = require('exceljs');
 const Irsa = db.irsa;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const exportIrsaTableExcel = async (id_compte, id_dossier, id_exercice, mois, annee, workbook, nomDossier, nomCompte, nomMois, dateDebut, dateFin) => {
     // Récupérer les données IRSA
@@ -44,6 +47,11 @@ const exportIrsaTableExcel = async (id_compte, id_dossier, id_exercice, mois, an
 
     // Créer une nouvelle feuille
     const sheetIrsa = workbook.addWorksheet(`IRSA ${nomMois} ${annee}`);
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
 
     // Colonnes IRSA
     sheetIrsa.columns = [
@@ -97,6 +105,11 @@ const exportIrsaTableExcel = async (id_compte, id_dossier, id_exercice, mois, an
     sousTitre.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
     sousTitre.height = 70;
 
+    sheetIrsa.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 60, height: 60 },
+        editAs: 'absolute',
+    });
 
     // Header row (row 4) : texte à gauche, montants à droite, dates à gauche
     const headerRow = sheetIrsa.getRow(4);

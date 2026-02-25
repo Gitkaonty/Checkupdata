@@ -1,9 +1,13 @@
 const db = require("../../Models");
+require('dotenv').config();
+const path = require('path');
 
 const droitcommas = db.droitcommas;
 const droitcommbs = db.droitcommbs;
 const etatsplp = db.etatsplp;
 const dossierplancomptable = db.dossierplancomptable;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const generateTitle = (sheetName, label, dossier, compte, date_debut, date_fin, cellEnd) => {
     sheetName.insertRow(1, [label]);
@@ -125,6 +129,12 @@ exports.exportDroitCommasExcel = async (id_compte, id_dossier, id_exercice, work
     const dataCombined = combineByIdNumcpt(data);
 
     const sheetDroitCommas = workbook.addWorksheet(`${id_etat}`);
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetDroitCommas.columns = [
         { header: 'Compte', width: 45, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
         { header: 'NIF', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -140,6 +150,12 @@ exports.exportDroitCommasExcel = async (id_compte, id_dossier, id_exercice, work
     ];
 
     generateTitle(sheetDroitCommas, `Droit de communication : ${id_etat}`, dossier, compte, date_debut, date_fin, 'K');
+
+    sheetDroitCommas.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetDroitCommas.getRow(4);
     headerRow.eachCell(cell => {
@@ -208,6 +224,12 @@ exports.exportDroitCommbsExcel = async (id_compte, id_dossier, id_exercice, work
     const dataCombined = combineByIdNumcpt(data);
 
     const sheetDroitCommbs = workbook.addWorksheet(`${id_etat}`);
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetDroitCommbs.columns = [
         { header: 'Compte', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
         { header: 'NIF', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -223,6 +245,12 @@ exports.exportDroitCommbsExcel = async (id_compte, id_dossier, id_exercice, work
     ];
 
     generateTitle(sheetDroitCommbs, `Droit de communication : ${id_etat}`, dossier, compte, date_debut, date_fin, 'K');
+
+    sheetDroitCommbs.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetDroitCommbs.getRow(4);
     headerRow.eachCell(cell => {
@@ -287,6 +315,11 @@ exports.exportDroitCommPlp = async (id_compte, id_dossier, id_exercice, workbook
     const data = await getDroitCommData(id_compte, id_dossier, id_exercice, id_etat);
     const sheetDroitCommPlp = workbook.addWorksheet(`${id_etat}`);
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetDroitCommPlp.columns = [
         { header: 'Code', width: 20, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
         { header: 'Nature', width: 50, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -298,6 +331,12 @@ exports.exportDroitCommPlp = async (id_compte, id_dossier, id_exercice, workbook
     ];
 
     generateTitle(sheetDroitCommPlp, `Droit de communication : ${id_etat}`, dossier, compte, date_debut, date_fin, 'G');
+
+    sheetDroitCommPlp.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetDroitCommPlp.getRow(4);
     headerRow.eachCell(cell => {

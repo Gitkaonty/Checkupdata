@@ -1,9 +1,10 @@
-const db = require('../../Models');
-const { Op } = require('sequelize');
+require('dotenv').config();
+const path = require('path');
 
-const ExcelJS = require('exceljs');
-const Dossier = db.dossiers;
+const db = require('../../Models');
 const Annex = db.etatsTvaAnnexes;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, annee, workbook, dossier, compte, moisNoms, date_debut, date_fin) => {
     const tvaData = await Annex.findAll({
@@ -15,9 +16,14 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
             annee: Number(annee)
         }
     });
- 
+
     const sheetTva = workbook.addWorksheet('Annexes TVA');
- 
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetTva.columns = [
         { header: 'Collecte/Déductible', width: 20 },
         { header: 'Local/Etranger', width: 16 },
@@ -39,8 +45,8 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
         { header: 'Année', width: 8 },
         { header: 'Code TVA', width: 14 },
     ];
- 
- 
+
+
     // Title row
     sheetTva.insertRow(1, ['Annexes TVA']);
     sheetTva.mergeCells('A1:S1');
@@ -48,7 +54,7 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
     titre.font = { bold: true, size: 20 };
     titre.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     titre.height = 25;
- 
+
     // Subtitle row
     sheetTva.insertRow(2, [`Dossier : ${dossier}\nCompte : ${compte}\nMois et année : ${moisNoms} ${annee}\nExercice du : ${date_debut} au ${date_fin}`]);
     sheetTva.mergeCells('A2:S2');
@@ -56,7 +62,13 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
     sousTitre.font = { bold: true, size: 12 };
     sousTitre.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
     sousTitre.height = 70;
- 
+
+    sheetTva.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 60, height: 60 },
+        editAs: 'absolute',
+    });
+
     // Header row (row 3)
     const headerRow = sheetTva.getRow(3);
     headerRow.eachCell(cell => {
@@ -74,10 +86,10 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
         const yyyy = date.getFullYear();
         return `${dd}/${mm}/${yyyy}`;
     };
- 
+
     let totalHT = 0;
     let totalTVA = 0;
- 
+
     // Ajout des lignes de données TVA
     tvaData.forEach(row => {
         totalHT += parseFloat(row.montant_ht) || 0;
@@ -104,7 +116,7 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
             row.code_tva || ''
         ]);
     });
- 
+
     // Ligne Total
     const totalRow = sheetTva.addRow([
         'Total', '', '', '', '', '',
@@ -112,7 +124,7 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
         Number(totalTVA) || 0,
         '', '', '', '', '', '', '', '', '', '', ''
     ]);
- 
+
     // Style du total
     totalRow.font = { bold: true };
     totalRow.eachCell((cell, colNumber) => {
@@ -123,10 +135,10 @@ const exportTvaTableExcel = async (id_compte, id_dossier, id_exercice, mois, ann
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
         }
     });
- 
+
     // Fusionner les cellules 1 à 6 pour le label "Total"
     sheetTva.mergeCells(`A${totalRow.number}:F${totalRow.number}`);
- 
+
     // Format numérique pour les montants (col 7 et 8)
     sheetTva.getColumn(7).numFmt = '#,##0.00';
     sheetTva.getColumn(8).numFmt = '#,##0.00';
