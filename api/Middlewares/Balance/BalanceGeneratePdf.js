@@ -1,10 +1,3 @@
-const db = require('../../Models');
-const Sequelize = require('sequelize');
-const { Op } = Sequelize;
-
-const dossierplancomptable = db.dossierplancomptable;
-const balances = db.balances;
-
 const generateBalanceContent = async (id_compte, id_dossier, id_exercice, centraliser, unSolded, movmentedCpt, data) => {
   const buildTable = (data) => {
     const body = [];

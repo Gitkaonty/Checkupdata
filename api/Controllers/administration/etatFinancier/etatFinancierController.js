@@ -3,6 +3,10 @@ const { Op } = require('sequelize');
 const PdfPrinter = require('pdfmake');
 const { PDFDocument } = require('pdf-lib');
 const ExcelJS = require('exceljs');
+require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
 
 const fonctionUpdateBalanceSold = require('../../../Middlewares/UpdateSolde/updateBalanceSold');
 const fonctionUpdateRubriqueExterne = require('../../../Middlewares/EtatFinanciere/updateRubrique');
@@ -72,6 +76,11 @@ const columnsMapping = {
         { col: 'rubriquesig', nature: 'BRUT' }
     ]
 };
+
+const logoPath = path.join(__dirname, `../../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -551,6 +560,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(bilanPassifData, 'passif')
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -567,6 +588,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(crnData)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -583,6 +616,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(crfData)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -599,6 +644,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(tftdData)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -615,6 +672,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(tftiData)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -633,6 +702,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(evcpData)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -651,6 +732,18 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                     infoBlock(dossier, compte, exercice),
                     ...buildTable(sigData)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -810,6 +903,18 @@ exports.exportAllEtatFinancierToPdf = async (req, res) => {
 
             const docDefinition = {
                 content,
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 pageOrientation: landscape ? 'landscape' : 'portrait',
                 styles: {
                     title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },

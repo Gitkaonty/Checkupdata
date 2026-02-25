@@ -1,12 +1,21 @@
 const db = require("../../Models");
+require('dotenv').config();
 const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
+
+const fs = require('fs');
+const path = require('path');
 
 const dossiers = db.dossiers;
 const exercices = db.exercices;
 const userscomptes = db.userscomptes;
 const { generateGrandLivreContent } = require('../../Middlewares/GrandLivre/GrandLivreGeneratePdf');
 const { exportGrandLivreTableExcel } = require('../../Middlewares/GrandLivre/GrandLivreGenerateExcel');
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -28,7 +37,7 @@ module.exports = {
 
       const dossier = await dossiers.findByPk(fileId);
       const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const compte = await userscomptes.findByPk(compteId, { attributes: ['id', 'nom'], raw: true });
 
       const { buildSections, groups } = await generateGrandLivreContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin);
       if (!groups || Object.keys(groups).length === 0) {
@@ -50,11 +59,23 @@ module.exports = {
         pageMargins: [10, 40, 10, 40],
         defaultStyle: { font: 'Helvetica', fontSize: 8 },
         content: [
-          { text: 'GRAND LIVRE', style: 'header', alignment: 'center', margin: [0,0,0,10] },
-          { text: `Dossier : ${dossier?.dossier || ''}`, style: 'subheader', alignment: 'center', margin: [0,0,0,8] },
-          { text: `Période du : ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`, alignment: 'left', margin: [0,0,0,10] },
+          { text: 'GRAND LIVRE', style: 'header', alignment: 'center', margin: [0, 0, 0, 10] },
+          { text: `Dossier : ${dossier?.dossier || ''}`, style: 'subheader', alignment: 'center', margin: [0, 0, 0, 8] },
+          { text: `Période du : ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`, alignment: 'left', margin: [0, 0, 0, 10] },
           ...buildSections(groups)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 60,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           header: { fontSize: 16, bold: true, font: 'Helvetica' },
           subheader: { fontSize: 11, bold: true, font: 'Helvetica' },
@@ -83,7 +104,7 @@ module.exports = {
 
       const dossier = await dossiers.findByPk(fileId);
       const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const compte = await userscomptes.findByPk(compteId, { attributes: ['id', 'nom'], raw: true });
 
       const workbook = new ExcelJS.Workbook();
       await exportGrandLivreTableExcel(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin, workbook, dossier?.dossier, compte?.nom, exercice?.date_debut, exercice?.date_fin);
