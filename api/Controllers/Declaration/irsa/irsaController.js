@@ -9,7 +9,6 @@ const { generateIrsaXml } = require('../../../Middlewares/irsa/DeclIrsaGenerateX
 const PdfPrinter = require('pdfmake');
 
 const fs = require('fs');
-const path = require('path');
 
 const logoPath = path.join(__dirname, `../../../public/logo/${process.env.LOGO_EXPORT}`);
 
