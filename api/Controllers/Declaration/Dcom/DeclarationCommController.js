@@ -1,8 +1,11 @@
 const db = require("../../../Models");
-require('dotenv').config();
 
 const ExcelJS = require('exceljs');
 const PdfPrinter = require('pdfmake');
+require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
 
 const generateDComAuto = require('../../../Middlewares/DCom/declCommGenerateAuto');
 const declDCommGeneratePdf = require('../../../Middlewares/DCom/declCommGeneratePDF');
@@ -10,7 +13,6 @@ const declDCommGenerateExcel = require('../../../Middlewares/DCom/declCommGenera
 
 const { withSSEProgress } = require('../../../Middlewares/sseProgressMiddleware');
 
-const generateDroitComm = generateDComAuto.generateDroitComm;
 const generateDComAutoFunction = generateDComAuto.generateDComAuto;
 
 const droitcommas = db.droitcommas;
@@ -30,6 +32,11 @@ const generateDroitCommPlp = declDCommGeneratePdf.generateDroitCommPlp;
 const exportDroitCommasExcel = declDCommGenerateExcel.exportDroitCommasExcel;
 const exportDroitCommbsExcel = declDCommGenerateExcel.exportDroitCommbsExcel;
 const exportDroitCommPlp = declDCommGenerateExcel.exportDroitCommPlp;
+
+const logoPath = path.join(__dirname, `../../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -719,6 +726,18 @@ exports.exportToPDF = async (req, res) => {
                     infoBlock(dossier, exercice),
                     ...buildTable(dataCombined)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -736,6 +755,18 @@ exports.exportToPDF = async (req, res) => {
                     infoBlock(dossier, exercice),
                     ...buildTable(dataCombined)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -753,6 +784,18 @@ exports.exportToPDF = async (req, res) => {
                     infoBlock(dossier, exercice),
                     ...buildTable(data)
                 ],
+                background: function (currentPage, pageSize) {
+                    if (currentPage === 1) {
+                        return [
+                            {
+                                image: logoImage,
+                                width: 50,
+                                absolutePosition: { x: 10, y: 10 }
+                            }
+                        ];
+                    }
+                    return [];
+                },
                 styles: {
                     title: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
                     subTitle: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },

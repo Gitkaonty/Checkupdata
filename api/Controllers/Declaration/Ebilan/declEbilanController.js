@@ -1,5 +1,9 @@
 const db = require("../../../Models");
 require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
+
 const { Op } = require('sequelize');
 const functionAddOrModifyRow = require('../../../Middlewares/Ebilan/declEbilanAddOrModifyFunction');
 const declEbilanRefreshFunction = require('../../../Middlewares/Ebilan/declEbilanRefreshFunction');
@@ -112,6 +116,11 @@ const exportDa1ToXml = declEbilanGenerateXml.exportDa1ToXml;
 const exportDpa2ToXml = declEbilanGenerateXml.exportDpa2ToXml;
 const exportEiafncaToXml = declEbilanGenerateXml.exportEiafncaToXml;
 const exportSeToXml = declEbilanGenerateXml.exportSeToXml;
+
+const logoPath = path.join(__dirname, `../../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 // Formattage du date pour l'exercice
 const formatDate = (dateStr) => {
@@ -1272,6 +1281,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(bilanPassif, 'passif')
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1288,6 +1309,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(crn)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1304,6 +1337,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(crf)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1320,6 +1365,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(tftd)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1336,6 +1393,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(tfti)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1354,6 +1423,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(evcp)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1370,6 +1451,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(drf)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1386,6 +1479,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(bhiapc)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1402,6 +1507,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(mp)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1419,6 +1536,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(da)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1436,6 +1565,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(dp)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1453,6 +1594,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(eiafnc)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1470,6 +1623,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(sad)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1487,6 +1652,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(sdr)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1504,6 +1681,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(se)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1521,6 +1710,18 @@ const exportToPDF = async (req, res) => {
           infoBlock(dossier, exercice),
           ...buildTable(ne)
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           subTitle: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1736,6 +1937,18 @@ const exportAllToPDF = async (req, res) => {
 
       const docDefinition = {
         content,
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 50,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         pageOrientation: landscape ? 'landscape' : 'portrait',
         styles: {
           title: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -1772,7 +1985,6 @@ const exportAllToPDF = async (req, res) => {
 const importBhiapc = async (req, res) => {
   try {
     const { data } = req.body;
-    return console.log('data : ', data);
 
     if (!data || !Array.isArray(data)) {
       return res.status(400).json({ state: false, message: "Données manquantes ou invalides" });
