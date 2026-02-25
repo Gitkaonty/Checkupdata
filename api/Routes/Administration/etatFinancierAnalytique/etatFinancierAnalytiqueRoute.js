@@ -39,4 +39,10 @@ router.post('/getVerouillageEtatFinancierAnalytique', etatFinancierControllerAna
 // Vérouiller une tableau états financier
 router.post('/lockEtatFinancierAnalytique', etatFinancierControllerAnalytique.lockEtatFinancierAnalytique);
 
+// Récupération état financier analytique 2
+router.post('/getEtatFinancierAnalytique', etatFinancierControllerAnalytique.getEtatFinancierAnalytique);
+
+// Récupération de la détail des lignes dans l'état financier analytique
+router.post('/getEtatFinancierAnalytiqueDetail', etatFinancierControllerAnalytique.getEtatFinancierAnalytiqueDetail);
+
 module.exports = router;

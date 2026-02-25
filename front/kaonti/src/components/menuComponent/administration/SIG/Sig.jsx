@@ -11,7 +11,6 @@ import Box from '@mui/material/Box';
 import TabContext from '@mui/lab/TabContext';
 import TabList from '@mui/lab/TabList';
 import TabPanel from '@mui/lab/TabPanel';
-import { TbRefresh } from "react-icons/tb";
 import Tooltip from '@mui/material/Tooltip';
 
 import { init } from '../../../../../init';

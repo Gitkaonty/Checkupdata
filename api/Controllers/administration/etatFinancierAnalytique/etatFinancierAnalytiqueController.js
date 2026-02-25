@@ -20,6 +20,10 @@ const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
 const caAxes = db.caAxes;
 const caSections = db.caSections;
 
+const recupEtatFinancierAnalytique = require('../../../Middlewares/Administration/EtatFinancier');
+const getEtatFinancierAnalytiqueComplet = recupEtatFinancierAnalytique.getEtatFinancierAnalytiqueComplet;
+const getDetailLigneEtatFinancierAnalytique = recupEtatFinancierAnalytique.getDetailLigneEtatFinancierAnalytique;
+
 const fonctionUpdateBalanceSoldAnalytique = require('../../../Middlewares/UpdateSolde/updateBalanceAnalytique');
 const updateSoldAnalytiqueGlobal = fonctionUpdateBalanceSoldAnalytique.updateSoldAnalytiqueGlobal;
 
@@ -1047,5 +1051,100 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ msg: 'Erreur génération PDF' });
+    }
+}
+
+exports.getEtatFinancierAnalytique = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, id_etat } = req.body;
+        // if (!id_etat) {
+        //   return res.json({ state: false, message: 'Tableau non trouvé' });
+        // }
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Compte non trouvé' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Dossier non trouvé' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: ('Exercice non trouvé') });
+        }
+
+        const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, id_etat);
+
+        const rubriqueExterneEvcpData = (await rubriqueExternesEvcpAnalytiques.findAll({
+            where: {
+                id_dossier: Number(id_dossier),
+                id_exercice: Number(id_exercice),
+                id_compte: Number(id_compte)
+            },
+            include: [
+                {
+                    model: ajustemenExternesAnalytiques,
+                    as: 'ajusts',
+                    attributes: ['id', 'id_compte', 'id_dossier', 'id_exercice', 'id_etat', 'id_rubrique', 'nature', 'motif', 'montant'],
+                    required: false,
+                    where: {
+                        id_dossier: Number(id_dossier),
+                        id_exercice: Number(id_exercice),
+                        id_compte: Number(id_compte)
+                    }
+                },
+            ],
+            order: [['ordre', 'ASC']]
+        })).map(r => {
+            const rub = r.toJSON();
+
+            rub.ajusts = rub.ajusts.filter(a => a.id_etat === rub.id_etat);
+            rub.id = Number(rub.id);
+            rub.id_compte = Number(rub.id_compte);
+            rub.id_dossier = Number(rub.id_dossier);
+            rub.id_exercice = Number(rub.id_exercice);
+            return rub;
+        });
+
+        const regrouped = {
+            BILAN_ACTIF: data.filter(el => el.id_etat === 'BILAN_ACTIF'),
+            BILAN_PASSIF: data.filter(el => el.id_etat === 'BILAN_PASSIF'),
+            CRN: data.filter(el => el.id_etat === 'CRN'),
+            CRF: data.filter(el => el.id_etat === 'CRF'),
+            TFTD: data.filter(el => el.id_etat === 'TFTD'),
+            TFTI: data.filter(el => el.id_etat === 'TFTI'),
+            EVCP: rubriqueExterneEvcpData
+        }
+
+        return res.json({
+            liste: regrouped,
+            state: true,
+            message: "Récupéré avec succès"
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+exports.getEtatFinancierAnalytiqueDetail = async (req, res) => {
+    try {
+        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable } = req.body;
+        if (!id_etat) {
+            return res.json({ state: false, message: 'Tableau non trouvé' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Dossier non trouvé' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: 'Exercice non trouvé' });
+        }
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Compte non trouvé' });
+        }
+        if (!id_rubrique) {
+            return res.json({ state: false, message: 'Rubrique non trouvé' });
+        }
+        const data = await getDetailLigneEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable);
+        return res.json({ state: true, detail: data });
+    } catch (error) {
+        console.log(error);
     }
 }
