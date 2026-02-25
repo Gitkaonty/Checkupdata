@@ -390,10 +390,13 @@ export default function SaisieComponent() {
 
         if (type === 'modification' && selectedRows.length > 0) {
             const selectedJournalId = selectedRows[0].id_journal;
-            const codeJournal = listeCodeJournaux.find(cj => cj.id === selectedJournalId);
+            const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
 
             if (codeJournal && codeJournal.type === 'RAN') {
                 return toast.error('Impossible de modifier une écriture de type RAN');
+            }
+            if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
+                return toast.error("Impossible de modifier une écriture d'immobilisation");
             }
         }
 
@@ -555,10 +558,13 @@ export default function SaisieComponent() {
     const handleOpenDialogConfirmDeleteSaisie = () => {
         if (selectedRows.length > 0) {
             const selectedJournalId = selectedRows[0].id_journal;
-            const codeJournal = listeCodeJournaux.find(cj => cj.id === selectedJournalId);
+            const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
 
             if (codeJournal && codeJournal.type === 'RAN') {
                 return toast.error('Impossible de supprimer une écriture de type RAN');
+            }
+            if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
+                return toast.error("Impossible de supprimer une écriture d'immobilisation");
             }
         }
         setOpenDialogDeleteSaisie(true);

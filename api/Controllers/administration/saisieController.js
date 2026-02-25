@@ -546,6 +546,8 @@ exports.generateImmoEcritures = async (req, res) => {
         if (!exo) return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
         if (!dossier) return res.status(404).json({ state: false, msg: 'Dossier introuvable' });
 
+        const longeurCompte = dossier?.longcomptestd || dossier?.longcompteaux;
+
         const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
         if (!exoFin || isNaN(exoFin.getTime())) {
             return res.status(400).json({ state: false, msg: 'date_fin exercice invalide' });
@@ -721,35 +723,36 @@ exports.generateImmoEcritures = async (req, res) => {
         const ensureCompte = async (compteNum, libelle) => {
             const compte = String(compteNum || '').trim();
             if (!compte) return null;
+            const compteFormatted = compte.toString().padEnd(longeurCompte, "0").slice(0, longeurCompte)
 
             let row = await db.dossierplancomptable.findOne({
-                where: { id_compte: compteId, id_dossier: fileId, compte },
+                where: { id_compte: compteId, id_dossier: fileId, compte: compteFormatted },
             });
             if (!row) {
                 // Créer le compte avec le libellé fourni
                 row = await db.dossierplancomptable.create({
                     id_compte: compteId,
                     id_dossier: fileId,
-                    compte,
-                    libelle: libelle || `Compte ${compte}`,
+                    compte: compteFormatted,
+                    libelle: libelle || `Compte ${compteFormatted}`,
                     nature: 'General',
                     typetier: 'general',
-                    baseaux: compte,
+                    baseaux: compteFormatted,
                     pays: 'Madagascar',
                 });
                 await db.sequelize.query(
                     `UPDATE dossierplancomptables SET baseaux_id = id WHERE id = :id`,
                     { replacements: { id: row.id }, type: db.Sequelize.QueryTypes.UPDATE }
                 );
-                console.log(`[IMMO][ECRITURES][GENERATE] Compte créé: ${compte} - ${libelle}`);
-            } else if (libelle && (!row.libelle || row.libelle.trim() === '' || row.libelle === `Compte ${compte}`)) {
+                console.log(`[IMMO][ECRITURES][GENERATE] Compte créé: ${compteFormatted} - ${libelle}`);
+            } else if (libelle && (!row.libelle || row.libelle.trim() === '' || row.libelle === `Compte ${compteFormatted}`)) {
                 // Mettre à jour le libellé si le compte existe mais n'a pas de libellé ou a un libellé générique
                 await db.dossierplancomptable.update(
                     { libelle: libelle },
                     { where: { id: row.id } }
                 );
                 row.libelle = libelle; // Mettre à jour l'objet local
-                console.log(`[IMMO][ECRITURES][GENERATE] Libellé du compte mis à jour: ${compte} - ${libelle}`);
+                console.log(`[IMMO][ECRITURES][GENERATE] Libellé du compte mis à jour: ${compteFormatted} - ${libelle}`);
             }
             return row;
         };
@@ -1079,6 +1082,7 @@ exports.generateImmoEcritures = async (req, res) => {
                     db.journals.create({
                         ...common,
                         id_numcpt: rowCharge.id,
+                        id_numcptcentralise: id_numcptcentralise_charge,
                         debit: montantTotal,
                         credit: 0,
                         comptegen: compteGenCharge,
@@ -1094,7 +1098,8 @@ exports.generateImmoEcritures = async (req, res) => {
                         comptegen: compteGenAmort,
                         compteaux: compteAuxAmort,
                         libellecompte: libelleGenAmort,
-                        libelleaux: libelleAuxAmort
+                        libelleaux: libelleAuxAmort,
+                        id_numcptcentralise: id_numcptcentralise_amort
                     }),
                 ]);
 
@@ -2269,6 +2274,7 @@ exports.modificationJournal = async (req, res) => {
                 num_facture: row.num_facture,
                 montant_devise: row.montant_devise || 0,
                 dateecriture: dateecriture,
+                datesaisie: new Date(),
                 id_numcptcentralise,
                 libelle: row.libelle || '',
                 piece: row.piece || '',
@@ -2805,13 +2811,35 @@ exports.listDetailsImmo = async (req, res) => {
         const compteId = Number(req.query?.compteId);
         const exerciceId = Number(req.query?.exerciceId);
         const pcId = req.query?.pcId ? Number(req.query.pcId) : null;
+
         if (!fileId || !exerciceId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
 
-        // Si pcId est fourni, on filtre par pc_id (ID du plan comptable)
-        // Sinon on filtre par id_compte (ID du compte utilisateur)
-        const whereClause = pcId
+        const exerciceData = await db.exercices.findByPk(exerciceId);
+
+        if (!exerciceData) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+
+        const date_debut_exercice = exerciceData.date_debut;
+
+        const autresExercices = await db.exercices.findAll({
+            attributes: ['id'],
+            where: {
+                id_dossier: fileId,
+                id_compte: compteId,
+                id: { [Op.ne]: exerciceId }
+            }
+        });
+
+        const autresExerciceIds = autresExercices.map(e => e.id);
+
+        if (!autresExerciceIds.length) {
+            autresExerciceIds.push(0);
+        }
+
+        const whereCompte = pcId
             ? 'AND d.pc_id = :pcId'
             : (compteId ? 'AND d.id_compte = :compteId' : '');
 
@@ -2819,16 +2847,31 @@ exports.listDetailsImmo = async (req, res) => {
             SELECT d.*
             FROM details_immo d
             WHERE d.id_dossier = :fileId
-              AND d.id_exercice = :exerciceId
-              ${whereClause}
+            ${whereCompte}
+            AND (
+                d.id_exercice = :exerciceId
+                OR (
+                    d.id_exercice IN (:autresExerciceIds)
+                    AND d.date_acquisition < :dateDebutExercice
+                )
+            )
             ORDER BY d.id ASC
         `;
+
         const rows = await db.sequelize.query(sql, {
-            replacements: { fileId, compteId, exerciceId, pcId },
+            replacements: {
+                fileId,
+                compteId,
+                exerciceId,
+                pcId,
+                autresExerciceIds,
+                dateDebutExercice: date_debut_exercice
+            },
             type: db.Sequelize.QueryTypes.SELECT,
         });
-        console.log('[IMMO][DETAILS][LIST] Query params:', { fileId, compteId, exerciceId, pcId }, 'Results:', rows.length);
+
         return res.json({ state: true, list: rows || [] });
+
     } catch (err) {
         console.error('[IMMO][DETAILS][LIST] error:', err);
         return res.status(500).json({ state: false, msg: 'Erreur serveur' });
@@ -3533,6 +3576,7 @@ exports.addJournal = async (req, res) => {
                 credit: row.credit === "" ? 0 : row.credit,
                 montant_devise: row.montant_devise || 0,
                 dateecriture: dateecriture,
+                datesaisie: new Date(),
 
                 id_numcptcentralise,
                 libelle: row.libelle || '',
@@ -3731,7 +3775,8 @@ exports.addEcriture = async (req, res) => {
             compteaux: compteAux_pc,
             libelleaux: libelleAux_pc,
             libellecompte: libelleGen_pc,
-            lettrage: nouveauLettrage
+            lettrage: nouveauLettrage,
+            datesaisie: new Date(),
         }, { transaction });
 
         await journals.create({
@@ -3753,7 +3798,8 @@ exports.addEcriture = async (req, res) => {
             compteaux: compteAux_cp,
             libelleaux: libelleAux_cp,
             libellecompte: libelleGen_cp,
-            lettrage: nouveauLettrage
+            lettrage: nouveauLettrage,
+            datesaisie: new Date(),
         }, { transaction });
 
         await transaction.commit();
