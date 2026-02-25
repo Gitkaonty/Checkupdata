@@ -1,6 +1,9 @@
 const db = require('../../Models');
-const ExcelJS = require('exceljs');
+require('dotenv').config();
 const { Op } = require('sequelize');
+const path = require('path');
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const journals = db.journals;
 const dossierplancomptable = db.dossierplancomptable;
@@ -74,6 +77,11 @@ async function exportGrandLivreTableExcel(
 
   const ws = workbook.addWorksheet('Grand Livre');
 
+  const logoId = workbook.addImage({
+    filename: logoPath,
+    extension: 'png',
+  });
+
   // === Colonnes ===
   ws.columns = [
     { key: 'date', width: 12 },
@@ -88,20 +96,27 @@ async function exportGrandLivreTableExcel(
 
   // === TITRE GLOBAL centré sur les colonnes du tableau ===
 
-  ws.mergeCells('A1:E1');
+  ws.mergeCells('A1:H1');
   const titleCell = ws.getCell('A1');
   titleCell.value = 'GRAND LIVRE';
   titleCell.font = { bold: true, size: 16 };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
+  ws.addImage(logoId, {
+    tl: { x: 10, y: 5 },
+    ext: { width: 55, height: 55 },
+    editAs: 'absolute',
+  });
+
   // ====== Ligne 2 : Dossier centré sous le titre ======
-  ws.mergeCells('A2:E2');
+  ws.mergeCells('A2:H2');
   const dossierCell = ws.getCell('A2');
   dossierCell.value = `Dossier : ${dossierName || ''}`;
-  dossierCell.font = { italic: true, bold: true, size: 12, color: { argb: 'FF555555' } };
+  dossierCell.font = { italic: true, bold: true, size: 14, color: { argb: 'FF555555' } };
   dossierCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // ====== Ligne 3 : Période alignée à gauche ======
+  ws.mergeCells('A3:H3');
   const periodeCell = ws.getCell('A3');
   periodeCell.value = `Période du : ${fmtDate(exStart) || ''} au ${fmtDate(exEnd) || ''}`;
   periodeCell.font = { italic: true, size: 12, color: { argb: 'FF555555' } };
@@ -112,7 +127,7 @@ async function exportGrandLivreTableExcel(
 
 
   // === ENTÊTE DU TABLEAU ===
-  const header = ['Date', 'Jal', 'Pièce', 'Let', 'Libellé', 'Débit', 'Crédit', 'Solde'];
+  const header = ['Date', 'Jrnl', 'Pièce', 'Let', 'Libellé', 'Débit', 'Crédit', 'Solde'];
   const headerRow = ws.addRow(header);
   headerRow.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -208,7 +223,7 @@ async function exportGrandLivreTableExcel(
       const cell = subTotalRow.getCell(col);
       cell.font = { bold: true };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
-      cell.alignment = { horizontal: 'right' };
+      // cell.alignment = { horizontal: 'right' };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
         bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
@@ -247,10 +262,9 @@ async function exportGrandLivreTableExcel(
   });
 
   // Alignement à droite pour les montants
-  ['F', 'G', 'H'].forEach((col) => {
-    ws.getColumn(col).alignment = { horizontal: 'right' };
-  });
+  // ['F', 'G', 'H'].forEach((col) => {
+  //   ws.getColumn(col).alignment = { horizontal: 'right' };
+  // });
 }
-
 
 module.exports = { exportGrandLivreTableExcel };

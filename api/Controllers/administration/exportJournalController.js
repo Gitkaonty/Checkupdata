@@ -1,12 +1,21 @@
 const db = require("../../Models");
+require('dotenv').config();
 const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
-const Sequelize = require('sequelize');
+
+const fs = require('fs');
+const path = require('path');
+
 const dossiers = db.dossiers;
 const exercices = db.exercices;
 const userscomptes = db.userscomptes;
 const { generateJournalContent } = require('../../Middlewares/Journal/JournalGeneratePdf');
 const { exportJournalTableExcel } = require('../../Middlewares/Journal/JournalGenerateExcel');
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
+
+const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+const logoImage = `data:image/png;base64,${logoBase64}`;
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -28,7 +37,6 @@ module.exports = {
 
       const dossier = await dossiers.findByPk(fileId);
       const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
 
       const { buildTable, list } = await generateJournalContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin);
       if (!list || list.length === 0) {
@@ -44,23 +52,11 @@ module.exports = {
         }
       };
 
-      const headerSub = () => {
-        const parts = [
-          `Dossier: ${dossier?.dossier || ''}`,
-          `${compte?.nom || ''}`,
-          `Exercice: ${formatDate(exercice?.date_debut)} - ${formatDate(exercice?.date_fin)}`
-        ];
-        if (Array.isArray(journalCodes) && journalCodes.length > 0) parts.push(`Journaux: ${journalCodes.join(', ')}`);
-        if (dateDebut) parts.push(`Du: ${formatDate(dateDebut)}`);
-        if (dateFin) parts.push(`Au: ${formatDate(dateFin)}`);
-        return parts.join('  |  ');
-      };
-
       // Build table from middleware then override widths and layout
       const built = generateJournalContent ? (await generateJournalContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin)).buildTable(list)[0] : null;
       const baseTable = (built && built.table) ? built.table : (buildTable(list)[0]?.table);
       const tableBody = baseTable?.body || [];
-      const fixedWidths = ['10%','5%','10%','*','12%','5%','5%','12%','12%'];
+      const fixedWidths = ['10%', '5%', '10%', '*', '12%', '5%', '5%', '12%', '12%'];
 
       const docDefinition = {
         pageSize: 'A4',
@@ -69,7 +65,7 @@ module.exports = {
         defaultStyle: { font: 'Helvetica', fontSize: 8 },
         content: [
           { text: 'JOURNAL COMPTABLE', style: 'header', alignment: 'center', margin: [0, 0, 0, 8] },
-          { text: `Dossier : ${dossier?.dossier || ''}`, alignment: 'center', fontSize: 15,bold: true, margin: [0, 0, 0, 5] },
+          { text: `Dossier : ${dossier?.dossier || ''}`, alignment: 'center', fontSize: 15, bold: true, margin: [0, 0, 0, 5] },
           // { text: `Type Journaux : ${Array.isArray(journalCodes) && journalCodes.length ? journalCodes.join(', ') : 'Tous'}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 3] },
           { text: `Période du : ${formatDate(dateDebut || exercice?.date_debut)} au ${formatDate(dateFin || exercice?.date_fin)}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 15] },
           {
@@ -87,6 +83,18 @@ module.exports = {
             }
           }
         ],
+        background: function (currentPage, pageSize) {
+          if (currentPage === 1) {
+            return [
+              {
+                image: logoImage,
+                width: 60,
+                absolutePosition: { x: 10, y: 10 }
+              }
+            ];
+          }
+          return [];
+        },
         styles: {
           header: { fontSize: 18, bold: true, font: 'Helvetica' },
           subheader: { fontSize: 10, bold: true, font: 'Helvetica' },
@@ -115,7 +123,7 @@ module.exports = {
 
       const dossier = await dossiers.findByPk(fileId);
       const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const compte = await userscomptes.findByPk(compteId, { attributes: ['id', 'nom'], raw: true });
 
       const workbook = new ExcelJS.Workbook();
       await exportJournalTableExcel(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin, workbook, dossier?.dossier, compte?.nom, exercice?.date_debut, exercice?.date_fin);
