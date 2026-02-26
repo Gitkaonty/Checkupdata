@@ -2,6 +2,9 @@ const db = require("../../Models");
 require('dotenv').config();
 const path = require('path');
 
+const recupEtatFinancierAnalytique = require('../../Middlewares/Administration/EtatFinancierAnalytique');
+const getEtatFinancierAnalytiqueComplet = recupEtatFinancierAnalytique.getEtatFinancierAnalytiqueComplet;
+
 const rubriquesExternesAnalytiques = db.rubriquesExternesAnalytiques;
 const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
 
@@ -56,9 +59,10 @@ const getRubriqueExterneAnalytiqueData = async (id_compte, id_dossier, id_exerci
     })
 }
 
-const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const bilanActifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
-    const bilanPassifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
+    const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
 
     const logoId = workbook.addImage({
         filename: logoPath,
@@ -190,8 +194,9 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
     });
 }
 
-const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const crnData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'CRN');
+const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const crnData = data.filter(val => val.id_etat === 'CRN');
     const sheetCrn = workbook.addWorksheet('Compte de résultats par nature');
 
     const logoId = workbook.addImage({
@@ -254,8 +259,9 @@ const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     }
 }
 
-const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const crfData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'CRF');
+const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const crfData = data.filter(val => val.id_etat === 'CRF');
     const sheetCrf = workbook.addWorksheet('Compte de résultats par fonction');
 
     const logoId = workbook.addImage({
@@ -318,8 +324,9 @@ const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     }
 }
 
-const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const tftiData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'TFTI');
+const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const tftiData = data.filter(val => val.id_etat === 'TFTI');
     const sheetTfti = workbook.addWorksheet('TFTI Méth. Indirecte');
 
     const logoId = workbook.addImage({
@@ -378,8 +385,9 @@ const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     sheetTfti.getColumn(2).numFmt = '#,##0.00';
 }
 
-const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const tftdData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'TFTD');
+const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const tftdData = data.filter(val => val.id_etat === 'TFTD');
     const sheetTftd = workbook.addWorksheet('TFTD Méth. Directe');
 
     const logoId = workbook.addImage({
