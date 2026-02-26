@@ -292,21 +292,21 @@ exports.addOrUpdateSections = async (req, res) => {
         }
 
         // Option : pourcentage saisi à la main => le total doit être exactement 100%
-        if (recalcPourcentages === 'non') {
-            if (Math.abs(cumulPourcentage - 100) > 0.01) {
-                resData.state = false;
-                resData.msg = `Le total des pourcentages doit être égal à 100%. Total actuel: ${cumulPourcentage.toFixed(2)}%`;
-                return res.json(resData);
-            }
-        } else {
-            // Comportement actuel (si aucun choix explicitement donné)
-            if (cumulPourcentage > 100) {
-                resData.state = false;
-                const valueToDisplay = cumulPourcentage - 100;
-                resData.msg = `La valeur du pourcentage est augmenté de ${valueToDisplay}%`;
-                return res.json(resData);
-            }
-        }
+        // if (recalcPourcentages === 'non') {
+        //     if (Math.abs(cumulPourcentage - 100) > 0.01) {
+        //         resData.state = false;
+        //         resData.msg = `Le total des pourcentages doit être égal à 100%. Total actuel: ${cumulPourcentage.toFixed(2)}%`;
+        //         return res.json(resData);
+        //     }
+        // } else {
+        //     // Comportement actuel (si aucun choix explicitement donné)
+        //     if (cumulPourcentage > 100) {
+        //         resData.state = false;
+        //         const valueToDisplay = cumulPourcentage - 100;
+        //         resData.msg = `La valeur du pourcentage est augmenté de ${valueToDisplay}%`;
+        //         return res.json(resData);
+        //     }
+        // }
 
         if (testIfExist.length === 0) {
             const sectionAdded = await caSections.create({
