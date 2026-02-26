@@ -11,8 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.3",
+    "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
+    "@fontsource/roboto": "^5.2.10",
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
     "@fortawesome/free-regular-svg-icons": "^6.5.1",
     "@fortawesome/free-solid-svg-icons": "^6.5.1",
@@ -21,7 +22,7 @@
     "@mui/icons-material": "^5.15.7",
     "@mui/joy": "^5.0.0-beta.28",
     "@mui/lab": "^5.0.0-alpha.165",
-    "@mui/material": "^5.15.7",
+    "@mui/material": "^5.13.7",
     "@mui/material-next": "^6.0.0-alpha.123",
     "@mui/x-charts": "^6.19.4",
     "@mui/x-data-grid": "^6.19.3",

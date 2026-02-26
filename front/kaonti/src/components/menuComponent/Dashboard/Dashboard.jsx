@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack } from '@mui/material';
+import { Typography, Stack, TextField, InputAdornment } from '@mui/material';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
@@ -21,6 +21,10 @@ import { jwtDecode } from 'jwt-decode';
 import toast from 'react-hot-toast';
 import VirtualTableJournalAttente from '../../componentsTools/Dashboard/VirtualTableJournalAttente';
 import usePermission from '../../../hooks/usePermission';
+import KpiCard from '../../componentsTools/Dashboard/KpiCard';
+import KpiCardDouble from '../../componentsTools/Dashboard/KpiCardDouble';
+import { FiShoppingCart, FiUsers, FiCreditCard, FiArchive } from "react-icons/fi";
+import { FiSearch } from "react-icons/fi";
 
 const columns = [
   {
@@ -43,13 +47,13 @@ const columns = [
     label: 'Jounal',
     minWidth: 50,
   },
-  {
-    id: 'piece',
-    label: 'Pièce',
-    minWidth: 120,
-    align: 'left',
-    format: (value) => value.toLocaleString('fr-FR'),
-  },
+  // {
+  //   id: 'piece',
+  //   label: 'Pièce',
+  //   minWidth: 120,
+  //   align: 'left',
+  //   format: (value) => value.toLocaleString('fr-FR'),
+  // },
   {
     id: 'libelle',
     label: 'Libellé',
@@ -79,6 +83,7 @@ const gridSpacing = 1;
 
 export default function DashboardComponent() {
   const { canAdd, canModify, canDelete, canView } = usePermission();
+  const [searchText, setSearchText] = useState("");
 
   const [fileInfos, setFileInfos] = useState('');
   const [noFile, setNoFile] = useState(false);
@@ -154,6 +159,19 @@ export default function DashboardComponent() {
   const [evolutionTresorerieCaisseN1, setEvolutionTresorerieCaisseN1] = useState('');
 
   const [journalData, setJournalData] = useState([]);
+
+  const filteredData = useMemo(() => {
+    if (!searchText) return journalData;
+
+    const lower = searchText.toLowerCase();
+    return journalData.filter((row) => {
+      return columns.some((col) => {
+        const value = row[col.id];
+        if (value === null || value === undefined) return false;
+        return value.toString().toLowerCase().includes(lower);
+      });
+    });
+  }, [searchText, journalData, columns]);
 
   const GetListeDossier = (id) => {
     axios.get(`/home/FileInfos/${id}`).then((response) => {
@@ -452,183 +470,227 @@ export default function DashboardComponent() {
               </Stack>
 
               <Stack
-                alignItems={'center'}
-                direction={'row'}
-                width={'100%'}
-                spacing={gridSpacing}
+                sx={{
+                  height: { xs: "100vh", md: 405 },
+                  width: "100%",
+                }}
+                direction={{ xs: "column", md: "row" }}
+                spacing={0.5}
               >
+
+                <KpiCardDouble
+                  resultatChiffreAffaireN={resultatChiffreAffaireN}
+                  resultatChiffreAffaireN1={resultatChiffreAffaireN1}
+                  variationChiffreAffaireN={variationChiffreAffaireN}
+                  resultatN={resultatN}
+                  resultatN1={resultatN1}
+                  variationResultatN={variationResultatN}
+                  devise={deviseParDefaut}
+                  evolutionResultatN={evolutionResultatN}
+                  evolutionChiffreAffaireN={evolutionChiffreAffaireN}
+                />
+
                 <Stack
-                  style={{
-                    backgroundColor: '#f4f6f7ff',
+                  sx={{
+                    width: { xs: "100%", md: "50%" },
+                    height: { xs: "calc(100vh - 200px)", md: "100%" },
                   }}
-                  boxShadow={1}
-                  borderRadius={0}
-                  width={'65%'}
-                  height={gridHeight}
+                  spacing={0.5}
                 >
                   <Stack
-                    width="100%"
-                    height="100%"
-                    direction={'column'}
-                    spacing={1}
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={0.5}
+                    sx={{ flex: 1 }}
                   >
-                    <Stack
-                      width="100%"
-                      height="100%"
-                      direction={'row'}
-                      justifyContent="space-between"
-                      spacing={1}
-                    >
-                      <LineChartComponent
-                        xAxis={xAxis}
-                        dataN={chiffresAffairesNGraph}
-                        dataN1={chiffresAffairesN1Graph}
-                        label={'Chiffre d\'affaires'}
-                      />
-
-                      <LineChartComponent
-                        xAxis={xAxis}
-                        dataN={margeBruteNGraph}
-                        dataN1={margeBruteN1Graph}
-                        label={'Marges brutes'}
-                      />
-
-                    </Stack>
-                    <Stack
-                      width="100%"
-                      height="100%"
-                      direction={'row'}
-                      justifyContent="space-between"
-                      spacing={1}
-                    >
-                      <LineChartComponent
-                        xAxis={xAxis}
-                        dataN={tresorerieBanqueNGraph}
-                        dataN1={tresorerieBanqueN1Graph}
-                        label={'Trésoreries (Banques)'}
-                      />
-
-                      <LineChartComponent
-                        xAxis={xAxis}
-                        dataN={tresorerieCaisseNGraph}
-                        dataN1={tresorerieCaisseN1Graph}
-                        label={'Trésoreries (Caisses)'}
-                      />
-                    </Stack>
-                  </Stack>
-                </Stack>
-
-                <Stack
-                  alignItems={'center'}
-                  direction={'column'}
-                  justifyContent={'space-between'}
-                  width={'35%'}
-                  height={gridHeight}
-                  spacing={gridSpacing}
-                >
-                  <Stack
-                    alignItems={'center'}
-                    direction={'row'}
-                    width={'100%'}
-                    height={'33.3%'}
-                    spacing={gridSpacing}
-                  >
-                    <DashboardCard
-                      text={'Résultat'}
-                      type={'total'}
-                      montant={'$5000'}
-                      backgroundColor={'#289c70'}
-                      resultatN={resultatN}
-                      resultatN1={resultatN1}
-                      variationN={variationResultatN}
-                      variationN1={variationResultatN1}
-                      evolutionN={evolutionResultatN}
-                      evolutionN1={evolutionResultatN1}
+                    <KpiCard
+                      title="Dépenses achats"
+                      montantN={resultatDepenseAchatN}
+                      montantN1={resultatDepenseAchatN1}
+                      variation={variationDepenseAchatN}
+                      evolution={evolutionDepenseAchatN}
                       devise={deviseParDefaut}
+                      Icon={<FiShoppingCart size={24} color="white" />}
                     />
-                    <DashboardCard
-                      text={'Chiffre d\'affaires'}
-                      type={'comparaison'}
-                      pourcentage={'10'}
-                      backgroundColor={'#289c70'}
-                      resultatN={resultatChiffreAffaireN}
-                      resultatN1={resultatChiffreAffaireN1}
-                      variationN={variationChiffreAffaireN}
-                      variationN1={variationChiffreAffaireN1}
-                      evolutionN={evolutionChiffreAffaireN}
-                      evolutionN1={evolutionChiffreAffaireN1}
+                    <KpiCard
+                      title="Dépenses salariales"
+                      montantN={resultatDepenseSalarialeN}
+                      montantN1={resultatDepenseSalarialeN1}
+                      variation={variationDepenseSalarialeN}
+                      evolution={evolutionDepenseSalarialeN}
                       devise={deviseParDefaut}
+                      Icon={<FiUsers size={24} color="white" />}
                     />
                   </Stack>
+
                   <Stack
-                    alignItems={'center'}
-                    direction={'row'}
-                    width={'100%'}
-                    height={'33.3%'}
-                    spacing={gridSpacing}
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={0.5}
+                    sx={{ flex: 1 }}
                   >
-                    <DashboardCard
-                      text={'Dépenses (Achats)'}
-                      type={'comparaison'}
-                      backgroundColor={'#c95e42'}
-                      resultatN={resultatDepenseAchatN}
-                      resultatN1={resultatDepenseAchatN1}
-                      variationN={variationDepenseAchatN}
-                      variationN1={variationDepenseAchatN1}
-                      evolutionN={evolutionDepenseAchatN}
-                      evolutionN1={evolutionDepenseAchatN1}
+                    <KpiCard
+                      title="Trésoreries banque"
+                      montantN={resultatTresorerieBanqueN}
+                      montantN1={resultatTresorerieBanqueN1}
+                      variation={variationTresorerieBanqueN}
+                      evolution={evolutionTresorerieBanqueN}
                       devise={deviseParDefaut}
+                      Icon={<FiCreditCard size={24} color="white" />}
                     />
-                    <DashboardCard
-                      text={'Dépenses salariales'}
-                      type={'comparaison'}
-                      backgroundColor={'#c95e42'}
-                      resultatN={resultatDepenseSalarialeN}
-                      resultatN1={resultatDepenseSalarialeN1}
-                      variationN={variationDepenseSalarialeN}
-                      variationN1={variationDepenseSalarialeN1}
-                      evolutionN={evolutionDepenseSalarialeN}
-                      evolutionN1={evolutionDepenseSalarialeN1}
+                    <KpiCard
+                      title="Trésoreries caisse"
+                      montantN={resultatTresorerieCaisseN}
+                      montantN1={resultatTresorerieCaisseN1}
+                      variation={variationTresorerieCaisseN}
+                      evolution={evolutionTresorerieCaisseN}
                       devise={deviseParDefaut}
-                    />
-                  </Stack>
-                  <Stack
-                    alignItems={'center'}
-                    direction={'row'}
-                    width={'100%'}
-                    height={'33.3%'}
-                    spacing={gridSpacing}
-                  >
-                    <DashboardCard
-                      text={'Trésoreries (Banques)'}
-                      type={'comparaison'}
-                      backgroundColor={'#407dc9'}
-                      resultatN={resultatTresorerieBanqueN}
-                      resultatN1={resultatTresorerieBanqueN1}
-                      variationN={variationTresorerieBanqueN}
-                      variationN1={variationTresorerieBanqueN1}
-                      evolutionN={evolutionTresorerieBanqueN}
-                      evolutionN1={evolutionTresorerieBanqueN1}
-                      devise={deviseParDefaut}
-                    />
-                    <DashboardCard
-                      text={'Trésoreries (Caisse)'}
-                      type={'comparaison'}
-                      backgroundColor={'#407dc9'}
-                      resultatN={resultatTresorerieCaisseN}
-                      resultatN1={resultatTresorerieCaisseN1}
-                      variationN={variationTresorerieCaisseN}
-                      variationN1={variationTresorerieCaisseN1}
-                      evolutionN={evolutionTresorerieCaisseN}
-                      evolutionN1={evolutionTresorerieCaisseN1}
-                      devise={deviseParDefaut}
+                      Icon={<FiArchive size={24} color="white" />}
                     />
                   </Stack>
                 </Stack>
               </Stack>
 
-              <Typography variant='h5' sx={{ color: "black" }} align='left'>Comptes en attente</Typography>
-              <VirtualTableJournalAttente tableHeader={columns} tableRow={journalData} />
+              <Stack
+                width="100%"
+                height="100%"
+                direction={{ xs: "column", md: "row" }}
+                justifyContent="space-between"
+                spacing={2}
+              >
+                {/* COLONNE GAUCHE */}
+                <Stack
+                  width={{ xs: "100%", md: "55%" }}
+                  direction="column"
+                  spacing={2}
+                >
+
+                  {/* Card Graph */}
+                  <Stack
+                    sx={{
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      p: 2
+                    }}
+                    height={{ xs: 300, md: 500 }}
+                  >
+                    <LineChartComponent
+                      xAxis={xAxis}
+                      dataN={chiffresAffairesNGraph}
+                      dataN1={chiffresAffairesN1Graph}
+                      label={"Chiffre d'affaires"}
+                    />
+                  </Stack>
+
+                  {/* Card Table */}
+                  <Stack
+                    sx={{
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      p: 2
+                    }}
+                    height={{ xs: 416, md: 535 }}
+                  >
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mb={2}
+                    >
+                      <Typography variant="h5" sx={{ color: "black" }}>
+                        Comptes en attente
+                      </Typography>
+
+                      <TextField
+                        size="small"
+                        placeholder="Rechercher..."
+                        variant="outlined"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        sx={{
+                          bgcolor: "#F5F5F5",
+                          borderRadius: 2,
+                          width: { xs: "40%", md: "250px" },
+                          "& .MuiOutlinedInput-root": {
+                            height: 36,
+                            paddingRight: 0,
+                          },
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#E0E0E0",
+                          },
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <FiSearch color="#757575" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Stack>
+
+                    <VirtualTableJournalAttente
+                      tableHeader={columns}
+                      tableRow={filteredData}
+                    />
+                  </Stack>
+
+                </Stack>
+
+                {/* COLONNE DROITE */}
+                <Stack
+                  width={{ xs: "100%", md: "45%" }}
+                  direction="column"
+                  spacing={2}
+                >
+                  <Stack
+                    height={{ xs: 250, md: 339 }}
+                    sx={{
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      p: 2
+                    }}
+                  >
+                    <LineChartComponent
+                      xAxis={xAxis}
+                      dataN={margeBruteNGraph}
+                      dataN1={margeBruteN1Graph}
+                      label={"Marges brutes"}
+                    />
+                  </Stack>
+
+                  <Stack
+                    height={{ xs: 250, md: 339 }}
+                    sx={{
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      p: 2
+                    }}
+                  >
+                    <LineChartComponent
+                      xAxis={xAxis}
+                      dataN={tresorerieBanqueNGraph}
+                      dataN1={tresorerieBanqueN1Graph}
+                      label={"Trésoreries (Banques)"}
+                    />
+                  </Stack>
+
+                  <Stack
+                    height={{ xs: 250, md: 339 }}
+                    sx={{
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      p: 2
+                    }}
+                  >
+                    <LineChartComponent
+                      xAxis={xAxis}
+                      dataN={tresorerieCaisseNGraph}
+                      dataN1={tresorerieCaisseN1Graph}
+                      label={"Trésoreries (Caisses)"}
+                    />
+                  </Stack>
+                </Stack>
+              </Stack>
+
             </Stack>
           </TabPanel>
         </TabContext>
