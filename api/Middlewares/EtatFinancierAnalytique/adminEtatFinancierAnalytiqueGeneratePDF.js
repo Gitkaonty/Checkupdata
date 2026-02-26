@@ -1,7 +1,9 @@
 const db = require("../../Models");
 require('dotenv').config();
 
-const rubriquesExternesAnalytiques = db.rubriquesExternesAnalytiques;
+const recupEtatFinancierAnalytique = require('../../Middlewares/Administration/EtatFinancierAnalytique');
+const getEtatFinancierAnalytiqueComplet = recupEtatFinancierAnalytique.getEtatFinancierAnalytiqueComplet;
+
 const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
 
 const formatAmount = (value) => {
@@ -13,18 +15,6 @@ const formatAmount = (value) => {
 
     return Number(value) < 0 ? `- ${str}` : str;
 };
-
-const getRubriqueExterneAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_etat) => {
-    return await rubriquesExternesAnalytiques.findAll({
-        where: {
-            id_dossier,
-            id_exercice,
-            id_compte,
-            id_etat,
-        },
-        order: [['ordre', 'ASC']]
-    })
-}
 
 const formatShortAmount = (value) => {
     if (value === null || value === undefined || isNaN(Number(value))) return "";
@@ -43,9 +33,10 @@ const formatShortAmount = (value) => {
     return `${formatted} Md`;
 };
 
-const generateBilanAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanActifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
-    const bilanPassifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+const generateBilanAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
+    const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
 
     const buildTable = (data, type) => {
         const body = [];
@@ -163,8 +154,9 @@ const generateBilanAnalytiqueContent = async (id_compte, id_dossier, id_exercice
     };
 }
 
-const generateBilanActifAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanActifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
+const generateBilanActifAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
 
     const buildTable = (data, type) => {
         const body = [];
@@ -240,8 +232,9 @@ const generateBilanActifAnalytiqueContent = async (id_compte, id_dossier, id_exe
     };
 }
 
-const generateBilanPassifAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const bilanPassifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+const generateBilanPassifAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
     const buildTable = (data, type) => {
         const body = [];
 
@@ -299,8 +292,9 @@ const generateBilanPassifAnalytiqueContent = async (id_compte, id_dossier, id_ex
     };
 }
 
-const generateCrnAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const crnData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'CRN');
+const generateCrnAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const crnData = data.filter(val => val.id_etat === 'CRN');
     const buildTable = (data) => {
         const body = [];
 
@@ -359,8 +353,9 @@ const generateCrnAnalytiqueContent = async (id_compte, id_dossier, id_exercice) 
     }
 }
 
-const generateCrfAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const crfData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'CRF');
+const generateCrfAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const crfData = data.filter(val => val.id_etat === 'CRF');
     const buildTable = (data) => {
         const body = [];
 
@@ -419,8 +414,9 @@ const generateCrfAnalytiqueContent = async (id_compte, id_dossier, id_exercice) 
     }
 }
 
-const generateTftdAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const tftdData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'TFTD');
+const generateTftdAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const tftdData = data.filter(val => val.id_etat === 'TFTD');
     const buildTable = (data) => {
         const body = [];
 
@@ -479,8 +475,9 @@ const generateTftdAnalytiqueContent = async (id_compte, id_dossier, id_exercice)
     }
 }
 
-const generateTftiAnalytiqueContent = async (id_compte, id_dossier, id_exercice) => {
-    const tftiData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'TFTI');
+const generateTftiAnalytiqueContent = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const tftiData = data.filter(val => val.id_etat === 'TFTI');
     const buildTable = (data) => {
         const body = [];
 

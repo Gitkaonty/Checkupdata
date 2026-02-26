@@ -1,7 +1,7 @@
 const db = require('../../Models');
 const recupExerciceN1 = require('../../Middlewares/Standard/recupExerciceN1');
 
-const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) => {
+const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
@@ -12,92 +12,114 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
         WITH RECURSIVE BALANCE_N AS (
             SELECT
                 MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
-                GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
-                GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
+
+                GREATEST(SUM(A.DEBIT) - SUM(A.CREDIT), 0) AS SOLDEDEBIT,
+                GREATEST(SUM(A.CREDIT) - SUM(A.DEBIT), 0) AS SOLDECREDIT,
+
                 GREATEST(
-                    SUM(J.DEBIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ) - SUM(J.CREDIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    SUM(A.DEBIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - 
+                    SUM(A.CREDIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
                     ),
                     0
                 ) AS SOLDEDEBITTRESO,
+
                 GREATEST(
-                    SUM(J.CREDIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ) - SUM(J.DEBIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    SUM(A.CREDIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - 
+                    SUM(A.DEBIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
                     ),
                     0
                 ) AS SOLDECREDITTRESO
-            FROM
-                JOURNALS J
-                LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+
+            FROM ANALYTIQUES A
+
+            JOIN JOURNALS J 
+                ON A.ID_LIGNE_ECRITURE = J.ID
+
+            JOIN CODEJOURNALS CJ 
+                ON CJ.ID = J.ID_JOURNAL 
+
             WHERE
                 J.ID_DOSSIER = :id_dossier
                 AND J.ID_EXERCICE = :id_exercice
                 AND J.ID_COMPTE = :id_compte
+
                 AND NOT EXISTS (
                     SELECT 1
                     FROM DOSSIERPLANCOMPTABLES DPC
-                    WHERE DPC.COMPTE = J.COMPTEAUX
-                    AND DPC.ID_DOSSIER = :id_dossier
-                    AND DPC.ID_COMPTE = :id_compte
-                    AND DPC.NATURE = 'Collectif'
+                    WHERE
+                        DPC.COMPTE = J.COMPTEAUX
+                        AND DPC.ID_DOSSIER = :id_dossier
+                        AND DPC.ID_COMPTE = :id_exercice
+                        AND DPC.NATURE = 'Collectif'
                 )
 
-            GROUP BY
-                J.COMPTEAUX
+                AND A.ID_AXE = :id_axe
+                AND A.ID_SECTION IN (:id_section)
+
+            GROUP BY J.COMPTEAUX
         ),
 
         -- BALANCE N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 
         BALANCE_N1 AS (
             SELECT
                 MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
-                GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
-                GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
+
+                GREATEST(SUM(A.DEBIT) - SUM(A.CREDIT), 0) AS SOLDEDEBIT,
+                GREATEST(SUM(A.CREDIT) - SUM(A.DEBIT), 0) AS SOLDECREDIT,
+
                 GREATEST(
-                    SUM(J.DEBIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ) - SUM(J.CREDIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    SUM(A.DEBIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - 
+                    SUM(A.CREDIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
                     ),
                     0
                 ) AS SOLDEDEBITTRESO,
+
                 GREATEST(
-                    SUM(J.CREDIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ) - SUM(J.DEBIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    SUM(A.CREDIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                    ) - 
+                    SUM(A.DEBIT) FILTER (
+                        WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
                     ),
                     0
                 ) AS SOLDECREDITTRESO
-            FROM
-                JOURNALS J
-                LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+
+            FROM ANALYTIQUES A
+
+            JOIN JOURNALS J 
+                ON A.ID_LIGNE_ECRITURE = J.ID
+
+            JOIN CODEJOURNALS CJ 
+                ON CJ.ID = J.ID_JOURNAL 
+
             WHERE
                 J.ID_DOSSIER = :id_dossier
                 AND J.ID_EXERCICE = :id_exercice_N1
                 AND J.ID_COMPTE = :id_compte
+
                 AND NOT EXISTS (
                     SELECT 1
                     FROM DOSSIERPLANCOMPTABLES DPC
-                    WHERE DPC.COMPTE = J.COMPTEAUX
-                    AND DPC.ID_DOSSIER = :id_dossier
-                    AND DPC.ID_COMPTE = :id_compte
-                    AND DPC.NATURE = 'Collectif'
+                    WHERE
+                        DPC.COMPTE = J.COMPTEAUX
+                        AND DPC.ID_DOSSIER = :id_dossier
+                        AND DPC.ID_COMPTE = :id_exercice_N1
+                        AND DPC.NATURE = 'Collectif'
                 )
 
-            GROUP BY
-                J.COMPTEAUX
+                AND A.ID_AXE = :id_axe
+                AND A.ID_SECTION IN (:id_section)
+
+            GROUP BY J.COMPTEAUX
         ),
 
         -- BILAN ACTIF N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N 
@@ -115,7 +137,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice
@@ -148,7 +170,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -180,7 +202,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -302,7 +324,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'BILAN_ACTIF'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -336,7 +358,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice_N1
@@ -369,7 +391,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -401,7 +423,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -523,7 +545,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'BILAN_ACTIF'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -578,7 +600,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice
@@ -611,7 +633,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -643,7 +665,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -765,7 +787,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'BILAN_PASSIF'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -799,7 +821,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice_N1
@@ -832,7 +854,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -864,7 +886,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -986,7 +1008,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'BILAN_PASSIF'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -1041,7 +1063,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice
@@ -1074,7 +1096,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1106,7 +1128,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1228,7 +1250,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'CRN'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -1262,7 +1284,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice_N1
@@ -1295,7 +1317,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1327,7 +1349,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1449,7 +1471,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'CRN'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -1504,7 +1526,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice
@@ -1537,7 +1559,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1569,7 +1591,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1691,7 +1713,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'CRF'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -1725,7 +1747,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice_N1
@@ -1758,7 +1780,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1790,7 +1812,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 ) 
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -1911,7 +1933,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'CRF'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -2032,7 +2054,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             UNION
 
             SELECT DISTINCT ID_RUBRIQUE
-            FROM AJUSTEMENTEXTERNES
+            FROM AJUSTEMENTEXTERNESANALYTIQUES
             WHERE ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
                 AND ID_EXERCICE = :id_exercice
@@ -2066,7 +2088,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                 + COALESCE(MAX(TM.MONTANT), 0)
                 + COALESCE((
                     SELECT SUM(A.MONTANT)
-                    FROM AJUSTEMENTEXTERNES A
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES A
                     WHERE A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                     AND A.ID_COMPTE = :id_compte
                     AND A.ID_DOSSIER = :id_dossier
@@ -2193,7 +2215,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'TFTD'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -2314,7 +2336,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
             SELECT DISTINCT
                 ID_RUBRIQUE
             FROM
-                AJUSTEMENTEXTERNES
+                AJUSTEMENTEXTERNESANALYTIQUES
             WHERE
                 ID_COMPTE = :id_compte
                 AND ID_DOSSIER = :id_dossier
@@ -2365,7 +2387,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         SELECT
                             SUM(A.MONTANT)
                         FROM
-                            AJUSTEMENTEXTERNES A
+                            AJUSTEMENTEXTERNESANALYTIQUES A
                         WHERE
                             A.ID_RUBRIQUE = CR.ID_RUBRIQUE
                             AND A.ID_COMPTE = :id_compte
@@ -2494,7 +2516,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
                         'motif', aj.motif,
                         'nature', aj.nature
                     ))
-                    FROM AJUSTEMENTEXTERNES aj
+                    FROM AJUSTEMENTEXTERNESANALYTIQUES aj
                     WHERE aj.id_rubrique = r.ID_RUBRIQUE
                     AND aj.ID_ETAT = 'TFTI'
                     AND aj.ID_DOSSIER = :id_dossier
@@ -2547,25 +2569,25 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice) =>
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1 }
+            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1, id_axe, id_section }
         }
     );
 
     return rows;
 }
 
-const getEtatFinancierAnalytiqueComplet = async (id_compte, id_dossier, id_exercice, id_etat) => {
+const getEtatFinancierAnalytiqueComplet = async (id_compte, id_dossier, id_exercice, id_etat, id_axe, id_section) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
 
-    const rowsN = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice);
+    const rowsN = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_section);
 
     const id_exercice_N1 = id_exerciceN1 ?? 0;
     let rowsN1 = [];
 
     if (id_exercice_N1 !== 0) {
-        rowsN1 = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice_N1);
+        rowsN1 = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice_N1, id_axe, id_section);
     }
 
     const mapN1 = Object.fromEntries(
@@ -2583,7 +2605,7 @@ const getEtatFinancierAnalytiqueComplet = async (id_compte, id_dossier, id_exerc
     return finalRows;
 };
 
-const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable) => {
+const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, id_axe, id_section) => {
     const rows = await db.sequelize.query(
         `
             WITH balance AS (
@@ -2592,34 +2614,55 @@ const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_e
                     MIN(J.COMPTEAUX) AS COMPTE,
                     MAX(J.LIBELLECOMPTE) AS LIBELLE,
 
-                    GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
-                    GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
+                    GREATEST(SUM(A.DEBIT) - SUM(A.CREDIT), 0) AS SOLDEDEBIT,
+                    GREATEST(SUM(A.CREDIT) - SUM(A.DEBIT), 0) AS SOLDECREDIT,
 
                     GREATEST(
-                        SUM(J.DEBIT) FILTER (WHERE CJ.TYPE IN ('BANQUE','CAISSE'))
-                    - SUM(J.CREDIT) FILTER (WHERE CJ.TYPE IN ('BANQUE','CAISSE')),
-                    0) AS SOLDEDEBITTRESO,
+                        SUM(A.DEBIT) FILTER (
+                            WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                        ) - 
+                        SUM(A.CREDIT) FILTER (
+                            WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                        ),
+                        0
+                    ) AS SOLDEDEBITTRESO,
 
                     GREATEST(
-                        SUM(J.CREDIT) FILTER (WHERE CJ.TYPE IN ('BANQUE','CAISSE'))
-                    - SUM(J.DEBIT) FILTER (WHERE CJ.TYPE IN ('BANQUE','CAISSE')),
-                    0) AS SOLDECREDITTRESO
+                        SUM(A.CREDIT) FILTER (
+                            WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                        ) - 
+                        SUM(A.DEBIT) FILTER (
+                            WHERE CJ.TYPE IN ('BANQUE', 'CAISSE')
+                        ),
+                        0
+                    ) AS SOLDECREDITTRESO
 
-                FROM JOURNALS J
-                LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+                FROM ANALYTIQUES A
+
+                JOIN JOURNALS J 
+                    ON A.ID_LIGNE_ECRITURE = J.ID
+
+                JOIN CODEJOURNALS CJ 
+                    ON CJ.ID = J.ID_JOURNAL 
+                    
                 WHERE
                     J.ID_DOSSIER = :id_dossier
                     AND J.ID_EXERCICE = :id_exercice
                     AND J.ID_COMPTE = :id_compte
+
                     AND NOT EXISTS (
                         SELECT 1
                         FROM DOSSIERPLANCOMPTABLES DPC
                         WHERE
                             DPC.COMPTE = J.COMPTEAUX
                             AND DPC.ID_DOSSIER = :id_dossier
-                            AND DPC.ID_COMPTE = :id_compte
+                            AND DPC.ID_COMPTE = :id_exercice
                             AND DPC.NATURE = 'Collectif'
                     )
+
+                    AND A.ID_AXE = :id_axe
+                    AND A.ID_SECTION IN (:id_section)
+
                 GROUP BY J.COMPTEAUX
             ),
 
@@ -2746,7 +2789,7 @@ const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_e
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_rubrique, id_etat, subtable }
+            replacements: { id_compte, id_dossier, id_exercice, id_rubrique, id_etat, subtable, id_axe, id_section }
         }
     )
 

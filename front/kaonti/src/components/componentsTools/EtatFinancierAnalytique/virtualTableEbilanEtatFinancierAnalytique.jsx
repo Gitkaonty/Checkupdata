@@ -16,6 +16,7 @@ import { RiExchangeBoxFill } from "react-icons/ri";
 import { FaRegPenToSquare } from "react-icons/fa6";
 import { init } from '../../../../init';
 import PopupAjustRubriqueEbilanEtatFinancierAnalytique from './popup/popupAjustRubriqueEbilanEtatFinancierAnalytique';
+import axios from '../../../../config/axios';
 
 const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows, noCollapsible, state, setIsRefreshed, type, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
   const initial = init[0];
@@ -24,7 +25,29 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
   const [detailRow, setDetailRow] = useState([]);
   const [detailColumnHeader, setDetailColumnHeader] = useState();
 
-  const toggleRow = (rowKey) => {
+  const [rowInfo, setRowInfo] = useState({});
+
+  const toggleRow = (rowKey, row) => {
+    axios.post('/administration/etatFinancierAnalytique/getEtatFinancierAnalytiqueDetail', {
+      id_compte: row.id_compte,
+      id_dossier: row.id_dossier,
+      id_exercice: row.id_exercice,
+      id_etat: row.id_etat,
+      id_rubrique: row.id_rubrique,
+      subtable: row.subtable,
+      axeId: Number(id_axe),
+      sectionId: id_sections
+    })
+      .then((response) => {
+        const resData = response?.data;
+        if (resData?.state) {
+          setRowInfo((prev) => ({
+            ...prev,
+            [rowKey]: resData.detail || []
+          }));
+        }
+      });
+
     setOpenRows((prev) => ({
       ...prev,
       [rowKey]: !prev[rowKey],
@@ -184,34 +207,6 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                 const rowKey = row.id;
                 const isOpen = openRows[rowKey] || false;
 
-                const groupedByCompteAndSection = row.infosCompte.reduce((acc, item) => {
-                  const key = `${item.compte}__${item.libelleAxeSection}`;
-
-                  if (!acc[key]) {
-                    acc[key] = {
-                      compte: item.compte,
-                      libelleAxeSection: item.libelleAxeSection,
-                      libelle: item.libelle,
-                      soldedebitanalytique: 0,
-                      soldecreditanalytique: 0,
-                    };
-                  }
-
-                  acc[key].soldedebitanalytique += Number(item.soldedebitanalytique) || 0;
-                  acc[key].soldecreditanalytique += Number(item.soldecreditanalytique) || 0;
-
-                  return acc;
-                }, {});
-
-                let mergedRows = Object.values(groupedByCompteAndSection);
-
-                mergedRows.sort((a, b) => {
-                  if (a.compte !== b.compte) {
-                    return a.compte - b.compte;
-                  }
-                  return a.libelleAxeSection.localeCompare(b.libelleAxeSection);
-                });
-
                 switch (row.type) {
                   case "RUBRIQUE":
                     rowStyle = { fontWeight: 'normal', color: 'black' };
@@ -271,7 +266,7 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                                 size="small"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  toggleRow(rowKey);
+                                  toggleRow(rowKey, row);
                                 }}
                               >
 
@@ -361,18 +356,13 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                               }}
                             />
 
-                            {(row.infosCompte && row.infosCompte.length > 0) ? (
+                            {rowInfo[rowKey]?.length > 0 ? (
                               <Table size="small" aria-label="details">
                                 <TableHead>
                                   <TableRow style={{ border: 'none' }}>
                                     <TableCell style={{ width: 150, border: 'none' }}>
                                       <Typography style={{ fontWeight: 'bold' }}>
                                         N° Compte
-                                      </Typography>
-                                    </TableCell>
-                                    <TableCell style={{ width: 150, border: 'none' }}>
-                                      <Typography style={{ fontWeight: 'bold' }}>
-                                        Axe:Section
                                       </Typography>
                                     </TableCell>
                                     <TableCell style={{ width: 450, border: 'none' }}>
@@ -394,7 +384,7 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                                 </TableHead>
                                 <TableBody>
                                   {/* {mergedRows.map((detail, index) => ( */}
-                                  {row.infosCompte.map((detail, index) => (
+                                  {rowInfo[rowKey].map((detail, index) => (
 
                                     <TableRow
                                       key={index}
@@ -403,13 +393,12 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                                       }}
                                     >
                                       <TableCell style={{ border: 'none' }}>{detail.compte}</TableCell>
-                                      <TableCell style={{ border: 'none' }}>{detail.libelleAxeSection}</TableCell>
                                       <TableCell style={{ border: 'none' }}>{detail.libelle}</TableCell>
                                       <TableCell style={{ border: 'none' }} align={"right"}>
-                                        {detail.soldedebitanalytique.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {detail.soldedebit.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </TableCell>
                                       <TableCell style={{ border: 'none' }} align={"right"}>
-                                        {detail.soldecreditanalytique.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {detail.soldecredit.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </TableCell>
                                     </TableRow>
                                   ))
@@ -430,7 +419,6 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                                         Total
                                       </Typography>
                                     </TableCell>
-                                    <TableCell style={{ width: 150, border: 'none' }} />
                                     <TableCell style={{ width: 450, border: 'none' }}>
 
                                     </TableCell>
@@ -439,18 +427,14 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
                                         width: 200, border: 'none', fontSize: 14, fontWeight: 'bold'
                                       }}
                                     >
-                                      {
-                                        totalColumn(row.infosCompte, "soldedebitanalytique").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                      }
+                                      {totalColumn(rowInfo[rowKey], "soldedebit").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </TableCell>
                                     <TableCell align='right'
                                       style={{
                                         width: 200, border: 'none', fontSize: 14, fontWeight: 'bold'
                                       }}
                                     >
-                                      {
-                                        totalColumn(row.infosCompte, "soldecreditanalytique").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                      }
+                                      {totalColumn(rowInfo[rowKey], "soldecredit").toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </TableCell>
                                   </TableRow>
                                 </TableFooter>

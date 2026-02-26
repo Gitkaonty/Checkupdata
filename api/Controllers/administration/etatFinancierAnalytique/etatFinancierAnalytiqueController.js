@@ -20,7 +20,7 @@ const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
 const caAxes = db.caAxes;
 const caSections = db.caSections;
 
-const recupEtatFinancierAnalytique = require('../../../Middlewares/Administration/EtatFinancier');
+const recupEtatFinancierAnalytique = require('../../../Middlewares/Administration/EtatFinancierAnalytique');
 const getEtatFinancierAnalytiqueComplet = recupEtatFinancierAnalytique.getEtatFinancierAnalytiqueComplet;
 const getDetailLigneEtatFinancierAnalytique = recupEtatFinancierAnalytique.getDetailLigneEtatFinancierAnalytique;
 
@@ -652,10 +652,16 @@ const infoBlock = (dossier, compte, exercice) => ([
 
 exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_etat, id_axe, id_section } = req.params;
+        const sections = id_section
+            ? id_section.split(',').map(id => Number(id))
+            : [];
         if (!id_dossier || !id_compte || !id_exercice || !id_etat) {
             return res.status(400).json({ msg: 'Paramètres manquants' });
         }
+        if (!id_axe) return res.json({ state: true, msg: 'Axe vide' });
+        if (!sections || sections.length === 0) return res.json({ state: true, msg: 'Section vide' });
+
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
         const compte = await userscomptes.findByPk(id_compte);
@@ -673,7 +679,7 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
         let docDefinition = {}
         if (id_etat === 'BILAN') {
-            const { buildTable, bilanActifData, bilanPassifData } = await generateBilanAnalytiqueContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, bilanActifData, bilanPassifData } = await generateBilanAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
             docDefinition = {
                 content: [
                     { text: 'Bilan actif', style: 'title' },
@@ -705,7 +711,7 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'CRN') {
-            const { buildTable, crnData } = await generateCrnAnalytiqueContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, crnData } = await generateCrnAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
             docDefinition = {
                 content: [
                     { text: 'Compte de résultat par nature', style: 'title' },
@@ -733,7 +739,7 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'CRF') {
-            const { buildTable, crfData } = await generateCrfAnalytiqueContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, crfData } = await generateCrfAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
             docDefinition = {
                 content: [
                     { text: 'Compte de résultat par fonction', style: 'title' },
@@ -761,7 +767,7 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'TFTD') {
-            const { buildTable, tftdData } = await generateTftdAnalytiqueContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, tftdData } = await generateTftdAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
             docDefinition = {
                 content: [
                     { text: 'Tableau de flux de trésoreries méthode directe', style: 'title' },
@@ -789,7 +795,7 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'TFTI') {
-            const { buildTable, tftiData } = await generateTftiAnalytiqueContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, tftiData } = await generateTftiAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
             docDefinition = {
                 content: [
                     { text: 'Tableau de flux de trésoreries méthode indirecte', style: 'title' },
@@ -864,10 +870,15 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
 exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_etat, id_axe, id_section } = req.params;
+        const sections = id_section
+            ? id_section.split(',').map(id => Number(id))
+            : [];
         if (!id_dossier || !id_compte || !id_exercice || !id_etat) {
             return res.status(200).json({ msg: 'Paramètres manquants' });
         }
+        if (!id_axe) return res.json({ state: true, msg: 'Axe vide' });
+        if (!sections || sections.length === 0) return res.json({ state: true, msg: 'Section vide' });
 
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
@@ -875,17 +886,17 @@ exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
 
         const workbook = new ExcelJS.Workbook();
         if (id_etat === 'BILAN') {
-            await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+            await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
         } else if (id_etat === 'CRN') {
-            await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+            await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
         } else if (id_etat === 'CRF') {
-            await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+            await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
         } else if (id_etat === 'TFTI') {
-            await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+            await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
         } else if (id_etat === 'TFTD') {
-            await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+            await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
         } else if (id_etat === 'EVCP') {
-            await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+            await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
         } else {
             return res.status(200).json({ msg: "Type d'état invalide" });
         }
@@ -910,10 +921,15 @@ exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
 
 exports.exportAllEtatFinancierAnalytiqueToExcel = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_axe, id_section } = req.params;
+        const sections = id_section
+            ? id_section.split(',').map(id => Number(id))
+            : [];
         if (!id_dossier || !id_compte || !id_exercice) {
             return res.status(400).json({ msg: 'Paramètres manquants' });
         }
+        if (!id_axe) return res.json({ state: true, msg: 'Axe vide' });
+        if (!sections || sections.length === 0) return res.json({ state: true, msg: 'Section vide' });
 
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
@@ -921,12 +937,12 @@ exports.exportAllEtatFinancierAnalytiqueToExcel = async (req, res) => {
 
         const workbook = new ExcelJS.Workbook();
 
-        await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
-        await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
-        await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
-        await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
-        await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
-        await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin));
+        await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+        await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+        await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+        await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+        await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+        await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
 
         workbook.views = [
             { activeTab: 0 }
@@ -963,10 +979,15 @@ const generatePdfBuffer = (printer, docDefinition) => {
 
 exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_axe, id_section } = req.params;
+        const sectionsAxes = id_section
+            ? id_section.split(',').map(id => Number(id))
+            : [];
         if (!id_dossier || !id_compte || !id_exercice) {
             return res.status(400).json({ msg: 'Paramètres manquants' });
         }
+        if (!id_axe) return res.json({ state: true, msg: 'Axe vide' });
+        if (!sectionsAxes || sectionsAxes.length === 0) return res.json({ state: true, msg: 'Section vide' });
 
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
@@ -996,7 +1017,7 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
         for (let i = 0; i < sections.length; i++) {
             const { generator, title, landscape } = sections[i];
-            const { buildTable, ...data } = await generator(id_compte, id_dossier, id_exercice);
+            const { buildTable, ...data } = await generator(id_compte, id_dossier, id_exercice, id_axe, sectionsAxes);
             const tableData = Object.values(data).find(v => Array.isArray(v)) || [];
 
             const content = [
@@ -1056,7 +1077,7 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
 exports.getEtatFinancierAnalytique = async (req, res) => {
     try {
-        const { id_compte, id_dossier, id_exercice, id_etat } = req.body;
+        const { id_compte, id_dossier, id_exercice, id_etat, axeId, sectionId } = req.body;
         // if (!id_etat) {
         //   return res.json({ state: false, message: 'Tableau non trouvé' });
         // }
@@ -1069,8 +1090,10 @@ exports.getEtatFinancierAnalytique = async (req, res) => {
         if (!id_exercice) {
             return res.json({ state: false, message: ('Exercice non trouvé') });
         }
+        if (!axeId) return res.json({ state: true, msg: 'Axe vide' });
+        if (!sectionId || sectionId.length === 0) return res.json({ state: true, msg: 'Section vide' });
 
-        const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, id_etat);
+        const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, id_etat, axeId, sectionId);
 
         const rubriqueExterneEvcpData = (await rubriqueExternesEvcpAnalytiques.findAll({
             where: {
@@ -1126,7 +1149,7 @@ exports.getEtatFinancierAnalytique = async (req, res) => {
 
 exports.getEtatFinancierAnalytiqueDetail = async (req, res) => {
     try {
-        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable } = req.body;
+        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable, axeId, sectionId } = req.body;
         if (!id_etat) {
             return res.json({ state: false, message: 'Tableau non trouvé' });
         }
@@ -1142,7 +1165,7 @@ exports.getEtatFinancierAnalytiqueDetail = async (req, res) => {
         if (!id_rubrique) {
             return res.json({ state: false, message: 'Rubrique non trouvé' });
         }
-        const data = await getDetailLigneEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable);
+        const data = await getDetailLigneEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, axeId, sectionId);
         return res.json({ state: true, detail: data });
     } catch (error) {
         console.log(error);
