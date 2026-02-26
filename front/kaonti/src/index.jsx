@@ -8,6 +8,11 @@ import { disableReactDevTools } from '@fvilers/disable-react-devtools';
 import { Toaster } from 'react-hot-toast';
 import { FileInfosProvider } from './context/SendDataToParent';
 
+import "@fontsource/roboto/300.css";
+import "@fontsource/roboto/400.css";
+import "@fontsource/roboto/500.css";
+import "@fontsource/roboto/700.css";
+
 //if (process.env.NODE_ENV === 'production') {
 disableReactDevTools();
 //}

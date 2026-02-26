@@ -11,7 +11,7 @@ import { init } from '../../../../init';
 
 let initial = init[0];
 
-export default function VirtualTableJournalAttente({ tableHeader, tableRow }) {
+export default function VirtualTableJournalAttente({ tableHeader, tableRow, searchText }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -35,7 +35,7 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow }) {
 
   return (
 
-    <Stack width={'100%'} height={'80%'}>
+    <Stack width={'100%'} height={'100%'}>
       <TableContainer sx={{ height: '100%' }}>
         <Table stickyHeader aria-label="sticky table" >
           <TableHead>
@@ -96,15 +96,15 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow }) {
                     fontWeight: 'bold',
                     fontSize: 15,
                     paddingY: 0.8,
-                    backgroundColor: '#89A8B2',
+                    backgroundColor: initial.theme,
                     position: 'sticky',
                     bottom: 0,
                     zIndex: 2,
                     minWidth: column.minWidth || 80,
-                    color: 'black'
+                    color: 'white'
                   }}
                 >
-                  {column.id === 'date'
+                  {column.id === 'compte'
                     ? 'Total'
                     : column.id === 'debit' || column.id === 'credit'
                       ? totalColumn(tableRow, column.id, page, rowsPerPage)
@@ -133,6 +133,17 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow }) {
         labelDisplayedRows={({ from, to, count }) =>
           `${from}–${to} sur ${count !== -1 ? count : `plus de ${to}`}`
         }
+        sx={{
+          "& .MuiIconButton-root": {
+            border: "none",
+            outline: "none",
+            boxShadow: "none",
+            "&:focus": {
+              outline: "none",
+              boxShadow: "none",
+            },
+          },
+        }}
       />
     </Stack>
   );
