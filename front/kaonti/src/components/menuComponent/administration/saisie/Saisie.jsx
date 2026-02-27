@@ -1094,7 +1094,7 @@ export default function SaisieComponent() {
                                                     <Box sx={{ flex: 0.7, px: 1 }} />
                                                     <Box sx={{ flex: 0.3, px: 1 }} />
                                                     <Box sx={{ flex: 3, px: 1 }} />
-                                                    <Box sx={{ flex: 1, textAlign: 'right', pr: 1, ml: 22 }}>
+                                                    <Box sx={{ flex: 1, textAlign: 'right', pr: 1, ml: 40 }}>
                                                         <Typography fontWeight="bold">{totalDebitFormatted}</Typography>
                                                     </Box>
                                                     <Box
