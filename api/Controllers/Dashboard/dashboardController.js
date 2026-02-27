@@ -1,6 +1,4 @@
 const db = require("../../Models");
-const { journals, exercices, dossierplancomptable: DossierPlan, codejournals } = db;
-const { Op } = require("sequelize");
 const recupExerciceN1 = require('../../Middlewares/Standard/recupExerciceN1');
 
 function getMonthsBetween(startDate, endDate) {
@@ -256,21 +254,43 @@ const getEvolution = (currentVar, previousVar) => {
 };
 
 const getJournalData = async (id_compte, id_dossier, id_exercice) => {
-    const journalData = await journals.findAll({
-        where: { id_compte, id_dossier, id_exercice },
-        include: [
-            { model: DossierPlan, attributes: ['compte'], required: true },
-            { model: codejournals, attributes: ['code'] }
-        ],
-        order: [['dateecriture', 'ASC']]
-    });
 
-    const mappedData = journalData.map(journal => {
-        const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-        return { ...rest, compte: dossierplancomptable?.compte || null, journal: codejournal?.code || null, };
-    });
+    const rows = await db.sequelize.query(`
+        SELECT 
+            j.compteaux AS compte,
+            j.debit, 
+            j.credit,
+            j.dateecriture,
+            cj.code
+        FROM journals j
+        LEFT JOIN CODEJOURNALS cj ON cj.ID = J.ID_JOURNAL
+        WHERE
+            j.id_compte = :id_compte
+            AND j.id_dossier = :id_dossier
+            AND j.id_exercice = :id_exercice
+            AND cj.id_compte = :id_compte
+            AND cj.id_dossier = :id_dossier
+        ORDER BY j.dateecriture ASC
+    `, {
+        type: db.Sequelize.QueryTypes.SELECT,
+        replacements: { id_compte, id_dossier, id_exercice }
+    })
+    return rows;
+}
 
-    return mappedData;
+const getExerciceById = async (id) => {
+    const rows = await db.sequelize.query(`
+        SELECT 
+            ex.date_debut,
+            ex.date_fin
+        FROM exercices ex
+        WHERE 
+            id = :id
+    `, {
+        type: db.Sequelize.QueryTypes.SELECT,
+        replacements: { id }
+    });
+    return rows;
 }
 
 exports.getAllInfo = async (req, res) => {
@@ -281,40 +301,28 @@ exports.getAllInfo = async (req, res) => {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
         }
 
-        const exerciceNData = await exercices.findByPk(id_exercice);
+        const exerciceNData = await getExerciceById(id_exercice);
         if (!exerciceNData) {
             return res.status(404).json({ state: false, message: "Exercice non trouvé" });
         }
 
-        const moisN = getMonthsBetween(exerciceNData?.date_debut, exerciceNData?.date_fin);
+        const moisN = getMonthsBetween(exerciceNData[0]?.date_debut, exerciceNData[0]?.date_fin);
 
-        const journalData = await journals.findAll({
-            where: { id_compte, id_dossier, id_exercice },
-            include: [
-                { model: DossierPlan, attributes: ['compte'], required: true },
-                { model: codejournals, attributes: ['code'] }
-            ],
-            order: [['dateecriture', 'ASC']]
-        });
-
-        const mappedData = journalData.map(journal => {
-            const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-            return { ...rest, compte: dossierplancomptable?.compte || null, journal: codejournal?.code || null, };
-        });
+        const mappedDataN = await getJournalData(id_compte, id_dossier, id_exercice);
 
         // === Exercice N ===
-        const chiffreAffaireN = calculateChiffreAffaire(mappedData, moisN);
-        const margeBruteN = calculateMargeBrute(mappedData, moisN);
+        const chiffreAffaireN = calculateChiffreAffaire(mappedDataN, moisN);
+        const margeBruteN = calculateMargeBrute(mappedDataN, moisN);
         const margeBruteTotalN = chiffreAffaireN.map((val, i) => round2(val + margeBruteN[i]));
-        const tresorerieBanqueN = calculateTresorerieBanque(mappedData, moisN);
-        const tresorerieCaisseN = calculateTresorerieCaisse(mappedData, moisN);
+        const tresorerieBanqueN = calculateTresorerieBanque(mappedDataN, moisN);
+        const tresorerieCaisseN = calculateTresorerieCaisse(mappedDataN, moisN);
 
-        const resultatN = calculateResultat(mappedData);
-        const resultatChiffreAffaireN = calculateResultatChiffreAffaire(mappedData);
-        const resultatDepenseAchatN = calculateResultatDepensesAchats(mappedData);
-        const resultatDepenseSalarialeN = calculateResultatDepensesSalariales(mappedData);
-        const resultatTresorerieBanqueN = calculateResultatTresoreriesBanques(mappedData);
-        const resultatTresorerieCaisseN = calculateResultatTresoreriesCaisses(mappedData);
+        const resultatN = calculateResultat(mappedDataN);
+        const resultatChiffreAffaireN = calculateResultatChiffreAffaire(mappedDataN);
+        const resultatDepenseAchatN = calculateResultatDepensesAchats(mappedDataN);
+        const resultatDepenseSalarialeN = calculateResultatDepensesSalariales(mappedDataN);
+        const resultatTresorerieBanqueN = calculateResultatTresoreriesBanques(mappedDataN);
+        const resultatTresorerieCaisseN = calculateResultatTresoreriesCaisses(mappedDataN);
 
         // === Exercice N-1 ===
         const { id_exerciceN1 } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
@@ -383,13 +391,13 @@ exports.getAllInfo = async (req, res) => {
         let id_exerciceN3 = null;
 
         if (id_exerciceN1) {
-            const exerciceN1Data = await exercices.findByPk(id_exerciceN1);
-            moisN1 = getMonthsBetween(exerciceN1Data?.date_debut, exerciceN1Data?.date_fin);
+            const exerciceN1Data = await getExerciceById(id_exerciceN1);
+            moisN1 = getMonthsBetween(exerciceN1Data[0]?.date_debut, exerciceN1Data[0]?.date_fin);
 
             const mappedDataN1 = await getJournalData(id_compte, id_dossier, id_exerciceN1);
 
-            const { id_exerciceN1: id_exerciceN2Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN1);
-            id_exerciceN2 = id_exerciceN2Temp || null;
+            // const { id_exerciceN1: id_exerciceN2Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN1);
+            // id_exerciceN2 = id_exerciceN2Temp || null;
 
             chiffreAffaireN1 = calculateChiffreAffaire(mappedDataN1, moisN1);
             margeBruteN1 = calculateMargeBrute(mappedDataN1, moisN1);
@@ -406,80 +414,80 @@ exports.getAllInfo = async (req, res) => {
             resultatTresorerieCaisseN1 = calculateResultatTresoreriesCaisses(mappedDataN1);
         }
 
-        if (id_exerciceN2) {
+        // if (id_exerciceN2) {
 
-            const { id_exerciceN1: id_exerciceN3Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN2);
-            id_exerciceN3 = id_exerciceN3Temp || null;
+        //     const { id_exerciceN1: id_exerciceN3Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN2);
+        //     id_exerciceN3 = id_exerciceN3Temp || null;
 
-            const mappedDataN2 = await getJournalData(id_compte, id_dossier, id_exerciceN2);
+        //     const mappedDataN2 = await getJournalData(id_compte, id_dossier, id_exerciceN2);
 
-            resultatN2 = calculateResultat(mappedDataN2);
-            resultatChiffreAffaireN2 = calculateResultatChiffreAffaire(mappedDataN2);
-            resultatDepenseAchatN2 = calculateResultatDepensesAchats(mappedDataN2);
-            resultatDepenseSalarialeN2 = calculateResultatDepensesSalariales(mappedDataN2);
-            resultatTresorerieBanqueN2 = calculateResultatTresoreriesBanques(mappedDataN2);
-            resultatTresorerieCaisseN2 = calculateResultatTresoreriesCaisses(mappedDataN2);
-        }
+        //     resultatN2 = calculateResultat(mappedDataN2);
+        //     resultatChiffreAffaireN2 = calculateResultatChiffreAffaire(mappedDataN2);
+        //     resultatDepenseAchatN2 = calculateResultatDepensesAchats(mappedDataN2);
+        //     resultatDepenseSalarialeN2 = calculateResultatDepensesSalariales(mappedDataN2);
+        //     resultatTresorerieBanqueN2 = calculateResultatTresoreriesBanques(mappedDataN2);
+        //     resultatTresorerieCaisseN2 = calculateResultatTresoreriesCaisses(mappedDataN2);
+        // }
 
-        if (id_exerciceN3) {
+        // if (id_exerciceN3) {
 
-            const mappedDataN3 = await getJournalData(id_compte, id_dossier, id_exerciceN3);
+        //     const mappedDataN3 = await getJournalData(id_compte, id_dossier, id_exerciceN3);
 
-            resultatN3 = calculateResultat(mappedDataN3);
-            resultatChiffreAffaireN3 = calculateResultatChiffreAffaire(mappedDataN3);
-            resultatDepenseAchatN3 = calculateResultatDepensesAchats(mappedDataN3);
-            resultatDepenseSalarialeN3 = calculateResultatDepensesSalariales(mappedDataN3);
-            resultatTresorerieBanqueN3 = calculateResultatTresoreriesBanques(mappedDataN3);
-            resultatTresorerieCaisseN3 = calculateResultatTresoreriesCaisses(mappedDataN3);
-        }
+        //     resultatN3 = calculateResultat(mappedDataN3);
+        //     resultatChiffreAffaireN3 = calculateResultatChiffreAffaire(mappedDataN3);
+        //     resultatDepenseAchatN3 = calculateResultatDepensesAchats(mappedDataN3);
+        //     resultatDepenseSalarialeN3 = calculateResultatDepensesSalariales(mappedDataN3);
+        //     resultatTresorerieBanqueN3 = calculateResultatTresoreriesBanques(mappedDataN3);
+        //     resultatTresorerieCaisseN3 = calculateResultatTresoreriesCaisses(mappedDataN3);
+        // }
 
         // Resultat
         variationResultatN = safeVariation(resultatN, resultatN1);
-        variationResultatN1 = safeVariation(resultatN1, resultatN2);
-        variationResultatN2 = safeVariation(resultatN2, resultatN3);
+        // variationResultatN1 = safeVariation(resultatN1, resultatN2);
+        // variationResultatN2 = safeVariation(resultatN2, resultatN3);
 
         evolutionResultatN = getEvolution(variationResultatN, variationResultatN1);
-        evolutionResultatN1 = getEvolution(variationResultatN1, variationResultatN2);
+        // evolutionResultatN1 = getEvolution(variationResultatN1, variationResultatN2);
 
         // Chiffre d'affaires
         variationChiffreAffaireN = safeVariation(resultatChiffreAffaireN, resultatChiffreAffaireN1);
-        variationChiffreAffaireN1 = safeVariation(resultatChiffreAffaireN1, resultatChiffreAffaireN2);
-        variationChiffreAffaireN2 = safeVariation(resultatChiffreAffaireN2, resultatChiffreAffaireN3);
+        // variationChiffreAffaireN1 = safeVariation(resultatChiffreAffaireN1, resultatChiffreAffaireN2);
+        // variationChiffreAffaireN2 = safeVariation(resultatChiffreAffaireN2, resultatChiffreAffaireN3);
 
         evolutionChiffreAffaireN = getEvolution(variationChiffreAffaireN, variationChiffreAffaireN1);
-        evolutionChiffreAffaireN1 = getEvolution(variationChiffreAffaireN1, variationChiffreAffaireN2);
+        // evolutionChiffreAffaireN1 = getEvolution(variationChiffreAffaireN1, variationChiffreAffaireN2);
 
         // Depenses achat
         variationDepenseAchatN = safeVariation(resultatDepenseAchatN, resultatDepenseAchatN1);
-        variationDepenseAchatN1 = safeVariation(resultatDepenseAchatN1, resultatDepenseAchatN2)
-        variationDepenseAchatN2 = safeVariation(resultatDepenseAchatN2, resultatDepenseAchatN3);
+        // variationDepenseAchatN1 = safeVariation(resultatDepenseAchatN1, resultatDepenseAchatN2)
+        // variationDepenseAchatN2 = safeVariation(resultatDepenseAchatN2, resultatDepenseAchatN3);
 
         evolutionDepenseAchatN = getEvolution(variationDepenseAchatN, variationDepenseAchatN1);
-        evolutionDepenseAchatN1 = getEvolution(variationDepenseAchatN1, variationDepenseAchatN2);
+        // evolutionDepenseAchatN1 = getEvolution(variationDepenseAchatN1, variationDepenseAchatN2);
 
         // Depenses salariales
         variationDepenseSalarialeN = safeVariation(resultatDepenseSalarialeN, resultatDepenseSalarialeN1);
-        variationDepenseSalarialeN1 = safeVariation(resultatDepenseSalarialeN1, resultatDepenseSalarialeN2);
-        variationDepenseSalarialeN2 = safeVariation(resultatDepenseSalarialeN2, resultatDepenseSalarialeN3);
+        // variationDepenseSalarialeN1 = safeVariation(resultatDepenseSalarialeN1, resultatDepenseSalarialeN2);
+        // variationDepenseSalarialeN2 = safeVariation(resultatDepenseSalarialeN2, resultatDepenseSalarialeN3);
 
         evolutionDepenseSalarialeN = getEvolution(variationDepenseSalarialeN, variationDepenseSalarialeN1);
-        evolutionDepenseSalarialeN1 = getEvolution(variationDepenseSalarialeN1, variationDepenseSalarialeN2);
+        // evolutionDepenseSalarialeN1 = getEvolution(variationDepenseSalarialeN1, variationDepenseSalarialeN2);
 
         // Tresorerie banque
         variationTresorerieBanqueN = safeVariation(resultatTresorerieBanqueN, resultatTresorerieBanqueN1);
-        variationTresorerieBanqueN1 = safeVariation(resultatTresorerieBanqueN1, resultatTresorerieBanqueN2);
-        variationTresorerieBanqueN2 = safeVariation(resultatTresorerieBanqueN2, resultatTresorerieBanqueN3);
+        // variationTresorerieBanqueN1 = safeVariation(resultatTresorerieBanqueN1, resultatTresorerieBanqueN2);
+        // variationTresorerieBanqueN2 = safeVariation(resultatTresorerieBanqueN2, resultatTresorerieBanqueN3);
 
         evolutionTresorerieBanqueN = getEvolution(variationTresorerieBanqueN, variationTresorerieBanqueN1);
-        evolutionTresorerieBanqueN1 = getEvolution(variationTresorerieBanqueN1, variationTresorerieBanqueN2);
+        // evolutionTresorerieBanqueN1 = getEvolution(variationTresorerieBanqueN1, variationTresorerieBanqueN2);
 
         // Tresorerie caisse
         variationTresorerieCaisseN = safeVariation(resultatTresorerieCaisseN, resultatTresorerieCaisseN1);
-        variationTresorerieCaisseN1 = safeVariation(resultatTresorerieCaisseN1, resultatTresorerieCaisseN2);
-        variationTresorerieCaisseN2 = safeVariation(resultatTresorerieCaisseN2, resultatTresorerieCaisseN3);
+        // variationTresorerieCaisseN1 = safeVariation(resultatTresorerieCaisseN1, resultatTresorerieCaisseN2);
+        // variationTresorerieCaisseN2 = safeVariation(resultatTresorerieCaisseN2, resultatTresorerieCaisseN3);
 
         evolutionTresorerieCaisseN = getEvolution(variationTresorerieCaisseN, variationTresorerieCaisseN1);
-        evolutionTresorerieCaisseN1 = getEvolution(variationTresorerieCaisseN1, variationTresorerieCaisseN2);
+        // evolutionTresorerieCaisseN1 = getEvolution(variationTresorerieCaisseN1, variationTresorerieCaisseN2);
 
         return res.json({
 
@@ -495,44 +503,32 @@ exports.getAllInfo = async (req, res) => {
             resultatChiffreAffaireN,
             resultatChiffreAffaireN1,
             variationChiffreAffaireN,
-            variationChiffreAffaireN1,
             evolutionChiffreAffaireN,
-            evolutionChiffreAffaireN1,
 
             resultatDepenseAchatN,
             resultatDepenseAchatN1,
             variationDepenseAchatN,
-            variationDepenseAchatN1,
             evolutionDepenseAchatN,
-            evolutionDepenseAchatN1,
 
             resultatDepenseSalarialeN,
             resultatDepenseSalarialeN1,
             variationDepenseSalarialeN,
-            variationDepenseSalarialeN1,
             evolutionDepenseSalarialeN,
-            evolutionDepenseSalarialeN1,
 
             resultatTresorerieBanqueN,
             resultatTresorerieBanqueN1,
             variationTresorerieBanqueN,
-            variationTresorerieBanqueN1,
             evolutionTresorerieBanqueN,
-            evolutionTresorerieBanqueN1,
 
             resultatTresorerieCaisseN,
             resultatTresorerieCaisseN1,
             variationTresorerieCaisseN,
-            variationTresorerieCaisseN1,
             evolutionTresorerieCaisseN,
-            evolutionTresorerieCaisseN1,
 
             resultatN,
             resultatN1,
             variationResultatN,
-            variationResultatN1,
             evolutionResultatN,
-            evolutionResultatN1,
 
             state: true,
         });
@@ -549,41 +545,32 @@ exports.getListeJournalEnAttente = async (req, res) => {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
         }
 
-        const journaleEnAttente = await journals.findAll({
-            wherer: {
-                id_dossier,
-                id_compte,
-                id_exercice,
-            },
-            include: [
-                {
-                    model: DossierPlan,
-                    attributes: ['compte'],
-                    where: {
-                        id_dossier,
-                        id_compte,
-                        compte: { [Op.like]: `47%` },
-                    },
-                    required: true
-                },
-                {
-                    model: codejournals,
-                    attributes: ['code']
-                }
-            ],
-            order: [['dateecriture', 'ASC']]
-        })
+        const rows = await db.sequelize.query(`
+            SELECT 
+                j.compteaux AS compte,
+                j.dateecriture,
+                cj.code AS codejournal,
+                j.libelle,
+                j.debit,
+                j.credit
+            FROM JOURNALS j
+            LEFT JOIN CODEJOURNALS cj ON cj.ID = J.ID_JOURNAL
+            WHERE 
+                j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+                AND j.id_compte = :id_compte
+                AND cj.id_compte = :id_compte
+                AND cj.id_compte = :id_compte
+                AND j.compteaux like '47%'
+            ORDER BY 
+                j.dateecriture ASC
+        `,
+            {
+                type: db.Sequelize.QueryTypes.SELECT,
+                replacements: { id_compte, id_dossier, id_exercice }
+            })
 
-        const journalMapped = journaleEnAttente.map((j) => {
-            const { dossierplancomptable, codejournal, ...rest } = j.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte,
-                codejournal: codejournal?.code
-            }
-        })
-
-        return res.status(200).json(journalMapped);
+        return res.status(200).json(rows);
 
     } catch (error) {
         console.error(error);
