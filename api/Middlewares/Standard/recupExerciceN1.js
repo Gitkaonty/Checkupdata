@@ -14,7 +14,6 @@ const recupInfos = async (id_compte, id_dossier, id_exerciceN) => {
             return { id_exerciceN1: null };
         }
 
-        // Calcul date N-1
         const dateDebut = new Date(currentDebutExerciceN);
         dateDebut.setDate(dateDebut.getDate() - 1);
 

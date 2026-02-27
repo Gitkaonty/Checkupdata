@@ -114,7 +114,9 @@ export default function DashboardComponent() {
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
   const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
   const [deviseParDefaut, setDeviseParDefaut] = useState([]);
+
   const [avecAnalytique, setAvecAnalytique] = useState(false);
+  const [dossierAvecAnalytique, setDossierAvecAnalytique] = useState(false);
 
   const [chiffresAffairesNGraph, setChiffresAffairesNGraph] = useState([]);
   const [chiffresAffairesN1Graph, setChiffresAffairesN1Graph] = useState([]);
@@ -204,6 +206,7 @@ export default function DashboardComponent() {
       const resData = response.data;
       if (resData.state) {
         setFileInfos(resData.fileInfos[0]);
+        setDossierAvecAnalytique(resData?.fileInfos[0].avecanalytique);
         setNoFile(false);
       } else {
         setFileInfos([]);
@@ -574,7 +577,7 @@ export default function DashboardComponent() {
                   name="radio-group-buttons-dashboard"
                 >
                   <FormControlLabel value="Globale" control={<Radio />} label="Globale" />
-                  <FormControlLabel value="Analytique" control={<Radio />} label="Avec analytique" />
+                  <FormControlLabel disabled={!dossierAvecAnalytique} value="Analytique" control={<Radio />} label="Avec analytique" />
                 </RadioGroup>
               </FormControl>
               {
@@ -842,7 +845,6 @@ export default function DashboardComponent() {
 
                 </Stack>
 
-                {/* COLONNE DROITE */}
                 <Stack
                   width={{ xs: "100%", md: "45%" }}
                   direction="column"
