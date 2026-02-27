@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, TextField, InputAdornment } from '@mui/material';
+import { Typography, Stack, TextField, InputAdornment, Autocomplete, Checkbox } from '@mui/material';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
@@ -24,6 +24,9 @@ import KpiCardDouble from '../../componentsTools/Dashboard/KpiCardDouble';
 import { FiShoppingCart, FiUsers, FiCreditCard, FiArchive } from "react-icons/fi";
 import { FiSearch } from "react-icons/fi";
 import ApexChart from '../../componentsTools/Dashboard/ApexChart';
+
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 
 const columns = [
   {
@@ -76,7 +79,15 @@ const columns = [
   },
 ];
 
+const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkedIcon = <CheckBoxIcon fontSize="small" />;
+
 export default function DashboardComponent() {
+  let axeId = 0;
+  if (typeof window !== "undefined") {
+    axeId = localStorage.getItem('axeId');
+  }
+
   const { canAdd, canModify, canDelete, canView } = usePermission();
   const [searchText, setSearchText] = useState("");
 
@@ -94,10 +105,17 @@ export default function DashboardComponent() {
   const compteId = decoded.UserInfo.compteId || null;
   const userId = decoded.UserInfo.userId || null;
 
+  const [axesData, setAxesData] = useState([]);
+  const [sectionsData, setSectionsData] = useState([]);
+
+  const [selectedAxeId, setSelectedAxeId] = useState(0);
+  const [selectedSectionsId, setSelectedSectionsId] = useState([]);
+
   const [selectedExerciceId, setSelectedExerciceId] = useState(0);
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
   const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
   const [deviseParDefaut, setDeviseParDefaut] = useState([]);
+  const [avecAnalytique, setAvecAnalytique] = useState(false);
 
   const [chiffresAffairesNGraph, setChiffresAffairesNGraph] = useState([]);
   const [chiffresAffairesN1Graph, setChiffresAffairesN1Graph] = useState([]);
@@ -114,44 +132,32 @@ export default function DashboardComponent() {
   const [resultatN, setResultatN] = useState(0);
   const [resultatN1, setResultatN1] = useState(0);
   const [variationResultatN, setVariationResultatN] = useState(0);
-  const [variationResultatN1, setVariationResultatN1] = useState(0);
   const [evolutionResultatN, setEvolutionResultatN] = useState('');
-  const [evolutionResultatN1, setEvolutionResultatN1] = useState('');
 
   const [resultatChiffreAffaireN, setResultatChiffreAffaireN] = useState(0);
   const [resultatChiffreAffaireN1, setResultatChiffreAffaireN1] = useState(0);
   const [variationChiffreAffaireN, setVariationChiffreAffaireN] = useState(0);
-  const [variationChiffreAffaireN1, setVariationChiffreAffaireN1] = useState(0);
   const [evolutionChiffreAffaireN, setEvolutionChiffreAffaireN] = useState('');
-  const [evolutionChiffreAffaireN1, setEvolutionChiffreAffaireN1] = useState('');
 
   const [resultatDepenseAchatN, setResultatDepenseAchatN] = useState(0);
   const [resultatDepenseAchatN1, setResultatDepenseAchatN1] = useState(0);
   const [variationDepenseAchatN, setVariationDepenseAchatN] = useState(0);
-  const [variationDepenseAchatN1, setVariationDepenseAchatN1] = useState(0);
   const [evolutionDepenseAchatN, setEvolutionDepenseAchatN] = useState('');
-  const [evolutionDepenseAchatN1, setEvolutionDepenseAchatN1] = useState('');
 
   const [resultatDepenseSalarialeN, setResultatDepenseSalarialeN] = useState(0);
   const [resultatDepenseSalarialeN1, setResultatDepenseSalarialeN1] = useState(0);
   const [variationDepenseSalarialeN, setVariationDepenseSalarialeN] = useState(0);
-  const [variationDepenseSalarialeN1, setVariationDepenseSalarialeN1] = useState(0);
   const [evolutionDepenseSalarialeN, setEvolutionDepenseSalarialeN] = useState('');
-  const [evolutionDepenseSalarialeN1, setEvolutionDepenseSalarialeN1] = useState('');
 
   const [resultatTresorerieBanqueN, setResultatTresorerieBanqueN] = useState(0);
   const [resultatTresorerieBanqueN1, setResultatTresorerieBanqueN1] = useState(0);
   const [variationTresorerieBanqueN, setVariationTresorerieBanqueN] = useState(0);
-  const [variationTresorerieBanqueN1, setVariationDTresorerieBanqueN1] = useState(0);
   const [evolutionTresorerieBanqueN, setEvolutionTresorerieBanqueN] = useState('');
-  const [evolutionTresorerieBanqueN1, setEvolutionTresorerieBanqueN1] = useState('');
 
   const [resultatTresorerieCaisseN, setResultatTresorerieCaisseN] = useState(0);
   const [resultatTresorerieCaisseN1, setResultatTresorerieCaisseN1] = useState(0);
   const [variationTresorerieCaisseN, setVariationTresorerieCaisseN] = useState(0);
-  const [variationTresorerieCaisseN1, setVariationDTresorerieCaisseN1] = useState(0);
   const [evolutionTresorerieCaisseN, setEvolutionTresorerieCaisseN] = useState('');
-  const [evolutionTresorerieCaisseN1, setEvolutionTresorerieCaisseN1] = useState('');
 
   const [journalData, setJournalData] = useState([]);
 
@@ -171,15 +177,22 @@ export default function DashboardComponent() {
   const GetListeDossier = (id) => {
     axios.get(`/home/FileInfos/${id}`).then((response) => {
       const resData = response.data;
-
       if (resData.state) {
         setFileInfos(resData.fileInfos[0]);
+        setAvecAnalytique(resData.fileInfos[0].avecanalytique);
         setNoFile(false);
       } else {
         setFileInfos([]);
         setNoFile(true);
       }
     })
+  }
+
+  const handleChangeAxe = (e) => {
+    setSelectedAxeId(e.target.value);
+    setSelectedSectionsId([]);
+    localStorage.setItem('axeId', e.target.value);
+    localStorage.removeItem('sectionIds');
   }
 
   const sendToHome = (value) => {
@@ -246,7 +259,15 @@ export default function DashboardComponent() {
 
   // Récupération de toutes les informations
   const getAllInfo = () => {
-    axios.get(`/dashboard/getAllInfo/${Number(compteId)}/${Number(fileId)}/${Number(selectedExerciceId)}`)
+    const sectionIds = selectedSectionsId.map(val => Number(val.id));
+    axios.post(`/dashboard/getAllInfo`, {
+      id_compte: Number(compteId),
+      id_dossier: Number(fileId),
+      id_exercice: Number(selectedExerciceId),
+      id_axe: Number(selectedAxeId),
+      id_sections: sectionIds,
+      avecAnalytique
+    })
       .then((response) => {
         if (response?.data?.state) {
           setChiffresAffairesNGraph(response?.data?.chiffreAffaireN);
@@ -280,7 +301,6 @@ export default function DashboardComponent() {
           setResultatDepenseAchatN1(response?.data?.resultatDepenseAchatN1);
           setVariationDepenseAchatN(response?.data?.variationDepenseAchatN);
           setEvolutionDepenseAchatN(response?.data?.evolutionDepenseAchatN);
-          setEvolutionDepenseAchatN1(response?.data?.evolutionDepenseAchatN1);
 
           setResultatTresorerieBanqueN(response?.data?.resultatTresorerieBanqueN);
           setResultatTresorerieBanqueN1(response?.data?.resultatTresorerieBanqueN1);
@@ -299,6 +319,31 @@ export default function DashboardComponent() {
       });
   }
 
+  const handleGetAxes = () => {
+    axios.get(`/paramCa/getAxes/${Number(compteId)}/${Number(fileId)}`)
+      .then((response) => {
+        if (response?.data?.state) {
+          setAxesData(response?.data?.data);
+          setSelectedAxeId(axeId || response?.data?.data[0]?.id)
+        } else {
+          toast.error(response?.data?.message);
+        }
+      })
+  }
+
+  const handleGetSections = () => {
+    axios.post(`/paramCa/getSectionsByAxeIds/${Number(compteId)}/${Number(fileId)}`, {
+      selectedRowAxeId: Number(selectedAxeId)
+    })
+      .then((response) => {
+        if (response?.data?.state) {
+          setSectionsData(response?.data?.data)
+        } else {
+          toast.error(response?.data?.message);
+        }
+      })
+  }
+
   // Récupération de la liste des devises
   const getParDefaut = async () => {
     await axios.get(`/devises/devise/compte/${compteId}/${fileId}`).then((reponse => {
@@ -309,7 +354,15 @@ export default function DashboardComponent() {
   }
 
   const getListeJournalEnAttente = () => {
-    axios.get(`/dashboard/getListeJournalEnAttente/${Number(compteId)}/${Number(fileId)}/${Number(selectedExerciceId)}`)
+    const sectionIds = selectedSectionsId.map(val => Number(val.id));
+    axios.post(`/dashboard/getListeJournalEnAttente`, {
+      id_compte: Number(compteId),
+      id_dossier: Number(fileId),
+      id_exercice: Number(selectedExerciceId),
+      id_axe: Number(selectedAxeId),
+      id_sections: sectionIds,
+      avecAnalytique
+    })
       .then((response) => {
         if (response?.data) {
           setJournalData(response?.data);
@@ -348,12 +401,37 @@ export default function DashboardComponent() {
   }, []);
 
   useEffect(() => {
-    if (compteId && fileId && selectedExerciceId && canView) {
+    if (compteId && fileId && selectedExerciceId && canView && avecAnalytique && selectedSectionsId.length !== 0) {
       getAllInfo();
       getParDefaut();
       getListeJournalEnAttente();
     }
-  }, [compteId, fileId, selectedExerciceId]);
+  }, [compteId, fileId, selectedExerciceId, selectedAxeId, selectedSectionsId]);
+
+  useEffect(() => {
+    handleGetAxes();
+  }, [selectedExerciceId])
+
+  useEffect(() => {
+    if (selectedAxeId) {
+      handleGetSections();
+    }
+  }, [selectedAxeId])
+
+  useEffect(() => {
+    if (!sectionsData.length) return;
+
+    const raw = localStorage.getItem("sectionIds");
+    if (!raw) return;
+
+    const saved = JSON.parse(raw);
+
+    const matched = sectionsData.filter(sec =>
+      saved.some(s => s.id === sec.id)
+    );
+
+    setSelectedSectionsId(matched);
+  }, [sectionsData]);
 
   return (
     <>
@@ -452,7 +530,97 @@ export default function DashboardComponent() {
                   </FormControl>
                 </Stack>
               </Stack>
+              {
+                avecAnalytique && (
+                  <Stack
+                    direction={'row'}
+                    spacing={2}
+                    alignItems={'flex-start'}
+                    style={{
+                      marginTop: '10px',
+                      marginLeft: '8px',
+                      width: '100%',
+                      backgroundColor: '#F4F9F9',
+                      borderRadius: "5px"
+                    }}
+                  >
+                    <FormControl variant="standard" sx={{ minWidth: 150 }}>
+                      <InputLabel>Axe</InputLabel>
+                      <Select
+                        value={selectedAxeId}
+                        onChange={handleChangeAxe}
+                        sx={{ width: "150px", display: "flex", height: '38px', justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
+                        MenuProps={{
+                          disableScrollLock: true
+                        }}
+                      >
+                        {
+                          axesData.map(val => {
+                            return (
+                              <MenuItem key={val.id} value={val.id}>{val.code}</MenuItem>
+                            )
+                          })
+                        }
+                      </Select>
+                    </FormControl>
+                    <FormControl variant="standard" sx={{ width: '100%' }}>
+                      <Autocomplete
+                        multiple
+                        id="checkboxes-tags-demo"
+                        options={sectionsData}
+                        disableCloseOnSelect
+                        getOptionLabel={(option) => option.section}
+                        onChange={(_event, newValue) => {
+                          setSelectedSectionsId(newValue);
+                          localStorage.setItem('sectionIds', JSON.stringify(newValue));
+                        }}
+                        value={selectedSectionsId}
+                        sx={{
+                          '& .MuiAutocomplete-inputRoot': {
+                            paddingTop: 0,
+                            paddingBottom: 0,
+                            minHeight: '38px',
+                          },
+                        }}
+                        renderOption={(props, option, { selected }) => {
+                          const { key, ...optionProps } = props;
+                          return (
+                            <li
+                              key={key}
+                              {...optionProps}
+                              style={{
+                                paddingTop: 2,
+                                paddingBottom: 2,
+                                paddingLeft: 4,
+                                paddingRight: 4,
+                                fontSize: "0.8rem",
+                                display: "flex",
+                                alignItems: "center"
+                              }}
+                            >
+                              <Checkbox
+                                icon={icon}
+                                checkedIcon={checkedIcon}
+                                style={{ marginRight: 8 }}
+                                checked={selected}
+                              />
+                              {option.section}
+                            </li>
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            variant="standard"
+                            label="Section"
+                          />
+                        )}
+                      />
 
+                    </FormControl>
+                  </Stack>
+                )
+              }
               <Stack
                 sx={{
                   height: { xs: "100vh", md: 405 },

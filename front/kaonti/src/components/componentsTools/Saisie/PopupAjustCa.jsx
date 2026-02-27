@@ -101,17 +101,12 @@ export default function PopupAjustCa({
                         .filter(item => item.id_ligne_ecriture === data.rowId)
                         .map(item => {
                             const fetched = fetchedRows.find(f => f.id_section === item.id_section);
-                            const localPourcentage = fetched?.pourcentage ?? listCa.find(p => p.id_section === item.id_section)?.pourcentage ?? 0;
-                            const montantCalc = (data?.montant || 0) * (localPourcentage / 100);
-
-                            const debit = data?.type === 'debit' ? montantCalc ?? fetched?.debit ?? 0 : 0;
-                            const credit = data?.type === 'credit' ? montantCalc ?? fetched?.credit ?? 0 : 0;
 
                             return {
                                 ...item,
-                                debit,
-                                credit,
-                                pourcentage: localPourcentage ?? fetched?.pourcentage ?? 0,
+                                debit: fetched?.debit ?? 0,
+                                credit: fetched?.credit ?? 0,
+                                pourcentage: fetched?.pourcentage ?? 0,
                                 libelle_axe: item.libelle_axe || fetched?.libelle_axe || '',
                                 section: item.section || fetched?.section || ''
                             };
