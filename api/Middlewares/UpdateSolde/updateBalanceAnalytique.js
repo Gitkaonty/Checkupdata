@@ -414,75 +414,118 @@ const addCompteBilanToBalanceAnalytiqueManyAxes = async (id_compte, id_dossier, 
     }
 };
 
+// const createAnalytiqueIfNotExist = async (id_compte, id_dossier, id_exercice) => {
+//     const journal_in_6_7 = await journals.findAll({
+//         where: {
+//             id_dossier,
+//             id_exercice,
+//             id_compte,
+//             compteaux: { [Op.regexp]: '^(6|7)' }
+//         },
+//         attributes: ['debit', 'credit', 'id_ecriture'],
+//     });
+
+//     const sections = await caSections.findAll({
+//         where: { id_compte, id_dossier },
+//         attributes: ['id_axe', 'id', 'pourcentage']
+//     });
+
+//     const id_ecritures = [...new Set(journal_in_6_7.map(val => val.id_ecriture))];
+
+//     for (const id_ecriture of id_ecritures) {
+
+//         const journalEcriture = await journals.findAll({
+//             where: {
+//                 id_ecriture,
+//                 id_dossier,
+//                 id_exercice,
+//                 id_compte,
+//                 compteaux: { [Op.regexp]: '^(6|7)' }
+//             },
+//             attributes: ['id', 'debit', 'credit'],
+//         });
+
+//         if (journalEcriture.length === 0) {
+//             continue;
+//         }
+
+//         for (const journalLine of journalEcriture) {
+
+//             const analytique = await analytiques.findOne({
+//                 where: { id_ligne_ecriture: journalLine.id }
+//             });
+
+//             if (!analytique) {
+//                 for (const section of sections) {
+
+//                     const debitAnalytique =
+//                         section.pourcentage > 0
+//                             ? (journalLine.debit * section.pourcentage) / 100
+//                             : 0;
+
+//                     const creditAnalytique =
+//                         section.pourcentage > 0
+//                             ? (journalLine.credit * section.pourcentage) / 100
+//                             : 0;
+
+//                     await analytiques.create({
+//                         id_compte,
+//                         id_exercice,
+//                         id_dossier,
+//                         id_axe: section.id_axe,
+//                         id_section: section.id,
+//                         id_ligne_ecriture: journalLine.id,
+//                         pourcentage: section.pourcentage,
+//                         debit: debitAnalytique,
+//                         credit: creditAnalytique
+//                     });
+//                 }
+//             }
+//         }
+//     }
+// };
+
 const createAnalytiqueIfNotExist = async (id_compte, id_dossier, id_exercice) => {
-    const journal_in_6_7 = await journals.findAll({
-        where: {
-            id_dossier,
-            id_exercice,
+    await db.sequelize.query(`
+        INSERT INTO analytiques (
             id_compte,
-            compteaux: { [Op.regexp]: '^(6|7)' }
-        },
-        attributes: ['debit', 'credit', 'id_ecriture'],
+            id_exercice,
+            id_dossier,
+            id_axe,
+            id_section,
+            id_ligne_ecriture,
+            pourcentage,
+            debit,
+            credit
+        )
+        SELECT 
+            j.id_compte,
+            j.id_exercice,
+            j.id_dossier,
+            s.id_axe,
+            s.id AS id_section,
+            j.id AS id_ligne_ecriture,
+            s.pourcentage,
+            CASE WHEN s.pourcentage > 0 THEN (j.debit * s.pourcentage / 100) ELSE 0 END AS debit,
+            CASE WHEN s.pourcentage > 0 THEN (j.credit * s.pourcentage / 100) ELSE 0 END AS credit
+        FROM journals j
+        CROSS JOIN casections s
+        LEFT JOIN analytiques a
+            ON a.id_ligne_ecriture = j.id
+            AND a.id_axe = s.id_axe
+            AND a.id_section = s.id
+        WHERE 
+            j.id_compte = :id_compte
+            AND j.id_dossier = :id_dossier
+            AND j.id_exercice = :id_exercice
+            AND j.compteaux ~ '^(6|7)'
+            AND s.id_compte = :id_compte
+            AND s.id_dossier = :id_dossier
+            AND a.id IS NULL
+    `, {
+        replacements: { id_compte, id_dossier, id_exercice },
+        type: db.Sequelize.QueryTypes.INSERT
     });
-
-    const sections = await caSections.findAll({
-        where: { id_compte, id_dossier },
-        attributes: ['id_axe', 'id', 'pourcentage']
-    });
-
-    const id_ecritures = [...new Set(journal_in_6_7.map(val => val.id_ecriture))];
-
-    for (const id_ecriture of id_ecritures) {
-
-        const journalEcriture = await journals.findAll({
-            where: {
-                id_ecriture,
-                id_dossier,
-                id_exercice,
-                id_compte,
-                compteaux: { [Op.regexp]: '^(6|7)' }
-            },
-            attributes: ['id', 'debit', 'credit'],
-        });
-
-        if (journalEcriture.length === 0) {
-            continue;
-        }
-
-        for (const journalLine of journalEcriture) {
-
-            const analytique = await analytiques.findOne({
-                where: { id_ligne_ecriture: journalLine.id }
-            });
-
-            if (!analytique) {
-                for (const section of sections) {
-
-                    const debitAnalytique =
-                        section.pourcentage > 0
-                            ? (journalLine.debit * section.pourcentage) / 100
-                            : 0;
-
-                    const creditAnalytique =
-                        section.pourcentage > 0
-                            ? (journalLine.credit * section.pourcentage) / 100
-                            : 0;
-
-                    await analytiques.create({
-                        id_compte,
-                        id_exercice,
-                        id_dossier,
-                        id_axe: section.id_axe,
-                        id_section: section.id,
-                        id_ligne_ecriture: journalLine.id,
-                        pourcentage: section.pourcentage,
-                        debit: debitAnalytique,
-                        credit: creditAnalytique
-                    });
-                }
-            }
-        }
-    }
 };
 
 const updateSoldAnalytiqueGlobal = async (id_compte, id_dossier, id_exercice, id_axes, id_sections) => {
