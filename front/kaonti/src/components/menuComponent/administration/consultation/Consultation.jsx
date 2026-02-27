@@ -263,7 +263,7 @@ export default function ConsultationComponent() {
             field: 'id_immob',
             headerName: 'Immo',
             sortable: false,
-            width: 40,
+            width: 55,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',

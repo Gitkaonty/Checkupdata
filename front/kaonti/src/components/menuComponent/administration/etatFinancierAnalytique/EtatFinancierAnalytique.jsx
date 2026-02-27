@@ -656,7 +656,6 @@ export default function EtatFinancierAnalytique() {
             document.body.removeChild(link);
         }
     }
-
     // Générer toutes les tableaux en PDF ou Excel
     const exportAllFile = (type) => {
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));

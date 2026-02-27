@@ -13,7 +13,6 @@ import TabContext from '@mui/lab/TabContext';
 import TabList from '@mui/lab/TabList';
 import TabPanel from '@mui/lab/TabPanel';
 import { InfoFileStyle } from '../../componentsTools/InfosFileStyle';
-import DashboardCard from '../../componentsTools/Dashboard/DashboardCard';
 import { format } from 'date-fns';
 import LineChartComponent from '../../componentsTools/Dashboard/LineChartComponent';
 import useAuth from '../../../hooks/useAuth';
@@ -25,6 +24,7 @@ import KpiCard from '../../componentsTools/Dashboard/KpiCard';
 import KpiCardDouble from '../../componentsTools/Dashboard/KpiCardDouble';
 import { FiShoppingCart, FiUsers, FiCreditCard, FiArchive } from "react-icons/fi";
 import { FiSearch } from "react-icons/fi";
+import ApexChart from '../../componentsTools/Dashboard/ApexChart';
 
 const columns = [
   {
@@ -65,7 +65,10 @@ const columns = [
     label: 'Débit',
     minWidth: 100,
     align: 'right',
-    format: (value) => value.toFixed(2),
+    format: (value) => value.toLocaleString('fr-FR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
     isNumber: true
   },
   {
@@ -73,7 +76,10 @@ const columns = [
     label: 'Crédit',
     minWidth: 100,
     align: 'right',
-    format: (value) => value.toFixed(2),
+    format: (value) => value.toLocaleString('fr-FR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
     isNumber: true
   },
 ];
@@ -571,12 +577,14 @@ export default function DashboardComponent() {
                       p: 2
                     }}
                     height={{ xs: 300, md: 500 }}
+                    width={"100%"}
                   >
-                    <LineChartComponent
+                    <ApexChart
                       xAxis={xAxis}
                       dataN={chiffresAffairesNGraph}
                       dataN1={chiffresAffairesN1Graph}
                       label={"Chiffre d'affaires"}
+                      type={'area'}
                     />
                   </Stack>
 
@@ -649,11 +657,12 @@ export default function DashboardComponent() {
                       p: 2
                     }}
                   >
-                    <LineChartComponent
+                    <ApexChart
                       xAxis={xAxis}
                       dataN={margeBruteNGraph}
                       dataN1={margeBruteN1Graph}
                       label={"Marges brutes"}
+                      type={'area'}
                     />
                   </Stack>
 
@@ -665,11 +674,12 @@ export default function DashboardComponent() {
                       p: 2
                     }}
                   >
-                    <LineChartComponent
+                    <ApexChart
                       xAxis={xAxis}
                       dataN={tresorerieBanqueNGraph}
                       dataN1={tresorerieBanqueN1Graph}
                       label={"Trésoreries (Banques)"}
+                      type={'bar'}
                     />
                   </Stack>
 
@@ -681,11 +691,12 @@ export default function DashboardComponent() {
                       p: 2
                     }}
                   >
-                    <LineChartComponent
+                    <ApexChart
                       xAxis={xAxis}
                       dataN={tresorerieCaisseNGraph}
                       dataN1={tresorerieCaisseN1Graph}
                       label={"Trésoreries (Caisses)"}
+                      type={'bar'}
                     />
                   </Stack>
                 </Stack>

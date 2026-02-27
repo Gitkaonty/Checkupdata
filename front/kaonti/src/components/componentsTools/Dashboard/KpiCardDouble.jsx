@@ -66,8 +66,42 @@ const KpiCardDouble = ({
                 </Typography>
             </Stack>
 
-            {/* Chiffre d'affaires */}
+            {/* Résultat net */}
             <Stack mt={4} spacing={1.5}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ fontSize: 16, opacity: 0.9 }}>Résultat net (N)</Typography>
+                    <Typography
+                        sx={{
+                            fontSize: 24,
+                            fontWeight: 700,
+                            textShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                        }}
+                    >
+                        {formatMontant(resultatN)}
+                    </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ fontSize: 15, opacity: 0.6 }}>Résultat net (N-1)</Typography>
+                    <Typography sx={{ fontSize: 16 }}>{formatMontant(resultatN1)}</Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ fontSize: 15 }}>Évolution</Typography>
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                        {IconVariation(evolutionResultatN)}
+                        <Typography sx={{ fontSize: 16, fontWeight: 600, color: getColor(evolutionResultatN) }}>
+                            {formatePourcentage(variationResultatN, evolutionResultatN)}
+                        </Typography>
+                    </Stack>
+                </Stack>
+            </Stack>
+
+            {/* Divider */}
+            <Box sx={{ borderBottom: "1px solid rgba(255,255,255,0.25)", my: 3 }} />
+
+            {/* Chiffre d'affaires */}
+            <Stack spacing={1.5}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography sx={{ fontSize: 16, opacity: 0.9 }}>Chiffre d'affaires (N)</Typography>
                     <Typography
@@ -97,39 +131,6 @@ const KpiCardDouble = ({
                 </Stack>
             </Stack>
 
-            {/* Divider */}
-            <Box sx={{ borderBottom: "1px solid rgba(255,255,255,0.25)", my: 3 }} />
-
-            {/* Résultat net */}
-            <Stack spacing={1.5}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography sx={{ fontSize: 16, opacity: 0.9 }}>Résultat net (N)</Typography>
-                    <Typography
-                        sx={{
-                            fontSize: 24,
-                            fontWeight: 700,
-                            textShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                        }}
-                    >
-                        {formatMontant(resultatN)}
-                    </Typography>
-                </Stack>
-
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography sx={{ fontSize: 15, opacity: 0.6 }}>Résultat net (N-1)</Typography>
-                    <Typography sx={{ fontSize: 16 }}>{formatMontant(resultatN1)}</Typography>
-                </Stack>
-
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography sx={{ fontSize: 15 }}>Évolution</Typography>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                        {IconVariation(evolutionResultatN)}
-                        <Typography sx={{ fontSize: 16, fontWeight: 600, color: getColor(evolutionResultatN) }}>
-                            {formatePourcentage(variationResultatN, evolutionResultatN)}
-                        </Typography>
-                    </Stack>
-                </Stack>
-            </Stack>
         </Stack>
     )
 }
