@@ -3,9 +3,9 @@ const router = express.Router();
 const dashboardController = require('../../Controllers/Dashboard/dashboardController');
 
 // Récupération
-router.get('/getAllInfo/:id_compte/:id_dossier/:id_exercice', dashboardController.getAllInfo);
+router.post('/getAllInfo', dashboardController.getAllInfo);
 
 // Récupérarion compte en attente
-router.get('/getListeJournalEnAttente/:id_compte/:id_dossier/:id_exercice', dashboardController.getListeJournalEnAttente);
+router.post('/getListeJournalEnAttente', dashboardController.getListeJournalEnAttente);
 
 module.exports = router;
