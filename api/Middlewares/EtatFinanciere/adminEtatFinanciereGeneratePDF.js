@@ -5,7 +5,6 @@ const recupEtatFinancier = require('../../Middlewares/Administration/EtatFinanci
 const getEtatFinancierComplet = recupEtatFinancier.getEtatFinancierComplet;
 const getSigComplet = recupEtatFinancier.getSigComplet;
 
-const rubriquesExternes = db.rubriquesExternes;
 const rubriqueExternesEvcp = db.rubriqueExternesEvcp;
 
 const formatAmount = (value) => {

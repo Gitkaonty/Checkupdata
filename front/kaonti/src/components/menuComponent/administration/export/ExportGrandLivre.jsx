@@ -208,6 +208,9 @@ export default function ExportGrandLivre() {
         dateDebut,
         dateFin,
       };
+      if (journalCodes.length === 0) {
+        return toast.error('Veuillez sélectionner au moins une code journal');
+      }
       const response = await axios.post('/administration/exportGrandLivre/pdf', body, { responseType: 'blob' });
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const link = document.createElement('a');
@@ -239,6 +242,9 @@ export default function ExportGrandLivre() {
         dateDebut,
         dateFin,
       };
+      if (journalCodes.length === 0) {
+        return toast.error('Veuillez sélectionner au moins une code journal');
+      }
       const response = await axios.post('/administration/exportGrandLivre/excel', body, { responseType: 'blob' });
       const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const link = document.createElement('a');

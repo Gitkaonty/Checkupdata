@@ -1,7 +1,10 @@
 const db = require('../../Models');
-const ExcelJS = require('exceljs');
+require('dotenv').config();
 const Sequelize = require('sequelize');
+const path = require('path');
 const { Op } = Sequelize;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const journals = db.journals;
 const dossierplancomptable = db.dossierplancomptable;
@@ -37,6 +40,12 @@ async function exportJournalTableExcel(id_compte, id_dossier, id_exercice, journ
   const rows = await getJournalRows(id_compte, id_dossier, id_exercice, journalCodes, dateDebut, dateFin);
 
   const ws = workbook.addWorksheet('Journal');
+
+  const logoId = workbook.addImage({
+    filename: logoPath,
+    extension: 'png',
+  });
+
   ws.columns = [
     { key: 'date', width: 12 },
     { key: 'journal', width: 10 },
@@ -58,17 +67,23 @@ async function exportJournalTableExcel(id_compte, id_dossier, id_exercice, journ
   };
   // Titre
   // ====== Ligne 1 : Titre principal (centré sur la largeur du tableau) ======
-  ws.mergeCells('A1:E1');
+  ws.mergeCells('A1:I1');
   const titleCell = ws.getCell('A1');
   titleCell.value = 'JOURNAL';
   titleCell.font = { bold: true, size: 16 };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
+  ws.addImage(logoId, {
+    tl: { x: 10, y: 5 },
+    ext: { width: 55, height: 55 },
+    editAs: 'absolute',
+  });
+
   // ====== Ligne 2 : Dossier centré sous le titre ======
-  ws.mergeCells('A2:E2');
+  ws.mergeCells('A2:I2');
   const dossierCell = ws.getCell('A2');
   dossierCell.value = `Dossier : ${dossierName || ''}`;
-  dossierCell.font = { italic: true, bold: true, size: 12, color: { argb: 'FF555555' } };
+  dossierCell.font = { italic: true, bold: true, size: 14, color: { argb: 'FF555555' } };
   dossierCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // ====== Ligne 3 : Période alignée à gauche ======
@@ -127,9 +142,9 @@ async function exportJournalTableExcel(id_compte, id_dossier, id_exercice, journ
   });
 
   // Si tu veux que les montants soient alignés à droite
-  ['F', 'G', 'H', 'I'].forEach(col => {
-    ws.getColumn(col).alignment = { horizontal: 'right' };
-  });
+  // ['F', 'G', 'H', 'I'].forEach(col => {
+  //   ws.getColumn(col).alignment = { horizontal: 'right' };
+  // });
 
 
 }

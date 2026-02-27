@@ -94,7 +94,8 @@ const LineChartComponent = ({ xAxis, dataN, dataN1, label }) => {
 
     const options = {
         responsive: true,
-        layout: { padding: { right: 20 } },
+        maintainAspectRatio: false,
+        layout: { padding: 0 },
         plugins: {
             legend: { display: true, position: 'top' },
             title: { display: true, text: label, font: { size: 18 } },
@@ -103,21 +104,21 @@ const LineChartComponent = ({ xAxis, dataN, dataN1, label }) => {
         },
         scales: {
             y: {
-                ticks:
-                {
-                    callback: formatValue,
-                    display: true
-                },
-                grid: {
-                    display: true
-                },
+                ticks: { callback: formatValue, display: true, padding: 0 },
+                grid: { display: true },
             },
-            x: { grid: { display: true } },
+            x: {
+                ticks: { padding: 0 },
+                grid: { display: true },
+            },
         },
     };
 
     return (
-        <Stack flex={1} height={'100%'} alignItems="center" direction="column">
+        <Stack flex={1} height={'100%'}
+            alignItems="center"
+            direction="column"
+        >
             <Line data={chartData} options={options} plugins={[shadowPlugin]} />
         </Stack>
     );

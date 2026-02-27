@@ -20,16 +20,19 @@ const recupInfos = async (id_compte, id_dossier, id_exerciceN) => {
 
         const dateFinN1Formatted = dateDebut.toISOString().split('T')[0];
 
-        // Chercher l'exercice N-1
-        const n1Exercice = await exercices.findOne({
-            where: {
-                id_compte: Number(id_compte),
-                id_dossier: Number(id_dossier),
-                date_fin: { [Op.eq]: new Date(dateFinN1Formatted) }
-            }
-        });
+        const rows = await db.sequelize.query(`
+            SELECT id
+            FROM exercices
+            WHERE
+                id_compte = :id_compte
+                AND id_dossier = :id_dossier
+                AND date_fin = :date_fin
+        `, {
+            type: db.Sequelize.QueryTypes.SELECT,
+            replacements: { id_compte, id_dossier, date_fin: new Date(dateFinN1Formatted) }
+        })
 
-        const id_exerciceN1 = n1Exercice?.id || null;
+        const id_exerciceN1 = rows[0]?.id || null;
 
         return { id_exerciceN1 }
 

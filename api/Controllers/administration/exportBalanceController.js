@@ -215,7 +215,7 @@ const recupBalanceAnalytiqueFromJournal = async (req, res) => {
                 AND J.ID_COMPTE = :id_compte
                 AND J.ID_DOSSIER = :id_dossier
                 AND J.ID_EXERCICE = :id_exercice
-                AND ${centraliser ? "J.COMPTEGEN ~ '^(6|7)'" : "J.COMPTEAUX ~ '^(6|7)'"}
+                -- AND ${centraliser ? "J.COMPTEGEN ~ '^(6|7)'" : "J.COMPTEAUX ~ '^(6|7)'"}
 
             GROUP BY
                 ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'}

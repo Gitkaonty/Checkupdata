@@ -15,10 +15,8 @@ import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFil
 import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
 import { init } from '../../../../../init';
 import { TbPlaylistAdd } from "react-icons/tb";
-import { TfiSave } from "react-icons/tfi";
 import { FaRegPenToSquare } from "react-icons/fa6";
 import { IoMdTrash } from "react-icons/io";
-import { VscClose } from "react-icons/vsc";
 import { TbFileImport } from "react-icons/tb";
 import { useCallback } from 'react';
 import DetailsImmoDialog from './DetailsImmoDialog';
@@ -198,14 +196,11 @@ const Immobilisations = () => {
   // State for the second (details) grid with its own CRUD
   const [detailsRows, setDetailsRows] = useState([]);
   const [detailsSelectionModel, setDetailsSelectionModel] = useState([]);
-  const [detailsRowModesModel, setDetailsRowModesModel] = useState({});
-  const [detailsEditingRowId, setDetailsEditingRowId] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsDialogMode, setDetailsDialogMode] = useState('add'); // 'add' | 'edit'
   const [detailsForm, setDetailsForm] = useState({});
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [lienDialogOpen, setLienDialogOpen] = useState(false);
-  const [lienTempValue, setLienTempValue] = useState('');
   const [journalRows, setJournalRows] = useState([]);
   const [journalLoading, setJournalLoading] = useState(false);
   const [journalSelection, setJournalSelection] = useState([]);
@@ -421,47 +416,94 @@ const Immobilisations = () => {
   }, [ligneMeta, selectedDetailRow]);
 
   // Enregistrer manuellement les lignes (tableau 3)  
-  const handleSaveLignes = async () => {
+  // const handleSaveLignes = async () => {
+  //   try {
+  //     const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+  //     const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
+  //     if (!fid || !compteId || !exoId || !selectedDetailId) {
+  //       toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
+  //       return;
+  //     }
+
+  //     // Récupérer les lignes affichées selon l'onglet actuel
+  //     const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
+  //     if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
+  //       toast.error('Aucune ligne d\'amortissement à enregistrer. Prévisualisez d\'abord les calculs.');
+  //       return;
+  //     }
+
+  //     // Détecter le mode selon l'onglet actuel
+  //     const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
+  //     const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
+
+  //     setSavingLignes(true);
+  //     const useDeg = (ligneTab === 'comp' ? isCompDegTab : isFiscDegTab);
+  //     const url = useDeg
+  //       ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
+  //       : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
+  //     await axios.post(url,
+  //       {
+  //         fileId: fid,
+  //         compteId: compteId,
+  //         exerciceId: exoId,
+  //         detailId: selectedDetailId,
+  //         mode: autoMode,
+  //         lignes: lignesAEnvoyer
+  //       },
+  //       { timeout: 60000 }
+  //     );
+  //     setIsRefreshed(prev => !prev);
+  //     // toast.success('Lignes d\'amortissement enregistrées');
+  //   } catch (e) {
+  //     toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
+  //   } finally { setSavingLignes(false); }
+  // };
+  const handleSaveLignes = async (lignesComp = null, lignesFisc = null) => {
     try {
-      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-      const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
+      const fid = Number(id) || 0;
+      const exoId = Number(selectedExerciceId) || 0;
+      const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0
+        ? Number(detailsSelectionModel[detailsSelectionModel.length - 1])
+        : 0;
+
       if (!fid || !compteId || !exoId || !selectedDetailId) {
         toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
         return;
       }
 
-      // Récupérer les lignes affichées selon l'onglet actuel
-      const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
+      const lignesAEnvoyer = ligneTab === 'fisc'
+        ? (lignesFisc || ligneRowsFisc)
+        : (lignesComp || ligneRowsComp);
+
       if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
-        toast.error('Aucune ligne d\'amortissement à enregistrer. Prévisualisez d\'abord les calculs.');
+        toast.error("Aucune ligne d'amortissement à enregistrer.");
         return;
       }
 
-      // Détecter le mode selon l'onglet actuel
-      const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
       const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
-
       setSavingLignes(true);
-      const useDeg = (ligneTab === 'comp' ? isCompDegTab : isFiscDegTab);
+
+      const useDeg = ligneTab === 'comp' ? isCompDegTab : isFiscDegTab;
       const url = useDeg
         ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
         : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
-      await axios.post(url,
-        {
-          fileId: fid,
-          compteId: compteId,
-          exerciceId: exoId,
-          detailId: selectedDetailId,
-          mode: autoMode,
-          lignes: lignesAEnvoyer
-        },
-        { timeout: 60000 }
-      );
+
+      await axios.post(url, {
+        fileId: fid,
+        compteId,
+        exerciceId: exoId,
+        detailId: selectedDetailId,
+        mode: autoMode,
+        lignes: lignesAEnvoyer
+      }, { timeout: 60000 });
+
       setIsRefreshed(prev => !prev);
-      // toast.success('Lignes d\'amortissement enregistrées');
+
     } catch (e) {
       toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
-    } finally { setSavingLignes(false); }
+    } finally {
+      setSavingLignes(false);
+    }
   };
 
   // Fetch details_immo from backend and filter by selected PCs
@@ -525,20 +567,21 @@ const Immobilisations = () => {
 
   const detailRowsWithTotal = useMemo(() => {
     if (!detailsRows || detailsRows.length === 0) return [];
+    const detailRowsFiltered = detailsRows.filter(val => val.id_exercice === Number(selectedExerciceId));
 
-    const totalDureeAmort = detailsRows.reduce((s, r) => s + (Number(r.duree_amort_mois) || 0), 0);
-    const totalMontant = detailsRows.reduce((s, r) => s + (Number(r.montant) || 0), 0);
-    const totalTauxTva = detailsRows.reduce((s, r) => s + (Number(r.taux_tva) || 0), 0);
-    const totalMontantTva = detailsRows.reduce((s, r) => s + (Number(r.montant_tva) || 0), 0);
-    const totalAmortAvantReprise = detailsRows.reduce((s, r) => s + (Number(r.amort_avant_reprise) || 0), 0);
-    const totalMontanntHt = detailsRows.reduce((s, r) => s + (Number(r.montant_ht) || 0), 0);
-    const totalAmortAnt = detailsRows.reduce((s, r) => s + (Number(r.amort_ant_comp) || 0), 0);
-    const totalDotationPeriode = detailsRows.reduce((s, r) => s + (Number(r.dotation_periode_comp) || 0), 0);
-    const totalAmortExc = detailsRows.reduce((s, r) => s + (Number(r.amort_exceptionnel_comp) || 0), 0);
-    const totalTotalAmort = detailsRows.reduce((s, r) => s + (Number(r.total_amortissement_comp) || 0), 0);
-    const totalDerog = detailsRows.reduce((s, r) => s + (Number(r.derogatoire_comp) || 0), 0);
-    const totalVnc = detailsRows.reduce((s, r) => s + (Number(r.vnc) || 0), 0);
-    const totalPrixVente = detailsRows.reduce((s, r) => s + (Number(r.prix_vente) || 0), 0);
+    const totalDureeAmort = detailRowsFiltered.reduce((s, r) => s + (Number(r.duree_amort_mois) || 0), 0);
+    const totalMontant = detailRowsFiltered.reduce((s, r) => s + (Number(r.montant) || 0), 0);
+    const totalTauxTva = detailRowsFiltered.reduce((s, r) => s + (Number(r.taux_tva) || 0), 0);
+    const totalMontantTva = detailRowsFiltered.reduce((s, r) => s + (Number(r.montant_tva) || 0), 0);
+    const totalAmortAvantReprise = detailRowsFiltered.reduce((s, r) => s + (Number(r.amort_avant_reprise) || 0), 0);
+    const totalMontanntHt = detailRowsFiltered.reduce((s, r) => s + (Number(r.montant_ht) || 0), 0);
+    const totalAmortAnt = detailRowsFiltered.reduce((s, r) => s + (Number(r.amort_ant_comp) || 0), 0);
+    const totalDotationPeriode = detailRowsFiltered.reduce((s, r) => s + (Number(r.dotation_periode_comp) || 0), 0);
+    const totalAmortExc = detailRowsFiltered.reduce((s, r) => s + (Number(r.amort_exceptionnel_comp) || 0), 0);
+    const totalTotalAmort = detailRowsFiltered.reduce((s, r) => s + (Number(r.total_amortissement_comp) || 0), 0);
+    const totalDerog = detailRowsFiltered.reduce((s, r) => s + (Number(r.derogatoire_comp) || 0), 0);
+    const totalVnc = detailRowsFiltered.reduce((s, r) => s + (Number(r.vnc) || 0), 0);
+    const totalPrixVente = detailRowsFiltered.reduce((s, r) => s + (Number(r.prix_vente) || 0), 0);
 
     const totalRow = {
       id: 'total-row',
@@ -713,7 +756,7 @@ const Immobilisations = () => {
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const effectiveCompteId = compteId;
 
-      await handleSaveLignes();
+      await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
 
       if (detailsDialogMode === 'add') {
         const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
@@ -1281,38 +1324,6 @@ const Immobilisations = () => {
                           </IconButton>
                         </span>
                       </Tooltip>
-                      {/* <Tooltip title="Sauvegarder">
-                        <span>
-                          <IconButton
-                            onClick={handleSaveLignes}
-                            disabled={
-                              savingLignes ||
-                              ligneLoading ||
-                              !(Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0)
-                            }
-                            style={{
-                              width: 35,
-                              height: 35,
-                              borderRadius: 2,
-                              backgroundColor: initial.theme,
-                              textTransform: 'none',
-                              outline: 'none',
-                            }}
-                          >
-                            <TfiSave style={{ width: 20, height: 20, color: 'white' }} />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="Annuler">
-                        <span>
-                          <IconButton onClick={handleDetailsCancel} disabled={!detailsEditingRowId} style={{
-                            width: 35, height: 35, borderRadius: 2, backgroundColor: initial.button_delete_color, textTransform: 'none',
-                            outline: 'none',
-                          }}>
-                            <VscClose style={{ width: 20, height: 20, color: 'white' }} />
-                          </IconButton>
-                        </span>
-                      </Tooltip> */}
                       <Tooltip title="Supprimer">
                         <span>
                           <IconButton onClick={handleDetailsDelete} disabled={detailsSelectionModel.length === 0} style={{
@@ -1332,39 +1343,43 @@ const Immobilisations = () => {
                     disableRowSelectionOnClick
                     disableSelectionOnClick={true}
                     rows={detailRowsWithTotal}
+                    isRowSelectable={(params) =>
+                      params.row.id_exercice === selectedExerciceId
+                    }
                     columns={[
                       { field: 'code', headerName: 'Code', width: 140 },
                       { field: 'intitule', headerName: 'Intitulé', width: 220 },
-                      { field: 'lien_ecriture_id', headerName: 'Lien écriture', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: (p) => (p.value ? <GoLink color={initial.theme} size={22} /> : '') },
+                      { field: 'compte_amortissement', headerName: 'Compte amort', width: 140 },
+                      { field: 'lien_ecriture_id', headerName: 'Lien écriture', width: 100, align: 'center', headerAlign: 'center', sortable: false, renderCell: (p) => (p.value ? <GoLink color={initial.theme} size={22} /> : '') },
                       // { field: 'pc_id', headerName: 'Compte ID', width: 120 },
                       { field: 'fournisseur', headerName: 'Fournisseur', width: 160 },
                       {
-                        field: 'date_acquisition', headerName: "Date d'acquisition", align: 'center', width: 150, valueGetter: (p) => {
+                        field: 'date_acquisition', headerName: "Date d'acquisition", align: 'left', width: 150, valueGetter: (p) => {
                           const s = p?.row?.date_acquisition ? String(p.row.date_acquisition).substring(0, 10) : '';
                           return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
                         }
                       },
                       {
-                        field: 'date_mise_service', headerName: 'Date mise en service', align: 'center', width: 170, valueGetter: (p) => {
+                        field: 'date_mise_service', headerName: 'Date mise en service', align: 'left', width: 160, valueGetter: (p) => {
                           const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : '';
                           return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
                         }
                       },
                       {
-                        field: 'etat', headerName: 'Etat', align: 'center', width: 120,
+                        field: 'etat', headerName: 'Etat', align: 'left', width: 120,
                         valueGetter: (params) => {
                           const value = params?.row?.etat;
                           return ETAT_LABELS[value] || value;
                         }
                       },
-                      { field: 'duree_amort_mois', headerName: 'Durée amort (mois)', width: 160 },
                       {
                         field: 'type_amort', headerName: "Type d'amortissement", width: 170,
                         valueGetter: (p) => {
                           return p?.value.toUpperCase();
                         }
                       },
-                      { field: 'montant', headerName: 'Montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'duree_amort_mois', headerName: 'Durée amort (mois)', align: 'right', width: 140, renderCell: (p) => formatMoneyFr(p.value) }, ,
+                      { field: 'montant', headerName: 'Montant TTC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'taux_tva', headerName: 'Taux TVA', width: 110, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'montant_tva', headerName: 'Montant TVA', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'amort_avant_reprise', headerName: 'Amort avant rep.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
@@ -1374,24 +1389,26 @@ const Immobilisations = () => {
                       { field: 'amort_exceptionnel_comp', headerName: 'Amort exceptionnel', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'derogatoire_comp', headerName: 'Dérogatoire', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       { field: 'total_amortissement_comp', headerName: 'Total amortissement', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'compte_amortissement', headerName: 'Compte amortissement', width: 140 },
                       { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+                      { field: 'prix_vente', headerName: 'Prix de vente', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                       {
-                        field: 'date_sortie', headerName: 'date de sortie', align: 'center', width: 140, valueGetter: (p) => {
+                        field: 'date_sortie', headerName: 'Date de sortie', align: 'center', width: 140, valueGetter: (p) => {
                           const s = p?.row?.date_sortie ? String(p.row.date_sortie).substring(0, 10) : '';
                           return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
                         }
                       },
-                      { field: 'prix_vente', headerName: 'Prix de vente', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
                     ]}
                     getRowId={(r) => r.id}
                     // disableColumnMenu
                     // disableRowSelectionOnClick={false}
                     checkboxSelection
+                    experimentalFeatures={{ newEditingApi: true }}
                     rowSelectionModel={detailsSelectionModel}
                     onRowSelectionModelChange={(m) => {
                       const arr = Array.isArray(m) ? m : [];
-                      setDetailsSelectionModel(arr.slice(-1));
+                      const selected = arr.slice(-1);
+
+                      setDetailsSelectionModel(selected);
                     }}
                     isCellEditable={() => false}
                     density="compact"
@@ -1420,8 +1437,18 @@ const Immobilisations = () => {
                       '& .MuiDataGrid-row.total-row .MuiDataGrid-checkboxInput': {
                         display: 'none',
                       },
+                      '& .disabled-row': {
+                        opacity: 0.5,
+                      },
+                      '& .MuiDataGrid-cell:focus-within': {
+                        outline: 'none !important',
+                      },
                     }}
-                    getRowClassName={(params) => (params.row?.isTotal ? 'total-row' : '')}
+                    getRowClassName={(params) => {
+                      if (params.row?.isTotal) return 'total-row';
+                      if (params.row.id_exercice !== selectedExerciceId) return 'disabled-row';
+                      return '';
+                    }}
                   />
                   {Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 && (
                     <Box sx={{ mt: 2 }}>

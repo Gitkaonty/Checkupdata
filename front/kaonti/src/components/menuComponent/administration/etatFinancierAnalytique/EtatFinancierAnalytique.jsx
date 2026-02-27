@@ -601,20 +601,23 @@ export default function EtatFinancierAnalytique() {
 
     const getEtatFinancierAnalytiqueGlobal = () => {
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
-        axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytiqueGlobal/${compteId}/${fileId}/${selectedExerciceId}`, {
-            id_axe: axeId,
-            id_sections: id_sectionMapped
+        axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytique`, {
+            id_compte: Number(compteId),
+            id_dossier: Number(fileId),
+            id_exercice: Number(selectedExerciceId),
+            axeId: axeId,
+            sectionId: id_sectionMapped
         })
             .then((response) => {
                 if (response?.data?.state) {
                     const resData = response?.data;
-                    setBilanActifData(resData.liste.BILAN_ACTIF);
-                    setBilanPassifData(resData.liste.BILAN_PASSIF);
-                    setCrnData(resData.liste.CRN);
-                    setCrfData(resData.liste.CRF);
-                    setTftdData(resData.liste.TFTD);
-                    setTftiData(resData.liste.TFTI);
-                    setEvcpData(resData.liste.EVCP);
+                    setBilanActifData(resData?.liste?.BILAN_ACTIF || []);
+                    setBilanPassifData(resData?.liste?.BILAN_PASSIF || []);
+                    setCrnData(resData?.liste?.CRN || []);
+                    setCrfData(resData?.liste?.CRF || []);
+                    setTftdData(resData?.liste?.TFTD || []);
+                    setTftiData(resData?.liste?.TFTI || []);
+                    setEvcpData(resData?.liste?.EVCP || []);
                 } else {
                     toast.error(resData.message);
                 }
@@ -638,30 +641,32 @@ export default function EtatFinancierAnalytique() {
             libelle = "EVCP"
         }
 
+        const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
+
         if (type === "PDF") {
             window.open(
-                `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`,
+                `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${libelle}/${axeId}/${id_sectionMapped}`,
                 "_blank"
             );
         } else {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`;
+            link.href = `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${libelle}/${axeId}/${id_sectionMapped}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
     }
-
     // Générer toutes les tableaux en PDF ou Excel
     const exportAllFile = (type) => {
+        const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
         if (type === 'PDF') {
             window.open(
-                `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}`,
+                `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${axeId}/${id_sectionMapped}`,
                 "_blank"
             );
         } else if (type === 'EXCEL') {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}`;
+            link.href = `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${axeId}/${id_sectionMapped}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1027,7 +1032,7 @@ export default function EtatFinancierAnalytique() {
 
                                             <Stack width={"70%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                                 direction={"row"} justifyContent={"right"}>
-                                                <Tooltip title="Actualiser les calculs">
+                                                {/* <Tooltip title="Actualiser les calculs">
                                                     <IconButton
                                                         onClick={refreshBILAN}
                                                         variant="contained"
@@ -1043,7 +1048,7 @@ export default function EtatFinancierAnalytique() {
                                                             style={{ width: '25px', height: '25px', color: 'white' }}
                                                         />
                                                     </IconButton>
-                                                </Tooltip>
+                                                </Tooltip> */}
 
                                                 <ExportEtatFinancierAnalytiqueButton
                                                     exportToExcel={() => exportFile("EXCEL")}
@@ -1139,7 +1144,7 @@ export default function EtatFinancierAnalytique() {
                                             <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                                 direction={"row"} justifyContent={"right"}>
 
-                                                <Tooltip title="Actualiser les calculs">
+                                                {/* <Tooltip title="Actualiser les calculs">
                                                     <IconButton
                                                         onClick={refreshCRN}
                                                         variant="contained"
@@ -1153,7 +1158,7 @@ export default function EtatFinancierAnalytique() {
                                                     >
                                                         <TbRefresh style={{ width: '25px', height: '25px', color: 'white' }} />
                                                     </IconButton>
-                                                </Tooltip>
+                                                </Tooltip> */}
 
                                                 <ExportEtatFinancierAnalytiqueButton
                                                     exportToExcel={() => exportFile("EXCEL")}
@@ -1224,7 +1229,7 @@ export default function EtatFinancierAnalytique() {
                                             <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                                 direction={"row"} justifyContent={"right"}>
 
-                                                <Tooltip title="Actualiser les calculs">
+                                                {/* <Tooltip title="Actualiser les calculs">
                                                     <IconButton
                                                         onClick={refreshCRF}
                                                         variant="contained"
@@ -1238,7 +1243,7 @@ export default function EtatFinancierAnalytique() {
                                                     >
                                                         <TbRefresh style={{ width: '25px', height: '25px', color: 'white' }} />
                                                     </IconButton>
-                                                </Tooltip>
+                                                </Tooltip> */}
 
                                                 <ExportEtatFinancierAnalytiqueButton
                                                     exportToExcel={() => exportFile("EXCEL")}
@@ -1309,7 +1314,7 @@ export default function EtatFinancierAnalytique() {
                                             <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                                 direction={"row"} justifyContent={"right"}>
 
-                                                <Tooltip title="Actualiser les calculs">
+                                                {/* <Tooltip title="Actualiser les calculs">
                                                     <IconButton
                                                         onClick={refreshTFTD}
                                                         variant="contained"
@@ -1323,7 +1328,7 @@ export default function EtatFinancierAnalytique() {
                                                     >
                                                         <TbRefresh style={{ width: '25px', height: '25px', color: 'white' }} />
                                                     </IconButton>
-                                                </Tooltip>
+                                                </Tooltip> */}
 
                                                 <ExportEtatFinancierAnalytiqueButton
                                                     exportToExcel={() => exportFile("EXCEL")}
@@ -1394,7 +1399,7 @@ export default function EtatFinancierAnalytique() {
                                             <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                                 direction={"row"} justifyContent={"right"}>
 
-                                                <Tooltip title="Actualiser les calculs">
+                                                {/* <Tooltip title="Actualiser les calculs">
                                                     <IconButton
                                                         onClick={refreshTFTI}
                                                         variant="contained"
@@ -1408,7 +1413,7 @@ export default function EtatFinancierAnalytique() {
                                                     >
                                                         <TbRefresh style={{ width: '25px', height: '25px', color: 'white' }} />
                                                     </IconButton>
-                                                </Tooltip>
+                                                </Tooltip> */}
 
                                                 <ExportEtatFinancierAnalytiqueButton
                                                     exportToExcel={() => exportFile("EXCEL")}

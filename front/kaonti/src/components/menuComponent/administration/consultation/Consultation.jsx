@@ -263,7 +263,7 @@ export default function ConsultationComponent() {
             field: 'id_immob',
             headerName: 'Immo',
             sortable: false,
-            width: 40,
+            width: 55,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',
@@ -658,6 +658,13 @@ export default function ConsultationComponent() {
         }
         let id_ecriture = '';
         if (selectedRows.length === 1) {
+            const selectedJournalId = selectedRows[0].id_journal;
+            const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
+
+            if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
+                return toast.error("Impossible de modifier une écriture d'immobilisation");
+            }
+
             id_ecriture = selectedRows[0].id_ecriture;
             const rows = listSaisie
                 .filter((row) => row.id_ecriture === id_ecriture)

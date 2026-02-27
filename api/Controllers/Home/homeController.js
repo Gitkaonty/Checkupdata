@@ -26,69 +26,38 @@ const recupListDossier = async (req, res) => {
     const { userId } = req.query;
     const { compteId } = req.params;
 
-    let resData = {
-      state: false,
-      msg: '',
-      fileList: []
-    };
+    const query = `
+      SELECT d.*, string_agg(p.nom, ', ') AS portefeuille
+      FROM dossiers d
+      LEFT JOIN portefeuilles p
+        ON p.id = ANY(d.id_portefeuille)
+      WHERE d.id_compte = :compteId
+        AND (
+          d.id_portefeuille && (
+            SELECT array_agg(id_portefeuille)
+            FROM compteportefeuilles
+            WHERE user_id = :userId
+          )
+          OR d.id IN (
+            SELECT id_dossier
+            FROM comptedossiers
+            WHERE user_id = :userId
+          )
+        )
+      GROUP BY d.id
+      ORDER BY d.id;
+    `;
 
-    const userPortefeuille = await comptePortefeuilles.findAll({
-      where: {
-        user_id: userId
-      }
-    })
-
-    const compteDossier = await compteDossiers.findAll({
-      where: {
-        user_id: userId
-      }
-    })
-
-    const id_dossier = [... new Set(compteDossier.map(val => Number(val.id_dossier)))];
-    const id_portefeuille = [...new Set(userPortefeuille.map(val => Number(val.id_portefeuille)))];
-
-    const list = await dossier.findAll({
-      where: {
-        id_compte: compteId,
-        [Op.or]: [
-          {
-            id_portefeuille: {
-              [Op.overlap]: id_portefeuille
-            }
-          },
-          {
-            id: {
-              [Op.in]: id_dossier
-            }
-          }
-        ]
-      }
+    const list = await db.sequelize.query(query, {
+      type: db.Sequelize.QueryTypes.SELECT,
+      replacements: { compteId: Number(compteId), userId: Number(userId) }
     });
 
-    if (list) {
-      const dossiersAvecPortefeuille = await Promise.all(
-        list.map(async d => {
-          const nomsPortefeuilles = await portefeuille.findAll({
-            where: {
-              id: d.id_portefeuille
-            },
-            attributes: ['nom']
-          });
-
-          const nomsString = nomsPortefeuilles.map(p => p.nom).join(', ');
-
-          return {
-            ...d.dataValues,
-            portefeuille: nomsString
-          };
-        })
-      );
-
-      resData.state = true;
-      resData.fileList = dossiersAvecPortefeuille;
-    }
-
-    return res.json(resData);
+    return res.json({
+      state: true,
+      msg: '',
+      fileList: list
+    });
 
   } catch (error) {
     console.log(error);
@@ -99,7 +68,6 @@ const recupListDossier = async (req, res) => {
     });
   }
 };
-
 const getAllDossierByCompte = async (req, res) => {
   try {
     const { compteId } = req.params;

@@ -1,7 +1,14 @@
 const db = require("../../Models");
+require('dotenv').config();
+const path = require('path');
+
+const recupEtatFinancierAnalytique = require('../../Middlewares/Administration/EtatFinancierAnalytique');
+const getEtatFinancierAnalytiqueComplet = recupEtatFinancierAnalytique.getEtatFinancierAnalytiqueComplet;
 
 const rubriquesExternesAnalytiques = db.rubriquesExternesAnalytiques;
 const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
+
+const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
 const generateTitleAnalytique = (sheetName, label, dossier, compte, date_debut, date_fin, cellEnd) => {
     sheetName.insertRow(1, [label]);
@@ -52,9 +59,15 @@ const getRubriqueExterneAnalytiqueData = async (id_compte, id_dossier, id_exerci
     })
 }
 
-const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const bilanActifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_ACTIF');
-    const bilanPassifData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'BILAN_PASSIF');
+const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
+    const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
 
     const sheetActif = workbook.addWorksheet('Bilan Actif');
     sheetActif.columns = [
@@ -66,6 +79,12 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
     ];
 
     generateTitleAnalytique(sheetActif, 'Liste des Bilan actif', dossier, compte, date_debut, date_fin, 'E');
+
+    sheetActif.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerActif = sheetActif.getRow(4);
     headerActif.eachCell((cell, colNumber) => {
@@ -123,6 +142,12 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
 
     generateTitleAnalytique(sheetPassif, 'Liste des Bilan passif', dossier, compte, date_debut, date_fin, 'C');
 
+    sheetPassif.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
+
     const headerPassif = sheetPassif.getRow(4);
     headerPassif.eachCell((cell, colNumber) => {
         cell.fill = {
@@ -169,9 +194,16 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
     });
 }
 
-const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const crnData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'CRN');
+const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const crnData = data.filter(val => val.id_etat === 'CRN');
     const sheetCrn = workbook.addWorksheet('Compte de résultats par nature');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetCrn.columns = [
         { header: 'Rubriques', width: 60 },
         { header: 'Montant net N', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } },
@@ -179,6 +211,12 @@ const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     ];
 
     generateTitleAnalytique(sheetCrn, 'Liste des compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'C');
+
+    sheetCrn.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerCrn = sheetCrn.getRow(4);
     headerCrn.eachCell((cell, colNumber) => {
@@ -221,9 +259,16 @@ const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     }
 }
 
-const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const crfData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'CRF');
+const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const crfData = data.filter(val => val.id_etat === 'CRF');
     const sheetCrf = workbook.addWorksheet('Compte de résultats par fonction');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetCrf.columns = [
         { header: 'Rubriques', width: 60 },
         { header: 'Montant net N', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } },
@@ -231,6 +276,12 @@ const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     ];
 
     generateTitleAnalytique(sheetCrf, 'Liste des compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'C');
+
+    sheetCrf.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerCrf = sheetCrf.getRow(4);
     headerCrf.eachCell((cell, colNumber) => {
@@ -273,9 +324,15 @@ const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     }
 }
 
-const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const tftiData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'TFTI');
+const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const tftiData = data.filter(val => val.id_etat === 'TFTI');
     const sheetTfti = workbook.addWorksheet('TFTI Méth. Indirecte');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
 
     sheetTfti.columns = [
         { header: 'Rubriques', width: 72, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -284,6 +341,12 @@ const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     ];
 
     generateTitleAnalytique(sheetTfti, 'Liste des Tableau de flux de trésoreries méthode indirecte', dossier, compte, date_debut, date_fin, 'C');
+
+    sheetTfti.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetTfti.getRow(4);
     headerRow.eachCell((cell, colNumber) => {
@@ -322,9 +385,15 @@ const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     sheetTfti.getColumn(2).numFmt = '#,##0.00';
 }
 
-const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
-    const tftdData = await getRubriqueExterneAnalytiqueData(id_compte, id_dossier, id_exercice, 'TFTD');
+const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+    const tftdData = data.filter(val => val.id_etat === 'TFTD');
     const sheetTftd = workbook.addWorksheet('TFTD Méth. Directe');
+
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
 
     sheetTftd.columns = [
         { header: 'Rubriques', width: 72, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -333,6 +402,12 @@ const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     ];
 
     generateTitleAnalytique(sheetTftd, 'Liste des Tableau de flux de trésoreries méthode directe', dossier, compte, date_debut, date_fin, 'D');
+
+    sheetTftd.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetTftd.getRow(4);
     headerRow.eachCell((cell, colNumber) => {
@@ -381,6 +456,11 @@ const exportEvcpAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     })
     const sheetEvcp = workbook.addWorksheet('Etat de variation des capitaux propres');
 
+    const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: 'png',
+    });
+
     sheetEvcp.columns = [
         { header: 'Rubriques', width: 50, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
         { header: 'Note', width: 12, style: { alignment: { horizontal: 'left', vertical: 'middle' } } },
@@ -393,6 +473,12 @@ const exportEvcpAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     ];
 
     generateTitleAnalytique(sheetEvcp, 'Liste des Etat de variation des capitaux propres', dossier, compte, date_debut, date_fin, 'H');
+
+    sheetEvcp.addImage(logoId, {
+        tl: { x: 10, y: 5 },
+        ext: { width: 67, height: 67 },
+        editAs: 'absolute',
+    });
 
     const headerRow = sheetEvcp.getRow(4);
     headerRow.eachCell((cell, colNumber) => {
@@ -409,7 +495,7 @@ const exportEvcpAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
         const bgColor = isLevel1 ? 'f0f0f0' : null;
 
         const newRow = sheetEvcp.addRow([
-            row.rubriquesmatrix?.libelle || '',
+            row.libelle || '',
             row.note || '',
             Number(row.capitalsocial) || 0,
             Number(row.primereserve) || 0,
