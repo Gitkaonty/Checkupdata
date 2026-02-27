@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, Box, Tab, IconButton, Button, Switch, Checkbox, Autocomplete, TextField, Tooltip } from '@mui/material';
+import { Typography, Stack, Box, Tab, IconButton, Button, Switch, Checkbox, Autocomplete, TextField, Tooltip, InputAdornment } from '@mui/material';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -24,6 +24,7 @@ import { ListItemIcon, ListItemText } from '@mui/material';
 import { FaFilePdf, FaFileExcel } from 'react-icons/fa';
 import { CiExport } from "react-icons/ci";
 import { IoMdRefreshCircle } from "react-icons/io";
+import { FiSearch } from "react-icons/fi";
 
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
@@ -32,6 +33,56 @@ import usePermission from '../../../../hooks/usePermission';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
+
+const columns =
+    [
+        {
+            id: 'compte',
+            label: 'Compte',
+            minWidth: 150,
+            align: 'left',
+            isnumber: false
+        },
+        {
+            id: 'libelle',
+            label: 'Libellé',
+            minWidth: 400,
+            align: 'left',
+            isnumber: false
+        },
+        {
+            id: 'mvmdebit',
+            label: 'Mouvement débit',
+            minWidth: 200,
+            align: 'right',
+            format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            isnumber: true
+        },
+        {
+            id: 'mvmcredit',
+            label: 'Mouvement crédit',
+            minWidth: 200,
+            align: 'right',
+            format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            isnumber: true
+        },
+        {
+            id: 'soldedebit',
+            label: 'Solde débit',
+            minWidth: 200,
+            align: 'right',
+            format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            isnumber: true
+        },
+        {
+            id: 'soldecredit',
+            label: 'Solde crédit',
+            minWidth: 200,
+            align: 'right',
+            format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            isnumber: true
+        }
+    ]
 
 export default function ExportBalance() {
     const { canAdd, canModify, canDelete, canView } = usePermission();
@@ -49,6 +100,7 @@ export default function ExportBalance() {
     const [fileId, setFileId] = useState(0);
     const { id } = useParams();
     const [noFile, setNoFile] = useState(false);
+    const [searchText, setSearchText] = useState("");
 
     const [isRefreshed, setIsRefreshed] = useState(false);
 
@@ -84,6 +136,19 @@ export default function ExportBalance() {
     const openExportMenu = Boolean(anchorElExport);
     const handleOpenExportMenu = useCallback((event) => setAnchorElExport(event.currentTarget), []);
     const handleCloseExportMenu = useCallback(() => setAnchorElExport(null), []);
+
+    const filteredData = useMemo(() => {
+        if (!searchText) return balance;
+
+        const lower = searchText.toLowerCase();
+        return balance.filter((row) => {
+            return columns.some((col) => {
+                const value = row[col.id];
+                if (value === null || value === undefined) return false;
+                return value.toString().toLowerCase().includes(lower);
+            });
+        });
+    }, [searchText, balance, columns]);
 
     const doExport = useCallback(async (type) => {
         try {
@@ -163,56 +228,6 @@ export default function ExportBalance() {
         setNoFile(!value);
         navigate('/tab/home');
     }
-
-    const columns =
-        [
-            {
-                id: 'compte',
-                label: 'Compte',
-                minWidth: 150,
-                align: 'left',
-                isnumber: false
-            },
-            {
-                id: 'libelle',
-                label: 'Libellé',
-                minWidth: 400,
-                align: 'left',
-                isnumber: false
-            },
-            {
-                id: 'mvmdebit',
-                label: 'Mouvement débit',
-                minWidth: 200,
-                align: 'right',
-                format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                isnumber: true
-            },
-            {
-                id: 'mvmcredit',
-                label: 'Mouvement crédit',
-                minWidth: 200,
-                align: 'right',
-                format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                isnumber: true
-            },
-            {
-                id: 'soldedebit',
-                label: 'Solde débit',
-                minWidth: 200,
-                align: 'right',
-                format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                isnumber: true
-            },
-            {
-                id: 'soldecredit',
-                label: 'Solde crédit',
-                minWidth: 200,
-                align: 'right',
-                format: (value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                isnumber: true
-            }
-        ]
 
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
@@ -722,9 +737,42 @@ export default function ExportBalance() {
                             }
 
                             <Stack width={"100%"} height={'600px'} >
-                                {useMemo(() => (
-                                    <VirtualTableModifiableExport columns={columns} rows={balance} />
-                                ), [balance])}
+                                <Stack
+                                    direction="row"
+                                    justifyContent="space-between"
+                                    alignItems="center"
+                                    mb={2}
+                                >
+                                    <Stack />
+
+                                    <TextField
+                                        size="small"
+                                        placeholder="Rechercher..."
+                                        variant="outlined"
+                                        value={searchText}
+                                        onChange={(e) => setSearchText(e.target.value)}
+                                        sx={{
+                                            bgcolor: "#F5F5F5",
+                                            borderRadius: 2,
+                                            width: { xs: "40%", md: "250px" },
+                                            "& .MuiOutlinedInput-root": {
+                                                height: 36,
+                                                paddingRight: 0,
+                                            },
+                                            "& .MuiOutlinedInput-notchedOutline": {
+                                                borderColor: "#E0E0E0",
+                                            },
+                                        }}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <FiSearch color="#757575" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                </Stack>
+                                <VirtualTableModifiableExport columns={columns} rows={filteredData} />
                             </Stack>
                         </Stack>
                     </form>
