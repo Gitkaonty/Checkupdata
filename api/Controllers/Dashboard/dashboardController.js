@@ -278,6 +278,103 @@ const getJournalData = async (id_compte, id_dossier, id_exercice) => {
     return rows;
 }
 
+const getJournalsAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+    const rows = await db.sequelize.query(`
+        SELECT
+            J.COMPTEAUX AS COMPTE,
+            SUM(A.DEBIT) AS DEBIT,
+            SUM(A.CREDIT) AS CREDIT,
+            MAX(J.DATEECRITURE) AS DATEECRITURE,
+            MAX(CJ.CODE) AS CODE
+        FROM
+            ANALYTIQUES A
+            LEFT JOIN JOURNALS J ON J.ID = A.ID_LIGNE_ECRITURE
+            LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+        WHERE
+            A.ID_COMPTE = :id_compte
+            AND A.ID_DOSSIER = :id_dossier
+            AND A.ID_EXERCICE = :id_exercice
+            AND A.ID_AXE = :id_axe
+            AND A.ID_SECTION IN (:id_section)
+            AND J.ID_COMPTE = :id_compte
+            AND J.ID_DOSSIER = :id_dossier
+            AND J.ID_EXERCICE = :id_exercice
+            AND CJ.ID_COMPTE = :id_compte
+            AND CJ.ID_DOSSIER = :id_dossier
+        GROUP BY
+            J.COMPTEAUX
+        ORDER BY
+            MAX(J.DATEECRITURE) ASC
+    `, {
+        type: db.Sequelize.QueryTypes.SELECT,
+        replacements: { id_compte, id_dossier, id_exercice, id_axe, id_section }
+    })
+
+    return rows;
+}
+
+const getJournalsEnAttente = async (id_dossier, id_compte, id_exercice, avecAnalytique, id_axe, id_section) => {
+    let rows = null;
+    if (avecAnalytique) {
+        rows = await db.sequelize.query(`
+            SELECT
+            J.COMPTEAUX AS COMPTE,
+            SUM(A.DEBIT) AS DEBIT,
+            SUM(A.CREDIT) AS CREDIT,
+            MAX(J.DATEECRITURE) AS DATEECRITURE,
+            MAX(CJ.CODE) AS CODE
+        FROM
+            ANALYTIQUES A
+            LEFT JOIN JOURNALS J ON J.ID = A.ID_LIGNE_ECRITURE
+            LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
+        WHERE
+            A.ID_COMPTE = :id_compte
+            AND A.ID_DOSSIER = :id_dossier
+            AND A.ID_EXERCICE = :id_exercice
+            AND A.ID_AXE = :id_axe
+            AND A.ID_SECTION IN (:id_section)
+            AND J.ID_COMPTE = :id_compte
+            AND J.ID_DOSSIER = :id_dossier
+            AND J.ID_EXERCICE = :id_exercice
+            AND CJ.ID_COMPTE = :id_compte
+            AND CJ.ID_DOSSIER = :id_dossier
+            AND J.COMPTEAUX LIKE '47%'
+        GROUP BY
+            J.COMPTEAUX
+        ORDER BY
+            MAX(J.DATEECRITURE) ASC
+        `, {
+            type: db.Sequelize.QueryTypes.SELECT,
+            replacements: { id_compte, id_dossier, id_exercice, id_axe, id_section }
+        })
+    } else {
+        rows = await db.sequelize.query(`
+            SELECT 
+                j.compteaux AS compte,
+                j.dateecriture,
+                cj.code AS codejournal,
+                j.libelle,
+                j.debit,
+                j.credit
+            FROM JOURNALS j
+            LEFT JOIN CODEJOURNALS cj ON cj.ID = J.ID_JOURNAL
+            WHERE 
+                j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+                AND j.id_compte = :id_compte
+                AND cj.id_compte = :id_compte
+                AND cj.id_compte = :id_compte
+                AND j.compteaux like '47%'
+            ORDER BY 
+                j.dateecriture ASC
+    `, {
+            type: db.Sequelize.QueryTypes.SELECT,
+            replacements: { id_compte, id_dossier, id_exercice }
+        })
+    }
+    return rows;
+}
+
 const getExerciceById = async (id) => {
     const rows = await db.sequelize.query(`
         SELECT 
@@ -295,7 +392,7 @@ const getExerciceById = async (id) => {
 
 exports.getAllInfo = async (req, res) => {
     try {
-        const { id_compte, id_dossier, id_exercice } = req.params;
+        const { id_compte, id_dossier, id_exercice, avecAnalytique, id_axe, id_sections } = req.body;
 
         if (!id_compte || !id_dossier || !id_exercice) {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
@@ -309,18 +406,20 @@ exports.getAllInfo = async (req, res) => {
         const moisN = getMonthsBetween(exerciceNData[0]?.date_debut, exerciceNData[0]?.date_fin);
 
         const mappedDataN = await getJournalData(id_compte, id_dossier, id_exercice);
+        const mappedDataAnalytiqueN = await getJournalsAnalytiqueData(id_compte, id_dossier, id_exercice, id_axe, id_sections);
+        const mappedDataConditionN = avecAnalytique ? mappedDataAnalytiqueN : mappedDataN;
 
         // === Exercice N ===
-        const chiffreAffaireN = calculateChiffreAffaire(mappedDataN, moisN);
-        const margeBruteN = calculateMargeBrute(mappedDataN, moisN);
+        const chiffreAffaireN = calculateChiffreAffaire(mappedDataConditionN, moisN);
+        const margeBruteN = calculateMargeBrute(mappedDataConditionN, moisN);
         const margeBruteTotalN = chiffreAffaireN.map((val, i) => round2(val + margeBruteN[i]));
         const tresorerieBanqueN = calculateTresorerieBanque(mappedDataN, moisN);
         const tresorerieCaisseN = calculateTresorerieCaisse(mappedDataN, moisN);
 
-        const resultatN = calculateResultat(mappedDataN);
-        const resultatChiffreAffaireN = calculateResultatChiffreAffaire(mappedDataN);
-        const resultatDepenseAchatN = calculateResultatDepensesAchats(mappedDataN);
-        const resultatDepenseSalarialeN = calculateResultatDepensesSalariales(mappedDataN);
+        const resultatN = calculateResultat(mappedDataConditionN);
+        const resultatChiffreAffaireN = calculateResultatChiffreAffaire(mappedDataConditionN);
+        const resultatDepenseAchatN = calculateResultatDepensesAchats(mappedDataConditionN);
+        const resultatDepenseSalarialeN = calculateResultatDepensesSalariales(mappedDataConditionN);
         const resultatTresorerieBanqueN = calculateResultatTresoreriesBanques(mappedDataN);
         const resultatTresorerieCaisseN = calculateResultatTresoreriesCaisses(mappedDataN);
 
@@ -395,21 +494,23 @@ exports.getAllInfo = async (req, res) => {
             moisN1 = getMonthsBetween(exerciceN1Data[0]?.date_debut, exerciceN1Data[0]?.date_fin);
 
             const mappedDataN1 = await getJournalData(id_compte, id_dossier, id_exerciceN1);
+            const mappedDataAnalytiqueN1 = await getJournalsAnalytiqueData(id_compte, id_dossier, id_exerciceN1, id_axe, id_sections);
+            const mappedDataConditionN1 = avecAnalytique ? mappedDataAnalytiqueN1 : mappedDataN1;
 
             // const { id_exerciceN1: id_exerciceN2Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN1);
             // id_exerciceN2 = id_exerciceN2Temp || null;
 
-            chiffreAffaireN1 = calculateChiffreAffaire(mappedDataN1, moisN1);
-            margeBruteN1 = calculateMargeBrute(mappedDataN1, moisN1);
+            chiffreAffaireN1 = calculateChiffreAffaire(mappedDataConditionN1, moisN1);
+            margeBruteN1 = calculateMargeBrute(mappedDataConditionN1, moisN1);
             margeBruteTotalN1 = chiffreAffaireN1.map((val, i) => round2(val + margeBruteN1[i]));
             tresorerieBanqueN1 = calculateTresorerieBanque(mappedDataN1, moisN1);
             tresorerieCaisseN1 = calculateTresorerieCaisse(mappedDataN1, moisN1);
 
-            resultatN1 = calculateResultat(mappedDataN1);
+            resultatN1 = calculateResultat(mappedDataConditionN1);
 
-            resultatChiffreAffaireN1 = calculateResultatChiffreAffaire(mappedDataN1);
-            resultatDepenseAchatN1 = calculateResultatDepensesAchats(mappedDataN1);
-            resultatDepenseSalarialeN1 = calculateResultatDepensesSalariales(mappedDataN1);
+            resultatChiffreAffaireN1 = calculateResultatChiffreAffaire(mappedDataConditionN1);
+            resultatDepenseAchatN1 = calculateResultatDepensesAchats(mappedDataConditionN1);
+            resultatDepenseSalarialeN1 = calculateResultatDepensesSalariales(mappedDataConditionN1);
             resultatTresorerieBanqueN1 = calculateResultatTresoreriesBanques(mappedDataN1);
             resultatTresorerieCaisseN1 = calculateResultatTresoreriesCaisses(mappedDataN1);
         }
@@ -540,35 +641,12 @@ exports.getAllInfo = async (req, res) => {
 
 exports.getListeJournalEnAttente = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice } = req.params;
+        const { id_dossier, id_compte, id_exercice, avecAnalytique, id_axe, id_sections } = req.body;
         if (!id_compte || !id_dossier || !id_exercice) {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
         }
 
-        const rows = await db.sequelize.query(`
-            SELECT 
-                j.compteaux AS compte,
-                j.dateecriture,
-                cj.code AS codejournal,
-                j.libelle,
-                j.debit,
-                j.credit
-            FROM JOURNALS j
-            LEFT JOIN CODEJOURNALS cj ON cj.ID = J.ID_JOURNAL
-            WHERE 
-                j.id_dossier = :id_dossier
-                AND j.id_exercice = :id_exercice
-                AND j.id_compte = :id_compte
-                AND cj.id_compte = :id_compte
-                AND cj.id_compte = :id_compte
-                AND j.compteaux like '47%'
-            ORDER BY 
-                j.dateecriture ASC
-        `,
-            {
-                type: db.Sequelize.QueryTypes.SELECT,
-                replacements: { id_compte, id_dossier, id_exercice }
-            })
+        const rows = await getJournalsEnAttente(id_compte, id_dossier, id_exercice, avecAnalytique, id_axe, id_sections);
 
         return res.status(200).json(rows);
 
