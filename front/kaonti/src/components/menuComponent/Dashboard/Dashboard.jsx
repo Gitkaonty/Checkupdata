@@ -14,7 +14,6 @@ import TabList from '@mui/lab/TabList';
 import TabPanel from '@mui/lab/TabPanel';
 import { InfoFileStyle } from '../../componentsTools/InfosFileStyle';
 import { format } from 'date-fns';
-import LineChartComponent from '../../componentsTools/Dashboard/LineChartComponent';
 import useAuth from '../../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import toast from 'react-hot-toast';
@@ -47,13 +46,6 @@ const columns = [
     label: 'Jounal',
     minWidth: 50,
   },
-  // {
-  //   id: 'piece',
-  //   label: 'Pièce',
-  //   minWidth: 120,
-  //   align: 'left',
-  //   format: (value) => value.toLocaleString('fr-FR'),
-  // },
   {
     id: 'libelle',
     label: 'Libellé',
@@ -83,9 +75,6 @@ const columns = [
     isNumber: true
   },
 ];
-
-const gridHeight = '70vh';
-const gridSpacing = 1;
 
 export default function DashboardComponent() {
   const { canAdd, canModify, canDelete, canView } = usePermission();
@@ -275,44 +264,33 @@ export default function DashboardComponent() {
           setResultatN(response?.data?.resultatN);
           setResultatN1(response?.data?.resultatN1);
           setVariationResultatN(response?.data?.variationResultatN);
-          setVariationResultatN1(response?.data?.variationResultatN1);
           setEvolutionResultatN(response?.data?.evolutionResultatN);
-          setEvolutionResultatN1(response?.data?.evolutionResultatN1);
 
           setResultatChiffreAffaireN(response?.data?.resultatChiffreAffaireN);
           setResultatChiffreAffaireN1(response?.data?.resultatChiffreAffaireN1);
           setVariationChiffreAffaireN(response?.data?.variationChiffreAffaireN);
-          setVariationChiffreAffaireN1(response?.data?.variationChiffreAffaireN1);
           setEvolutionChiffreAffaireN(response?.data?.evolutionChiffreAffaireN);
-          setEvolutionChiffreAffaireN1(response?.data?.evolutionChiffreAffaireN1);
 
           setResultatDepenseSalarialeN(response?.data?.resultatDepenseSalarialeN);
           setResultatDepenseSalarialeN1(response?.data?.resultatDepenseSalarialeN1);
           setVariationDepenseSalarialeN(response?.data?.variationDepenseSalarialeN);
-          setVariationDepenseSalarialeN1(response?.data?.variationDepenseSalarialeN1);
           setEvolutionDepenseSalarialeN(response?.data?.evolutionDepenseSalarialeN);
-          setEvolutionDepenseSalarialeN1(response?.data?.evolutionDepenseSalarialeN1);
 
           setResultatDepenseAchatN(response?.data?.resultatDepenseAchatN);
           setResultatDepenseAchatN1(response?.data?.resultatDepenseAchatN1);
           setVariationDepenseAchatN(response?.data?.variationDepenseAchatN);
-          setVariationDepenseAchatN1(response?.data?.variationDepenseAchatN1);
           setEvolutionDepenseAchatN(response?.data?.evolutionDepenseAchatN);
           setEvolutionDepenseAchatN1(response?.data?.evolutionDepenseAchatN1);
 
           setResultatTresorerieBanqueN(response?.data?.resultatTresorerieBanqueN);
           setResultatTresorerieBanqueN1(response?.data?.resultatTresorerieBanqueN1);
           setVariationTresorerieBanqueN(response?.data?.variationTresorerieBanqueN);
-          setVariationDTresorerieBanqueN1(response?.data?.variationTresorerieBanqueN1);
           setEvolutionTresorerieBanqueN(response?.data?.evolutionTresorerieBanqueN);
-          setEvolutionTresorerieBanqueN1(response?.data?.evolutionTresorerieBanqueN1);
 
           setResultatTresorerieCaisseN(response?.data?.resultatTresorerieCaisseN);
           setResultatTresorerieCaisseN1(response?.data?.resultatTresorerieCaisseN1);
           setVariationTresorerieCaisseN(response?.data?.variationTresorerieCaisseN);
-          setVariationDTresorerieCaisseN1(response?.data?.variationTresorerieCaisseN1);
           setEvolutionTresorerieCaisseN(response?.data?.evolutionTresorerieCaisseN);
-          setEvolutionTresorerieCaisseN1(response?.data?.evolutionTresorerieCaisseN1);
         }
       })
       .catch((err) => {
