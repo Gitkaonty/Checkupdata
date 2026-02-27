@@ -313,7 +313,7 @@ const getJournalsAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_
     return rows;
 }
 
-const getJournalsEnAttente = async (id_dossier, id_compte, id_exercice, avecAnalytique, id_axe, id_section) => {
+const getJournalsEnAttente = async (id_compte, id_dossier, id_exercice, avecAnalytique, id_axe, id_section) => {
     let rows = null;
     if (avecAnalytique) {
         rows = await db.sequelize.query(`
@@ -322,7 +322,8 @@ const getJournalsEnAttente = async (id_dossier, id_compte, id_exercice, avecAnal
             SUM(A.DEBIT) AS DEBIT,
             SUM(A.CREDIT) AS CREDIT,
             MAX(J.DATEECRITURE) AS DATEECRITURE,
-            MAX(CJ.CODE) AS CODE
+            MAX(CJ.CODE) AS codejournal,
+            MAX(J.LIBELLE) AS libelle
         FROM
             ANALYTIQUES A
             LEFT JOIN JOURNALS J ON J.ID = A.ID_LIGNE_ECRITURE
@@ -338,7 +339,7 @@ const getJournalsEnAttente = async (id_dossier, id_compte, id_exercice, avecAnal
             AND J.ID_EXERCICE = :id_exercice
             AND CJ.ID_COMPTE = :id_compte
             AND CJ.ID_DOSSIER = :id_dossier
-            AND J.COMPTEAUX LIKE '47%'
+            AND J.COMPTEAUX LIKE '4%'
         GROUP BY
             J.COMPTEAUX
         ORDER BY
@@ -406,7 +407,10 @@ exports.getAllInfo = async (req, res) => {
         const moisN = getMonthsBetween(exerciceNData[0]?.date_debut, exerciceNData[0]?.date_fin);
 
         const mappedDataN = await getJournalData(id_compte, id_dossier, id_exercice);
-        const mappedDataAnalytiqueN = await getJournalsAnalytiqueData(id_compte, id_dossier, id_exercice, id_axe, id_sections);
+        let mappedDataAnalytiqueN = [];
+        if (avecAnalytique) {
+            mappedDataAnalytiqueN = await getJournalsAnalytiqueData(id_compte, id_dossier, id_exercice, id_axe, id_sections)
+        }
         const mappedDataConditionN = avecAnalytique ? mappedDataAnalytiqueN : mappedDataN;
 
         // === Exercice N ===
@@ -494,7 +498,10 @@ exports.getAllInfo = async (req, res) => {
             moisN1 = getMonthsBetween(exerciceN1Data[0]?.date_debut, exerciceN1Data[0]?.date_fin);
 
             const mappedDataN1 = await getJournalData(id_compte, id_dossier, id_exerciceN1);
-            const mappedDataAnalytiqueN1 = await getJournalsAnalytiqueData(id_compte, id_dossier, id_exerciceN1, id_axe, id_sections);
+            let mappedDataAnalytiqueN1 = [];
+            if (avecAnalytique) {
+                mappedDataAnalytiqueN1 = await getJournalsAnalytiqueData(id_compte, id_dossier, id_exerciceN1, id_axe, id_sections);
+            }
             const mappedDataConditionN1 = avecAnalytique ? mappedDataAnalytiqueN1 : mappedDataN1;
 
             // const { id_exerciceN1: id_exerciceN2Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN1);
