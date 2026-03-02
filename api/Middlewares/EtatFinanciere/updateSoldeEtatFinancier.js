@@ -708,29 +708,10 @@ const totalRubriqueExterneEVCP = async (id_compte, id_dossier, id_exercice) => {
         await db.sequelize.query(`
             WITH balance_n AS (
                 SELECT
-                MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
-                GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
-                GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT,
-                GREATEST(
-                    SUM(J.DEBIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ) - SUM(J.CREDIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ),
-                    0
-                ) AS SOLDEDEBITTRESO,
-                GREATEST(
-                    SUM(J.CREDIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ) - SUM(J.DEBIT) FILTER (
-                        WHERE
-                            CJ.TYPE IN ('BANQUE', 'CAISSE')
-                    ),
-                    0
-                ) AS SOLDECREDITTRESO
+                    MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
+                    GREATEST(SUM(J.DEBIT) - SUM(J.CREDIT), 0) AS SOLDEDEBIT,
+                    GREATEST(SUM(J.CREDIT) - SUM(J.DEBIT), 0) AS SOLDECREDIT
+
                 FROM
                     JOURNALS J
                     LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
