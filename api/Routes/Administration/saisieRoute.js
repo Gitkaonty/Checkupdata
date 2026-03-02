@@ -105,4 +105,7 @@ router.post('/updateMontantImmo', saisieController.updateMontantImmo);
 // Récupération des comptes associés dans le code journals
 router.post('/getCodeJournalsCompteAssocie', saisieController.getCodeJournalsCompteAssocie);
 
+// Récupérer les lignes dans le journal avec une id_immob
+router.post('/getJournalsAvecImmo', saisieController.getJournalsAvecImmo);
+
 module.exports = router;

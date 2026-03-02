@@ -4105,3 +4105,30 @@ exports.getCodeJournalsCompteAssocie = async (req, res) => {
         });
     }
 }
+
+exports.getJournalsAvecImmo = async (req, res) => {
+    try {
+        const { id } = req.body;
+        const rows = await db.sequelize.query(`
+            SELECT 
+            j.dateecriture, j.compteaux, j.libelle, c.code, j.piece, j.debit, j.credit
+            FROM journals j
+            LEFT JOIN codejournals c on j.id_journal = c.id
+            WHERE
+                j.id = :id
+                AND j.id_immob IS NOT NULL
+                AND j.id_immob <> 0
+        `, {
+            replacements: { id },
+            type: db.Sequelize.QueryTypes.SELECT,
+        })
+        return res.json(rows);
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}
