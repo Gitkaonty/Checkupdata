@@ -1,6 +1,3 @@
-//user model
-const { Sequelize, DataTypes } = require('sequelize');
-
 module.exports = (sequelize, DataTypes) => {
     const etatsetatfinanciermatrices = sequelize.define("etatsetatfinanciermatrices", {
         id: {
