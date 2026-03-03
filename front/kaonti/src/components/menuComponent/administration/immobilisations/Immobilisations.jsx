@@ -302,12 +302,12 @@ const Immobilisations = () => {
         const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
 
         const [linRes, degRes] = await Promise.all([
-          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both' }, timeout: 60000 }),
-          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both' }, timeout: 60000 }),
+          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
+          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
         ]);
 
-        const lin = linRes?.data || {};
-        const deg = degRes?.data || {};
+        const lin = linRes?.data?.previewLin || {};
+        const deg = degRes?.data?.previewDeg || {};
 
         // Sélectionner la source par onglet (préférer dégressif si disponible)
         const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
@@ -365,7 +365,7 @@ const Immobilisations = () => {
           dot_derogatoire: r.dot_derogatoire ?? 0,
         }));
 
-        // await handleSaveLignes();
+        // await handleSaveLignes(normComp, normFisc);
 
         setLigneRowsComp(normComp);
         setLigneRowsFisc(normFisc);
@@ -451,49 +451,6 @@ const Immobilisations = () => {
     };
   }, [ligneMeta, selectedDetailRow]);
 
-  // Enregistrer manuellement les lignes (tableau 3)  
-  // const handleSaveLignes = async () => {
-  //   try {
-  //     const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-  //     const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
-  //     if (!fid || !compteId || !exoId || !selectedDetailId) {
-  //       toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
-  //       return;
-  //     }
-
-  //     // Récupérer les lignes affichées selon l'onglet actuel
-  //     const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
-  //     if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
-  //       toast.error('Aucune ligne d\'amortissement à enregistrer. Prévisualisez d\'abord les calculs.');
-  //       return;
-  //     }
-
-  //     // Détecter le mode selon l'onglet actuel
-  //     const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
-  //     const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
-
-  //     setSavingLignes(true);
-  //     const useDeg = (ligneTab === 'comp' ? isCompDegTab : isFiscDegTab);
-  //     const url = useDeg
-  //       ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
-  //       : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
-  //     await axios.post(url,
-  //       {
-  //         fileId: fid,
-  //         compteId: compteId,
-  //         exerciceId: exoId,
-  //         detailId: selectedDetailId,
-  //         mode: autoMode,
-  //         lignes: lignesAEnvoyer
-  //       },
-  //       { timeout: 60000 }
-  //     );
-  //     setIsRefreshed(prev => !prev);
-  //     // toast.success('Lignes d\'amortissement enregistrées');
-  //   } catch (e) {
-  //     toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
-  //   } finally { setSavingLignes(false); }
-  // };
   const handleSaveLignes = async (lignesComp = null, lignesFisc = null) => {
     try {
       const fid = Number(id) || 0;
@@ -792,19 +749,21 @@ const Immobilisations = () => {
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const effectiveCompteId = compteId;
 
-      await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
+      // await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
 
       if (detailsDialogMode === 'add') {
-        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
+        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
         await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
         toast.success('Détail ajouté');
+        await fetchDetails();
       } else {
-        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
+        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
         await axios.put(`/administration/traitementSaisie/immobilisations/details/${detailsForm.id}`, payload);
         toast.success('Détail modifié');
+        await fetchDetails();
       }
       setDetailsDialogOpen(false);
-      await fetchDetails();
+      // await fetchDetails();
     } catch (e) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.msg || e?.response?.data?.message || '';
@@ -1506,13 +1465,19 @@ const Immobilisations = () => {
                     // disableColumnMenu
                     // disableRowSelectionOnClick={false}
                     checkboxSelection
+                    // pinnedColumns={{ left: ['checkboxSelection'] }}
                     experimentalFeatures={{ newEditingApi: true }}
                     rowSelectionModel={detailsSelectionModel}
-                    onRowSelectionModelChange={(m) => {
+                    onRowSelectionModelChange={async (m) => {
                       const arr = Array.isArray(m) ? m : [];
                       const selected = arr.slice(-1);
 
                       setDetailsSelectionModel(selected);
+                      // try {
+                      //   await fetchDetails();
+                      // } catch (err) {
+                      //   console.error('Erreur lors du refresh:', err);
+                      // }
                     }}
                     isCellEditable={() => false}
                     density="compact"
@@ -1541,16 +1506,16 @@ const Immobilisations = () => {
                       '& .MuiDataGrid-row.total-row .MuiDataGrid-checkboxInput': {
                         display: 'none',
                       },
-                      // '& .disabled-row': {
-                      //   opacity: 0.5,
-                      // },
+                      '& .disabled-row': {
+                        color: '#545252'
+                      },
                       '& .MuiDataGrid-cell:focus-within': {
                         outline: 'none !important',
                       },
                     }}
                     getRowClassName={(params) => {
                       if (params.row?.isTotal) return 'total-row';
-                      // if (params.row.id_exercice !== selectedExerciceId) return 'disabled-row';
+                      if (params.row.id_exercice !== selectedExerciceId) return 'disabled-row';
                       return '';
                     }}
                   />

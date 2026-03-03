@@ -100,7 +100,7 @@ router.post('/addEcriture', saisieController.addEcriture);
 router.post('/reaffecterLigne', saisieController.reaffecterLigne);
 
 // Modification montant immo
-router.post('/updateMontantImmo', saisieController.updateMontantImmo);
+// router.post('/updateMontantImmo', saisieController.updateMontantImmo);
 
 // Récupération des comptes associés dans le code journals
 router.post('/getCodeJournalsCompteAssocie', saisieController.getCodeJournalsCompteAssocie);
