@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Stack, FormControl, InputLabel, Select, MenuItem, CircularProgress, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, RadioGroup, FormControlLabel, Radio } from '@mui/material';
+import { Box, Typography, Stack, FormControl, InputLabel, Select, MenuItem, CircularProgress, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, RadioGroup, FormControlLabel, Radio, tooltipClasses } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { GoAlert } from "react-icons/go";
 import { DataGrid } from '@mui/x-data-grid';
 import { TabContext, TabList, TabPanel } from '@mui/lab';
 import { Tab } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
-
 import axios from '../../../../../config/axios';
 import toast from 'react-hot-toast';
 import useAuth from '../../../../hooks/useAuth';
@@ -25,6 +24,23 @@ import PopupActionConfirmWithCheckbox from '../../../componentsTools/popupAction
 import PopupConfirmDelete from '../../../componentsTools/popupConfirmDelete';
 import PopupImportImmobilisations from '../import/PopupImportImmobilisations';
 import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
+import { styled } from "@mui/material/styles";
+
+const WhiteTooltip = styled(({ className, ...props }) => (
+  <Tooltip {...props} arrow classes={{ popper: className }} />
+))(() => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: "#fff",
+    color: "#000",
+    fontSize: 14,
+    boxShadow: "0px 6px 24px rgba(0,0,0,0.15)",
+    borderRadius: 10,
+    maxWidth: "none"
+  },
+  [`& .${tooltipClasses.arrow}`]: {
+    color: "#fff",
+  },
+}));
 
 const keepTotalBottomComparator = (v1, v2, cellParams1, cellParams2) => {
   const r1 = cellParams1?.row;
@@ -120,6 +136,7 @@ const Immobilisations = () => {
   const [rows, setRows] = useState([]);
   const [selectionModel, setSelectionModel] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [journalLinkData, setJournalLinkData] = useState({});
 
   // Helper to extract a safe message from Axios/unknown errors
   const getErrMsg = (e) => {
@@ -132,6 +149,22 @@ const Immobilisations = () => {
       );
     } catch {
       return 'Erreur inattendue';
+    }
+  };
+
+  const fetchJournalLink = async (id) => {
+    if (journalLinkData[id]) return;
+
+    try {
+      const res = await axios.post('/administration/traitementSaisie/getJournalsAvecImmo', { id });
+      if (res.data?.length > 0) {
+        setJournalLinkData(prev => ({
+          ...prev,
+          [id]: res.data[0]
+        }));
+      }
+    } catch (e) {
+      console.error("Erreur chargement lien écriture", e);
     }
   };
 
@@ -168,7 +201,10 @@ const Immobilisations = () => {
           list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
         } catch { }
       }
-      setJournalRows(list);
+
+      const filteredList = list.filter(val => val.id_immob !== null && val.id_immob !== 0);
+      setJournalRows(filteredList);
+
       // keep selection to show which one was already selected
       if (detailsForm?.lien_ecriture_id) {
         setJournalSelection([detailsForm.lien_ecriture_id]);
@@ -266,12 +302,12 @@ const Immobilisations = () => {
         const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
 
         const [linRes, degRes] = await Promise.all([
-          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both' }, timeout: 60000 }),
-          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both' }, timeout: 60000 }),
+          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
+          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
         ]);
 
-        const lin = linRes?.data || {};
-        const deg = degRes?.data || {};
+        const lin = linRes?.data?.previewLin || {};
+        const deg = degRes?.data?.previewDeg || {};
 
         // Sélectionner la source par onglet (préférer dégressif si disponible)
         const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
@@ -329,7 +365,7 @@ const Immobilisations = () => {
           dot_derogatoire: r.dot_derogatoire ?? 0,
         }));
 
-        // await handleSaveLignes();
+        // await handleSaveLignes(normComp, normFisc);
 
         setLigneRowsComp(normComp);
         setLigneRowsFisc(normFisc);
@@ -415,49 +451,6 @@ const Immobilisations = () => {
     };
   }, [ligneMeta, selectedDetailRow]);
 
-  // Enregistrer manuellement les lignes (tableau 3)  
-  // const handleSaveLignes = async () => {
-  //   try {
-  //     const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-  //     const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
-  //     if (!fid || !compteId || !exoId || !selectedDetailId) {
-  //       toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
-  //       return;
-  //     }
-
-  //     // Récupérer les lignes affichées selon l'onglet actuel
-  //     const lignesAEnvoyer = ligneTab === 'fisc' ? ligneRowsFisc : ligneRowsComp;
-  //     if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
-  //       toast.error('Aucune ligne d\'amortissement à enregistrer. Prévisualisez d\'abord les calculs.');
-  //       return;
-  //     }
-
-  //     // Détecter le mode selon l'onglet actuel
-  //     const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
-  //     const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
-
-  //     setSavingLignes(true);
-  //     const useDeg = (ligneTab === 'comp' ? isCompDegTab : isFiscDegTab);
-  //     const url = useDeg
-  //       ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
-  //       : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
-  //     await axios.post(url,
-  //       {
-  //         fileId: fid,
-  //         compteId: compteId,
-  //         exerciceId: exoId,
-  //         detailId: selectedDetailId,
-  //         mode: autoMode,
-  //         lignes: lignesAEnvoyer
-  //       },
-  //       { timeout: 60000 }
-  //     );
-  //     setIsRefreshed(prev => !prev);
-  //     // toast.success('Lignes d\'amortissement enregistrées');
-  //   } catch (e) {
-  //     toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
-  //   } finally { setSavingLignes(false); }
-  // };
   const handleSaveLignes = async (lignesComp = null, lignesFisc = null) => {
     try {
       const fid = Number(id) || 0;
@@ -756,19 +749,21 @@ const Immobilisations = () => {
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const effectiveCompteId = compteId;
 
-      await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
+      // await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
 
       if (detailsDialogMode === 'add') {
-        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
+        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
         await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
         toast.success('Détail ajouté');
+        await fetchDetails();
       } else {
-        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ...cleaned };
+        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
         await axios.put(`/administration/traitementSaisie/immobilisations/details/${detailsForm.id}`, payload);
         toast.success('Détail modifié');
+        await fetchDetails();
       }
       setDetailsDialogOpen(false);
-      await fetchDetails();
+      // await fetchDetails();
     } catch (e) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.msg || e?.response?.data?.message || '';
@@ -959,6 +954,12 @@ const Immobilisations = () => {
     }
     setOpenConfirmCancelEcritures(true);
   };
+
+  let idExerciceSelectionne = selectedExerciceId;
+  if (detailsSelectionModel.length !== 0) {
+    const lignesListeImmo = detailRowsWithTotal.find(val => val.id === Number(detailsSelectionModel[0]));
+    idExerciceSelectionne = lignesListeImmo?.id_exercice;
+  }
 
   return (
     <Box>
@@ -1299,6 +1300,7 @@ const Immobilisations = () => {
                         <span>
                           <IconButton
                             onClick={handleDetailsAdd}
+                            disabled={selectedExerciceId !== idExerciceSelectionne}
                             style={{
                               width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme,
                               textTransform: 'none',
@@ -1313,7 +1315,7 @@ const Immobilisations = () => {
                         <span>
                           <IconButton
                             onClick={handleDetailsEdit}
-                            disabled={detailsSelectionModel.length === 0}
+                            disabled={detailsSelectionModel.length === 0 || selectedExerciceId !== idExerciceSelectionne}
                             style={{
                               width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme,
                               textTransform: 'none',
@@ -1326,7 +1328,7 @@ const Immobilisations = () => {
                       </Tooltip>
                       <Tooltip title="Supprimer">
                         <span>
-                          <IconButton onClick={handleDetailsDelete} disabled={detailsSelectionModel.length === 0} style={{
+                          <IconButton onClick={handleDetailsDelete} disabled={detailsSelectionModel.length === 0 || selectedExerciceId !== idExerciceSelectionne} style={{
                             width: 35, height: 35, borderRadius: 2, backgroundColor: initial.button_delete_color, textTransform: 'none',
                             outline: 'none',
                           }}>
@@ -1343,14 +1345,75 @@ const Immobilisations = () => {
                     disableRowSelectionOnClick
                     disableSelectionOnClick={true}
                     rows={detailRowsWithTotal}
-                    isRowSelectable={(params) =>
-                      params.row.id_exercice === selectedExerciceId
-                    }
+                    // isRowSelectable={(params) =>
+                    //   params.row.id_exercice === selectedExerciceId
+                    // }
                     columns={[
                       { field: 'code', headerName: 'Code', width: 140 },
                       { field: 'intitule', headerName: 'Intitulé', width: 220 },
                       { field: 'compte_amortissement', headerName: 'Compte amort', width: 140 },
-                      { field: 'lien_ecriture_id', headerName: 'Lien écriture', width: 100, align: 'center', headerAlign: 'center', sortable: false, renderCell: (p) => (p.value ? <GoLink color={initial.theme} size={22} /> : '') },
+                      {
+                        field: 'lien_ecriture_id',
+                        headerName: 'Lien écriture',
+                        width: 100,
+                        align: 'center',
+                        headerAlign: 'center',
+                        sortable: false,
+                        renderCell: (p) => {
+                          const id = p.row.lien_ecriture_id;
+                          if (!id) return null;
+
+                          const data = journalLinkData[id];
+
+                          return (
+                            <WhiteTooltip
+                              placement="top"
+                              onOpen={() => fetchJournalLink(id)}
+                              title={
+                                data ? (
+                                  <div style={{ minWidth: 400 }}>
+
+                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                                      <span>
+                                        <strong>Date :</strong> {
+                                          data.dateecriture
+                                            ? new Date(data.dateecriture).toLocaleDateString('fr-FR')
+                                            : ''
+                                        }
+                                      </span>
+                                      <span><strong>Journal :</strong> {data.code}</span>
+                                    </div>
+
+                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                                      <span><strong>Compte :</strong> {data.compteaux}</span>
+                                      <span><strong>Pièce :</strong> {data.piece}</span>
+                                    </div>
+
+                                    <div style={{
+                                      display: "flex",
+                                      gap: 6,
+                                      marginBottom: 8
+                                    }}>
+                                      <strong>Libellé :</strong>
+                                      <span style={{ opacity: 0.85 }}>{data.libelle}</span>
+                                    </div>
+
+                                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                      <span><strong>Débit :</strong> {formatMoneyFr(data.debit)}</span>
+                                      <span><strong>Crédit :</strong> {formatMoneyFr(data.credit)}</span>
+                                    </div>
+
+                                  </div>
+                                ) : "Chargement..."
+                              }
+                            >
+                              <span>
+                                <GoLink color={initial.theme} size={22} />
+                              </span>
+                            </WhiteTooltip>
+                          );
+                        }
+                      },
                       // { field: 'pc_id', headerName: 'Compte ID', width: 120 },
                       { field: 'fournisseur', headerName: 'Fournisseur', width: 160 },
                       {
@@ -1402,13 +1465,19 @@ const Immobilisations = () => {
                     // disableColumnMenu
                     // disableRowSelectionOnClick={false}
                     checkboxSelection
+                    // pinnedColumns={{ left: ['checkboxSelection'] }}
                     experimentalFeatures={{ newEditingApi: true }}
                     rowSelectionModel={detailsSelectionModel}
-                    onRowSelectionModelChange={(m) => {
+                    onRowSelectionModelChange={async (m) => {
                       const arr = Array.isArray(m) ? m : [];
                       const selected = arr.slice(-1);
 
                       setDetailsSelectionModel(selected);
+                      // try {
+                      //   await fetchDetails();
+                      // } catch (err) {
+                      //   console.error('Erreur lors du refresh:', err);
+                      // }
                     }}
                     isCellEditable={() => false}
                     density="compact"
@@ -1438,7 +1507,7 @@ const Immobilisations = () => {
                         display: 'none',
                       },
                       '& .disabled-row': {
-                        opacity: 0.5,
+                        color: '#545252'
                       },
                       '& .MuiDataGrid-cell:focus-within': {
                         outline: 'none !important',
@@ -1452,6 +1521,7 @@ const Immobilisations = () => {
                   />
                   {Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 && (
                     <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle1">Plan d'amortissement</Typography>
                       <TabContext value={ligneTab}>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                           <TabList onChange={(_, v) => setLigneTab(v)} aria-label="tabs amort">
