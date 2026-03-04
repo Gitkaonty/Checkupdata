@@ -386,33 +386,37 @@ export default function Home() {
               spacing={0.5}
             >
               <Tooltip title="Ajouter un nouveau dossier">
-                <IconButton
-                  disabled={!canAdd}
-                  onClick={handleDialogClickOpen}
-                  variant="contained"
-                  style={{
-                    width: "35px", height: '35px', borderRadius: "5px",
-                    borderColor: "transparent", backgroundColor: initial.theme,
-                    textTransform: 'none', outline: 'none'
-                  }}
-                >
-                  <AiOutlineFileAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                </IconButton>
+                <span>
+                  <IconButton
+                    disabled={!canAdd}
+                    onClick={handleDialogClickOpen}
+                    variant="contained"
+                    style={{
+                      width: "35px", height: '35px', borderRadius: "5px",
+                      borderColor: "transparent", backgroundColor: initial.theme,
+                      textTransform: 'none', outline: 'none'
+                    }}
+                  >
+                    <AiOutlineFileAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                  </IconButton>
+                </span>
               </Tooltip>
 
               <Tooltip title="Supprimer le dossier">
-                <IconButton
-                  disabled={!canDelete || selectedDossierRow.length > 1 || selectedDossierRow.length === 0}
-                  onClick={handleOpenDialogConfirmDeleteDossier}
-                  variant="contained"
-                  style={{
-                    width: "35px", height: '35px', borderRadius: "5px",
-                    borderColor: "transparent", backgroundColor: initial.button_delete_color,
-                    textTransform: 'none', outline: 'none'
-                  }}
-                >
-                  <IoMdTrash style={{ width: '40px', height: '40px', color: 'white' }} />
-                </IconButton>
+                <span>
+                  <IconButton
+                    disabled={!canDelete || selectedDossierRow.length > 1 || selectedDossierRow.length === 0}
+                    onClick={handleOpenDialogConfirmDeleteDossier}
+                    variant="contained"
+                    style={{
+                      width: "35px", height: '35px', borderRadius: "5px",
+                      borderColor: "transparent", backgroundColor: initial.button_delete_color,
+                      textTransform: 'none', outline: 'none'
+                    }}
+                  >
+                    <IoMdTrash style={{ width: '40px', height: '40px', color: 'white' }} />
+                  </IconButton>
+                </span>
               </Tooltip>
 
             </Stack>

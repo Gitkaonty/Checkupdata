@@ -18,7 +18,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupCodeJouralNotExist = ({ handleClose }) => {
+const PopupCodeJouralNotExist = ({ handleClose, title }) => {
     return (
         <BootstrapDialog
             onClose={handleClose}
@@ -37,8 +37,8 @@ const PopupCodeJouralNotExist = ({ handleClose }) => {
                     boxSizing: 'border-box'
                 }}
             >
-                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', fontSize: 16 }}>
-                    L'importation a été interrompue
+                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', fontSize: 17 }}>
+                    {title}
                 </Typography>
             </DialogTitle>
             <IconButton
@@ -56,7 +56,7 @@ const PopupCodeJouralNotExist = ({ handleClose }) => {
             </IconButton>
 
             <DialogContent>
-                <Stack alignItems="left" spacing={2} textAlign="left" sx={{ marginTop: '0px' }}>
+                <Stack alignItems="left" spacing={2} textAlign="left" sx={{ marginTop: '0px', fontSize: '17px' }}>
                     Le code journal : "À nouveau" n'existe pas encore dans le paramétrage des codes journaux. Veuillez en créer un pour continuer.
                 </Stack>
             </DialogContent>

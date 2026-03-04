@@ -62,9 +62,9 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow, sear
           <TableBody>
             {tableRow
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => {
+              .map((row, rowIndex) => {
                 return (
-                  <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
+                  <TableRow hover role="checkbox" tabIndex={-1} key={`row-${row.id ?? rowIndex}-${page}`}>
                     {tableHeader.map((column) => {
                       const value = row[column.id];
                       return (

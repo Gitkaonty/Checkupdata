@@ -544,7 +544,7 @@ export default function ImportJournal() {
             const ranExist = await testIfRanExist();
             if (!ranExist) {
                 setOpenPopupCodeJournal(true);
-                return console.log('Code journal de report à nouveau non trouvé, veuillez en créer un');
+                return;
             }
             const codeJournauxRan = await getAllCodeRan();
             Papa.parse(file, {
@@ -1020,6 +1020,7 @@ export default function ImportJournal() {
             {
                 openPopupCodejournal && (
                     <PopupCodeJouralNotExist
+                        title={"L'importation a été interrompue"}
                         handleClose={() => setOpenPopupCodeJournal(false)}
                     />
                 )

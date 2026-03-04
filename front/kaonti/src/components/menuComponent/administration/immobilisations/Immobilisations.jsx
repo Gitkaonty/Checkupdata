@@ -783,7 +783,7 @@ const Immobilisations = () => {
         toast.error("Veuillez ajouter un compte d'amort");
         // ne pas fermer le dialog, l'utilisateur peut corriger
       } else {
-        toast.error(`Veuillez créer un compte d'amortissement de l'immobilisation: ${getErrMsg(e)}`);
+        toast.error(`${getErrMsg(e)}`);
       }
     } finally { setDetailsLoading(false); }
   };

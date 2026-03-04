@@ -25,6 +25,9 @@ const path = require('path');
 
 const updateDetailImmo = require('../../Middlewares/Immobilisation/updateDetailImmo');
 const updateMontantImmo = updateDetailImmo.updateMontantImmo;
+const updateMontantImmoHorsExercice = updateDetailImmo.updateMontantImmoHorsExercice;
+
+const recupExerciceN1 = require('../../Middlewares/Standard/recupExerciceN1');
 
 // Fonction pour plurieliser un mot
 function pluralize(count, word) {
@@ -1969,7 +1972,7 @@ exports.deleteLettrage = async (req, res) => {
         }
 
         const [affectedRows] = await journals.update(
-            { lettrage: "" },
+            { lettrage: null },
             {
                 where: {
                     id: data,
@@ -1985,7 +1988,7 @@ exports.deleteLettrage = async (req, res) => {
             state: true,
             message: `Lettrage supprimé avec succès sur ${Number(affectedRows) || 0} ${pluralize(Number(affectedRows), 'ligne')}`,
             affected: Number(affectedRows) || 0,
-            lettrage: "",
+            lettrage: null,
             list
         });
 
@@ -2083,12 +2086,11 @@ exports.listDetailsImmo = async (req, res) => {
         }
 
         const exerciceData = await db.exercices.findByPk(exerciceId);
-
         if (!exerciceData) {
             return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
         }
 
-        const date_debut_exercice = exerciceData.date_debut;
+        const dateDebutExercice = exerciceData.date_debut;
 
         const autresExercices = await db.exercices.findAll({
             attributes: ['id'],
@@ -2100,16 +2102,51 @@ exports.listDetailsImmo = async (req, res) => {
         });
 
         const autresExerciceIds = autresExercices.map(e => e.id);
-
-        if (!autresExerciceIds.length) {
-            autresExerciceIds.push(0);
-        }
+        if (!autresExerciceIds.length) autresExerciceIds.push(0);
 
         const whereCompte = pcId
             ? 'AND d.pc_id = :pcId'
             : (compteId ? 'AND d.id_compte = :compteId' : '');
 
         const sql = `
+            SELECT d.id, d.id_exercice
+            FROM details_immo d
+            WHERE d.id_dossier = :fileId
+            ${whereCompte}
+            AND (
+                d.id_exercice = :exerciceId
+                OR (
+                    d.id_exercice IN (:autresExerciceIds)
+                    AND d.date_acquisition < :dateDebutExercice
+                )
+            )
+        `;
+
+        const rows = await db.sequelize.query(sql, {
+            replacements: {
+                fileId,
+                compteId,
+                exerciceId,
+                pcId,
+                autresExerciceIds,
+                dateDebutExercice
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+
+        const rowsDansExercice = rows.filter(r => r.id_exercice === exerciceId);
+        const rowsHorsExercice = rows.filter(r => r.id_exercice !== exerciceId);
+
+        await Promise.all([
+            ...rowsDansExercice.map(r =>
+                updateMontantImmo(compteId, fileId, r.id_exercice, r.id)
+            ),
+            ...rowsHorsExercice.map(r =>
+                updateMontantImmoHorsExercice(compteId, fileId, r.id_exercice, exerciceId, r.id)
+            )
+        ]);
+
+        const sqlFinal = `
             SELECT d.*
             FROM details_immo d
             WHERE d.id_dossier = :fileId
@@ -2124,19 +2161,19 @@ exports.listDetailsImmo = async (req, res) => {
             ORDER BY d.id ASC
         `;
 
-        const rows = await db.sequelize.query(sql, {
+        const rowsFinal = await db.sequelize.query(sqlFinal, {
             replacements: {
                 fileId,
                 compteId,
                 exerciceId,
                 pcId,
                 autresExerciceIds,
-                dateDebutExercice: date_debut_exercice
+                dateDebutExercice
             },
             type: db.Sequelize.QueryTypes.SELECT,
         });
 
-        return res.json({ state: true, list: rows || [] });
+        return res.json({ state: true, list: rowsFinal });
 
     } catch (err) {
         console.error('[IMMO][DETAILS][LIST] error:', err);
@@ -3549,6 +3586,92 @@ exports.getJournalsAvecImmo = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT,
         })
         return res.json(rows);
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}
+
+exports.genererRan = async (req, res) => {
+    try {
+        const { id_dossier, id_exercice, id_compte, isDetailled } = req.body;
+
+        const {
+            id_exerciceN1,
+        } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
+        console.log('id_exerciceN1 : ', id_exerciceN1);
+
+        const querryRan = `
+            DELETE FROM journals
+            WHERE 
+                id_ecriture IN (
+                    SELECT 
+                        DISTINCT j.id_ecriture
+                    FROM journals j
+                    LEFT JOIN codejournals c on j.id_journal = c.id
+                    WHERE 
+                        j.id_compte = :id_compte
+                        AND j.id_dossier = :id_dossier
+                        AND j.id_exercice = :id_exercice
+                        AND c.id_compte = :id_compte
+                        AND c.id_dossier =:id_dossier
+                        AND c.type = 'RAN'
+                )
+        `;
+
+        await db.sequelize.transaction(async (t) => {
+            await db.sequelize.query(querryRan, {
+                replacements: { id_dossier, id_exercice, id_compte },
+                type: db.Sequelize.QueryTypes.DELETE,
+                transaction: t
+            });
+            if (isDetailled) {
+                const soldeQuery = `
+                    SELECT
+                        SUM(CREDIT) - SUM(DEBIT) AS SOLDE
+                    FROM
+                        JOURNALS
+                    WHERE
+                        COMPTEAUX ~ '^[6-7]'
+                        AND ID_ECRITURE IN (
+                            SELECT DISTINCT
+                                J1.ID_ECRITURE
+                            FROM
+                                JOURNALS J1
+                            WHERE
+                                J1.ID_COMPTE = :id_compte
+                                AND J1.ID_DOSSIER = :id_dossier
+                                AND J1.ID_EXERCICE = :id_exerciceN1
+                                AND J1.COMPTEAUX ~ '^[1-5]'
+                                AND NOT EXISTS (
+                                    SELECT
+                                        1
+                                    FROM
+                                        JOURNALS J2
+                                    WHERE
+                                        J2.ID_ECRITURE = J1.ID_ECRITURE
+                                        AND J2.LETTRAGE IS NOT NULL
+                                )
+                        )
+                `;
+                const solde = await db.sequelize.query(soldeQuery, {
+                    replacements: { id_dossier, id_exerciceN1, id_compte },
+                    type: db.Sequelize.QueryTypes.SELECT,
+                    transaction: t
+                })
+
+                console.log('solde : ', solde);
+            } else {
+
+            }
+        });
+
+        return res.json({ state: true, message: 'A-nouveaux générées avec succès' });
     } catch (error) {
         console.error("Erreur deleteJournal :", error);
         return res.status(500).json({
