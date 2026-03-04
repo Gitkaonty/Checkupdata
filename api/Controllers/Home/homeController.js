@@ -628,7 +628,7 @@ const deleteCreatedFile = async (req, res) => {
 
 const informationsFile = async (req, res) => {
   try {
-    const fileId = req.params.id;
+    const fileId = Number(req.params.id);
 
     let resData = {
       state: false,
@@ -636,63 +636,73 @@ const informationsFile = async (req, res) => {
       fileInfos: [],
       associe: [],
       domBank: [],
-    }
+    };
 
     if (fileId > 0) {
-      const list = await dossier.findAll({
-        where: {
-          id: fileId
-        }
-      });
 
-      const listAssocie = await dossierassocies.findAll({
-        where:
+      const fileInfos = await db.sequelize.query(
+        `
+        SELECT *
+        FROM dossiers
+        WHERE id = :fileId
+        `,
         {
-          id_dossier: fileId,
-          enactivite: true
+          replacements: { fileId },
+          type: db.Sequelize.QueryTypes.SELECT,
         }
-      });
+      );
 
-      const listDomBank = await dombancaires.findAll({
-        where:
+      const associe = await db.sequelize.query(
+        `
+        SELECT *
+        FROM dossierassocies
+        WHERE id_dossier = :fileId
+        AND enactivite = true
+        `,
         {
-          id_dossier: fileId,
-          enactivite: true
-        },
-        include: [
-          {
-            model: pays,
-            as: 'tablepays',
-            attributes: [
-              ['nompays', 'nompays']
-            ],
-            required: true,
-          },
-        ],
-        raw: true,
-      });
+          replacements: { fileId },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
+      );
 
-      if (list.length > 0) {
+      const domBank = await db.sequelize.query(
+        `
+        SELECT db.*,
+               p.nompays AS nompays
+        FROM dombancaires db
+        INNER JOIN pays p ON p.nompays = db.pays
+        WHERE db.id_dossier = :fileId
+        AND db.enactivite = true
+        `,
+        {
+          replacements: { fileId },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
+      );
+
+      if (fileInfos) {
         resData.state = true;
-        resData.fileInfos = list;
-        resData.associe = listAssocie;
-        resData.domBank = listDomBank;
+        resData.fileInfos = fileInfos; // pour garder la même structure qu'avant
+        resData.associe = associe;
+        resData.domBank = domBank;
       } else {
-        resData.state = false;
-        resData.msg = 'une erreur est survenue lors du traitement.';
+        resData.msg = 'Une erreur est survenue lors du traitement.';
       }
+
     } else {
-      resData.state = false;
-      resData.msg = "ce dossier n'existe pas.";
+      resData.msg = "Ce dossier n'existe pas.";
     }
 
     return res.json(resData);
+
   } catch (error) {
-    console.log(error);
-  } finally {
-    // Add finally block to ensure cleanup
+    console.error(error);
+    return res.status(500).json({
+      state: false,
+      msg: "Erreur serveur."
+    });
   }
-}
+};
 
 const updateCentrefisc = async (req, res) => {
   try {

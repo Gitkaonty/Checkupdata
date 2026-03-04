@@ -206,7 +206,7 @@ async function listJournalsByCompte(req, res) {
         { model: db.codejournals, attributes: ['code'] }
       ],
       order: [['dateecriture', 'ASC'], ['id', 'ASC']],
-      attributes: ['id', 'dateecriture', 'id_journal', 'piece', 'libelle', 'debit', 'credit', 'decltvamois', 'decltvaannee', 'decltva']
+      attributes: ['id', 'dateecriture', 'id_journal', 'piece', 'libelle', 'debit', 'credit', 'decltvamois', 'decltvaannee', 'decltva', 'id_immob']
     });
 
     const mappedRows = rows.map(journal => {

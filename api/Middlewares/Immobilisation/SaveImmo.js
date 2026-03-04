@@ -3,7 +3,6 @@ require('dotenv').config();
 
 exports.saveImmoLineaireMiddleware = async (fileId, compteId, exerciceId, detailImmoId, lignes) => {
     try {
-        console.log('lin trouvé');
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return console.log({ state: false, msg: 'Paramètres manquants' });
         }
@@ -50,25 +49,35 @@ exports.saveImmoDegressifMiddleware = async (fileId, compteId, exerciceId, detai
         }
 
         if (!lignes || !Array.isArray(lignes)) {
-            // Fallback : essayer de traiter comme un amortissement linéaire
             try {
+                const [rows] = await db.sequelize.query(`
+                            SELECT
+                                d.*,
+                                e.date_debut,
+                                e.date_fin,
+                                dos.immo_amort_base_jours
+                            FROM details_immo d
+                            LEFT JOIN exercices e
+                                ON e.id = d.id_exercice
+                                AND e.id_dossier = d.id_dossier
+                            LEFT JOIN dossiers dos
+                                ON dos.id = d.id_dossier
+                            WHERE
+                                d.id = :detailImmoId
+                                AND d.id_dossier = :fileId
+                                AND d.id_compte = :compteId
+                        `, {
+                    replacements: { fileId, compteId, detailImmoId },
+                    type: db.Sequelize.QueryTypes.SELECT
+                });
 
-                // Charger les données nécessaires pour le calcul linéaire
-                const [dossier, exo, detail] = await Promise.all([
-                    db.dossiers.findByPk(fileId),
-                    db.exercices.findByPk(exerciceId),
-                    db.detailsimmo.findByPk(detailImmoId),
-                ]);
-
-                if (!dossier || !exo || !detail) {
-                    return console.log({ state: false, msg: 'Données introuvables' });
-                }
+                const detail = rows;
 
                 // Calcul linéaire simple
-                const baseJours = Number(dossier.immo_amort_base_jours) || 360;
+                const baseJours = Number(detail.immo_amort_base_jours) || 360;
                 const montantHT = Number(detail.montant_ht) || Number(detail.montant) || 0;
                 const dateMiseService = detail.date_mise_service ? new Date(detail.date_mise_service) : null;
-                const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+                const exoFin = detail.date_fin ? new Date(detail.date_fin) : null;
                 const dureeComp = Math.max(1, Math.floor(Number(detail.duree_amort_mois) || 0));
 
                 if (montantHT <= 0) {

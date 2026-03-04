@@ -2,7 +2,6 @@ const db = require("../../Models");
 require('dotenv').config();
 
 const updateMontantImmo = async (id_compte, id_dossier, id_exercice, id_details_immo) => {
-
     const exercice = await db.exercices.findByPk(id_exercice);
     if (!exercice) throw new Error('Exercice non trouvé');
 

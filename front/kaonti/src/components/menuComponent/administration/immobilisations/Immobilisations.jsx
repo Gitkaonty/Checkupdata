@@ -137,6 +137,7 @@ const Immobilisations = () => {
   const [selectionModel, setSelectionModel] = useState([]);
   const [loading, setLoading] = useState(false);
   const [journalLinkData, setJournalLinkData] = useState({});
+  const [preselectedJournal, setPreselectedJournal] = useState(null);
 
   // Helper to extract a safe message from Axios/unknown errors
   const getErrMsg = (e) => {
@@ -193,6 +194,12 @@ const Immobilisations = () => {
       });
 
       let list = Array.isArray(data?.list) ? data.list : [];
+
+      if (detailsForm?.lien_ecriture_id) {
+        const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
+        if (journalAlready) setPreselectedJournal(journalAlready);
+      }
+
       // Fallback: si vide, charger via selectionLigne et filtrer par compte
       if (!list.length) {
         try {
@@ -202,7 +209,12 @@ const Immobilisations = () => {
         } catch { }
       }
 
-      const filteredList = list.filter(val => val.id_immob !== null && val.id_immob !== 0);
+      const filteredList = list.filter(journal => {
+        const libre = !journal.id_immob;
+        const dejaSelectionne = journal.id === detailsForm?.lien_ecriture_id;
+        const preselected = preselectedJournal?.id === journal.id;
+        return libre || dejaSelectionne || preselected;
+      });
       setJournalRows(filteredList);
 
       // keep selection to show which one was already selected
@@ -1861,7 +1873,10 @@ const Immobilisations = () => {
                     mode={detailsDialogMode}
                     form={detailsForm}
                     onChange={(f) => setDetailsForm(f)}
-                    onClose={() => setDetailsDialogOpen(false)}
+                    onClose={() => {
+                      setDetailsDialogOpen(false);
+                      // setPreselectedJournal(null);
+                    }}
                     onSubmit={submitDetailsForm}
                     loading={detailsLoading}
                     onOpenLienEcriture={handleOpenLienEcriture}

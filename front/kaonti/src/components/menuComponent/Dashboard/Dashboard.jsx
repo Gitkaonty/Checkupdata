@@ -851,7 +851,7 @@ export default function DashboardComponent() {
                   spacing={2}
                 >
                   <Stack
-                    height={{ xs: 250, md: 339 }}
+                    height={{ xs: 250, md: 340 }}
                     sx={{
                       boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                       borderRadius: 2,
