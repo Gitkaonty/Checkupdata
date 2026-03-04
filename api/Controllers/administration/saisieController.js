@@ -515,10 +515,28 @@ exports.listDetailsImmoLignes = async (req, res) => {
         const compteId = Number(req.query?.compteId);
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
-        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
+
+        const exerciceData = await db.exercices.findByPk(exerciceId);
+        if (!exerciceData) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+
+        const dateDebutExercice = exerciceData.date_debut;
+        const dateFinExercice = exerciceData.date_fin;
+
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            detailImmoId,
+            dateDebutExercice,
+            dateFinExercice
+        );
+
         const rows = await db.detailsImmoLignes.findAll({
             where: {
                 id_dossier: fileId,
@@ -528,7 +546,9 @@ exports.listDetailsImmoLignes = async (req, res) => {
             },
             order: [['id', 'ASC']],
         });
+
         return res.json({ state: true, list: rows || [] });
+
     } catch (err) {
         console.error('[IMMO][LIGNES] error:', err);
         return res.status(500).json({ state: false, msg: 'Erreur serveur' });
@@ -1230,6 +1250,14 @@ exports.saveImmoLineaire = async (req, res) => {
             return res.status(400).json({ state: false, msg: 'Lignes calculées manquantes - utilisez d\'abord previewImmoLineaire' });
         }
 
+        const exerciceData = await db.exercices.findByPk(exerciceId);
+        if (!exerciceData) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+
+        const dateDebutExercice = exerciceData.date_debut;
+        const dateFinExercice = exerciceData.date_fin;
+
         // Préparer les lignes pour l'insertion (utiliser les lignes pré-calculées)
         const out = lignes.map((ligne) => ({
             id_dossier: fileId,
@@ -1257,7 +1285,14 @@ exports.saveImmoLineaire = async (req, res) => {
         if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
 
 
-        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            detailImmoId,
+            dateDebutExercice,
+            dateFinExercice
+        );
 
         return res.json({ state: true, saved: out.length });
     } catch (err) {
@@ -2091,6 +2126,7 @@ exports.listDetailsImmo = async (req, res) => {
         }
 
         const dateDebutExercice = exerciceData.date_debut;
+        const dateFinExercice = exerciceData.date_fin;
 
         const autresExercices = await db.exercices.findAll({
             attributes: ['id'],
@@ -2108,21 +2144,19 @@ exports.listDetailsImmo = async (req, res) => {
             ? 'AND d.pc_id = :pcId'
             : (compteId ? 'AND d.id_compte = :compteId' : '');
 
-        const sql = `
-            SELECT d.id, d.id_exercice
-            FROM details_immo d
-            WHERE d.id_dossier = :fileId
-            ${whereCompte}
-            AND (
-                d.id_exercice = :exerciceId
-                OR (
-                    d.id_exercice IN (:autresExerciceIds)
-                    AND d.date_acquisition < :dateDebutExercice
+        const rows = await db.sequelize.query(`
+                SELECT d.id, d.id_exercice
+                FROM details_immo d
+                WHERE d.id_dossier = :fileId
+                ${whereCompte}
+                AND (
+                    d.id_exercice = :exerciceId
+                    OR (
+                        d.id_exercice IN (:autresExerciceIds)
+                        AND d.date_acquisition < :dateDebutExercice
+                    )
                 )
-            )
-        `;
-
-        const rows = await db.sequelize.query(sql, {
+            `, {
             replacements: {
                 fileId,
                 compteId,
@@ -2134,39 +2168,44 @@ exports.listDetailsImmo = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT,
         });
 
-        const rowsDansExercice = rows.filter(r => r.id_exercice === exerciceId);
-        const rowsHorsExercice = rows.filter(r => r.id_exercice !== exerciceId);
+        const chunkSize = 20;
 
-        await Promise.all([
-            ...rowsDansExercice.map(r =>
-                updateMontantImmo(compteId, fileId, r.id_exercice, r.id)
-            ),
-            ...rowsHorsExercice.map(r =>
-                updateMontantImmoHorsExercice(compteId, fileId, r.id_exercice, exerciceId, r.id)
-            )
-        ]);
+        for (let i = 0; i < rows.length; i += chunkSize) {
+            const chunk = rows.slice(i, i + chunkSize);
 
-        const sqlFinal = `
+            await Promise.all(
+                chunk.map(r =>
+                    updateMontantImmo(
+                        compteId,
+                        fileId,
+                        r.id_exercice,
+                        r.id,
+                        dateDebutExercice,
+                        dateFinExercice
+                    )
+                )
+            );
+        }
+
+        const rowsFinal = await db.sequelize.query(`
             SELECT d.*
             FROM details_immo d
             WHERE d.id_dossier = :fileId
-            ${whereCompte}
-            AND (
-                d.id_exercice = :exerciceId
-                OR (
-                    d.id_exercice IN (:autresExerciceIds)
-                    AND d.date_acquisition < :dateDebutExercice
+                ${whereCompte}
+                AND (
+                    d.id_exercice = :exerciceId
+                    OR (
+                        d.id_exercice IN (:autresExerciceIds)
+                        AND d.date_acquisition < :dateDebutExercice
+                    )
                 )
-            )
-            ORDER BY d.id ASC
-        `;
-
-        const rowsFinal = await db.sequelize.query(sqlFinal, {
+            ORDER BY d.date_acquisition ASC
+            `, {
             replacements: {
                 fileId,
                 compteId,
-                exerciceId,
                 pcId,
+                exerciceId,
                 autresExerciceIds,
                 dateDebutExercice
             },
@@ -2408,7 +2447,14 @@ exports.createDetailsImmo = async (req, res) => {
 
         useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer);
 
-        await updateMontantImmo(compteId, fileId, exerciceId, insertedId);
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            insertedId,
+            exoDebut,
+            exoFin
+        );
 
         return res.json({ state: true, id: insertedId || null });
     } catch (err) {
@@ -2654,7 +2700,14 @@ exports.updateDetailsImmo = async (req, res) => {
 
         useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer);
 
-        await updateMontantImmo(compteId, fileId, exerciceId, id);
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            id,
+            exoDebut,
+            exoFin
+        );
 
         return res.json({ state: true, id });
     } catch (err) {
@@ -3633,7 +3686,7 @@ exports.genererRan = async (req, res) => {
             if (isDetailled) {
                 const soldeQuery = `
                     SELECT
-                        SUM(CREDIT) - SUM(DEBIT) AS SOLDE
+                        ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS SOLDE
                     FROM
                         JOURNALS
                     WHERE
@@ -3665,7 +3718,7 @@ exports.genererRan = async (req, res) => {
                     transaction: t
                 })
 
-                console.log('solde : ', solde);
+                console.log('solde : ', Number(solde[0].solde));
             } else {
 
             }

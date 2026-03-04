@@ -1312,7 +1312,7 @@ const Immobilisations = () => {
                         <span>
                           <IconButton
                             onClick={handleDetailsAdd}
-                            disabled={selectedExerciceId !== idExerciceSelectionne}
+                            // disabled={selectedExerciceId !== idExerciceSelectionne}
                             style={{
                               width: 35, height: 35, borderRadius: 2, backgroundColor: initial.theme,
                               textTransform: 'none',
