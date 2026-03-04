@@ -26,15 +26,14 @@ const KpiCardDouble = ({
     const formatePourcentage = (value, evolution) => {
         if (!value) return `0.00 %`;
         const formatted = parseFloat(value).toFixed(2);
-        // couleur rouge si diminution, vert si augmentation
         const sign = evolution === 'augmentation' ? '+' : evolution === 'diminution' ? '-' : '';
         return `${sign}${formatted} %`;
     };
 
     const getColor = (evolution) => {
-        if (evolution === 'augmentation') return '#58D68D'; // vert
-        if (evolution === 'diminution') return '#E74C3C'; // rouge
-        return '#FFF'; // neutre
+        if (evolution === 'augmentation') return '#58D68D';
+        if (evolution === 'diminution') return '#E74C3C';
+        return '#FFF';
     };
 
     const formatMontant = (num) => {
@@ -56,17 +55,15 @@ const KpiCardDouble = ({
                 boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
             }}
         >
-            {/* HEADER */}
             <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography sx={{ fontSize: 20, fontWeight: 700, letterSpacing: 0.6 }}>
-                    Performance financière
+                    Performances financières
                 </Typography>
                 <Typography sx={{ fontSize: 14, opacity: 0.7 }}>
                     Comparatif par exercice
                 </Typography>
             </Stack>
 
-            {/* Résultat net */}
             <Stack mt={4} spacing={1.5}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography sx={{ fontSize: 16, opacity: 0.9 }}>Résultat net (N)</Typography>
@@ -97,10 +94,8 @@ const KpiCardDouble = ({
                 </Stack>
             </Stack>
 
-            {/* Divider */}
             <Box sx={{ borderBottom: "1px solid rgba(255,255,255,0.25)", my: 3 }} />
 
-            {/* Chiffre d'affaires */}
             <Stack spacing={1.5}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography sx={{ fontSize: 16, opacity: 0.9 }}>Chiffre d'affaires (N)</Typography>

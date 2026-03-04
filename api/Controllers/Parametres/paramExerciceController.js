@@ -1,80 +1,53 @@
 const db = require("../../Models");
 require('dotenv').config();
 const Sequelize = require('sequelize');
-const { Op } = require('sequelize');
 
 const exercice = db.exercices;
-
 const etats = db.etats;
-const etatsmatrices = db.etatsmatrices;
-const etatsplp = db.etatsplp;
-
-const etatscomms = db.etatscomms;
-const etatscomatrices = db.etatscomatrices;
-const etatsplpmatrices = db.etatsplpmatrices;
-
-const rubriques = db.rubriques;
-const rubriquesmatrices = db.rubriquesmatrices;
 const compterubriques = db.compterubriques;
-const compterubriquematrices = db.compterubriquematrices;
 const situations = db.situations;
-
-const liassedps = db.liassedps;
-const liassedrfs = db.liassedrfs;
-const liasseevcps = db.liasseevcps;
-const liassesads = db.liassesads;
-const liassesdrs = db.liassesdrs;
-
-const rubriquesExternes = db.rubriquesExternes;
-const compteRubriquesExternes = db.compteRubriquesExternes;
-const rubriqueExternesEvcp = db.rubriqueExternesEvcp;
-
-const rubriquesExternesAnalytiques = db.rubriquesExternesAnalytiques;
-const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
-
-const compteRubriquesExternesMatrices = db.compteRubriquesExternesMatrices;
-const rubriquesExternesMatrices = db.rubriquesExternesMatrices;
-
-const etatsEtatFinancier = db.etatsEtatFinancier;
-const etatsEtatFinancierMatrice = db.etatsEtatFinancierMatrice;
-const etatsEtatFinancierAnalytique = db.etatsEtatFinancierAnalitiques;
-
-// Unified Formulaire TVA
-const formulaireTvaAnnexes = db.formulaireTvaAnnexes;
-const formulaireTvaAnnexesMatrices = db.formulaireTvaAnnexesMatrices;
 const dossiers = db.dossiers;
 
 const getListeExercice = async (req, res) => {
   try {
-    const fileId = req.params.id;
+    const fileId = Number(req.params.id);
 
     let resData = {
       state: false,
       msg: '',
       list: []
-    }
+    };
 
-    const list = await exercice.findAll({
-      where: {
-        id_dossier: fileId
-      },
-      raw: true,
-      order: [['date_fin', 'DESC']]
-    });
+    const list = await db.sequelize.query(
+      `
+      SELECT *
+      FROM exercices
+      WHERE id_dossier = :fileId
+      ORDER BY date_fin DESC
+      `,
+      {
+        replacements: { fileId },
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
 
-    if (list) {
+    if (list && list.length > 0) {
       resData.state = true;
       resData.list = list;
     } else {
-      resData.state = false;
-      resData.msg = 'une erreur est survenue lors du traitement.';
+      resData.msg = 'Aucun exercice trouvé.';
     }
 
     return res.json(resData);
+
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    return res.status(500).json({
+      state: false,
+      msg: 'Erreur serveur.'
+    });
   }
-}
+};
 
 const getListeSituation = async (req, res) => {
   try {
@@ -108,382 +81,691 @@ const getListeSituation = async (req, res) => {
   }
 }
 
-const copydata = async (id_compte, id_dossier, createExercice, action) => {
-  //copier Etats, les rubriques et les comptes rubriques
+const copyMatriceQuerry = async (id_compte, id_dossier, id_exercice) => {
+  const dossierRow = await dossiers.findByPk(id_dossier);
+  const type = (dossierRow?.centrefisc === 'CFISC') ? 'CFISC' : 'DGE';
 
-  const listeEtat = await etatsmatrices.findAll({});
-  const listeEtatComm = await etatscomatrices.findAll({});
-  const listeEtatPlp = await etatsplpmatrices.findAll({});
-  const listeRubrique = await rubriquesmatrices.findAll({});
-  const listeCompteRubrique = await compterubriquematrices.findAll({});
-  const listeRubriqueExterne = await rubriquesExternesMatrices.findAll({});
-  const listeCompteRubriqueExterne = await compteRubriquesExternesMatrices.findAll({});
-  const listeEtatsEtatFinancier = await etatsEtatFinancierMatrice.findAll({});
-  // const listeEtatCentresFiscales = await etatsCentresFiscalesmatrices.findAll({});
+  await db.sequelize.transaction(async (t) => {
 
-  const createdExerciceInfosData = await exercice.findOne({
-    where: { id: createExercice.id }
-  });
-
-  let id_exerciceRef = 0;
-  if (createdExerciceInfosData) {
-    const createdExerciceInfos = createdExerciceInfosData;
-    const date_debut = new Date(createdExerciceInfos.date_debut);
-    if (action === 'NEXT') {
-      const ExerciceRef = await exercice.findOne({
-        where: {
-          date_debut: {
-            [Op.lt]: date_debut
-          }
-        },
-        order: [['date_debut', 'DESC']]
-      });
-
-      id_exerciceRef = ExerciceRef.id;
-    } else if (action === 'PREV') {
-      const ExerciceRef = await exercice.findOne({
-        where: {
-          date_debut: {
-            [Op.gt]: date_debut
-          }
-        },
-        order: [['date_debut', 'ASC']]
-      });
-
-      id_exerciceRef = ExerciceRef.id;
-    }
-  }
-
-  // let listeCompteRubrique = [];
-  // if (action === 'FIRST') {
-  //   listeCompteRubrique = await compterubriquematrices.findAll({});
-  // } else {
-  //   listeCompteRubrique = await compterubriques.findAll({
-  //     where: { id_compte: id_compte, id_dossier: id_dossier, id_exercice: id_exerciceRef }
-  //   });
-  // }
-
-  listeEtat.map(async (item) => {
-    await etats.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      code: item.code,
-      nom: item.nom,
-      ordre: item.ordre,
-    });
-  });
-
-  listeEtatComm.map(async (item) => {
-    await etatscomms.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      code: item.code,
-      nom: item.nom,
-      ordre: item.ordre,
-    })
-  })
-
-  listeEtatPlp.map(async (item) => {
-    await etatsplp.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      code_cn: item.code_cn,
-      nature_produit: item.nature_produit,
-      unite_quantite: item.unite_quantite,
-      commercant_quantite: item.commercant_quantite,
-      commercant_valeur: item.commercant_valeur,
-      producteur_quantite: item.producteur_quantite,
-      producteur_valeur: item.producteur_valeur,
-    })
-  })
-
-  listeCompteRubrique.map(async (item) => {
-    await compterubriques.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      id_etat: item.id_etat,
-      id_rubrique: item.id_rubrique,
-      compte: item.compte,
-      nature: item.nature,
-      senscalcul: item.senscalcul,
-      condition: item.condition,
-      equation: item.equation,
-      par_default: item.par_default,
-      active: item.active,
-      exercice: item.exercice,
-    })
-  })
-
-  listeRubriqueExterne.map(async (item) => {
-    await rubriquesExternes.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      id_etat: item.id_etat,
-      id_rubrique: item.id_rubrique,
-      libelle: item.libelle,
-      type: item.type,
-      ordre: item.ordre,
-      subtable: item.subtable,
-      par_default: true,
-      active: true,
-    })
-    await rubriquesExternesAnalytiques.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      id_etat: item.id_etat,
-      id_rubrique: item.id_rubrique,
-      libelle: item.libelle,
-      type: item.type,
-      ordre: item.ordre,
-      subtable: item.subtable,
-      par_default: true,
-      active: true,
-    })
-  })
-
-  listeCompteRubriqueExterne.map(async (item) => {
-    await compteRubriquesExternes.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      id_etat: item.id_etat,
-      id_rubrique: item.id_rubrique,
-      tableau: item.tableau,
-      compte: item.compte,
-      nature: item.nature,
-      senscalcul: item.senscalcul,
-      condition: item.condition,
-      equation: item.equation,
-      par_default: true,
-      active: true,
-    })
-  })
-
-  listeEtatsEtatFinancier.map(async (item) => {
-    await etatsEtatFinancier.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      code: item.code,
-      nom: item.nom,
-      ordre: item.ordre,
-    })
-    await etatsEtatFinancierAnalytique.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      code: item.code,
-      nom: item.nom,
-      ordre: item.ordre,
-    })
-  })
-
-  // --- Unified Formulaire TVA initialization (based on dossier's centrefisc)
-  try {
-    const dossierRow = await dossiers.findByPk(id_dossier);
-    const type = (dossierRow?.centrefisc === 'CFISC') ? 'CFISC' : 'DGE';
-    // Matrices now have a single row per code (no type). Load all rows.
-    const listFormMatrices = await formulaireTvaAnnexesMatrices.findAll({});
-    listFormMatrices.map(async (item) => {
-      await formulaireTvaAnnexes.create({
+    // Copie Etat
+    await db.sequelize.query(`
+      INSERT INTO etats (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        code,
+        nom,
+        ordre
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        code,
+        nom,
+        ordre
+      FROM etatsmatrices
+`, {
+      replacements: {
         id_compte: id_compte,
         id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_code: item.id_code,
-        libelle: item.libelle,
-        montant: 0,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Copie Etat dans droit comm
+    await db.sequelize.query(`
+      INSERT INTO etatscomms (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        code,
+        nom,
+        ordre
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        code,
+        nom,
+        ordre
+      FROM etatscomatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Copie Etat dans droit comm plp
+    await db.sequelize.query(`
+      INSERT INTO etatsplps (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        code_cn,
+        nature_produit,
+        unite_quantite,
+        commercant_quantite,
+        commercant_valeur,
+        producteur_quantite,
+        producteur_valeur
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        code_cn,
+        nature_produit,
+        unite_quantite,
+        commercant_quantite,
+        commercant_valeur,
+        producteur_quantite,
+        producteur_valeur
+      FROM etatsplpmatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Matrice rubrique dans E-Bilan
+    await db.sequelize.query(`
+      INSERT INTO rubriques (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        subtable,
+        id_rubrique,
+        nature,
+        note,
+        ordre,
+        niveau,
+        senscalcul
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        subtable,
+        id_rubrique,
+        nature,
+        note,
+        ordre,
+        niveau,
+        senscalcul
+      FROM rubriquesmatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Matrice compte rubriques dans E-Bilan
+    await db.sequelize.query(`
+      INSERT INTO compterubriques (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        compte,
+        nature,
+        senscalcul,
+        condition,
+        equation,
+        par_default,
+        active,
+        exercice
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        compte,
+        nature,
+        senscalcul,
+        condition,
+        equation,
+        par_default,
+        active,
+        exercice
+      FROM compterubriquesmatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Matrice rubriques externes 
+    await db.sequelize.query(`
+      INSERT INTO rubriquesexternes (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
         type,
-      });
+        ordre,
+        subtable,
+        par_default,
+        active
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        type,
+        ordre,
+        subtable,
+        true,
+        true
+      FROM rubriquesexternesmatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  } catch (e) {
-    console.log('[Unified TVA] init error:', e?.message || e);
-  }
 
-  listeRubrique.map(async (item) => {
-    const copyrubriques = await rubriques.create({
-      id_compte: id_compte,
-      id_dossier: id_dossier,
-      id_exercice: createExercice.id,
-      id_etat: item.id_etat,
-      subtable: item.subtable,
-      id_rubrique: item.id_rubrique,
-      nature: item.nature,
-      note: item.note,
-      ordre: item.ordre,
-      niveau: item.niveau,
-      senscalcul: item.senscalcul
+    // Matrice rubriques externes analytique
+    await db.sequelize.query(`
+      INSERT INTO rubriquesexternesanalytiques (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        type,
+        ordre,
+        subtable,
+        par_default,
+        active,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        type,
+        ordre,
+        subtable,
+        true,
+        true,
+        NOW(),
+        NOW()
+      FROM rubriquesexternesmatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  });
 
-  //copie infos EVCP vers la table liassesEVCP
-  const listeRubriqueEVCP = await rubriquesmatrices.findAll({
-    where:
-    {
-      id_etat: "EVCP"
-    }
-  });
-
-  if (listeRubriqueEVCP.length > 0) {
-    listeRubriqueEVCP.map(async (item) => {
-      await liasseevcps.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        note: item.note,
-        nature: item.nature,
-        ordre: item.ordre,
-        niveau: item.niveau,
-      });
-      await rubriqueExternesEvcp.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        note: item.note,
-        nature: item.nature,
-        ordre: item.ordre,
-        niveau: item.niveau,
-        libelle: item.libelle,
-      })
-      await rubriqueExternesEvcpAnalytiques.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        note: item.note,
-        nature: item.nature,
-        ordre: item.ordre,
-        niveau: item.niveau,
-        libelle: item.libelle,
-      })
+    // Matrice compte rubriques etat financier
+    await db.sequelize.query(`
+      INSERT INTO compterubriqueexternes (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        tableau,
+        compte,
+        nature,
+        senscalcul,
+        condition,
+        equation,
+        par_default,
+        active
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        tableau,
+        compte,
+        nature,
+        senscalcul,
+        condition,
+        equation,
+        true,
+        true
+      FROM compterubriqueexternesmatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  }
 
-  //copie infos DRF vers la table liassesDRF
-  const listeRubriqueDRF = await rubriquesmatrices.findAll({
-    where:
-    {
-      id_etat: "DRF"
-    }
-  });
-
-  if (listeRubriqueDRF.length > 0) {
-    listeRubriqueDRF.map((item) => {
-      liassedrfs.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        note: item.note,
-        nature: item.nature,
-        signe: item.senscalcul,
-        ordre: item.ordre,
-        niveau: item.niveau,
-      });
+    // Etat etat financier
+    await db.sequelize.query(`
+      INSERT INTO etatsetatfinanciers (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        code,
+        nom,
+        ordre,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        code,
+        nom,
+        ordre,
+        NOW(),
+        NOW()
+      FROM etatsetatfinanciermatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  }
 
-  //copie infos DP vers la table liassesdp
-  const listeRubriqueDP = await rubriquesmatrices.findAll({
-    where:
-    {
-      id_etat: "DP",
-      // nature: { [Op.in]: ['RISQUE', 'DEPRECIATION'] },
-    }
-  });
-
-  if (listeRubriqueDP.length > 0) {
-    listeRubriqueDP.map((item) => {
-      const dp = liassedps.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        libelle: item.libelle,
-        nature_prov: item.nature,
-        ordre: item.ordre,
-        niveau: item.niveau,
-      });
+    // Etat etat financier analytique
+    await db.sequelize.query(`
+      INSERT INTO etatsetatfinancieranalytiques (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        code,
+        nom,
+        ordre,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        code,
+        nom,
+        ordre,
+        NOW(),
+        NOW()
+      FROM etatsetatfinanciermatrices
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  }
 
-  //copie infos SAD vers la table liassesSAD
-  const listeRubriqueSAD = await rubriquesmatrices.findAll({
-    where:
-    {
-      id_etat: "SAD"
-    }
-  });
-
-  if (listeRubriqueSAD.length > 0) {
-    listeRubriqueSAD.map((item) => {
-      liassesads.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        libelle: item.libelle,
-        nature: item.nature,
-        ordre: item.ordre,
-        niveau: item.niveau,
-      });
+    // Copie de matrice pour les 3 evcp
+    await db.sequelize.query(`
+      INSERT INTO liasseevcps (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'EVCP'
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  }
 
-  //copie infos SDR vers la table liassesSDR
-  const listeRubriqueSDR = await rubriquesmatrices.findAll({
-    where:
-    {
-      id_etat: "SDR"
-    }
-  });
-
-  if (listeRubriqueSDR.length > 0) {
-    listeRubriqueSDR.map((item) => {
-      liassesdrs.create({
-        id_compte: id_compte,
-        id_dossier: id_dossier,
-        id_exercice: createExercice.id,
-        id_etat: item.id_etat,
-        id_rubrique: item.id_rubrique,
-        libelle: item.libelle,
-        nature: item.nature,
-        ordre: item.ordre,
-        niveau: item.niveau,
-      });
+    await db.sequelize.query(`
+      INSERT INTO rubriquesexternesevcps (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        libelle,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        libelle,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'EVCP'
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
     });
-  }
 
-  // listeCompteRubrique.map(async (item) => {
-  //   const copycompterubriques = await compterubriques.create({
-  //     id_compte: id_compte,
-  //     id_dossier: id_dossier,
-  //     id_exercice: createExercice.id,
-  //     id_etat: item.id_etat,
-  //     id_rubrique: item.id_rubrique,
-  //     compte: item.compte,
-  //     nature: item.nature,
-  //     senscalcul: item.senscalcul,
-  //     condition: item.condition,
-  //     equation: item.equation,
-  //     par_default: item.par_default,
-  //     active: item.active,
-  //     exercice: item.exercice,
-  //   });
-  // });
+    await db.sequelize.query(`
+      INSERT INTO rubriquesexternesevcps (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        libelle,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        libelle,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'EVCP'
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    await db.sequelize.query(`
+      INSERT INTO rubriquesexternesevcpanalytiques (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        libelle,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        ordre,
+        niveau,
+        libelle,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'EVCP'
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Copie de matrice dans le tableau DRF
+    await db.sequelize.query(`
+      INSERT INTO liassedrfs (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        signe,
+        ordre,
+        niveau,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        note,
+        nature,
+        senscalcul,
+        ordre,
+        niveau,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'DRF'
+`, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice
+      }, transaction: t
+    });
+
+    // Copie de matrice dans le tableau DP
+    await db.sequelize.query(`
+      INSERT INTO liassedps (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        nature_prov,
+        ordre,
+        niveau,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        nature,
+        ordre,
+        niveau,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'DP'
+  `, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice: id_exercice
+      },
+      transaction: t
+    });
+
+    // Copie de matrice dans le tableau SAD
+    await db.sequelize.query(`
+      INSERT INTO liassesads (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        nature,
+        ordre,
+        niveau,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        nature,
+        ordre,
+        niveau,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'SAD'
+  `, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice: id_exercice
+      },
+      transaction: t
+    });
+
+    // Copie de la matrice dans le tableau SDR
+    await db.sequelize.query(`
+      INSERT INTO liassesdrs (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        nature,
+        ordre,
+        niveau,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_etat,
+        id_rubrique,
+        libelle,
+        nature,
+        ordre,
+        niveau,
+        NOW(),
+        NOW()
+      FROM rubriquesmatrices
+      WHERE id_etat = 'SDR'
+  `, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice: id_exercice
+      },
+      transaction: t
+    });
+
+    // Copie du formulaire TVA annexe 
+    await db.sequelize.query(`
+      INSERT INTO formulaire_tva_annexes (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_code,
+        libelle,
+        montant,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        id_code,
+        libelle,
+        0,
+        NOW(),
+        NOW()
+      FROM formulaire_tva_annexes_matrices
+    `, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice,
+        type
+      },
+      transaction: t
+    });
+
+  })
+}
+
+const copydata = async (id_compte, id_dossier, createExercice, action) => {
+  await copyMatriceQuerry(id_compte, id_dossier, createExercice?.id);
 }
 
 const createFirstExercice = async (req, res) => {

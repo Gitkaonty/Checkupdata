@@ -1,4 +1,3 @@
-const bcrypt = require("bcrypt");
 const db = require("../../Models");
 const { Sequelize } = require("sequelize");
 require('dotenv').config();
@@ -10,7 +9,6 @@ const dossierpcdetailcpttva = db.dossierpcdetailcpttva;
 const dossiers = db.dossiers;
 const localites = db.localites;
 const consolidationDossier = db.consolidationDossier;
-const journals = db.journals;
 const exercices = db.exercices;
 
 const { Op } = require("sequelize");
@@ -22,81 +20,165 @@ const recupPc = async (req, res) => {
     const { fileId, compteId } = req.body;
 
     if (!fileId || !compteId) {
-      return
+      return res.status(400).json({ state: false, msg: "Paramètres manquants" });
     }
 
-    let resData = {
-      state: false,
-      msg: 'une erreur est survenue',
-      liste: []
-    }
+    const rows = await db.sequelize.query(`
+        SELECT
+            pc.*,
+            base.compte AS "baseCompte",
+            d.dossier AS "dossier"
+        FROM DOSSIERPLANCOMPTABLES pc
 
-    const listepc = (await dossierPlanComptable.findAll({
-      where:
-      {
-        id_dossier: fileId,
-        id_compte: compteId
-      },
-      include: [
-        {
-          model: dossierPlanComptable,
-          as: 'BaseAux',
-          attributes: [
-            ['compte', 'comptecentr']
-          ],
-          required: false,
-          where: {
-            id_dossier: fileId
-          }
-        },
-        { model: dossiers, attributes: ['dossier'] },
-      ],
-      // raw: true,
-      order: [['compte', 'ASC']]
-    })).map((val => {
-      const data = val.toJSON();
-      data.baseCompte = data?.BaseAux?.comptecentr;
-      data.dossier = data?.dossier?.dossier;
-      return data;
-    }))
+        LEFT JOIN DOSSIERPLANCOMPTABLES base
+            ON base.id = pc.baseaux_id
+            AND base.id_dossier = :fileId
 
-    if (listepc) {
-      resData.state = true;
-      resData.liste = listepc;
-    } else {
-      resData.state = false;
-      resData.msg = "Une erreur est survenue au moment du traitement des données";
-    }
+        LEFT JOIN DOSSIERS d
+            ON d.id = pc.id_dossier
 
-    return res.json(resData);
+        WHERE
+            pc.id_dossier = :fileId
+            AND pc.id_compte = :compteId
+
+        ORDER BY pc.compte ASC
+    `, {
+      replacements: { fileId, compteId },
+      type: db.Sequelize.QueryTypes.SELECT
+    });
+
+    return res.json({
+      state: true,
+      liste: rows
+    });
+
   } catch (error) {
     console.log(error);
+    return res.status(500).json({
+      state: false,
+      msg: "Erreur serveur",
+      error: error.message
+    });
   }
 };
 
+// const updateCompteAux = async (id_numcpt, baseaux_id, nature) => {
+//   if (nature === 'Aux' && baseaux_id) {
+//     const compteCollectif = await dossierPlanComptable.findByPk(baseaux_id);
+//     if (!compteCollectif) return
+//     await dossierPlanComptable.update({
+//       baseaux: compteCollectif.compte,
+//       baseaux_id
+//     }, {
+//       where: {
+//         id: id_numcpt
+//       }
+//     })
+//   }
+// }
+
 const updateCompteAux = async (id_numcpt, baseaux_id, nature) => {
   if (nature === 'Aux' && baseaux_id) {
-    const compteCollectif = await dossierPlanComptable.findByPk(baseaux_id);
-    if (!compteCollectif) return
-    await dossierPlanComptable.update({
-      baseaux: compteCollectif.compte,
-      baseaux_id
-    }, {
-      where: {
-        id: id_numcpt
+    const compteCollectif = await db.sequelize.query(
+      `SELECT compte FROM dossierplancomptables WHERE id = :baseaux_id`,
+      {
+        type: db.Sequelize.QueryTypes.SELECT,
+        replacements: { baseaux_id }
       }
-    })
+    );
+
+    if (!compteCollectif.length) return;
+
+    await db.sequelize.query(
+      `UPDATE dossierplancomptables
+       SET baseaux = :baseaux, baseaux_id = :baseaux_id
+       WHERE id = :id_numcpt`,
+      {
+        replacements: {
+          baseaux: compteCollectif[0].compte,
+          baseaux_id,
+          id_numcpt
+        }
+      }
+    );
   }
-}
+};
 
-const updateLibelleInJournal = async (
-  id,
-  id_compte,
-  id_dossier,
-  nature,
-  libelle
-) => {
+// const updateLibelleInJournal = async (
+//   id,
+//   id_compte,
+//   id_dossier,
+//   nature,
+//   libelle
+// ) => {
 
+//   const exerciceData = await exercices.findAll({
+//     where: {
+//       id_dossier,
+//       id_compte,
+//       rang: { [Op.gte]: 0 }
+//     },
+//     raw: true
+//   })
+
+//   if (!exerciceData.length) return
+
+//   const id_exercices = exerciceData.map(e => Number(e.id))
+
+//   if (nature === 'Aux') {
+//     await journals.update(
+//       {
+//         libelleaux: libelle
+//       },
+//       {
+//         where: {
+//           id_numcpt: id,
+//           id_compte,
+//           id_dossier,
+//           id_exercice: { [Op.in]: id_exercices }
+//         }
+//       }
+//     )
+//     return
+//   }
+
+//   if (nature === 'General') {
+//     await journals.update(
+//       {
+//         libellecompte: libelle,
+//         libelleaux: libelle
+//       },
+//       {
+//         where: {
+//           id_numcptcentralise: id,
+//           id_compte,
+//           id_dossier,
+//           id_exercice: { [Op.in]: id_exercices }
+//         }
+//       }
+//     )
+//     return
+//   }
+
+//   if (nature === 'Collectif') {
+//     await journals.update(
+//       {
+//         libellecompte: libelle
+//       },
+//       {
+//         where: {
+//           id_numcptcentralise: id,
+//           id_compte,
+//           id_dossier,
+//           id_exercice: { [Op.in]: id_exercices }
+//         }
+//       }
+//     )
+//   }
+// }
+
+const updateLibelleInJournal = async (id, id_compte, id_dossier, nature, libelle) => {
+  // Récupérer les exercices valides
   const exerciceData = await exercices.findAll({
     where: {
       id_dossier,
@@ -104,63 +186,45 @@ const updateLibelleInJournal = async (
       rang: { [Op.gte]: 0 }
     },
     raw: true
-  })
+  });
 
-  if (!exerciceData.length) return
+  if (!exerciceData.length) return;
 
-  const id_exercices = exerciceData.map(e => Number(e.id))
+  const id_exercices = exerciceData.map(e => Number(e.id));
 
-  if (nature === 'Aux') {
-    await journals.update(
-      {
-        libelleaux: libelle
-      },
-      {
-        where: {
-          id_numcpt: id,
-          id_compte,
-          id_dossier,
-          id_exercice: { [Op.in]: id_exercices }
-        }
-      }
-    )
-    return
+  let setClause = '';
+  let idField = '';
+
+  switch (nature) {
+    case 'Aux':
+      setClause = `libelleaux = :libelle`;
+      idField = 'id_numcpt';
+      break;
+    case 'General':
+      setClause = `libellecompte = :libelle, libelleaux = :libelle`;
+      idField = 'id_numcptcentralise';
+      break;
+    case 'Collectif':
+      setClause = `libellecompte = :libelle`;
+      idField = 'id_numcptcentralise';
+      break;
+    default:
+      return;
   }
 
-  if (nature === 'General') {
-    await journals.update(
-      {
-        libellecompte: libelle,
-        libelleaux: libelle
-      },
-      {
-        where: {
-          id_numcptcentralise: id,
-          id_compte,
-          id_dossier,
-          id_exercice: { [Op.in]: id_exercices }
-        }
-      }
-    )
-    return
-  }
+  const query = `
+    UPDATE journals
+    SET ${setClause}
+    WHERE ${idField} = :id
+      AND id_compte = :id_compte
+      AND id_dossier = :id_dossier
+      AND id_exercice IN (:id_exercices)
+  `;
 
-  if (nature === 'Collectif') {
-    await journals.update(
-      {
-        libellecompte: libelle
-      },
-      {
-        where: {
-          id_numcptcentralise: id,
-          id_compte,
-          id_dossier,
-          id_exercice: { [Op.in]: id_exercices }
-        }
-      }
-    )
-  }
-}
+  await db.sequelize.query(query, {
+    replacements: { id, id_compte, id_dossier, libelle, id_exercices }
+  });
+};
 
 const AddCptToPc = async (req, res) => {
   try {
@@ -1474,91 +1538,115 @@ const deleteItemPc = async (req, res) => {
 const recupPcIdLibelle = async (req, res) => {
   try {
     const { id_dossier, id_compte } = req.params;
-    // const { typeComptabilite } = req.query;
 
-    const dossierData = await dossiers.findByPk(id_dossier);
-    const consolidation = dossierData?.consolidation || false;
-    const typeComptabilite = dossierData?.typecomptabilite || 'Français';
+    const rows = await db.sequelize.query(`
+        WITH dossier_info AS (
+            SELECT id, consolidation, typecomptabilite
+            FROM DOSSIERS
+            WHERE id = :id_dossier
+        ),
 
-    let id_dossiers_a_utiliser = [Number(id_dossier)];
+        dossiers_utilises AS (
+            SELECT id FROM dossier_info
 
-    if (consolidation) {
-      const consolidationDossierData = await consolidationDossier.findAll({
-        where: {
-          id_dossier,
-          id_compte
-        }
-      });
+            UNION
 
-      if (!consolidationDossierData.length) {
-        return res.json({
-          state: true,
-          msg: "Consolidation de dossier vide",
-          liste: []
-        });
-      }
+            SELECT cd.id_dossier
+            FROM COMPTEDOSSIERS cd
+            JOIN dossier_info di
+                ON di.consolidation = true
+            WHERE cd.id_dossier = :id_dossier
+              AND cd.user_id = :id_compte
+        ),
 
-      id_dossiers_a_utiliser = [...new Set(
-        consolidationDossierData.map(val => Number(val.id_dossier_autre))
-      ), id_dossier];
-    }
+        pc_data AS (
+            SELECT
+                pc.id,
+                pc.id_dossier,
+                pc.compte,
+                pc.compteautre,
+                pc.libelle,
+                pc.libelleautre,
+                base.libelle AS base_libelle,
+                d.dossier,
+                di.typecomptabilite
+            FROM DOSSIERPLANCOMPTABLES pc
+            JOIN dossiers_utilises du ON du.id = pc.id_dossier
+            JOIN dossier_info di ON TRUE
 
-    const listepc = await dossierPlanComptable.findAll({
-      where: {
-        id_dossier: { [Sequelize.Op.in]: id_dossiers_a_utiliser },
-        id_compte,
-        nature: { [Sequelize.Op.ne]: 'Collectif' },
-        typecomptabilite: typeComptabilite
-      },
-      include: [
-        {
-          model: dossierPlanComptable,
-          as: 'BaseAux',
-          attributes: ['compte', 'libelle'],
-          required: false,
-          where: {
-            id_dossier: { [Sequelize.Op.in]: id_dossiers_a_utiliser },
-            id_compte
-          }
-        },
-        {
-          model: dossiers,
-          attributes: ['dossier'],
-        }
-      ],
-      order: [['compte', 'ASC']],
-      attributes: ['libelle', 'id', 'id_dossier', 'compteautre', 'libelleautre', 'compte']
+            LEFT JOIN DOSSIERPLANCOMPTABLES base
+                ON base.id = pc.baseaux_id
+                AND base.id_dossier = pc.id_dossier
+                AND base.id_compte = :id_compte
+
+            LEFT JOIN DOSSIERS d
+                ON d.id = pc.id_dossier
+
+            WHERE
+                pc.id_compte = :id_compte
+                AND pc.nature <> 'Collectif'
+                AND pc.typecomptabilite = di.typecomptabilite
+        ),
+
+        pc_final AS (
+            SELECT
+                id,
+                id_dossier,
+                dossier,
+
+                CASE
+                    WHEN typecomptabilite = 'Autres'
+                        THEN COALESCE(libelleautre || ' (Autre)', libelle, 'Aucune libellé')
+                    ELSE COALESCE(libelle, 'Aucune libellé')
+                END AS final_libelle,
+
+                CASE
+                    WHEN typecomptabilite = 'Autres'
+                        THEN COALESCE(compteautre, compte)
+                    ELSE compte
+                END AS final_compte,
+
+                CASE
+                    WHEN typecomptabilite = 'Autres'
+                        THEN COALESCE(base_libelle || ' (Autre)', base_libelle, 'Aucune libellé')
+                    ELSE COALESCE(base_libelle, 'Aucune libellé')
+                END AS libelleaux
+            FROM pc_data
+        )
+
+        SELECT DISTINCT ON (final_libelle, final_compte)
+            id,
+            id_dossier,
+            dossier,
+            final_libelle AS libelle,
+            final_compte AS compte,
+            libelleaux
+        FROM pc_final
+    `, {
+      replacements: { id_dossier, id_compte },
+      type: db.Sequelize.QueryTypes.SELECT
     });
 
-    const mappedListe = listepc.map(item => ({
-      id: item.id,
-      libelle: typeComptabilite === 'Autres' ? item?.libelleautre ? item?.libelleautre + ' (Autre)' : item?.libelle || 'Aucune libellé' : item?.libelle || 'Aucune libellé',
-      compte: typeComptabilite === 'Autres' ? item?.compteautre ? item?.compteautre : item?.compte || null : item?.compte || null,
-      libelleaux: typeComptabilite === 'Autres' ? item?.BaseAux?.libelle ? item?.BaseAux?.libelle + ' (Autre)' : item?.BaseAux?.libelle || 'Aucune libellé' : item?.BaseAux?.libelle || 'Aucune libellé',
-      id_dossier: Number(item?.id_dossier) || null,
-      dossier: item?.dossier.dossier || null,
-    }));
+    rows.sort((a, b) => {
+      const regex = /^(\d+)(.*)$/;
+      const matchA = (a.compte || "").match(regex);
+      const matchB = (b.compte || "").match(regex);
 
-    mappedListe.sort((a, b) => {
-      const compteA = parseInt(a.compte?.replace(/\D/g, '') || '0', 10);
-      const compteB = parseInt(b.compte?.replace(/\D/g, '') || '0', 10);
-      return compteA - compteB;
+      const numA = matchA ? parseInt(matchA[1], 10) : 0;
+      const numB = matchB ? parseInt(matchB[1], 10) : 0;
+
+      if (numA !== numB) return numA - numB;
+
+      const strA = matchA ? matchA[2] : "";
+      const strB = matchB ? matchB[2] : "";
+
+      return strA.localeCompare(strB);
     });
-
-    const uniqueListe = [];
-    const seen = new Set();
-    for (const item of mappedListe) {
-      const key = `${item.libelle}-${item.compte}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueListe.push(item);
-      }
-    }
 
     return res.json({
-      state: uniqueListe.length > 0,
-      msg: uniqueListe.length > 0 ? "Données reçues avec succès !" : "Aucune donnée trouvée",
-      liste: uniqueListe
+      state: rows.length > 0,
+      msg: rows.length ? "Données reçues avec succès !" : "Aucune donnée trouvée",
+      liste: rows
     });
 
   } catch (error) {

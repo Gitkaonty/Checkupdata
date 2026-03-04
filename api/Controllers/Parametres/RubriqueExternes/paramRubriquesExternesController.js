@@ -7,45 +7,66 @@ const compteRubriquesExternesMatrices = db.compteRubriquesExternesMatrices;
 exports.getRubriquesExternes = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
-        if (!id_compte) {
-            return res.status(400).json({ state: false, message: 'Id_compte non trouvé' });
-        }
-        if (!id_dossier) {
-            return res.status(400).json({ state: false, message: 'Id_dossier non trouvé' });
-        }
-        if (!id_exercice) {
-            return res.status(400).json({ state: false, message: 'Id_exercice non trouvé' });
-        }
-        const rubriquesExternesData = (await rubriquesExternes.findAll({
-            where: { id_compte, id_dossier, id_exercice },
-            order: [['ordre', 'ASC']]
-        })).map(r => ({
-            ...r.toJSON(),
-            id: Number(r.id),
-            id_compte: Number(r.id_compte),
-            id_dossier: Number(r.id_dossier),
-            id_exercice: Number(r.id_exercice),
-        }));
 
-        const regrouped = {
-            BILAN_ACTIF: rubriquesExternesData.filter(el => el.id_etat === "BILAN_ACTIF"),
-            BILAN_PASSIF: rubriquesExternesData.filter(el => el.id_etat === "BILAN_PASSIF"),
-            CRN: rubriquesExternesData.filter(el => el.id_etat === "CRN"),
-            CRF: rubriquesExternesData.filter(el => el.id_etat === "CRF"),
-            TFTD: rubriquesExternesData.filter(el => el.id_etat === "TFTD"),
-            TFTI: rubriquesExternesData.filter(el => el.id_etat === "TFTI"),
-            SIG: rubriquesExternesData.filter(el => el.id_etat === "SIG"),
-        }
+        if (!id_compte) return res.status(400).json({ state: false, message: 'Id_compte non trouvé' });
+        if (!id_dossier) return res.status(400).json({ state: false, message: 'Id_dossier non trouvé' });
+        if (!id_exercice) return res.status(400).json({ state: false, message: 'Id_exercice non trouvé' });
+
+        const rubriquesExternesData = await db.sequelize.query(`
+            SELECT 
+                id,
+                id_rubrique,
+                id_compte,
+                id_dossier,
+                id_exercice,
+                id_etat,
+                libelle,
+                type,
+                ordre,
+                active, 
+                par_default
+            FROM rubriquesexternes
+            WHERE id_compte = :id_compte
+                AND id_dossier = :id_dossier
+                AND id_exercice = :id_exercice
+            ORDER BY ordre ASC
+    `, {
+            replacements: { id_compte, id_dossier, id_exercice },
+            type: db.sequelize.QueryTypes.SELECT
+        });
+
+        const regrouped = rubriquesExternesData.reduce((acc, r) => {
+            const etat = r.id_etat;
+            if (!acc[etat]) acc[etat] = [];
+            acc[etat].push({
+                ...r,
+                id: Number(r.id),
+                id_compte: Number(r.id_compte),
+                id_dossier: Number(r.id_dossier),
+                id_exercice: Number(r.id_exercice)
+            });
+            return acc;
+        }, {
+            BILAN_ACTIF: [],
+            BILAN_PASSIF: [],
+            CRN: [],
+            CRF: [],
+            TFTD: [],
+            TFTI: [],
+            SIG: []
+        });
+
         return res.json({
             liste: regrouped,
             state: true,
             message: "Récupéré avec succès"
         });
+
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Erreur serveur", state: false, error: error.message });
     }
-}
+};
 
 exports.addRubriquesExternes = async (req, res) => {
     try {
@@ -180,7 +201,7 @@ exports.deleteRubriquesExternes = async (req, res) => {
                 message: "Rubrique Externe non trouvée"
             });
         }
-        
+
         const id_dossier = rubrique.id_dossier;
         const id_exercice = rubrique.id_exercice;
         const id_compte = rubrique.id_compte;
@@ -358,40 +379,43 @@ exports.addOrUpdateRubriqueExterne = async (req, res) => {
 exports.getCompteRubriqueExterne = async (req, res) => {
     try {
         const { compteId, fileId, exerciceId, tableau, choixPoste, rubriqueId } = req.body;
-        let resData = {
+
+        const resData = {
             state: false,
             msg: 'Données récupérées avec succès',
             liste: []
-        }
-        if (rubriqueId) {
-            const liste = await compteRubriquesExternes.findAll({
-                where: {
-                    id_compte: compteId,
-                    id_dossier: fileId,
-                    id_exercice: exerciceId,
-                    id_etat: tableau,
-                    nature: choixPoste,
-                    id_rubrique: rubriqueId
-                },
-                order: [['compte', 'ASC']]
-            })
-            if (liste) {
-                resData.state = true;
-                resData.liste = liste;
-            } else {
-                resData.state = false;
-                resData.msg = "Une erreur est survenue au moment du traitement des données";
-            }
-        } else {
+        };
+
+        if (!rubriqueId) {
             resData.state = true;
-            resData.liste = [];
+            return res.json(resData);
         }
+
+        const liste = await db.sequelize.query(`
+            SELECT *
+            FROM compterubriqueexternes
+            WHERE id_compte = :compteId
+                AND id_dossier = :fileId
+                AND id_exercice = :exerciceId
+                AND id_etat = :tableau
+                AND nature = :choixPoste
+                AND id_rubrique = :rubriqueId
+            ORDER BY compte ASC
+    `, {
+            replacements: { compteId, fileId, exerciceId, tableau, choixPoste, rubriqueId },
+            type: db.sequelize.QueryTypes.SELECT
+        });
+
+        resData.state = true;
+        resData.liste = liste;
+
         return res.json(resData);
+
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Erreur serveur", state: false, error: error.message });
     }
-}
+};
 
 exports.deleteCompteRubriqueExterne = async (req, res) => {
     try {
@@ -428,54 +452,6 @@ exports.addOrUpdateCompteRubriqueExterne = async (req, res) => {
             state: false,
             msg: 'Une erreur est survenue au moment du traitement.',
         }
-
-        // const rubriqueData = (await rubriquesExternes.findAll({
-        //     where: {
-        //         id_compte: compteId,
-        //         id_dossier: fileId,
-        //         id_exercice: exerciceId,
-        //         id_etat,
-        //         active: true
-        //     }
-        // })).map(r => ({
-        //     ...r.toJSON(),
-        //     id: Number(r.id),
-        //     id_compte: Number(r.id_compte),
-        //     id_dossier: Number(r.id_dossier),
-        //     id_exercice: Number(r.id_exercice),
-        // })).filter(r =>
-        //     ['RUBRIQUE', 'SOUS-RUBRIQUE', 'LIAISON', 'LIAISON VAR ACTIF', 'LIAISON VAR PASSIF'].includes(r.type)
-        // );
-
-        // const idRubriqueList = [...new Set(rubriqueData.map(val => val.id_rubrique))];
-
-        // const compteRubriqueData = (await compteRubriquesExternes.findAll({
-        //     where: {
-        //         id_compte: compteId,
-        //         id_dossier: fileId,
-        //         id_exercice: exerciceId,
-        //         active: true,
-        //         id_rubrique: idRubriqueList,
-        //         compte: compte,
-        //         id_etat
-        //     }
-        // })).map(r => ({
-        //     ...r.toJSON(),
-        //     id: Number(r.id),
-        //     id_compte: Number(r.id_compte),
-        //     id_dossier: Number(r.id_dossier),
-        //     id_exercice: Number(r.id_exercice),
-        // }));
-
-        // if (compteRubriqueData.length) {
-        //     resData.state = false;
-
-        //     const etats = [...new Set(compteRubriqueData.map(c => c.id_etat))].join(', ');
-        //     const rubriques = [...new Set(compteRubriqueData.map(c => c.id_rubrique))].join(', ');
-
-        //     resData.msg = `Cette compte existe déjà dans : ${etats} dans le rubrique : ${rubriques}`;
-        //     return res.json(resData);
-        // }
 
         const testIfExist = await compteRubriquesExternes.findAll({
             where: {
@@ -549,114 +525,127 @@ exports.addOrUpdateCompteRubriqueExterne = async (req, res) => {
 }
 
 exports.restaureDefaultParameter = async (req, res) => {
+    const { id_dossier, id_compte, id_exercice, id_etat } = req.body;
+
+    const resData = {
+        state: false,
+        msg: 'Une erreur est survenue',
+    };
+
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat } = req.body;
-
-        let resData = {
-            state: false,
-            msg: 'Une erreur est survenue',
-            fileInfos: []
-        }
-
-        const restaureDefaultParams1 = await compteRubriquesExternes.update(
-            {
-                active: false
-            },
-            {
-                where: {
-                    id_dossier: id_dossier,
-                    id_compte: id_compte,
-                    id_exercice: id_exercice,
-                    id_etat: id_etat,
-                    par_default: false
-                }
-            }
-        );
-
-        const restaureDefaultParams2 = await compteRubriquesExternes.update(
-            {
-                active: true
-            },
-            {
-                where: {
-                    id_dossier: id_dossier,
-                    id_compte: id_compte,
-                    id_exercice: id_exercice,
-                    id_etat: id_etat,
-                    par_default: true
-                }
-            }
-        );
-
-        if (restaureDefaultParams1 && restaureDefaultParams2) {
-            resData.state = true;
-            resData.msg = "Restauration paramétrages terminée avec succès";
-        } else {
-            resData.state = false;
-            resData.msg = "Une erreur est survenue au moment du traitement des données.";
-        }
-
-        return res.json(resData);
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-exports.updateDefaultParameter = async (req, res) => {
-    try {
-        const { id_dossier, id_compte, id_exercice, id_etat } = req.body;
-
-        let resData = {
-            state: false,
-            msg: 'Une erreur est survenue',
-            fileInfos: []
-        }
-
-        await compteRubriquesExternes.destroy({
-            where:
-            {
-                id_compte: id_compte,
-                id_dossier: id_dossier,
-                id_exercice: id_exercice,
-                id_etat: id_etat,
-                par_default: true
-            }
-        });
-
-        const listeCompteRubrique = await compteRubriquesExternesMatrices.findAll({
-            where: {
-                id_etat: id_etat === 'BILAN' ? { [Op.in]: ['BILAN_ACTIF', 'BILAN_PASSIF'] } : id_etat
-            }
-        });
-
-        if (listeCompteRubrique.length > 0) {
-            listeCompteRubrique.map(async (item) => {
-                await compteRubriquesExternes.create({
-                    id_compte: id_compte,
-                    id_dossier: id_dossier,
-                    id_exercice: id_exercice,
-                    id_etat: item.id_etat,
-                    id_rubrique: item.id_rubrique,
-                    tableau: item.tableau,
-                    compte: item.compte,
-                    nature: item.nature,
-                    senscalcul: item.senscalcul,
-                    condition: item.condition,
-                    equation: item.equation,
-                    par_default: true,
-                    active: true,
-                });
+        await db.sequelize.transaction(async (t) => {
+            await db.sequelize.query(`
+                UPDATE compterubriqueexternes
+                SET active = false
+                WHERE id_dossier = :id_dossier
+                    AND id_compte = :id_compte
+                    AND id_exercice = :id_exercice
+                    AND id_etat = :id_etat
+                    AND par_default = false
+            `, {
+                replacements: { id_dossier, id_compte, id_exercice, id_etat },
+                transaction: t
             });
 
-            resData.state = true;
-            resData.msg = "Mise à jour des paramétrages terminée avec succès";
-        } else {
-            resData.state = false;
-            resData.msg = "Une erreur est survenue au moment du traitement des données.";
-        }
+            await db.sequelize.query(`
+                UPDATE compterubriqueexternes
+                SET active = true
+                WHERE id_dossier = :id_dossier
+                    AND id_compte = :id_compte
+                    AND id_exercice = :id_exercice
+                    AND id_etat = :id_etat
+                    AND par_default = true
+            `, {
+                replacements: { id_dossier, id_compte, id_exercice, id_etat },
+                transaction: t
+            });
+        });
 
+        resData.state = true;
+        resData.msg = "Restauration paramétrages terminée avec succès";
         return res.json(resData);
+
     } catch (error) {
-        console.log(error);
+        console.error(error);
+        resData.state = false;
+        resData.msg = "Une erreur est survenue au moment du traitement des données.";
+        return res.status(500).json(resData);
     }
-}
+};
+
+exports.updateDefaultParameter = async (req, res) => {
+    const { id_dossier, id_compte, id_exercice, id_etat } = req.body;
+
+    const resData = {
+        state: false,
+        msg: 'Une erreur est survenue'
+    };
+
+    try {
+        await db.sequelize.transaction(async (t) => {
+            await db.sequelize.query(`
+                DELETE FROM compterubriqueexternes
+                WHERE id_compte = :id_compte
+                    AND id_dossier = :id_dossier
+                    AND id_exercice = :id_exercice
+                    AND id_etat = :id_etat
+                    AND par_default = true
+      `, {
+                replacements: { id_compte, id_dossier, id_exercice, id_etat },
+                transaction: t
+            });
+
+            await db.sequelize.query(`
+                INSERT INTO compterubriqueexternes (
+                    id_compte,
+                    id_dossier,
+                    id_exercice,
+                    id_etat,
+                    id_rubrique,
+                    tableau,
+                    compte,
+                    nature,
+                    senscalcul,
+                    condition,
+                    equation,
+                    par_default,
+                    active,
+                    "createdAt",
+                    "updatedAt"
+                )
+                SELECT
+                    :id_compte,
+                    :id_dossier,
+                    :id_exercice,
+                    CASE WHEN :id_etat = 'BILAN' THEN id_etat ELSE :id_etat END,
+                    id_rubrique,
+                    tableau,
+                    compte,
+                    nature,
+                    senscalcul,
+                    condition,
+                    equation,
+                    true,
+                    true,
+                    NOW(),
+                    NOW()
+                FROM compterubriqueexternesmatrices
+                WHERE (:id_etat != 'BILAN' AND id_etat = :id_etat)
+                OR (:id_etat = 'BILAN' AND id_etat IN ('BILAN_ACTIF', 'BILAN_PASSIF'))
+      `, {
+                replacements: { id_compte, id_dossier, id_exercice, id_etat },
+                transaction: t
+            });
+        });
+
+        resData.state = true;
+        resData.msg = "Mise à jour des paramétrages terminée avec succès";
+        return res.json(resData);
+
+    } catch (error) {
+        console.error(error);
+        resData.state = false;
+        resData.msg = "Une erreur est survenue au moment du traitement des données.";
+        return res.status(500).json(resData);
+    }
+};

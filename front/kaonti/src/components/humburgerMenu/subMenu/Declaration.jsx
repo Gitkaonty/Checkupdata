@@ -37,7 +37,7 @@ const declFiscalesList = [
         urldynamic: false
     },
     {
-        text: 'IRI - impôt sur les revenus intermittent',
+        text: 'IRI - Impôt sur les revenus intermittent',
         name: "iri",
         path: "#",
         urldynamic: false
@@ -49,19 +49,19 @@ const declFiscalesList = [
         urldynamic: true
     },
     {
-        text: 'IRCM - impôt sur le Revenu des Capitaux Mobiliers',
+        text: 'IRCM - Tmpôt sur le Revenu des Capitaux Mobiliers',
         name: "ircm",
         path: "#",
         urldynamic: false
     },
     {
-        text: 'ISI - impôt synthétique intermittent',
+        text: 'ISI - Impôt synthétique intermittent',
         name: "isi",
         path: "/tab/declaration/declarationISI",
         urldynamic: true
     },
     {
-        text: 'TVA - taxes sur la valeur ajoutée',
+        text: 'TVA - Taxes sur la valeur ajoutée',
         name: "tva",
         path: "/tab/declaration/declarationTVA",
         urldynamic: true

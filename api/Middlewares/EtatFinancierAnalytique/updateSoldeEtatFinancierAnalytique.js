@@ -438,20 +438,47 @@ const totalRubriqueExterneEVCPAnalytique = async (id_compte, id_dossier, id_exer
         });
 
         await db.sequelize.query(`
+            WITH balance AS (
+                SELECT
+                    MIN(J.COMPTEGEN) || J.COMPTEAUX AS COMPTE,
+                    GREATEST(SUM(A.DEBIT) - SUM(A.CREDIT), 0) AS SOLDEDEBIT,
+                    GREATEST(SUM(A.CREDIT) - SUM(A.DEBIT), 0) AS SOLDECREDIT
+
+                FROM ANALYTIQUES A
+
+                JOIN JOURNALS J 
+                    ON A.ID_LIGNE_ECRITURE = J.ID
+
+                JOIN CODEJOURNALS CJ 
+                    ON CJ.ID = J.ID_JOURNAL 
+                    
+                WHERE
+                    J.ID_DOSSIER = :id_dossier
+                    AND J.ID_EXERCICE = :id_exercice
+                    AND J.ID_COMPTE = :id_compte
+
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM DOSSIERPLANCOMPTABLES DPC
+                        WHERE
+                            DPC.COMPTE = J.COMPTEAUX
+                            AND DPC.ID_DOSSIER = :id_dossier
+                            AND DPC.ID_COMPTE = :id_exercice
+                            AND DPC.NATURE = 'Collectif'
+                    )
+
+                    AND A.ID_AXE = :id_axe
+                    AND A.ID_SECTION IN (:id_sections)
+
+                GROUP BY J.COMPTEAUX
+            )
+            
             UPDATE rubriquesexternesevcpanalytiques as tabA SET
 
             resultat = (
-            SELECT COALESCE(SUM(b.soldecreditanalytique - b.soldedebitanalytique),0)
-                FROM balanceanalytiques AS b
-                JOIN dossierplancomptables AS dpc
-                    ON b.id_numcpt = dpc.id
-                WHERE (dpc.compte LIKE '6%' OR dpc.compte LIKE '7%')
-                    AND b.id_dossier = :id_dossier
-                    AND b.id_compte = :id_compte
-                    AND b.id_axe = :id_axe
-                    AND b.id_section in (:id_sections)
-                    AND dpc.id_dossier = :id_dossier
-                    AND dpc.id_compte = :id_compte
+            SELECT COALESCE(SUM(b.soldecredit - b.soldedebit),0)
+                FROM balance AS b
+                WHERE (b.compte LIKE '6%' OR b.compte LIKE '7%')
             )
 
             + (SELECT COALESCE(SUM(montant),0) FROM ajustementexternesanalytiques WHERE ajustementexternesanalytiques.id_rubrique = '14'

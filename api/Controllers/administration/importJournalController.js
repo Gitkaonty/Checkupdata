@@ -30,141 +30,310 @@ const caaxes = db.caAxes;
 const casections = db.caSections;
 const analytiques = db.analytiques;
 
+// const createNotExistingCodeJournal = async (req, res) => {
+//   try {
+//     const { compteId, fileId, codeJournalToCreate } = req.body;
+
+//     let resData = {
+//       state: false,
+//       msg: '',
+//       list: []
+//     }
+
+//     const normalizeCode = (v) => String(v || '').trim().toUpperCase();
+
+//     if (codeJournalToCreate.length > 0) {
+//       // normaliser, dédoublonner et créer seulement si inexistant
+//       const entries = codeJournalToCreate.map((item) => ({
+//         code: normalizeCode(typeof item === 'string' ? item : (item?.code || '')),
+//         libelle: (typeof item === 'object' && item?.libelle ? String(item.libelle).trim() : 'Libellé à définir')
+//       })).filter(e => !!e.code);
+
+//       // set unique by code
+//       const uniqueByCode = Array.from(new Map(entries.map(e => [e.code, e])).values());
+
+//       await Promise.all(uniqueByCode.map(async (e) => {
+//         const exists = await codejournals.findOne({ where: { id_compte: compteId, id_dossier: fileId, code: e.code } });
+//         if (!exists) {
+//           await codejournals.create({ id_compte: compteId, id_dossier: fileId, code: e.code, libelle: e.libelle, type: 'OD' });
+//         }
+//       }));
+
+//       //récuperer la liste à jour des codes journaux
+//       const updatedList = await codejournals.findAll({
+//         where:
+//         {
+//           id_compte: compteId,
+//           id_dossier: fileId
+//         },
+//         raw: true,
+//       });
+
+//       resData.state = true;
+//       resData.list = updatedList;
+//     } else {
+//       //récuperer la liste à jour des codes journaux
+//       const updatedList = await codejournals.findAll({
+//         where:
+//         {
+//           id_compte: compteId,
+//           id_dossier: fileId
+//         },
+//         raw: true,
+//       });
+
+//       resData.state = true;
+//       resData.list = updatedList;
+//     }
+
+//     return res.json(resData);
+//   } catch (error) {
+//     console.log(error);
+//   }
+// }
+
 const createNotExistingCodeJournal = async (req, res) => {
   try {
     const { compteId, fileId, codeJournalToCreate } = req.body;
 
-    let resData = {
-      state: false,
-      msg: '',
-      list: []
-    }
-
+    const resData = { state: false, msg: '', list: [] };
     const normalizeCode = (v) => String(v || '').trim().toUpperCase();
 
-    if (codeJournalToCreate.length > 0) {
-      // normaliser, dédoublonner et créer seulement si inexistant
-      const entries = codeJournalToCreate.map((item) => ({
-        code: normalizeCode(typeof item === 'string' ? item : (item?.code || '')),
-        libelle: (typeof item === 'object' && item?.libelle ? String(item.libelle).trim() : 'Libellé à définir')
-      })).filter(e => !!e.code);
-
-      // set unique by code
-      const uniqueByCode = Array.from(new Map(entries.map(e => [e.code, e])).values());
-
-      await Promise.all(uniqueByCode.map(async (e) => {
-        const exists = await codejournals.findOne({ where: { id_compte: compteId, id_dossier: fileId, code: e.code } });
-        if (!exists) {
-          await codejournals.create({ id_compte: compteId, id_dossier: fileId, code: e.code, libelle: e.libelle, type: 'OD' });
-        }
-      }));
-
-      //récuperer la liste à jour des codes journaux
-      const updatedList = await codejournals.findAll({
-        where:
-        {
-          id_compte: compteId,
-          id_dossier: fileId
-        },
-        raw: true,
+    if (!codeJournalToCreate || codeJournalToCreate.length === 0) {
+      const updatedList = await db.sequelize.query(`
+        SELECT * 
+        FROM codejournals
+        WHERE id_compte = :compteId AND id_dossier = :fileId
+      `, {
+        replacements: { compteId, fileId },
+        type: db.sequelize.QueryTypes.SELECT
       });
 
       resData.state = true;
       resData.list = updatedList;
-    } else {
-      //récuperer la liste à jour des codes journaux
-      const updatedList = await codejournals.findAll({
-        where:
-        {
-          id_compte: compteId,
-          id_dossier: fileId
-        },
-        raw: true,
-      });
-
-      resData.state = true;
-      resData.list = updatedList;
+      return res.json(resData);
     }
 
+    const entries = Array.from(
+      new Map(
+        codeJournalToCreate
+          .map(item => ({
+            code: normalizeCode(typeof item === 'string' ? item : item?.code),
+            libelle: typeof item === 'object' && item?.libelle ? String(item.libelle).trim() : 'Libellé à définir'
+          }))
+          .filter(e => !!e.code)
+          .map(e => [e.code, e])
+      ).values()
+    );
+
+    await db.sequelize.transaction(async (t) => {
+      await db.sequelize.query(`
+        INSERT INTO codejournals (id_compte, id_dossier, code, libelle, type, "createdAt", "updatedAt")
+        SELECT :compteId, :fileId, c.code, c.libelle, 'OD', NOW(), NOW()
+        FROM (VALUES ${entries.map((_, i) => `(:code${i}, :libelle${i})`).join(',')}) AS c(code, libelle)
+        WHERE NOT EXISTS (
+          SELECT 1 FROM codejournals cj 
+          WHERE cj.id_compte = :compteId AND cj.id_dossier = :fileId AND cj.code = c.code
+        )
+      `, {
+        replacements: entries.reduce((acc, e, i) => {
+          acc[`code${i}`] = e.code;
+          acc[`libelle${i}`] = e.libelle;
+          return acc;
+        }, { compteId, fileId }),
+        transaction: t
+      });
+    });
+
+    const updatedList = await db.sequelize.query(`
+      SELECT * 
+      FROM codejournals
+      WHERE id_compte = :compteId AND id_dossier = :fileId
+    `, {
+      replacements: { compteId, fileId },
+      type: db.sequelize.QueryTypes.SELECT
+    });
+
+    resData.state = true;
+    resData.list = updatedList;
     return res.json(resData);
+
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
   }
-}
+};
+
+// const createNotExistingCompte = async (req, res) => {
+//   try {
+//     const { compteId, fileId, compteToCreateGen, compteToCreateAux } = req.body;
+
+//     let resData = { state: false, msg: '', list: [] };
+
+//     // Dédupliquer les entrées et ne créer que si inexistant
+//     const uniqBy = (arr, keyFn) => Array.from(new Map(arr.map(v => [keyFn(v), v])).values());
+
+//     const genList = Array.isArray(compteToCreateGen) ? uniqBy(compteToCreateGen, x => String(x.CompteNum || '').trim()) : [];
+//     const auxList = Array.isArray(compteToCreateAux) ? uniqBy(compteToCreateAux, x => String(x.CompAuxNum || '').trim()) : [];
+
+//     if (genList.length > 0) {
+//       await Promise.all(
+//         genList.map(async (item) => {
+//           const compte = String(item.CompteNum || '').trim();
+//           const natureCompte = item.CompAuxNum !== '' ? 'Collectif' : 'General';
+//           if (!compte) return null;
+//           const exists = await dossierPlanComptable.findOne({ where: { id_compte: compteId, id_dossier: fileId, compte } });
+//           if (!exists) {
+//             await dossierPlanComptable.create({
+//               id_compte: compteId,
+//               id_dossier: fileId,
+//               compte,
+//               libelle: item.CompteLib || '',
+//               nature: natureCompte,
+//               typetier: "general",
+//               baseaux: compte,
+//               pays: 'Madagascar'
+//             });
+//           }
+//           return null;
+//         })
+//       );
+//     }
+
+//     if (auxList.length > 0) {
+//       await Promise.all(
+//         auxList.map(async (item) => {
+//           const aux = String(item.CompAuxNum || '').trim();
+//           if (!aux) return null;
+//           const exists = await dossierPlanComptable.findOne({ where: { id_compte: compteId, id_dossier: fileId, compte: aux } });
+//           if (exists) return null;
+//           // Trouver le général de rattachement par CompteNum (baseaux)
+//           const genCompte = String(item.CompteNum || '').trim();
+//           const base = await dossierPlanComptable.findOne({ where: { id_compte: compteId, id_dossier: fileId, compte: genCompte, nature: 'Collectif' } });
+//           return dossierPlanComptable.create({
+//             id_compte: compteId,
+//             id_dossier: fileId,
+//             compte: aux,
+//             libelle: item.CompAuxLib || '',
+//             nature: "Aux",
+//             typetier: "sans-nif",
+//             pays: 'Madagascar',
+//             baseaux_id: base?.id,
+//             baseaux: base?.compte,
+//             typecomptabilite: 'Français'
+//           });
+//         })
+//       );
+//     }
+
+//     await db.sequelize.query(
+//       `UPDATE dossierplancomptables
+//        SET baseaux_id = id, baseaux = compte
+//        WHERE compte = baseaux
+//        AND id_compte = :compteId
+//        AND id_dossier = :fileId`,
+//       {
+//         replacements: { compteId, fileId },
+//         type: db.Sequelize.QueryTypes.UPDATE
+//       }
+//     );
+
+//     const updatedList = await dossierPlanComptable.findAll({
+//       where: { id_compte: compteId, id_dossier: fileId },
+//       raw: true
+//     });
+
+//     resData.state = true;
+//     resData.list = updatedList;
+
+//     return res.json(resData);
+
+//   } catch (error) {
+//     console.log("Erreur createNotExistingCompte :", error);
+//     return res.status(500).json({ state: false, error: error.message });
+//   }
+// };
 
 const createNotExistingCompte = async (req, res) => {
   try {
     const { compteId, fileId, compteToCreateGen, compteToCreateAux } = req.body;
 
-    let resData = { state: false, msg: '', list: [] };
+    const resData = { state: false, msg: '', list: [] };
 
-    // Dédupliquer les entrées et ne créer que si inexistant
     const uniqBy = (arr, keyFn) => Array.from(new Map(arr.map(v => [keyFn(v), v])).values());
-
     const genList = Array.isArray(compteToCreateGen) ? uniqBy(compteToCreateGen, x => String(x.CompteNum || '').trim()) : [];
     const auxList = Array.isArray(compteToCreateAux) ? uniqBy(compteToCreateAux, x => String(x.CompAuxNum || '').trim()) : [];
 
-    if (genList.length > 0) {
-      await Promise.all(
-        genList.map(async (item) => {
-          const compte = String(item.CompteNum || '').trim();
-          const natureCompte = item.CompAuxNum !== '' ? 'Collectif' : 'General';
-          if (!compte) return null;
-          const exists = await dossierPlanComptable.findOne({ where: { id_compte: compteId, id_dossier: fileId, compte } });
-          if (!exists) {
-            await dossierPlanComptable.create({
-              id_compte: compteId,
-              id_dossier: fileId,
-              compte,
-              libelle: item.CompteLib || '',
-              nature: natureCompte,
-              typetier: "general",
-              baseaux: compte,
-              pays: 'Madagascar'
-            });
-          }
-          return null;
-        })
-      );
-    }
+    await db.sequelize.transaction(async (t) => {
+      if (genList.length > 0) {
+        await db.sequelize.query(`
+          INSERT INTO dossierplancomptables 
+            (id_compte, id_dossier, compte, libelle, nature, typetier, baseaux, pays, "createdAt", "updatedAt")
+          SELECT :compteId, :fileId, c.compte, c.libelle, c.nature, 'general', c.baseaux, 'Madagascar', NOW(), NOW()
+          FROM (VALUES ${genList.map((_, i) => `(:compte${i}, :libelle${i}, :nature${i}, :baseaux${i})`).join(',')}) AS c(compte, libelle, nature, baseaux)
+          WHERE NOT EXISTS (
+            SELECT 1 FROM dossierplancomptables d 
+            WHERE d.id_compte = :compteId AND d.id_dossier = :fileId AND d.compte = c.compte
+          )
+        `, {
+          replacements: genList.reduce((acc, item, i) => {
+            const compte = String(item.CompteNum || '').trim();
+            const nature = item.CompAuxNum ? 'Collectif' : 'General';
+            const libelle = item.CompteLib ? String(item.CompteLib).trim() : '';
+            acc[`compte${i}`] = compte;
+            acc[`nature${i}`] = nature;
+            acc[`libelle${i}`] = libelle;
+            acc[`baseaux${i}`] = compte;
+            return acc;
+          }, { compteId, fileId }),
+          transaction: t
+        });
+      }
 
-    if (auxList.length > 0) {
-      await Promise.all(
-        auxList.map(async (item) => {
+      if (auxList.length > 0) {
+        await Promise.all(auxList.map(async (item) => {
           const aux = String(item.CompAuxNum || '').trim();
           if (!aux) return null;
-          const exists = await dossierPlanComptable.findOne({ where: { id_compte: compteId, id_dossier: fileId, compte: aux } });
-          if (exists) return null;
-          // Trouver le général de rattachement par CompteNum (baseaux)
           const genCompte = String(item.CompteNum || '').trim();
-          const base = await dossierPlanComptable.findOne({ where: { id_compte: compteId, id_dossier: fileId, compte: genCompte, nature: 'Collectif' } });
-          return dossierPlanComptable.create({
-            id_compte: compteId,
-            id_dossier: fileId,
-            compte: aux,
-            libelle: item.CompAuxLib || '',
-            nature: "Aux",
-            typetier: "sans-nif",
-            pays: 'Madagascar',
-            baseaux_id: base?.id,
-            baseaux: base?.compte,
-            typecomptabilite: 'Français'
-          });
-        })
-      );
-    }
 
-    await db.sequelize.query(
-      `UPDATE dossierplancomptables
-       SET baseaux_id = id, baseaux = compte
-       WHERE compte = baseaux
-       AND id_compte = :compteId
-       AND id_dossier = :fileId`,
-      {
-        replacements: { compteId, fileId },
-        type: db.Sequelize.QueryTypes.UPDATE
+          const base = await dossierPlanComptable.findOne({
+            where: { id_compte: compteId, id_dossier: fileId, compte: genCompte, nature: 'Collectif' },
+            transaction: t
+          });
+
+          return db.sequelize.query(`
+            INSERT INTO dossierplancomptables
+              (id_compte, id_dossier, compte, libelle, nature, typetier, pays, baseaux_id, baseaux, typecomptabilite, "createdAt", "updatedAt")
+            SELECT :compteId, :fileId, :aux, :libelle, 'Aux', 'sans-nif', 'Madagascar', :baseId, :baseCompte, 'Français', NOW(), NOW()
+            WHERE NOT EXISTS (
+              SELECT 1 FROM dossierplancomptables d 
+              WHERE d.id_compte = :compteId AND d.id_dossier = :fileId AND d.compte = :aux
+            )
+          `, {
+            replacements: {
+              compteId,
+              fileId,
+              aux,
+              libelle: item.CompAuxLib || '',
+              baseId: base?.id || null,
+              baseCompte: base?.compte || null
+            },
+            transaction: t
+          });
+        }));
       }
-    );
+
+      await db.sequelize.query(`
+        UPDATE dossierplancomptables
+        SET baseaux_id = id, baseaux = compte
+        WHERE compte = baseaux
+          AND id_compte = :compteId
+          AND id_dossier = :fileId
+      `, {
+        replacements: { compteId, fileId },
+        transaction: t
+      });
+    });
 
     const updatedList = await dossierPlanComptable.findAll({
       where: { id_compte: compteId, id_dossier: fileId },
@@ -173,11 +342,10 @@ const createNotExistingCompte = async (req, res) => {
 
     resData.state = true;
     resData.list = updatedList;
-
     return res.json(resData);
 
   } catch (error) {
-    console.log("Erreur createNotExistingCompte :", error);
+    console.error("Erreur createNotExistingCompte :", error);
     return res.status(500).json({ state: false, error: error.message });
   }
 };
@@ -594,13 +762,6 @@ const recupListeImporte = async (req, res) => {
     });
   }
 }
-
-const parseDateDMYLocal = (str) => {
-  if (!str) return null;
-  const [day, month, year] = str.split('/').map(Number);
-  if (!day || !month || !year) return null;
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-};
 
 const importJournalWithProgressLogic = async (req, res, progress) => {
   try {

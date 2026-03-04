@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, TextField, InputAdornment, Autocomplete, Checkbox } from '@mui/material';
+import { Typography, Stack, TextField, InputAdornment, Autocomplete, Checkbox, FormLabel, RadioGroup, FormControlLabel, Radio } from '@mui/material';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
@@ -24,7 +24,6 @@ import KpiCardDouble from '../../componentsTools/Dashboard/KpiCardDouble';
 import { FiShoppingCart, FiUsers, FiCreditCard, FiArchive } from "react-icons/fi";
 import { FiSearch } from "react-icons/fi";
 import ApexChart from '../../componentsTools/Dashboard/ApexChart';
-
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 
@@ -115,7 +114,9 @@ export default function DashboardComponent() {
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
   const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
   const [deviseParDefaut, setDeviseParDefaut] = useState([]);
+
   const [avecAnalytique, setAvecAnalytique] = useState(false);
+  const [dossierAvecAnalytique, setDossierAvecAnalytique] = useState(false);
 
   const [chiffresAffairesNGraph, setChiffresAffairesNGraph] = useState([]);
   const [chiffresAffairesN1Graph, setChiffresAffairesN1Graph] = useState([]);
@@ -159,7 +160,33 @@ export default function DashboardComponent() {
   const [variationTresorerieCaisseN, setVariationTresorerieCaisseN] = useState(0);
   const [evolutionTresorerieCaisseN, setEvolutionTresorerieCaisseN] = useState('');
 
+  const [typeAffichage, setTypeAffichage] = useState('Globale');
+
   const [journalData, setJournalData] = useState([]);
+
+  const clearAllData = () => {
+    setChiffresAffairesNGraph([]);
+    setChiffresAffairesN1Graph([]);
+    setMargeBruteNGraph([]);
+    setMargeBruteN1Graph([]);
+    setResultatN(0);
+    setResultatN1(0);
+    setVariationResultatN(0);
+    setEvolutionResultatN('');
+    setResultatChiffreAffaireN(0);
+    setResultatChiffreAffaireN1(0);
+    setVariationChiffreAffaireN(0);
+    setEvolutionChiffreAffaireN('');
+    setResultatDepenseAchatN(0);
+    setResultatDepenseAchatN1(0);
+    setVariationDepenseAchatN(0);
+    setEvolutionDepenseAchatN('');
+    setResultatDepenseSalarialeN(0);
+    setResultatDepenseSalarialeN1(0);
+    setVariationDepenseSalarialeN(0);
+    setEvolutionDepenseSalarialeN('');
+    setJournalData([]);
+  }
 
   const filteredData = useMemo(() => {
     if (!searchText) return journalData;
@@ -179,7 +206,7 @@ export default function DashboardComponent() {
       const resData = response.data;
       if (resData.state) {
         setFileInfos(resData.fileInfos[0]);
-        setAvecAnalytique(resData.fileInfos[0].avecanalytique);
+        setDossierAvecAnalytique(resData?.fileInfos[0].avecanalytique);
         setNoFile(false);
       } else {
         setFileInfos([]);
@@ -401,12 +428,12 @@ export default function DashboardComponent() {
   }, []);
 
   useEffect(() => {
-    if (compteId && fileId && selectedExerciceId && canView && avecAnalytique && selectedSectionsId.length !== 0) {
+    if (compteId && fileId && selectedExerciceId && canView && selectedSectionsId.length !== 0) {
       getAllInfo();
       getParDefaut();
       getListeJournalEnAttente();
     }
-  }, [compteId, fileId, selectedExerciceId, selectedAxeId, selectedSectionsId]);
+  }, [compteId, fileId, selectedExerciceId, selectedAxeId, avecAnalytique, selectedSectionsId]);
 
   useEffect(() => {
     handleGetAxes();
@@ -530,6 +557,29 @@ export default function DashboardComponent() {
                   </FormControl>
                 </Stack>
               </Stack>
+              <FormControl
+                style={{
+                  marginTop: '10px',
+                  marginLeft: '8px',
+                }}
+              >
+                <FormLabel id="radio-group-dashboard">Type d'affichage</FormLabel>
+                <RadioGroup
+                  row
+                  aria-labelledby="radio-group-dashboard"
+                  value={typeAffichage}
+                  onChange={(e) => {
+                    e.preventDefault;
+                    const val = e.target.value;
+                    val === 'Analytique' ? setAvecAnalytique(true) : setAvecAnalytique(false);
+                    setTypeAffichage(val);
+                  }}
+                  name="radio-group-buttons-dashboard"
+                >
+                  <FormControlLabel value="Globale" control={<Radio />} label="Globale" />
+                  <FormControlLabel disabled={!dossierAvecAnalytique} value="Analytique" control={<Radio />} label="Avec analytique" />
+                </RadioGroup>
+              </FormControl>
               {
                 avecAnalytique && (
                   <Stack
@@ -573,6 +623,9 @@ export default function DashboardComponent() {
                         onChange={(_event, newValue) => {
                           setSelectedSectionsId(newValue);
                           localStorage.setItem('sectionIds', JSON.stringify(newValue));
+                          if (newValue.length === 0) {
+                            clearAllData();
+                          }
                         }}
                         value={selectedSectionsId}
                         sx={{
@@ -625,6 +678,9 @@ export default function DashboardComponent() {
                 sx={{
                   height: { xs: "100vh", md: 405 },
                   width: "100%",
+                }}
+                style={{
+                  marginTop: '20px'
                 }}
                 direction={{ xs: "column", md: "row" }}
                 spacing={0.5}
@@ -680,7 +736,7 @@ export default function DashboardComponent() {
                     sx={{ flex: 1 }}
                   >
                     <KpiCard
-                      title="Trésoreries banque"
+                      title="Trésoreries banques (Globale)"
                       montantN={resultatTresorerieBanqueN}
                       montantN1={resultatTresorerieBanqueN1}
                       variation={variationTresorerieBanqueN}
@@ -689,7 +745,7 @@ export default function DashboardComponent() {
                       Icon={<FiCreditCard size={24} color="white" />}
                     />
                     <KpiCard
-                      title="Trésoreries caisse"
+                      title="Trésoreries caisses (Globale)"
                       montantN={resultatTresorerieCaisseN}
                       montantN1={resultatTresorerieCaisseN1}
                       variation={variationTresorerieCaisseN}
@@ -789,14 +845,13 @@ export default function DashboardComponent() {
 
                 </Stack>
 
-                {/* COLONNE DROITE */}
                 <Stack
                   width={{ xs: "100%", md: "45%" }}
                   direction="column"
                   spacing={2}
                 >
                   <Stack
-                    height={{ xs: 250, md: 339 }}
+                    height={{ xs: 250, md: 340 }}
                     sx={{
                       boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                       borderRadius: 2,
@@ -824,7 +879,7 @@ export default function DashboardComponent() {
                       xAxis={xAxis}
                       dataN={tresorerieBanqueNGraph}
                       dataN1={tresorerieBanqueN1Graph}
-                      label={"Trésoreries (Banques)"}
+                      label={"Trésoreries banques (Globale)"}
                       type={'bar'}
                     />
                   </Stack>
@@ -841,7 +896,7 @@ export default function DashboardComponent() {
                       xAxis={xAxis}
                       dataN={tresorerieCaisseNGraph}
                       dataN1={tresorerieCaisseN1Graph}
-                      label={"Trésoreries (Caisses)"}
+                      label={"Trésoreries caisses (Globale)"}
                       type={'bar'}
                     />
                   </Stack>

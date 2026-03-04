@@ -90,17 +90,18 @@ exports.getJournalsISI = async (req, res) => {
                 id_compte,
                 id_dossier,
                 id_exercice,
+                compteaux: { [Op.like]: `${compteisi}%` },
                 ...dateFilter
             },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: compteisi ? true : false,
-                    where: compteisi
-                        ? { compte: { [Op.like]: `${compteisi}%` } }
-                        : undefined
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: compteisi ? true : false,
+                //     where: compteisi
+                //         ? { compte: { [Op.like]: `${compteisi}%` } }
+                //         : undefined
+                // },
                 {
                     model: codejournals,
                     attributes: ['code']
@@ -113,13 +114,18 @@ exports.getJournalsISI = async (req, res) => {
 
         const mappedData = await Promise.all(
             journalData.map(async (journal) => {
-                const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-                const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
+                const {
+                    // dossierplancomptable,
+                    codejournal,
+                    compteaux,
+                    ...rest
+                } = journal.toJSON();
+                // const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
                 return {
                     ...rest,
-                    compte: dossierplancomptable?.compte || null,
+                    compte: compteaux,
                     journal: codejournal?.code || null,
-                    compte_cetralise: compte_centralise?.compte || null
+                    // compte_cetralise: compte_centralise?.compte || null
                 };
             }));
 
@@ -146,11 +152,11 @@ exports.ajoutMoisAnnee = async (req, res) => {
         const journalData = await journals.findAll({
             where: { id: selectedDetailRows },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: true
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: true
+                // },
                 {
                     model: codejournals,
                     attributes: ['code']
@@ -161,11 +167,15 @@ exports.ajoutMoisAnnee = async (req, res) => {
 
         const mappedAllJournalsData = await Promise.all(
             journalData.map(async (journal) => {
-                const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
+                const {
+                    // dossierplancomptable,
+                    codejournal,
+                    ...rest
+                } = journal.toJSON();
 
                 return {
                     ...rest,
-                    compte: dossierplancomptable?.compte || null,
+                    // compte: dossierplancomptable?.compte || null,
                     journal: codejournal?.code || null,
                 };
             })
@@ -177,11 +187,11 @@ exports.ajoutMoisAnnee = async (req, res) => {
         const allJournals = await journals.findAll({
             where: { id_ecriture: idEcritures },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: true
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: true
+                // },
                 {
                     model: codejournals,
                     attributes: ['code']
@@ -193,11 +203,15 @@ exports.ajoutMoisAnnee = async (req, res) => {
         // Mapper pour enrichir avec compte et code
         const mappedAllJournals = await Promise.all(
             allJournals.map(async (journal) => {
-                const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
+                const {
+                    // dossierplancomptable,
+                    codejournal,
+                    ...rest
+                } = journal.toJSON();
 
                 return {
                     ...rest,
-                    compte: dossierplancomptable?.compte || null,
+                    // compte: dossierplancomptable?.compte || null,
                     journal: codejournal?.code || null,
                 };
             })
@@ -205,7 +219,7 @@ exports.ajoutMoisAnnee = async (req, res) => {
 
         // Journaux sélectionnés qui commencent par compteisi → à modifier
         const filteredJournals = mappedAllJournals.filter(
-            j => j.compte && j.compte.startsWith(compteisi)
+            j => j.compteaux && j.compteaux.startsWith(compteisi)
         );
 
         const idEcrituresToUpdate = filteredJournals.map(j => j.id_ecriture);
@@ -757,14 +771,14 @@ exports.generateIsiAutoDetail = async (req, res) => {
                 ...dateFilter
             },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: compteisi ? true : false,
-                    where: compteisi
-                        ? { compte: { [Op.like]: `${compteisi}%` } }
-                        : undefined
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: compteisi ? true : false,
+                //     where: compteisi
+                //         ? { compte: { [Op.like]: `${compteisi}%` } }
+                //         : undefined
+                // },
                 {
                     model: codejournals,
                     attributes: ['code']
@@ -790,11 +804,11 @@ exports.generateIsiAutoDetail = async (req, res) => {
                 id_ecriture: uniqueIdEcritures
             },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: true
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: true
+                // },
                 {
                     model: codejournals,
                     attributes: ['code']
@@ -807,21 +821,25 @@ exports.generateIsiAutoDetail = async (req, res) => {
 
         const mappedAllJournals = await Promise.all(
             allJournals.map(async (journal) => {
-                const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-                const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
+                const {
+                    // dossierplancomptable,
+                    codejournal,
+                    ...rest
+                } = journal.toJSON();
+                // const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
 
                 return {
                     ...rest,
-                    compte: dossierplancomptable?.compte || null,
+                    // compte: dossierplancomptable?.compte || null,
                     journal: codejournal?.code || null,
-                    comptecentralisation: compte_centralise?.compte || null
+                    // comptecentralisation: compte_centralise?.compte || null
                 };
             })
         );
 
         // return res.json(mappedAllJournals);
 
-        const filteredJournals = mappedAllJournals.filter(j => j.compte && j.compte.startsWith("6"));
+        const filteredJournals = mappedAllJournals.filter(j => j.compteaux && j.compteaux.startsWith("6"));
 
         // return res.json(filteredJournals);
 
@@ -945,14 +963,15 @@ exports.getJournalsDeclIsiClasseSix = async (req, res) => {
                 declisimois: mois,
                 declisiannee: annee,
                 declisi: true,
+                compteaux: { [Op.like]: `6%` }
             },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: true,
-                    where: { compte: { [Op.like]: `6%` } }
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: true,
+                //     where: { compte: { [Op.like]: `6%` } }
+                // },
                 { model: codejournals, attributes: ['code'] }
             ],
             order: [['dateecriture', 'ASC']]
@@ -960,13 +979,17 @@ exports.getJournalsDeclIsiClasseSix = async (req, res) => {
 
         const mappedData = await Promise.all(
             journalData.map(async (journal) => {
-                const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-                const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
+                const {
+                    // dossierplancomptable,
+                    codejournal,
+                    ...rest
+                } = journal.toJSON();
+                // const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
                 return {
                     ...rest,
-                    compte: dossierplancomptable?.compte || null,
+                    // compte: dossierplancomptable?.compte || null,
                     journal: codejournal?.code || null,
-                    compte_cetralise: compte_centralise?.compte || null
+                    // compte_cetralise: compte_centralise?.compte || null
                 };
             }));
 
@@ -1090,11 +1113,11 @@ exports.generateAnnexeDeclarationAuto = async (req, res) => {
                 dateecriture: { [Op.between]: [debutMois, finMois] },
             },
             include: [
-                {
-                    model: dossierplancomptableModel,
-                    attributes: ['compte'],
-                    required: true,
-                },
+                // {
+                //     model: dossierplancomptableModel,
+                //     attributes: ['compte'],
+                //     required: true,
+                // },
                 { model: codejournals, attributes: ['code'] }
             ],
             order: [['dateecriture', 'ASC']]
@@ -1102,13 +1125,17 @@ exports.generateAnnexeDeclarationAuto = async (req, res) => {
 
         const mappedData = await Promise.all(
             journalData.map(async (journal) => {
-                const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-                const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
+                const {
+                    // dossierplancomptable,
+                    codejournal,
+                    ...rest
+                } = journal.toJSON();
+                // const compte_centralise = await dossierplancomptableModel.findByPk(journal.id_numcptcentralise);
                 return {
                     ...rest,
-                    compte: dossierplancomptable?.compte || null,
+                    // compte: dossierplancomptable?.compte || null,
                     journal: codejournal?.code || null,
-                    compte_cetralise: compte_centralise?.compte || null
+                    // compte_cetralise: compte_centralise?.compte || null
                 };
             }));
 
@@ -1116,7 +1143,7 @@ exports.generateAnnexeDeclarationAuto = async (req, res) => {
 
         const groupedData = Object.values(
             mappedData.reduce((acc, item) => {
-                const compteStr = item.compte?.toString() || "";
+                const compteStr = item.compteaux?.toString() || "";
 
                 if (!(compteStr.startsWith(compteisi) || compteStr.startsWith("401"))) {
                     return acc;
@@ -1131,12 +1158,12 @@ exports.generateAnnexeDeclarationAuto = async (req, res) => {
                 }
 
                 acc[item.id_ecriture].lignes.push({
-                    compte: item.compte,
+                    compte: item.compteaux,
                     libelle: item.libelle,
                     debit: item.debit,
                     credit: item.credit,
                     id_numcpt: item.id_numcpt,
-                    compte_centralise: item.compte_cetralise,
+                    // compte_centralise: item.compte_cetralise,
                     dateecriture: item.dateecriture
                 });
 
@@ -1145,8 +1172,8 @@ exports.generateAnnexeDeclarationAuto = async (req, res) => {
         )
             .filter(ecriture =>
                 ecriture.lignes.length > 0 &&
-                ecriture.lignes.some(l => l.compte.startsWith("401")) &&
-                ecriture.lignes.some(l => l.compte.startsWith(compteisi))
+                ecriture.lignes.some(l => l.compteaux.startsWith("401")) &&
+                ecriture.lignes.some(l => l.compteaux.startsWith(compteisi))
             );
 
         // return res.json(groupedData)
@@ -1155,18 +1182,18 @@ exports.generateAnnexeDeclarationAuto = async (req, res) => {
             groupedData.map(async (group) => {
 
                 const montant_isi = group.lignes
-                    .filter(l => l.compte.startsWith(compteisi))
+                    .filter(l => l.compteaux.startsWith(compteisi))
                     .reduce((sum, l) => sum + ((l.credit || 0) - (l.debit || 0)), 0);
 
-                const ligne401 = group.lignes.find(l => l.compte.startsWith("401"));
-                const ligneIsi = group.lignes.find(l => l.compte.startsWith(compteisi));
+                const ligne401 = group.lignes.find(l => l.compteaux.startsWith("401"));
+                const ligneIsi = group.lignes.find(l => l.compteaux.startsWith(compteisi));
 
                 const dossierplanComptableData = ligne401
                     ? await dossierplancomptableModel.findByPk(ligne401.id_numcpt)
                     : null;
 
                 const montant_transaction = group.lignes
-                    .filter(l => l.compte.startsWith("401"))
+                    .filter(l => l.compteaux.startsWith("401"))
                     .reduce((sum, l) => sum + ((l.credit || 0) - (l.debit || 0)), 0);
 
                 const colonnesVides =
