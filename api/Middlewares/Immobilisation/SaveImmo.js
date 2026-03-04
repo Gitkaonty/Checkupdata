@@ -162,8 +162,6 @@ exports.saveImmoDegressifMiddleware = async (fileId, compteId, exerciceId, detai
             dot_derogatoire: ligne.dot_derogatoire || 0,
         }));
 
-        console.log('out : ', out);
-
         await db.detailsImmoLignes.destroy({
             where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId, id_detail_immo: detailImmoId },
         });

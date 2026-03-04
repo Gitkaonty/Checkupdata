@@ -98,6 +98,7 @@ exports.addDroitCommB = async (req, res) => {
 exports.getDroitCommGlobal = async (req, res) => {
     try {
         const { id_exercice, id_dossier, id_compte } = req.params;
+
         if (!id_exercice || !id_dossier || !id_compte) {
             return res.status(400).json({
                 state: false,
@@ -105,80 +106,82 @@ exports.getDroitCommGlobal = async (req, res) => {
             });
         }
 
+        const replacements = {
+            id_exercice: Number(id_exercice),
+            id_dossier: Number(id_dossier),
+            id_compte: Number(id_compte)
+        };
+
         const [dataA, dataB, dataPlp] = await Promise.all([
-            droitcommas.findAll({
-                where: {
-                    id_exercice,
-                    id_dossier,
-                    id_compte,
-                    type: ['SVT', 'ADR', 'AC', 'AI', 'DEB']
-                },
-                include: [
-                    {
-                        model: dossierplancomptable,
-                        attributes: ['compte']
-                    }
-                ],
-                order: [['id', 'ASC']]
-            }),
-            droitcommbs.findAll({
-                where: {
-                    id_exercice,
-                    id_dossier,
-                    id_compte,
-                    type: ['MV', 'PSV', 'PL']
-                },
-                include: [
-                    {
-                        model: dossierplancomptable,
-                        attributes: ['compte']
-                    }
-                ],
-                order: [['id', 'ASC']]
-            }),
-            etatsplp.findAll({
-                where: {
-                    id_exercice,
-                    id_dossier,
-                    id_compte,
-                },
-                order: [['id', 'ASC']]
-            })
+
+            db.sequelize.query(
+                `
+                SELECT dca.*, dpc.compte
+                FROM droitcommas dca
+                LEFT JOIN dossierplancomptables dpc 
+                    ON dpc.id = dca.id_numcpt
+                WHERE dca.id_exercice = :id_exercice
+                AND dca.id_dossier = :id_dossier
+                AND dca.id_compte = :id_compte
+                AND dca.type IN ('SVT','ADR','AC','AI','DEB')
+                ORDER BY dca.id ASC
+                `,
+                {
+                    replacements,
+                    type: db.Sequelize.QueryTypes.SELECT
+                }
+            ),
+
+            db.sequelize.query(
+                `
+                SELECT dcb.*, dpc.compte
+                FROM droitcommbs dcb
+                LEFT JOIN dossierplancomptables dpc 
+                    ON dpc.id = dcb.id_numcpt
+                WHERE dcb.id_exercice = :id_exercice
+                AND dcb.id_dossier = :id_dossier
+                AND dcb.id_compte = :id_compte
+                AND dcb.type IN ('MV','PSV','PL')
+                ORDER BY dcb.id ASC
+                `,
+                {
+                    replacements,
+                    type: db.Sequelize.QueryTypes.SELECT
+                }
+            ),
+
+            db.sequelize.query(
+                `
+                SELECT *
+                FROM etatsplps
+                WHERE id_exercice = :id_exercice
+                AND id_dossier = :id_dossier
+                AND id_compte = :id_compte
+                ORDER BY id ASC
+                `,
+                {
+                    replacements,
+                    type: db.Sequelize.QueryTypes.SELECT
+                }
+            )
         ]);
 
-        const regroupedDataA = dataA.map((val) => {
-            const { dossierplancomptable, ...rest } = val.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-            };
-        })
-
-        const regroupedDataB = dataB.map((val) => {
-            const { dossierplancomptable, ...rest } = val.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-            };
-        })
-
-        // Regroupement par types
         const regrouped = {
-            SVT: regroupedDataA.filter(el => el.type === 'SVT'),
-            ADR: regroupedDataA.filter(el => el.type === 'ADR'),
-            AC: regroupedDataA.filter(el => el.type === 'AC'),
-            AI: regroupedDataA.filter(el => el.type === 'AI'),
-            DEB: regroupedDataA.filter(el => el.type === 'DEB'),
-            MV: regroupedDataB.filter(el => el.type === 'MV'),
-            PSV: regroupedDataB.filter(el => el.type === 'PSV'),
-            PL: regroupedDataB.filter(el => el.type === 'PL'),
+            SVT: dataA.filter(el => el.type === 'SVT'),
+            ADR: dataA.filter(el => el.type === 'ADR'),
+            AC: dataA.filter(el => el.type === 'AC'),
+            AI: dataA.filter(el => el.type === 'AI'),
+            DEB: dataA.filter(el => el.type === 'DEB'),
+            MV: dataB.filter(el => el.type === 'MV'),
+            PSV: dataB.filter(el => el.type === 'PSV'),
+            PL: dataB.filter(el => el.type === 'PL'),
             PLP: dataPlp
         };
 
         return res.status(200).json({
             state: true,
             data: regrouped,
-            message: `Données reçues`
+            message: "Données reçues"
         });
 
     } catch (error) {
@@ -206,7 +209,6 @@ exports.deleteAllCommByType = async (req, res) => {
         } else if (type === 'MV' || type === 'PSV' || type === 'PL') {
             number = await droitcommbs.destroy({ where: { type } });
         }
-        // const droitcommasDeleted = await droitcommas.destroy({ where: { type } });
         return res.status(200).json({
             state: true,
             message: `${number} données supprimés avec succès`
@@ -628,6 +630,7 @@ const getIdRubrique = (nature) => {
 exports.generateDCommAuto = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, nature } = req.body;
+        // console.log('req.body : ', req.body);
         if (!id_exercice || !id_dossier || !id_compte || !nature) {
             return res.status(400).json({
                 state: false,
@@ -649,9 +652,9 @@ exports.generateDCommAuto = async (req, res) => {
         })
 
         if (!compteRubriques || compteRubriques.length === 0) {
-            return res.status(400).json({
-                state: true,
-                message: "Aucune données à générer automatiquement"
+            return res.json({
+                state: false,
+                message: "Veuillez ajouter des comptes dans le paramétrage mapping des comptes"
             });
         }
 

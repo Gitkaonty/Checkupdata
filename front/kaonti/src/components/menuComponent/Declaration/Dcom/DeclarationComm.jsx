@@ -557,6 +557,7 @@ export default function DeclarationComm() {
     //Afficher le modal de confirmation de génération automatique
     const handleOpenDialogConfirmGenerateAuto = (nature) => {
         setOpenDialogGenerateAuto(true);
+        setNature(nature);
     }
 
     //Génération automatique d'une table
