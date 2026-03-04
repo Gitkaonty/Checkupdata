@@ -806,7 +806,7 @@ export default function DashboardComponent() {
                       mb={2}
                     >
                       <Typography variant="h5" sx={{ color: "black" }}>
-                        Comptes en attente
+                        Ecritures en suspens
                       </Typography>
 
                       <TextField

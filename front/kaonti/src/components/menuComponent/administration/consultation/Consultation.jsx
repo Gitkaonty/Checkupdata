@@ -268,7 +268,7 @@ export default function ConsultationComponent() {
             align: 'center',
             headerClassName: 'HeaderbackColor',
             renderCell: (params) => {
-                const exist = params.value !== 0;
+                const exist = Number(params.value) !== 0;
                 return (
                     exist ? <GoLink color={initial.theme} size={18} /> : null
                 );
