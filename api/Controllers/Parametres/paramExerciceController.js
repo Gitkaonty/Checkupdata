@@ -10,35 +10,44 @@ const dossiers = db.dossiers;
 
 const getListeExercice = async (req, res) => {
   try {
-    const fileId = req.params.id;
+    const fileId = Number(req.params.id);
 
     let resData = {
       state: false,
       msg: '',
       list: []
-    }
+    };
 
-    const list = await exercice.findAll({
-      where: {
-        id_dossier: fileId
-      },
-      raw: true,
-      order: [['date_fin', 'DESC']]
-    });
+    const list = await db.sequelize.query(
+      `
+      SELECT *
+      FROM exercices
+      WHERE id_dossier = :fileId
+      ORDER BY date_fin DESC
+      `,
+      {
+        replacements: { fileId },
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
 
-    if (list) {
+    if (list && list.length > 0) {
       resData.state = true;
       resData.list = list;
     } else {
-      resData.state = false;
-      resData.msg = 'une erreur est survenue lors du traitement.';
+      resData.msg = 'Aucun exercice trouvé.';
     }
 
     return res.json(resData);
+
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    return res.status(500).json({
+      state: false,
+      msg: 'Erreur serveur.'
+    });
   }
-}
+};
 
 const getListeSituation = async (req, res) => {
   try {
