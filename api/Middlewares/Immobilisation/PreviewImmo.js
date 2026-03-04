@@ -514,16 +514,6 @@ exports.previewImmoDegressifMiddleware = async (fileId, compteId, exerciceId, de
                 const dotLinRestAnnX = vncX / dureeRestanteX;
                 if (modeX === 'degressif' && dotLinRestAnnX > dotDegAnnX) {
                     if (!didSwitchLogX) {
-                        console.log('[IMMO][DEGRESSIF][SWITCH->LINEAIRE]', {
-                            tab: labelX,
-                            rang: indexX,
-                            date_debut: toYMD(debutX),
-                            date_fin_prevue: toYMD(finX),
-                            vnc: clamp(vncX),
-                            duree_restante_annees: clamp(dureeRestanteX),
-                            dot_deg_annuel: clamp(dotDegAnnX),
-                            dot_lin_rest_annuel: clamp(dotLinRestAnnX),
-                        });
                         didSwitchLogX = true;
                     }
                     modeX = 'lineaire';
