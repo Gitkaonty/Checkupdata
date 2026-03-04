@@ -33,6 +33,10 @@ import PopupActionConfirm from '../../../componentsTools/popupActionConfirm';
 import { BsFillUnlockFill } from "react-icons/bs";
 import usePermission from '../../../../hooks/usePermission';
 import useAxiosPrivate from '../../../../../config/axiosPrivate';
+import { IoMdAddCircle } from "react-icons/io";
+import { MdCancel } from "react-icons/md";
+import PopupCodeJouralNotExist from '../../administration/import/PopupCodeJouralNotExist';
+import PopupGenerateRan from '../../../componentsTools/Paramettage/Exercice/PopupGenerateRan';
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialogContent-root': {
@@ -72,6 +76,9 @@ export default function ParamExerciceComponent() {
 
     const [loadingCreateNextExercice, setLoadingCreateNextExercice] = useState(false);
     const [loadingCreatePreviousExercice, setLoadingPreviousExercice] = useState(false);
+
+    const [openPopupCodejournal, setOpenPopupCodeJournal] = useState(false);
+    const [openPopupGenerateRan, setOpenPopupGenerateRan] = useState(false);
 
     //récupération des informations de connexion
     const { auth } = useAuth();
@@ -184,7 +191,7 @@ export default function ParamExerciceComponent() {
     }
 
     useEffect(() => {
-        if (canView) {
+        if (canView && fileId) {
             GetListeExercice(fileId);
         }
     }, [fileId]);
@@ -475,6 +482,35 @@ export default function ParamExerciceComponent() {
         setOpenActionConfirmDeleteExercice(false);
     }
 
+    const testIfRanExist = async () => {
+        try {
+            const response = await axios.post('/administration/ImportJournal/testIfRanExist', {
+                id_dossier: Number(fileId),
+                id_compte: Number(compteId)
+            });
+            const resData = response?.data;
+
+            if (resData?.state) {
+                return resData?.exist;
+            } else {
+                toast.error(resData?.message || "Erreur inconnue");
+                return false;
+            }
+        } catch (error) {
+            toast.error(error.message);
+            return false;
+        }
+    };
+
+    const genererANouveau = async () => {
+        const ranExist = await testIfRanExist();
+        if (!ranExist) {
+            setOpenPopupCodeJournal(true);
+            return;
+        }
+        setOpenPopupGenerateRan(true);
+    }
+
     return (
         <Box>
             {noFile ? <PopupTestSelectedFile confirmationState={sendToHome} /> : null}
@@ -484,6 +520,26 @@ export default function ParamExerciceComponent() {
             {openActionConfirmVerrExercice ? <PopupActionConfirm msg={msgVerrExercice} confirmationState={verrouillerExercice} /> : null}
             {openActionConfirmDeverrExercice ? <PopupActionConfirm msg={msgDeverrExercice} confirmationState={deverrouillerExercice} /> : null}
             {openActionConfirmDeleteExercice ? <PopupActionConfirm msg={msgDeleteExercice} confirmationState={deleteExercice} /> : null}
+
+            {
+                openPopupCodejournal && (
+                    <PopupCodeJouralNotExist
+                        title={"La génération A-nouveaux a été intérompue"}
+                        handleClose={() => setOpenPopupCodeJournal(false)}
+                    />
+                )
+            }
+
+            {
+                openPopupGenerateRan && (
+                    <PopupGenerateRan
+                        handleClose={() => setOpenPopupGenerateRan(false)}
+                        id_compte={Number(compteId)}
+                        id_dossier={Number(fileId)}
+                        selectedExerciceRow={selectedExerciceRow}
+                    />
+                )
+            }
 
             <form onSubmit={firstExerciceForm.handleSubmit}>
                 <BootstrapDialog
@@ -690,6 +746,41 @@ export default function ParamExerciceComponent() {
                                     >
                                         <BsFillUnlockFill style={{ width: '25px', height: '25px', color: 'white' }} />
                                     </IconButton>
+                                </Tooltip>
+
+                                <Tooltip title="Générer A-nouveaux">
+                                    <span>
+                                        <IconButton
+                                            disabled={selectedExerciceRow.length === 0}
+                                            onClick={genererANouveau}
+                                            variant="contained"
+                                            style={{
+                                                width: "35px", height: '35px',
+                                                borderRadius: "2px", borderColor: "transparent",
+                                                backgroundColor: "#4CAF50",
+                                                textTransform: 'none', outline: 'none'
+                                            }}
+                                        >
+                                            <IoMdAddCircle style={{ width: '25px', height: '25px', color: 'white' }} />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+
+                                <Tooltip title="Annuler A-nouveaux">
+                                    <span>
+                                        <IconButton
+                                            disabled={selectedExerciceRow.length === 0}
+                                            variant="contained"
+                                            style={{
+                                                width: "35px", height: '35px',
+                                                borderRadius: "2px", borderColor: "transparent",
+                                                backgroundColor: "#F44336",
+                                                textTransform: 'none', outline: 'none'
+                                            }}
+                                        >
+                                            <MdCancel style={{ width: '25px', height: '25px', color: 'white' }} />
+                                        </IconButton>
+                                    </span>
                                 </Tooltip>
 
                                 <Tooltip title="Supprimer un exercice">

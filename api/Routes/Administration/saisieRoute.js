@@ -108,4 +108,7 @@ router.post('/getCodeJournalsCompteAssocie', saisieController.getCodeJournalsCom
 // Récupérer les lignes dans le journal avec une id_immob
 router.post('/getJournalsAvecImmo', saisieController.getJournalsAvecImmo);
 
+// Générer des écritures à nouveaux
+router.post('/genererRan', saisieController.genererRan);
+
 module.exports = router;

@@ -1610,7 +1610,7 @@ export default function AddNewFile({ confirmationState }) {
     }, [compteId]);
 
     return (
-        <Paper
+        <Box
             sx={{
                 paddingX: 3,
                 paddingY: 2
@@ -1694,7 +1694,7 @@ export default function AddNewFile({ confirmationState }) {
 
                                 <Box sx={{ width: '100%', typography: 'body1' }}>
                                     <TabContext value={value}>
-                                        <Box sx={{ borderBottom: 1, borderColor: 'transparent' }}>
+                                        <Box>
                                             <TabList onChange={handleChangeTAB} aria-label="lab API tabs example" variant='scrollable'>
                                                 <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Infos société" value="1" />
                                                 <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Comptabilité" value="2" />
@@ -2788,35 +2788,39 @@ export default function AddNewFile({ confirmationState }) {
                                                     direction={"row"} justifyContent={"right"}
                                                 >
                                                     <Tooltip title="Ajouter une ligne">
-                                                        <IconButton
-                                                            variant="contained"
-                                                            onClick={handleOpenDialogAddNewAssocie}
-                                                            disabled={disableAddRowBouton}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                variant="contained"
+                                                                onClick={handleOpenDialogAddNewAssocie}
+                                                                disabled={disableAddRowBouton}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <IconButton
-                                                            disabled={disableModifyBouton}
-                                                            variant="contained"
-                                                            onClick={handleEditClick(selectedRowId)}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableModifyBouton}
+                                                                variant="contained"
+                                                                onClick={handleEditClick(selectedRowId)}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Sauvegarder les modifications">
@@ -2931,35 +2935,39 @@ export default function AddNewFile({ confirmationState }) {
                                                     direction={"row"} justifyContent={"right"}
                                                 >
                                                     <Tooltip title="Ajouter une ligne">
-                                                        <IconButton
-                                                            disabled={disableAddRowBoutonFiliale}
-                                                            variant="contained"
-                                                            onClick={handleOpenDialogAddNewFiliale}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableAddRowBoutonFiliale}
+                                                                variant="contained"
+                                                                onClick={handleOpenDialogAddNewFiliale}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <IconButton
-                                                            disabled={disableModifyBoutonFiliale}
-                                                            variant="contained"
-                                                            onClick={handleEditClickFiliale(selectedRowIdFiliale)}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableModifyBoutonFiliale}
+                                                                variant="contained"
+                                                                onClick={handleEditClickFiliale(selectedRowIdFiliale)}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Sauvegarder les modifications">
@@ -3074,35 +3082,39 @@ export default function AddNewFile({ confirmationState }) {
                                                     direction={"row"} justifyContent={"right"}
                                                 >
                                                     <Tooltip title="Ajouter une ligne">
-                                                        <IconButton
-                                                            disabled={disableAddRowBouton}
-                                                            variant="contained"
-                                                            onClick={handleOpenDialogAddNewDomBank}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableAddRowBouton}
+                                                                variant="contained"
+                                                                onClick={handleOpenDialogAddNewDomBank}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <IconButton
-                                                            disabled={disableModifyBouton}
-                                                            variant="contained"
-                                                            onClick={handleEditClickDomBank(selectedRowIdDomBank)}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableModifyBouton}
+                                                                variant="contained"
+                                                                onClick={handleEditClickDomBank(selectedRowIdDomBank)}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Sauvegarder les modifications">
@@ -3217,35 +3229,39 @@ export default function AddNewFile({ confirmationState }) {
                                                     direction={"row"} justifyContent={"right"}
                                                 >
                                                     <Tooltip title="Ajouter une ligne">
-                                                        <IconButton
-                                                            disabled={disableAddRowBoutonConsolidation || availableDossier.length === 0}
-                                                            variant="contained"
-                                                            onClick={handleOpenDialogAddNewConsolidation}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableAddRowBoutonConsolidation || availableDossier.length === 0}
+                                                                variant="contained"
+                                                                onClick={handleOpenDialogAddNewConsolidation}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <IconButton
-                                                            disabled={disableModifyBoutonConsolidation}
-                                                            variant="contained"
-                                                            onClick={handleEditClickConsolidation(selectedRowIdConsolidation)}
-                                                            style={{
-                                                                width: "35px", height: '35px',
-                                                                borderRadius: "2px", borderColor: "transparent",
-                                                                backgroundColor: initial.theme,
-                                                                textTransform: 'none', outline: 'none'
-                                                            }}
-                                                        >
-                                                            <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton
+                                                                disabled={disableModifyBoutonConsolidation}
+                                                                variant="contained"
+                                                                onClick={handleEditClickConsolidation(selectedRowIdConsolidation)}
+                                                                style={{
+                                                                    width: "35px", height: '35px',
+                                                                    borderRadius: "2px", borderColor: "transparent",
+                                                                    backgroundColor: initial.theme,
+                                                                    textTransform: 'none', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
 
                                                     <Tooltip title="Sauvegarder les modifications">
@@ -3356,11 +3372,10 @@ export default function AddNewFile({ confirmationState }) {
                                     </TabContext>
                                 </Box>
                             </Stack>
-
                         </Form>
                     );
                 }}
             </Formik>
-        </Paper>
+        </Box>
     )
 }

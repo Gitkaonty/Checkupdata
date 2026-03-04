@@ -25,6 +25,9 @@ const path = require('path');
 
 const updateDetailImmo = require('../../Middlewares/Immobilisation/updateDetailImmo');
 const updateMontantImmo = updateDetailImmo.updateMontantImmo;
+const updateMontantImmoHorsExercice = updateDetailImmo.updateMontantImmoHorsExercice;
+
+const recupExerciceN1 = require('../../Middlewares/Standard/recupExerciceN1');
 
 // Fonction pour plurieliser un mot
 function pluralize(count, word) {
@@ -512,10 +515,28 @@ exports.listDetailsImmoLignes = async (req, res) => {
         const compteId = Number(req.query?.compteId);
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
-        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
+
+        const exerciceData = await db.exercices.findByPk(exerciceId);
+        if (!exerciceData) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+
+        const dateDebutExercice = exerciceData.date_debut;
+        const dateFinExercice = exerciceData.date_fin;
+
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            detailImmoId,
+            dateDebutExercice,
+            dateFinExercice
+        );
+
         const rows = await db.detailsImmoLignes.findAll({
             where: {
                 id_dossier: fileId,
@@ -525,7 +546,9 @@ exports.listDetailsImmoLignes = async (req, res) => {
             },
             order: [['id', 'ASC']],
         });
+
         return res.json({ state: true, list: rows || [] });
+
     } catch (err) {
         console.error('[IMMO][LIGNES] error:', err);
         return res.status(500).json({ state: false, msg: 'Erreur serveur' });
@@ -1227,6 +1250,14 @@ exports.saveImmoLineaire = async (req, res) => {
             return res.status(400).json({ state: false, msg: 'Lignes calculées manquantes - utilisez d\'abord previewImmoLineaire' });
         }
 
+        const exerciceData = await db.exercices.findByPk(exerciceId);
+        if (!exerciceData) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+
+        const dateDebutExercice = exerciceData.date_debut;
+        const dateFinExercice = exerciceData.date_fin;
+
         // Préparer les lignes pour l'insertion (utiliser les lignes pré-calculées)
         const out = lignes.map((ligne) => ({
             id_dossier: fileId,
@@ -1254,7 +1285,14 @@ exports.saveImmoLineaire = async (req, res) => {
         if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
 
 
-        await updateMontantImmo(compteId, fileId, exerciceId, detailImmoId);
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            detailImmoId,
+            dateDebutExercice,
+            dateFinExercice
+        );
 
         return res.json({ state: true, saved: out.length });
     } catch (err) {
@@ -1969,7 +2007,7 @@ exports.deleteLettrage = async (req, res) => {
         }
 
         const [affectedRows] = await journals.update(
-            { lettrage: "" },
+            { lettrage: null },
             {
                 where: {
                     id: data,
@@ -1985,7 +2023,7 @@ exports.deleteLettrage = async (req, res) => {
             state: true,
             message: `Lettrage supprimé avec succès sur ${Number(affectedRows) || 0} ${pluralize(Number(affectedRows), 'ligne')}`,
             affected: Number(affectedRows) || 0,
-            lettrage: "",
+            lettrage: null,
             list
         });
 
@@ -2083,12 +2121,12 @@ exports.listDetailsImmo = async (req, res) => {
         }
 
         const exerciceData = await db.exercices.findByPk(exerciceId);
-
         if (!exerciceData) {
             return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
         }
 
-        const date_debut_exercice = exerciceData.date_debut;
+        const dateDebutExercice = exerciceData.date_debut;
+        const dateFinExercice = exerciceData.date_fin;
 
         const autresExercices = await db.exercices.findAll({
             attributes: ['id'],
@@ -2100,43 +2138,81 @@ exports.listDetailsImmo = async (req, res) => {
         });
 
         const autresExerciceIds = autresExercices.map(e => e.id);
-
-        if (!autresExerciceIds.length) {
-            autresExerciceIds.push(0);
-        }
+        if (!autresExerciceIds.length) autresExerciceIds.push(0);
 
         const whereCompte = pcId
             ? 'AND d.pc_id = :pcId'
             : (compteId ? 'AND d.id_compte = :compteId' : '');
 
-        const sql = `
-            SELECT d.*
-            FROM details_immo d
-            WHERE d.id_dossier = :fileId
-            ${whereCompte}
-            AND (
-                d.id_exercice = :exerciceId
-                OR (
-                    d.id_exercice IN (:autresExerciceIds)
-                    AND d.date_acquisition < :dateDebutExercice
+        const rows = await db.sequelize.query(`
+                SELECT d.id, d.id_exercice
+                FROM details_immo d
+                WHERE d.id_dossier = :fileId
+                ${whereCompte}
+                AND (
+                    d.id_exercice = :exerciceId
+                    OR (
+                        d.id_exercice IN (:autresExerciceIds)
+                        AND d.date_acquisition < :dateDebutExercice
+                    )
                 )
-            )
-            ORDER BY d.id ASC
-        `;
-
-        const rows = await db.sequelize.query(sql, {
+            `, {
             replacements: {
                 fileId,
                 compteId,
                 exerciceId,
                 pcId,
                 autresExerciceIds,
-                dateDebutExercice: date_debut_exercice
+                dateDebutExercice
             },
             type: db.Sequelize.QueryTypes.SELECT,
         });
 
-        return res.json({ state: true, list: rows || [] });
+        const chunkSize = 20;
+
+        for (let i = 0; i < rows.length; i += chunkSize) {
+            const chunk = rows.slice(i, i + chunkSize);
+
+            await Promise.all(
+                chunk.map(r =>
+                    updateMontantImmo(
+                        compteId,
+                        fileId,
+                        r.id_exercice,
+                        r.id,
+                        dateDebutExercice,
+                        dateFinExercice
+                    )
+                )
+            );
+        }
+
+        const rowsFinal = await db.sequelize.query(`
+            SELECT d.*
+            FROM details_immo d
+            WHERE d.id_dossier = :fileId
+                ${whereCompte}
+                AND (
+                    d.id_exercice = :exerciceId
+                    OR (
+                        d.id_exercice IN (:autresExerciceIds)
+                        AND d.date_acquisition < :dateDebutExercice
+                    )
+                )
+            ORDER BY d.date_acquisition ASC
+            `, {
+            replacements: {
+                fileId,
+                compteId,
+                pcId,
+                exerciceId,
+                autresExerciceIds,
+                dateDebutExercice
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+
+        return res.json({ state: true, list: rowsFinal });
 
     } catch (err) {
         console.error('[IMMO][DETAILS][LIST] error:', err);
@@ -2371,7 +2447,14 @@ exports.createDetailsImmo = async (req, res) => {
 
         useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer);
 
-        await updateMontantImmo(compteId, fileId, exerciceId, insertedId);
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            insertedId,
+            exoDebut,
+            exoFin
+        );
 
         return res.json({ state: true, id: insertedId || null });
     } catch (err) {
@@ -2617,7 +2700,14 @@ exports.updateDetailsImmo = async (req, res) => {
 
         useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer);
 
-        await updateMontantImmo(compteId, fileId, exerciceId, id);
+        await updateMontantImmo(
+            compteId,
+            fileId,
+            exerciceId,
+            id,
+            exoDebut,
+            exoFin
+        );
 
         return res.json({ state: true, id });
     } catch (err) {
@@ -3549,6 +3639,92 @@ exports.getJournalsAvecImmo = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT,
         })
         return res.json(rows);
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}
+
+exports.genererRan = async (req, res) => {
+    try {
+        const { id_dossier, id_exercice, id_compte, isDetailled } = req.body;
+
+        const {
+            id_exerciceN1,
+        } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
+        console.log('id_exerciceN1 : ', id_exerciceN1);
+
+        const querryRan = `
+            DELETE FROM journals
+            WHERE 
+                id_ecriture IN (
+                    SELECT 
+                        DISTINCT j.id_ecriture
+                    FROM journals j
+                    LEFT JOIN codejournals c on j.id_journal = c.id
+                    WHERE 
+                        j.id_compte = :id_compte
+                        AND j.id_dossier = :id_dossier
+                        AND j.id_exercice = :id_exercice
+                        AND c.id_compte = :id_compte
+                        AND c.id_dossier =:id_dossier
+                        AND c.type = 'RAN'
+                )
+        `;
+
+        await db.sequelize.transaction(async (t) => {
+            await db.sequelize.query(querryRan, {
+                replacements: { id_dossier, id_exercice, id_compte },
+                type: db.Sequelize.QueryTypes.DELETE,
+                transaction: t
+            });
+            if (isDetailled) {
+                const soldeQuery = `
+                    SELECT
+                        ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS SOLDE
+                    FROM
+                        JOURNALS
+                    WHERE
+                        COMPTEAUX ~ '^[6-7]'
+                        AND ID_ECRITURE IN (
+                            SELECT DISTINCT
+                                J1.ID_ECRITURE
+                            FROM
+                                JOURNALS J1
+                            WHERE
+                                J1.ID_COMPTE = :id_compte
+                                AND J1.ID_DOSSIER = :id_dossier
+                                AND J1.ID_EXERCICE = :id_exerciceN1
+                                AND J1.COMPTEAUX ~ '^[1-5]'
+                                AND NOT EXISTS (
+                                    SELECT
+                                        1
+                                    FROM
+                                        JOURNALS J2
+                                    WHERE
+                                        J2.ID_ECRITURE = J1.ID_ECRITURE
+                                        AND J2.LETTRAGE IS NOT NULL
+                                )
+                        )
+                `;
+                const solde = await db.sequelize.query(soldeQuery, {
+                    replacements: { id_dossier, id_exerciceN1, id_compte },
+                    type: db.Sequelize.QueryTypes.SELECT,
+                    transaction: t
+                })
+
+                console.log('solde : ', Number(solde[0].solde));
+            } else {
+
+            }
+        });
+
+        return res.json({ state: true, message: 'A-nouveaux générées avec succès' });
     } catch (error) {
         console.error("Erreur deleteJournal :", error);
         return res.status(500).json({

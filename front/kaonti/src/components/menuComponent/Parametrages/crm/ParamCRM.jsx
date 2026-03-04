@@ -2479,9 +2479,9 @@ export default function ParamCRM() {
                                             <TabContext value={valueEbilan}>
                                                 <Box sx={{ borderBottom: 1, borderColor: 'transparent' }}>
                                                     <TabList onChange={handleChangeTAB} aria-label="lab API tabs example" variant='scrollable'>
-                                                        <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="infos société" value="1" />
-                                                        <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="comptabilité" value="2" />
-                                                        <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="fiscales" value="3" />
+                                                        <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Infos société" value="1" />
+                                                        <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Comptabilité" value="2" />
+                                                        <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Fiscales" value="3" />
                                                         <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Associés" value="4" />
                                                         <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Filiales" value="5" />
                                                         <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Domiciliations bancaires" value="6" />

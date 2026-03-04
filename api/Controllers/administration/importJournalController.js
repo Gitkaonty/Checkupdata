@@ -1176,31 +1176,31 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
 const testIfRanExist = async (req, res) => {
   try {
     const { id_dossier, id_compte } = req.body;
-    if (!id_dossier) {
-      return res.json({ state: false, exist: false, message: 'Dossier non trouvé' });
-    }
-    if (!id_compte) {
-      return res.json({ state: false, exist: false, message: 'Compte non trouvé' });
-    }
-    const resData = {
-      exist: false,
-      state: true
-    }
-    const codeJournalsRAN = await codejournals.findOne({
-      where: {
-        id_dossier,
-        id_compte,
-        type: 'RAN',
-      }
-    })
-    if (codeJournalsRAN) {
-      resData.exist = true;
-      resData.state = true
-    }
-    return res.json(resData);
+
+    if (!id_dossier) return res.json({ state: false, exist: false, message: 'Dossier non trouvé' });
+    if (!id_compte) return res.json({ state: false, exist: false, message: 'Compte non trouvé' });
+
+    const query = `
+      SELECT 1 FROM codejournals
+      WHERE id_dossier = :id_dossier
+        AND id_compte = :id_compte
+        AND type = 'RAN'
+      LIMIT 1
+    `;
+
+    const [row] = await db.sequelize.query(query, {
+      replacements: { id_dossier, id_compte },
+      type: db.Sequelize.QueryTypes.SELECT
+    });
+
+    return res.json({
+      state: true,
+      exist: !!row
+    });
+
   } catch (error) {
     console.log(error);
-    return res.json({ existe: false, state: false, message: error.message });
+    return res.json({ exist: false, state: false, message: error.message });
   }
 }
 

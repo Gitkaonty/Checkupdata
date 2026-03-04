@@ -1,6 +1,5 @@
 const db = require("../../Models");
 require('dotenv').config();
-const { Op } = require('sequelize');
 
 const exercices = db.exercices;
 
