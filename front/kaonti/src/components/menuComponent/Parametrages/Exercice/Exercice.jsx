@@ -684,167 +684,348 @@ export default function ParamExerciceComponent() {
                     <Stack style={{ marginTop: 0 }} width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"} justifyContent={"stretch"}>
                         <Typography variant='h6' sx={{ color: "black" }} align='left'>Paramétrages : Exercices</Typography>
 
-                        <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
-                            direction={"row"} style={{ marginLeft: "0px", marginTop: "20px", justifyContent: "right" }}>
-                            <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                                direction={"row"} justifyContent={"right"}>
-
-                                <Tooltip title="Ajouter l'exercice précédent">
-                                    <IconButton
-                                        disabled={!canAdd}
-                                        onClick={handleCreateNextExercicePrev}
-                                        variant="contained"
-                                        style={{
-                                            width: "35px", height: '35px',
-                                            borderRadius: "2px", borderColor: "transparent",
-                                            backgroundColor: initial.theme,
-                                            textTransform: 'none', outline: 'none'
-                                        }}
-                                    >
-                                        <BsChevronLeft style={{ width: '25px', height: '25px', color: 'white' }} />
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="Ajouter l'exercice suivant">
-                                    <IconButton
-                                        disabled={!canAdd}
-                                        onClick={handleCreateNextExercice}
-                                        variant="contained"
-                                        style={{
-                                            width: "35px", height: '35px',
-                                            borderRadius: "2px", borderColor: "transparent",
-                                            backgroundColor: initial.theme,
-                                            textTransform: 'none', outline: 'none'
-                                        }}
-                                    >
-                                        <BsChevronRight style={{ width: '25px', height: '25px', color: 'white' }} />
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="Vérrouiller un exercice">
-                                    <IconButton
-                                        onClick={handleVerrouillerExercice}
-                                        variant="contained"
-                                        style={{
-                                            width: "35px", height: '35px',
-                                            borderRadius: "2px", borderColor: "transparent",
-                                            backgroundColor: initial.theme,
-                                            textTransform: 'none', outline: 'none'
-                                        }}
-                                    >
-                                        <HiLockClosed style={{ width: '25px', height: '25px', color: 'white' }} />
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="Déverrouiller un exercice">
-                                    <IconButton
-                                        onClick={handleDeverrouillerExercice}
-                                        variant="contained"
-                                        style={{
-                                            width: "35px", height: '35px',
-                                            borderRadius: "2px", borderColor: "transparent",
-                                            backgroundColor: initial.theme,
-                                            textTransform: 'none', outline: 'none'
-                                        }}
-                                    >
-                                        <BsFillUnlockFill style={{ width: '25px', height: '25px', color: 'white' }} />
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="Générer A-nouveaux">
-                                    <span>
-                                        <IconButton
-                                            disabled={selectedExerciceRow.length === 0}
-                                            onClick={genererANouveau}
-                                            variant="contained"
-                                            style={{
-                                                width: "35px", height: '35px',
-                                                borderRadius: "2px", borderColor: "transparent",
-                                                backgroundColor: "#4CAF50",
-                                                textTransform: 'none', outline: 'none'
-                                            }}
+                        <Stack
+                            direction="row"
+                            spacing={5}
+                            sx={{ width: "100%" }}
+                            alignItems="flex-start"
+                        >
+                            <Stack
+                                width={'50%'}
+                            >
+                                <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
+                                    direction={"row"} style={{ marginLeft: "0px", marginTop: "20px", justifyContent: "right" }}>
+                                    <Stack width={"100%"} height={"30px"} spacing={0.5} justifyContent={'space-between'}
+                                        direction={"row"} alignContent={'baseline'} sx={{ mb: 2 }} >
+                                        <Stack sx={{ fontSize: 18 }}>Exercice</Stack>
+                                        <Stack
+                                            direction={'row'}
+                                            spacing={0.5}
                                         >
-                                            <IoMdAddCircle style={{ width: '25px', height: '25px', color: 'white' }} />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
+                                            <Tooltip title="Ajouter l'exercice précédent">
+                                                <IconButton
+                                                    disabled={!canAdd}
+                                                    onClick={handleCreateNextExercicePrev}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <BsChevronLeft style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
 
-                                <Tooltip title="Annuler A-nouveaux">
-                                    <span>
-                                        <IconButton
-                                            disabled={selectedExerciceRow.length === 0}
-                                            variant="contained"
-                                            style={{
-                                                width: "35px", height: '35px',
-                                                borderRadius: "2px", borderColor: "transparent",
-                                                backgroundColor: "#F44336",
-                                                textTransform: 'none', outline: 'none'
-                                            }}
-                                        >
-                                            <MdCancel style={{ width: '25px', height: '25px', color: 'white' }} />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
+                                            <Tooltip title="Ajouter l'exercice suivant">
+                                                <IconButton
+                                                    disabled={!canAdd}
+                                                    onClick={handleCreateNextExercice}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <BsChevronRight style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
 
-                                <Tooltip title="Supprimer un exercice">
-                                    <span>
-                                        <IconButton
-                                            disabled={!canDelete || selectedExerciceRow.length === 0}
-                                            onClick={handleDeleteExercice}
-                                            variant="contained"
-                                            style={{
-                                                width: "35px", height: '35px',
-                                                borderRadius: "2px", borderColor: "transparent",
-                                                backgroundColor: initial.button_delete_color,
-                                                textTransform: 'none', outline: 'none'
-                                            }}
-                                        >
-                                            <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
+                                            <Tooltip title="Vérrouiller un exercice">
+                                                <IconButton
+                                                    onClick={handleVerrouillerExercice}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <HiLockClosed style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Déverrouiller un exercice">
+                                                <IconButton
+                                                    onClick={handleDeverrouillerExercice}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <BsFillUnlockFill style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Générer A-nouveaux">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={selectedExerciceRow.length === 0}
+                                                        onClick={genererANouveau}
+                                                        variant="contained"
+                                                        style={{
+                                                            width: "35px", height: '35px',
+                                                            borderRadius: "2px", borderColor: "transparent",
+                                                            backgroundColor: "#4CAF50",
+                                                            textTransform: 'none', outline: 'none'
+                                                        }}
+                                                    >
+                                                        <IoMdAddCircle style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+
+                                            <Tooltip title="Annuler A-nouveaux">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={selectedExerciceRow.length === 0}
+                                                        variant="contained"
+                                                        style={{
+                                                            width: "35px", height: '35px',
+                                                            borderRadius: "2px", borderColor: "transparent",
+                                                            backgroundColor: "#F44336",
+                                                            textTransform: 'none', outline: 'none'
+                                                        }}
+                                                    >
+                                                        <MdCancel style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+
+                                            <Tooltip title="Supprimer un exercice">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={!canDelete || selectedExerciceRow.length === 0}
+                                                        onClick={handleDeleteExercice}
+                                                        variant="contained"
+                                                        style={{
+                                                            width: "35px", height: '35px',
+                                                            borderRadius: "2px", borderColor: "transparent",
+                                                            backgroundColor: initial.button_delete_color,
+                                                            textTransform: 'none', outline: 'none'
+                                                        }}
+                                                    >
+                                                        <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+                                        </Stack>
+                                    </Stack>
+                                </Stack>
+
+                                <Stack width={"100%"} height={'100%'} minHeight={'600px'}>
+                                    <DataGrid
+                                        disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                                        disableColumnSelector={DataGridStyle.disableColumnSelector}
+                                        disableDensitySelector={DataGridStyle.disableDensitySelector}
+                                        disableRowSelectionOnClick
+                                        disableSelectionOnClick={true}
+                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                                        slots={{ toolbar: QuickFilter }}
+                                        sx={DataGridStyle.sx}
+                                        rowHeight={DataGridStyle.rowHeight}
+                                        columnHeaderHeight={DataGridStyle.columnHeaderHeight}
+                                        editMode='row'
+                                        columns={ExerciceColumnHeader}
+                                        rows={listeExercice}
+                                        onRowSelectionModelChange={ids => {
+                                            const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
+                                            saveSelectedExercice(single);
+                                        }}
+                                        initialState={{
+                                            pagination: {
+                                                paginationModel: { page: 0, pageSize: 100 },
+                                            },
+                                        }}
+                                        experimentalFeatures={{ newEditingApi: true }}
+                                        pageSizeOptions={[50, 100]}
+                                        pagination={DataGridStyle.pagination}
+                                        checkboxSelection={DataGridStyle.checkboxSelection}
+                                        columnVisibilityModel={{
+                                            id: false,
+                                        }}
+                                        rowSelectionModel={selectedExerciceRow}
+                                    />
+                                </Stack>
                             </Stack>
-                        </Stack>
+                            <Stack
+                                width={'50%'}
+                            >
+                                <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
+                                    direction={"row"} style={{ marginLeft: "0px", marginTop: "20px", justifyContent: "right" }}>
+                                    <Stack width={"100%"} height={"30px"} spacing={0.5} justifyContent={'space-between'}
+                                        direction={"row"} alignContent={'baseline'}>
+                                        <Stack sx={{ fontSize: 18 }}>Période</Stack>
 
-                        <Stack width={"100%"} height={'100%'} minHeight={'600px'}>
-                            <DataGrid
-                                disableMultipleSelection={DataGridStyle.disableMultipleSelection}
-                                disableColumnSelector={DataGridStyle.disableColumnSelector}
-                                disableDensitySelector={DataGridStyle.disableDensitySelector}
-                                disableRowSelectionOnClick
-                                disableSelectionOnClick={true}
-                                localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                                slots={{ toolbar: QuickFilter }}
-                                sx={DataGridStyle.sx}
-                                rowHeight={DataGridStyle.rowHeight}
-                                columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                                editMode='row'
-                                columns={ExerciceColumnHeader}
-                                rows={listeExercice}
-                                onRowSelectionModelChange={ids => {
-                                    const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
-                                    saveSelectedExercice(single);
-                                }}
-                                initialState={{
-                                    pagination: {
-                                        paginationModel: { page: 0, pageSize: 100 },
-                                    },
-                                }}
-                                experimentalFeatures={{ newEditingApi: true }}
-                                pageSizeOptions={[50, 100]}
-                                pagination={DataGridStyle.pagination}
-                                checkboxSelection={DataGridStyle.checkboxSelection}
-                                columnVisibilityModel={{
-                                    id: false,
-                                }}
-                                rowSelectionModel={selectedExerciceRow}
-                            />
+                                        <Stack
+                                            direction={'row'}
+                                            spacing={0.5}
+                                        >
+                                            <Tooltip title="Ajouter l'exercice précédent">
+                                                <IconButton
+                                                    disabled={!canAdd}
+                                                    onClick={handleCreateNextExercicePrev}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <BsChevronLeft style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Ajouter l'exercice suivant">
+                                                <IconButton
+                                                    disabled={!canAdd}
+                                                    onClick={handleCreateNextExercice}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <BsChevronRight style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Vérrouiller un exercice">
+                                                <IconButton
+                                                    onClick={handleVerrouillerExercice}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <HiLockClosed style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Déverrouiller un exercice">
+                                                <IconButton
+                                                    onClick={handleDeverrouillerExercice}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <BsFillUnlockFill style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Générer A-nouveaux">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={selectedExerciceRow.length === 0}
+                                                        onClick={genererANouveau}
+                                                        variant="contained"
+                                                        style={{
+                                                            width: "35px", height: '35px',
+                                                            borderRadius: "2px", borderColor: "transparent",
+                                                            backgroundColor: "#4CAF50",
+                                                            textTransform: 'none', outline: 'none'
+                                                        }}
+                                                    >
+                                                        <IoMdAddCircle style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+
+                                            <Tooltip title="Annuler A-nouveaux">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={selectedExerciceRow.length === 0}
+                                                        variant="contained"
+                                                        style={{
+                                                            width: "35px", height: '35px',
+                                                            borderRadius: "2px", borderColor: "transparent",
+                                                            backgroundColor: "#F44336",
+                                                            textTransform: 'none', outline: 'none'
+                                                        }}
+                                                    >
+                                                        <MdCancel style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+
+                                            <Tooltip title="Supprimer un exercice">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={!canDelete || selectedExerciceRow.length === 0}
+                                                        onClick={handleDeleteExercice}
+                                                        variant="contained"
+                                                        style={{
+                                                            width: "35px", height: '35px',
+                                                            borderRadius: "2px", borderColor: "transparent",
+                                                            backgroundColor: initial.button_delete_color,
+                                                            textTransform: 'none', outline: 'none'
+                                                        }}
+                                                    >
+                                                        <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+                                        </Stack>
+
+                                    </Stack>
+                                </Stack>
+
+                                <Stack width={"100%"} height={'100%'} minHeight={'600px'}>
+                                    <DataGrid
+                                        disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                                        disableColumnSelector={DataGridStyle.disableColumnSelector}
+                                        disableDensitySelector={DataGridStyle.disableDensitySelector}
+                                        disableRowSelectionOnClick
+                                        disableSelectionOnClick={true}
+                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                                        slots={{ toolbar: QuickFilter }}
+                                        sx={DataGridStyle.sx}
+                                        rowHeight={DataGridStyle.rowHeight}
+                                        columnHeaderHeight={DataGridStyle.columnHeaderHeight}
+                                        editMode='row'
+                                        columns={ExerciceColumnHeader}
+                                        rows={listeExercice}
+                                        onRowSelectionModelChange={ids => {
+                                            const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
+                                            saveSelectedExercice(single);
+                                        }}
+                                        initialState={{
+                                            pagination: {
+                                                paginationModel: { page: 0, pageSize: 100 },
+                                            },
+                                        }}
+                                        experimentalFeatures={{ newEditingApi: true }}
+                                        pageSizeOptions={[50, 100]}
+                                        pagination={DataGridStyle.pagination}
+                                        checkboxSelection={DataGridStyle.checkboxSelection}
+                                        columnVisibilityModel={{
+                                            id: false,
+                                        }}
+                                        rowSelectionModel={selectedExerciceRow}
+                                    />
+                                </Stack>
+                            </Stack>
                         </Stack>
                     </Stack>
                 </TabPanel>
             </TabContext>
-
-
         </Box>
     )
 }
