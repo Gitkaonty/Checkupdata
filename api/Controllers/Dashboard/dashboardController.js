@@ -406,6 +406,8 @@ exports.getAllInfo = async (req, res) => {
 
         const moisN = getMonthsBetween(exerciceNData[0]?.date_debut, exerciceNData[0]?.date_fin);
 
+        const moisNMapped = moisN.map(val => val.label + val.year);
+
         const mappedDataN = await getJournalData(id_compte, id_dossier, id_exercice);
         let mappedDataAnalytiqueN = [];
         if (avecAnalytique) {
@@ -429,73 +431,63 @@ exports.getAllInfo = async (req, res) => {
 
         // === Exercice N-1 ===
         const { id_exerciceN1 } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
         let chiffreAffaireN1 = [],
             margeBruteN1 = [],
             margeBruteTotalN1 = [],
             tresorerieBanqueN1 = [],
             tresorerieCaisseN1 = [],
             moisN1 = [],
+            moisN1Mapped = [],
 
             resultatN1 = 0,
-            resultatN2 = 0,
-            resultatN3 = 0,
             variationResultatN = 0,
             variationResultatN1 = 0,
-            variationResultatN2 = 0,
             evolutionResultatN = '',
-            evolutionResultatN1 = '',
 
             resultatChiffreAffaireN1 = 0,
-            resultatChiffreAffaireN2 = 0,
-            resultatChiffreAffaireN3 = 0,
             variationChiffreAffaireN = 0,
             variationChiffreAffaireN1 = 0,
-            variationChiffreAffaireN2 = 0,
             evolutionChiffreAffaireN = '',
-            evolutionChiffreAffaireN1 = '',
 
             resultatDepenseAchatN1 = 0,
-            resultatDepenseAchatN2 = 0,
-            resultatDepenseAchatN3 = 0,
             variationDepenseAchatN = 0,
             variationDepenseAchatN1 = 0,
-            variationDepenseAchatN2 = 0,
             evolutionDepenseAchatN = '',
-            evolutionDepenseAchatN1 = '',
 
             resultatDepenseSalarialeN1 = 0,
-            resultatDepenseSalarialeN2 = 0,
-            resultatDepenseSalarialeN3 = 0,
             variationDepenseSalarialeN = 0,
             variationDepenseSalarialeN1 = 0,
-            variationDepenseSalarialeN2 = 0,
             evolutionDepenseSalarialeN = '',
-            evolutionDepenseSalarialeN1 = '',
 
             resultatTresorerieBanqueN1 = 0,
-            resultatTresorerieBanqueN2 = 0,
-            resultatTresorerieBanqueN3 = 0,
             variationTresorerieBanqueN = 0,
             variationTresorerieBanqueN1 = 0,
-            variationTresorerieBanqueN2 = 0,
             evolutionTresorerieBanqueN = '',
-            evolutionTresorerieBanqueN1 = '',
 
             resultatTresorerieCaisseN1 = 0,
-            resultatTresorerieCaisseN2 = 0,
-            resultatTresorerieCaisseN3 = 0,
             variationTresorerieCaisseN = 0,
             variationTresorerieCaisseN1 = 0,
-            variationTresorerieCaisseN2 = 0,
-            evolutionTresorerieCaisseN = '',
-            evolutionTresorerieCaisseN1 = ''
-
-        let id_exerciceN2 = null;
-        let id_exerciceN3 = null;
+            evolutionTresorerieCaisseN = ''
 
         if (id_exerciceN1) {
             const exerciceN1Data = await getExerciceById(id_exerciceN1);
-            moisN1 = getMonthsBetween(exerciceN1Data[0]?.date_debut, exerciceN1Data[0]?.date_fin);
+            const startYearN1 = new Date(exerciceN1Data[0]?.date_debut).getFullYear();
+
+            const moisN1Aligned = moisN.map(({ month, label }, idx) => {
+                const totalMonth = month;
+                return {
+                    label,
+                    month: totalMonth,
+                    year: startYearN1 + (month < moisN[0].month ? 1 : 0)
+                };
+            });
+
+            // console.log('moisN1Aligned : ', moisN1Aligned);
+
+            // moisN1 = getMonthsBetween(exerciceN1Data[0]?.date_debut, exerciceN1Data[0]?.date_fin);
+
+            // moisN1Mapped = moisN1.map(val => val.label + ' ' + val.year);
 
             const mappedDataN1 = await getJournalData(id_compte, id_dossier, id_exerciceN1);
             let mappedDataAnalytiqueN1 = [];
@@ -504,14 +496,12 @@ exports.getAllInfo = async (req, res) => {
             }
             const mappedDataConditionN1 = avecAnalytique ? mappedDataAnalytiqueN1 : mappedDataN1;
 
-            // const { id_exerciceN1: id_exerciceN2Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN1);
-            // id_exerciceN2 = id_exerciceN2Temp || null;
+            chiffreAffaireN1 = calculateChiffreAffaire(mappedDataConditionN1, moisN1Aligned);
 
-            chiffreAffaireN1 = calculateChiffreAffaire(mappedDataConditionN1, moisN1);
-            margeBruteN1 = calculateMargeBrute(mappedDataConditionN1, moisN1);
+            margeBruteN1 = calculateMargeBrute(mappedDataConditionN1, moisN1Aligned);
             margeBruteTotalN1 = chiffreAffaireN1.map((val, i) => round2(val + margeBruteN1[i]));
-            tresorerieBanqueN1 = calculateTresorerieBanque(mappedDataN1, moisN1);
-            tresorerieCaisseN1 = calculateTresorerieCaisse(mappedDataN1, moisN1);
+            tresorerieBanqueN1 = calculateTresorerieBanque(mappedDataN1, moisN1Aligned);
+            tresorerieCaisseN1 = calculateTresorerieCaisse(mappedDataN1, moisN1Aligned);
 
             resultatN1 = calculateResultat(mappedDataConditionN1);
 
@@ -521,81 +511,32 @@ exports.getAllInfo = async (req, res) => {
             resultatTresorerieBanqueN1 = calculateResultatTresoreriesBanques(mappedDataN1);
             resultatTresorerieCaisseN1 = calculateResultatTresoreriesCaisses(mappedDataN1);
         }
-
-        // if (id_exerciceN2) {
-
-        //     const { id_exerciceN1: id_exerciceN3Temp } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exerciceN2);
-        //     id_exerciceN3 = id_exerciceN3Temp || null;
-
-        //     const mappedDataN2 = await getJournalData(id_compte, id_dossier, id_exerciceN2);
-
-        //     resultatN2 = calculateResultat(mappedDataN2);
-        //     resultatChiffreAffaireN2 = calculateResultatChiffreAffaire(mappedDataN2);
-        //     resultatDepenseAchatN2 = calculateResultatDepensesAchats(mappedDataN2);
-        //     resultatDepenseSalarialeN2 = calculateResultatDepensesSalariales(mappedDataN2);
-        //     resultatTresorerieBanqueN2 = calculateResultatTresoreriesBanques(mappedDataN2);
-        //     resultatTresorerieCaisseN2 = calculateResultatTresoreriesCaisses(mappedDataN2);
-        // }
-
-        // if (id_exerciceN3) {
-
-        //     const mappedDataN3 = await getJournalData(id_compte, id_dossier, id_exerciceN3);
-
-        //     resultatN3 = calculateResultat(mappedDataN3);
-        //     resultatChiffreAffaireN3 = calculateResultatChiffreAffaire(mappedDataN3);
-        //     resultatDepenseAchatN3 = calculateResultatDepensesAchats(mappedDataN3);
-        //     resultatDepenseSalarialeN3 = calculateResultatDepensesSalariales(mappedDataN3);
-        //     resultatTresorerieBanqueN3 = calculateResultatTresoreriesBanques(mappedDataN3);
-        //     resultatTresorerieCaisseN3 = calculateResultatTresoreriesCaisses(mappedDataN3);
-        // }
-
         // Resultat
         variationResultatN = safeVariation(resultatN, resultatN1);
-        // variationResultatN1 = safeVariation(resultatN1, resultatN2);
-        // variationResultatN2 = safeVariation(resultatN2, resultatN3);
-
         evolutionResultatN = getEvolution(variationResultatN, variationResultatN1);
-        // evolutionResultatN1 = getEvolution(variationResultatN1, variationResultatN2);
 
         // Chiffre d'affaires
         variationChiffreAffaireN = safeVariation(resultatChiffreAffaireN, resultatChiffreAffaireN1);
-        // variationChiffreAffaireN1 = safeVariation(resultatChiffreAffaireN1, resultatChiffreAffaireN2);
-        // variationChiffreAffaireN2 = safeVariation(resultatChiffreAffaireN2, resultatChiffreAffaireN3);
-
         evolutionChiffreAffaireN = getEvolution(variationChiffreAffaireN, variationChiffreAffaireN1);
-        // evolutionChiffreAffaireN1 = getEvolution(variationChiffreAffaireN1, variationChiffreAffaireN2);
 
         // Depenses achat
         variationDepenseAchatN = safeVariation(resultatDepenseAchatN, resultatDepenseAchatN1);
-        // variationDepenseAchatN1 = safeVariation(resultatDepenseAchatN1, resultatDepenseAchatN2)
-        // variationDepenseAchatN2 = safeVariation(resultatDepenseAchatN2, resultatDepenseAchatN3);
-
         evolutionDepenseAchatN = getEvolution(variationDepenseAchatN, variationDepenseAchatN1);
-        // evolutionDepenseAchatN1 = getEvolution(variationDepenseAchatN1, variationDepenseAchatN2);
 
         // Depenses salariales
         variationDepenseSalarialeN = safeVariation(resultatDepenseSalarialeN, resultatDepenseSalarialeN1);
-        // variationDepenseSalarialeN1 = safeVariation(resultatDepenseSalarialeN1, resultatDepenseSalarialeN2);
-        // variationDepenseSalarialeN2 = safeVariation(resultatDepenseSalarialeN2, resultatDepenseSalarialeN3);
-
         evolutionDepenseSalarialeN = getEvolution(variationDepenseSalarialeN, variationDepenseSalarialeN1);
-        // evolutionDepenseSalarialeN1 = getEvolution(variationDepenseSalarialeN1, variationDepenseSalarialeN2);
 
         // Tresorerie banque
         variationTresorerieBanqueN = safeVariation(resultatTresorerieBanqueN, resultatTresorerieBanqueN1);
-        // variationTresorerieBanqueN1 = safeVariation(resultatTresorerieBanqueN1, resultatTresorerieBanqueN2);
-        // variationTresorerieBanqueN2 = safeVariation(resultatTresorerieBanqueN2, resultatTresorerieBanqueN3);
-
         evolutionTresorerieBanqueN = getEvolution(variationTresorerieBanqueN, variationTresorerieBanqueN1);
-        // evolutionTresorerieBanqueN1 = getEvolution(variationTresorerieBanqueN1, variationTresorerieBanqueN2);
 
         // Tresorerie caisse
         variationTresorerieCaisseN = safeVariation(resultatTresorerieCaisseN, resultatTresorerieCaisseN1);
-        // variationTresorerieCaisseN1 = safeVariation(resultatTresorerieCaisseN1, resultatTresorerieCaisseN2);
-        // variationTresorerieCaisseN2 = safeVariation(resultatTresorerieCaisseN2, resultatTresorerieCaisseN3);
-
         evolutionTresorerieCaisseN = getEvolution(variationTresorerieCaisseN, variationTresorerieCaisseN1);
-        // evolutionTresorerieCaisseN1 = getEvolution(variationTresorerieCaisseN1, variationTresorerieCaisseN2);
+
+        // console.log('moisNMapped : ', moisNMapped);
+        // console.log('moisN1Mapped : ', moisN1Mapped);
 
         return res.json({
 
@@ -637,6 +578,8 @@ exports.getAllInfo = async (req, res) => {
             resultatN1,
             variationResultatN,
             evolutionResultatN,
+
+            moisNMapped,
 
             state: true,
         });

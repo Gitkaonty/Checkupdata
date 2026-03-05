@@ -621,7 +621,6 @@ export default function SaisieComponent() {
 
         if (idFile) {
             GetInfosIdDossier(idFile);
-            GetListeExercice(idFile);
         }
 
         if (selectedExerciceId && idFile && compteId) {
@@ -650,6 +649,12 @@ export default function SaisieComponent() {
         refreshListAxeSection,
         isRefreshedPlanComptable
     ]);
+
+    useEffect(() => {
+        if (fileId && compteId) {
+            GetListeExercice(fileId);
+        }
+    }, [fileId, compteId])
 
     useEffect(() => {
         const el = gridRef.current?.querySelector('.MuiDataGrid-virtualScroller');
