@@ -79,6 +79,7 @@ export default function ParamExerciceComponent() {
 
     const [openPopupCodejournal, setOpenPopupCodeJournal] = useState(false);
     const [openPopupGenerateRan, setOpenPopupGenerateRan] = useState(false);
+    const [longeurCompte, setLongeurCompte] = useState(0);
 
     //récupération des informations de connexion
     const { auth } = useAuth();
@@ -163,6 +164,7 @@ export default function ParamExerciceComponent() {
 
             if (resData.state) {
                 setFileInfos(resData.fileInfos[0]);
+                setLongeurCompte(resData?.fileInfos[0]?.longcomptestd);
                 setNoFile(false);
             } else {
                 setFileInfos([]);
@@ -537,6 +539,7 @@ export default function ParamExerciceComponent() {
                         id_compte={Number(compteId)}
                         id_dossier={Number(fileId)}
                         selectedExerciceRow={selectedExerciceRow}
+                        longeurCompte={longeurCompte}
                     />
                 )
             }
