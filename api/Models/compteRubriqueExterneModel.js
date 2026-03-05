@@ -86,7 +86,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING(5),
             allowNull: true,
         },
-    },
+    }, { timestamps: true }
     )
     return compterubriqueexternes;
 }

@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             defaultValue: true
         },
-    },
+    }, { timestamps: true }
     )
     return compterubriqueexternesmatrices;
 }
