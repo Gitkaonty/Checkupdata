@@ -169,53 +169,103 @@ const Immobilisations = () => {
     }
   };
 
+  const getLienEcriture = async () => {
+    setJournalRows([]);
+    // Preselect previously linked entry if any
+    const preSel = detailsForm?.lien_ecriture_id ? [detailsForm.lien_ecriture_id] : [];
+    setJournalSelection(preSel);
+
+    const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+    const selectedPcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? selectedPcIds[0] : null;
+    // Backend attend id_numcpt = id de dossierplancomptables (FK), pas le numéro de compte
+    const idNumcpt = Number(detailsForm?.pc_id ?? selectedPcId ?? 0);
+    // console.log('idNumcpt : ', idNumcpt);
+    if (!idNumcpt) {
+      // toast("Aucun PC sélectionné (id_numcpt manquant)", { icon: 'ℹ️' });
+      setJournalLoading(false);
+      // setLienDialogOpen(true);
+      return;
+    }
+    // setPreselectedJournal(null);
+
+    const { data } = await axios.get('/paramTva/journals/byCompte', {
+      params: { id_numcpt: idNumcpt, id_dossier: fid, id_exercice: exoId }, timeout: 60000,
+    });
+
+    let list = Array.isArray(data?.list) ? data.list : [];
+
+    if (detailsForm?.lien_ecriture_id) {
+      const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
+      if (journalAlready) setPreselectedJournal(journalAlready);
+    }
+
+    // Fallback: si vide, charger via selectionLigne et filtrer par compte
+    if (!list.length) {
+      try {
+        const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
+        const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
+        list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
+      } catch { }
+    }
+
+    const filteredList = list.filter(journal => {
+      const libre = !journal.id_immob;
+      const dejaSelectionne = Number(journal.id) === Number(detailsForm?.lien_ecriture_id);
+      const preselected = Number(preselectedJournal?.id) === Number(journal.id);
+      return libre || dejaSelectionne || preselected;
+    });
+
+    setJournalRows(filteredList);
+  }
+
   // Popup secondaire: sélection du lien écriture
   const handleOpenLienEcriture = async () => {
     try {
       setJournalLoading(true);
-      setJournalRows([]);
-      // Preselect previously linked entry if any
-      const preSel = detailsForm?.lien_ecriture_id ? [detailsForm.lien_ecriture_id] : [];
-      setJournalSelection(preSel);
+      // setJournalRows([]);
+      // // Preselect previously linked entry if any
+      // const preSel = detailsForm?.lien_ecriture_id ? [detailsForm.lien_ecriture_id] : [];
+      // setJournalSelection(preSel);
 
-      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-      const selectedPcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? selectedPcIds[0] : null;
-      // Backend attend id_numcpt = id de dossierplancomptables (FK), pas le numéro de compte
-      const idNumcpt = Number(detailsForm?.pc_id ?? selectedPcId ?? 0);
-      if (!idNumcpt) {
-        toast("Aucun PC sélectionné (id_numcpt manquant)", { icon: 'ℹ️' });
-        setJournalLoading(false);
-        setLienDialogOpen(true);
-        return;
-      }
+      // const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+      // const selectedPcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? selectedPcIds[0] : null;
+      // // Backend attend id_numcpt = id de dossierplancomptables (FK), pas le numéro de compte
+      // const idNumcpt = Number(detailsForm?.pc_id ?? selectedPcId ?? 0);
+      // if (!idNumcpt) {
+      //   toast("Aucun PC sélectionné (id_numcpt manquant)", { icon: 'ℹ️' });
+      //   setJournalLoading(false);
+      //   setLienDialogOpen(true);
+      //   return;
+      // }
 
-      const { data } = await axios.get('/paramTva/journals/byCompte', {
-        params: { id_numcpt: idNumcpt, id_dossier: fid, id_exercice: exoId }, timeout: 60000,
-      });
+      // const { data } = await axios.get('/paramTva/journals/byCompte', {
+      //   params: { id_numcpt: idNumcpt, id_dossier: fid, id_exercice: exoId }, timeout: 60000,
+      // });
 
-      let list = Array.isArray(data?.list) ? data.list : [];
+      // let list = Array.isArray(data?.list) ? data.list : [];
 
-      if (detailsForm?.lien_ecriture_id) {
-        const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
-        if (journalAlready) setPreselectedJournal(journalAlready);
-      }
+      // if (detailsForm?.lien_ecriture_id) {
+      //   const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
+      //   if (journalAlready) setPreselectedJournal(journalAlready);
+      // }
 
-      // Fallback: si vide, charger via selectionLigne et filtrer par compte
-      if (!list.length) {
-        try {
-          const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
-          const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
-          list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
-        } catch { }
-      }
+      // // Fallback: si vide, charger via selectionLigne et filtrer par compte
+      // if (!list.length) {
+      //   try {
+      //     const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
+      //     const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
+      //     list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
+      //   } catch { }
+      // }
 
-      const filteredList = list.filter(journal => {
-        const libre = !journal.id_immob;
-        const dejaSelectionne = journal.id === detailsForm?.lien_ecriture_id;
-        const preselected = preselectedJournal?.id === journal.id;
-        return libre || dejaSelectionne || preselected;
-      });
-      setJournalRows(filteredList);
+      // const filteredList = list.filter(journal => {
+      //   const libre = !journal.id_immob;
+      //   const dejaSelectionne = Number(journal.id) === Number(detailsForm?.lien_ecriture_id);
+      //   const preselected = Number(preselectedJournal?.id) === Number(journal.id);
+      //   return libre || dejaSelectionne || preselected;
+      // });
+
+      // setJournalRows(filteredList);
 
       // keep selection to show which one was already selected
       if (detailsForm?.lien_ecriture_id) {
@@ -627,8 +677,10 @@ const Immobilisations = () => {
   };
 
   useEffect(() => { fetchDetails(); }, [fetchDetails, isRefreshed]);
+  useEffect(() => { getLienEcriture(); }, [detailsForm, isRefreshed]);
 
   const handleDetailsAdd = () => {
+    setPreselectedJournal(null);
     if (!selectedPcIds || selectedPcIds.length !== 1) { toast('Sélectionnez un seul compte immo dans le tableau du haut', { icon: 'ℹ️' }); return; }
     const pcId = selectedPcIds[0];
     const pcRow = rows.find(r => r.id === pcId);
@@ -677,6 +729,7 @@ const Immobilisations = () => {
   };
 
   const handleDetailsEdit = () => {
+    setPreselectedJournal(null);
     const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
     if (!idSel) { toast('Sélectionnez une ligne détail', { icon: 'ℹ️' }); return; }
     const row = detailsRows.find(r => r.id === idSel);

@@ -95,7 +95,7 @@ export default function ParamExerciceComponent() {
             headerName: 'Date début',
             type: 'Date',
             sortable: true,
-            width: 150,
+            flex: 1,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',
@@ -108,7 +108,7 @@ export default function ParamExerciceComponent() {
             headerName: 'Date fin',
             type: 'Date',
             sortable: true,
-            width: 150,
+            flex: 1,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',
@@ -121,7 +121,7 @@ export default function ParamExerciceComponent() {
             headerName: 'Position',
             type: 'string',
             sortable: true,
-            width: 100,
+            flex: 1,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',
@@ -131,10 +131,40 @@ export default function ParamExerciceComponent() {
             headerName: 'Vérrouillé',
             type: 'boolean',
             sortable: true,
-            width: 100,
+            flex: 1,
             headerAlign: 'center',
             align: 'center',
             headerClassName: 'HeaderbackColor',
+        },
+    ];
+
+    //Entete du tableau période
+    const PeriodColumnHeader = [
+        {
+            field: 'date_debut',
+            headerName: 'Date début',
+            type: 'Date',
+            sortable: true,
+            flex: 1,
+            headerAlign: 'center',
+            align: 'center',
+            headerClassName: 'HeaderbackColor',
+            valueFormatter: (params) => {
+                return format(params.value, "dd/MM/yyyy");
+            }
+        },
+        {
+            field: 'date_fin',
+            headerName: 'Date fin',
+            type: 'Date',
+            sortable: true,
+            flex: 1,
+            headerAlign: 'center',
+            align: 'center',
+            headerClassName: 'HeaderbackColor',
+            valueFormatter: (params) => {
+                return format(params.value, "dd/MM/yyyy");
+            }
         },
     ];
 
@@ -693,7 +723,8 @@ export default function ParamExerciceComponent() {
                             alignItems="flex-start"
                         >
                             <Stack
-                                width={'50%'}
+                                flex={1}
+                                minWidth={0}
                             >
                                 <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
                                     direction={"row"} style={{ marginLeft: "0px", marginTop: "20px", justifyContent: "right" }}>
@@ -822,43 +853,67 @@ export default function ParamExerciceComponent() {
                                     </Stack>
                                 </Stack>
 
-                                <Stack width={"100%"} height={'100%'} minHeight={'600px'}>
+                                <Stack
+                                    sx={{ height: 600 }}
+                                    style={{
+                                        marginTop: '0px'
+                                    }}
+                                >
                                     <DataGrid
                                         disableMultipleSelection={DataGridStyle.disableMultipleSelection}
                                         disableColumnSelector={DataGridStyle.disableColumnSelector}
                                         disableDensitySelector={DataGridStyle.disableDensitySelector}
+
+                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                         disableRowSelectionOnClick
                                         disableSelectionOnClick={true}
-                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                         slots={{ toolbar: QuickFilter }}
-                                        sx={DataGridStyle.sx}
+                                        sx={{
+                                            ...DataGridStyle.sx,
+                                            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                                outline: 'none',
+                                                border: 'none',
+                                            },
+                                            '& .MuiInputBase-root': {
+                                                boxShadow: 'none',
+                                                border: 'none',
+                                            },
+                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                border: 'none',
+                                            },
+                                            '& .MuiDataGrid-columnHeaders': {
+                                                backgroundColor: initial.theme,
+                                                color: 'white',
+                                                fontWeight: 'bold',
+                                            },
+                                        }}
                                         rowHeight={DataGridStyle.rowHeight}
                                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                         editMode='row'
-                                        columns={ExerciceColumnHeader}
                                         rows={listeExercice}
-                                        onRowSelectionModelChange={ids => {
-                                            const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
-                                            saveSelectedExercice(single);
-                                        }}
+                                        columns={ExerciceColumnHeader}
                                         initialState={{
                                             pagination: {
                                                 paginationModel: { page: 0, pageSize: 100 },
                                             },
                                         }}
-                                        experimentalFeatures={{ newEditingApi: true }}
                                         pageSizeOptions={[50, 100]}
                                         pagination={DataGridStyle.pagination}
                                         checkboxSelection={DataGridStyle.checkboxSelection}
                                         columnVisibilityModel={{
                                             id: false,
                                         }}
+                                        onRowSelectionModelChange={ids => {
+                                            const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
+                                            saveSelectedExercice(single);
+                                        }}
                                         rowSelectionModel={selectedExerciceRow}
                                     />
                                 </Stack>
                             </Stack>
                             <Stack
-                                width={'50%'}
+                                flex={1}
+                                minWidth={0}
                             >
                                 <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
                                     direction={"row"} style={{ marginLeft: "0px", marginTop: "20px", justifyContent: "right" }}>
@@ -911,38 +966,61 @@ export default function ParamExerciceComponent() {
                                     </Stack>
                                 </Stack>
 
-                                <Stack width={"100%"} height={'100%'} minHeight={'600px'}>
+                                <Stack
+                                    sx={{ height: 600 }}
+                                    style={{
+                                        marginTop: '0px'
+                                    }}
+                                >
                                     <DataGrid
                                         disableMultipleSelection={DataGridStyle.disableMultipleSelection}
                                         disableColumnSelector={DataGridStyle.disableColumnSelector}
                                         disableDensitySelector={DataGridStyle.disableDensitySelector}
+
+                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                         disableRowSelectionOnClick
                                         disableSelectionOnClick={true}
-                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                         slots={{ toolbar: QuickFilter }}
-                                        sx={DataGridStyle.sx}
+                                        sx={{
+                                            ...DataGridStyle.sx,
+                                            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                                outline: 'none',
+                                                border: 'none',
+                                            },
+                                            '& .MuiInputBase-root': {
+                                                boxShadow: 'none',
+                                                border: 'none',
+                                            },
+                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                border: 'none',
+                                            },
+                                            '& .MuiDataGrid-columnHeaders': {
+                                                backgroundColor: initial.theme,
+                                                color: 'white',
+                                                fontWeight: 'bold',
+                                            },
+                                        }}
                                         rowHeight={DataGridStyle.rowHeight}
                                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                         editMode='row'
-                                        columns={ExerciceColumnHeader}
-                                        rows={listeExercice}
-                                        onRowSelectionModelChange={ids => {
-                                            const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
-                                            saveSelectedExercice(single);
-                                        }}
+                                        rows={[]}
+                                        columns={PeriodColumnHeader}
                                         initialState={{
                                             pagination: {
                                                 paginationModel: { page: 0, pageSize: 100 },
                                             },
                                         }}
-                                        experimentalFeatures={{ newEditingApi: true }}
                                         pageSizeOptions={[50, 100]}
                                         pagination={DataGridStyle.pagination}
                                         checkboxSelection={DataGridStyle.checkboxSelection}
                                         columnVisibilityModel={{
                                             id: false,
                                         }}
-                                        rowSelectionModel={selectedExerciceRow}
+                                    // onRowSelectionModelChange={ids => {
+                                    //     const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
+                                    //     saveSelectedExercice(single);
+                                    // }}
+                                    // rowSelectionModel={selectedExerciceRow}
                                     />
                                 </Stack>
                             </Stack>
