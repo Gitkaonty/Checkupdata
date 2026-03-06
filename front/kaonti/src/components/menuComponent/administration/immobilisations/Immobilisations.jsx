@@ -193,6 +193,7 @@ const Immobilisations = () => {
     });
 
     let list = Array.isArray(data?.list) ? data.list : [];
+    console.log('list : ', list);
 
     if (detailsForm?.lien_ecriture_id) {
       const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);

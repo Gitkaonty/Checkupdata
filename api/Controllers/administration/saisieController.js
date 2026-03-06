@@ -388,7 +388,7 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         //     ORDER BY j.dateecriture ASC, j.id ASC
         // `;
 
-        console.log(fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin );
+        console.log(fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin);
 
         const sql = `
             SELECT 
@@ -3709,9 +3709,97 @@ const ensureCompte = async (compteId, fileId, compteNum, libelle, longeurCompte)
     return row;
 };
 
+const queryCopyJournal = `
+        INSERT INTO journals (
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_ecriture,
+        datesaisie,
+        dateecriture,
+        id_journal,
+        id_numcpt,
+        id_numcptcentralise,
+        piece,
+        piecedate,
+        libelle,
+        debit,
+        credit,
+        devise,
+        lettrage,
+        lettragedate,
+        saisiepar,
+        modifierpar,
+        fichier,
+        id_devise,
+        taux,
+        montant_devise,
+        id_immob,
+        num_facture,
+        decltvamois,
+        decltvaannee,
+        decltva,
+        declisimois,
+        declisiannee,
+        declisi,
+        rapprocher,
+        date_rapprochement,
+        comptegen,
+        compteaux,
+        libelleaux,
+        libellecompte,
+        vraiedate
+    )
+    SELECT
+        id_compte,
+        id_dossier,
+        :id_exercice,
+        :id_ecriture,
+        datesaisie,
+        :dateecriture,
+        :id_journal,
+        id_numcpt,
+        id_numcptcentralise,
+        piece,
+        piecedate,
+        libelle,
+        debit,
+        credit,
+        devise,
+        lettrage,
+        lettragedate,
+        saisiepar,
+        modifierpar,
+        fichier,
+        id_devise,
+        taux,
+        montant_devise,
+        id_immob,
+        num_facture,
+        decltvamois,
+        decltvaannee,
+        decltva,
+        declisimois,
+        declisiannee,
+        declisi,
+        rapprocher,
+        date_rapprochement,
+        comptegen,
+        compteaux,
+        libelleaux,
+        libellecompte,
+        vraiedate
+    FROM public.journals
+    WHERE
+        id_dossier = :id_dossier
+        AND id_exercice = :id_exerciceN1
+        AND lettrage IS NULL
+        AND compteaux !~ '^[67]'
+`;
+
 exports.genererRan = async (req, res) => {
     try {
-        const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte } = req.body;
+        const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte, dateDebut, idRan } = req.body;
 
         const {
             id_exerciceN1,
@@ -3742,34 +3830,48 @@ exports.genererRan = async (req, res) => {
                 transaction: t
             });
             if (isDetailled) {
+
+                // const resultatQuery = `
+                //     SELECT
+                //         ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS RESULTAT
+                //     FROM
+                //         JOURNALS
+                //     WHERE
+                //         COMPTEAUX ~ '^[6-7]'
+                //         AND ID_ECRITURE IN (
+                //             SELECT DISTINCT
+                //                 J1.ID_ECRITURE
+                //             FROM
+                //                 JOURNALS J1
+                //             WHERE
+                //                 J1.ID_COMPTE = :id_compte
+                //                 AND J1.ID_DOSSIER = :id_dossier
+                //                 AND J1.ID_EXERCICE = :id_exerciceN1
+                //                 AND J1.COMPTEAUX ~ '^[1-5]'
+                //                 AND NOT EXISTS (
+                //                     SELECT
+                //                         1
+                //                     FROM
+                //                         JOURNALS J2
+                //                     WHERE
+                //                         J2.ID_ECRITURE = J1.ID_ECRITURE
+                //                         AND J2.LETTRAGE IS NOT NULL
+                //                 )
+                //         )
+                // `;
+
                 const resultatQuery = `
                     SELECT
                         ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS RESULTAT
                     FROM
                         JOURNALS
                     WHERE
-                        COMPTEAUX ~ '^[6-7]'
-                        AND ID_ECRITURE IN (
-                            SELECT DISTINCT
-                                J1.ID_ECRITURE
-                            FROM
-                                JOURNALS J1
-                            WHERE
-                                J1.ID_COMPTE = :id_compte
-                                AND J1.ID_DOSSIER = :id_dossier
-                                AND J1.ID_EXERCICE = :id_exerciceN1
-                                AND J1.COMPTEAUX ~ '^[1-5]'
-                                AND NOT EXISTS (
-                                    SELECT
-                                        1
-                                    FROM
-                                        JOURNALS J2
-                                    WHERE
-                                        J2.ID_ECRITURE = J1.ID_ECRITURE
-                                        AND J2.LETTRAGE IS NOT NULL
-                                )
-                        )
+                        COMPTEAUX ~ '^[67]'
+                        AND id_dossier = :id_dossier
+                        AND id_compte = :id_compte
+                        AND id_exercice = :id_exerciceN1
                 `;
+
                 const resultatData = await db.sequelize.query(resultatQuery, {
                     replacements: { id_dossier, id_exerciceN1, id_compte },
                     type: db.Sequelize.QueryTypes.SELECT,
@@ -3777,17 +3879,126 @@ exports.genererRan = async (req, res) => {
                 })
 
                 const resultat = Number(resultatData[0].resultat);
-                console.log('Résultat detaillé : ', resultat);
                 if (resultat !== 0) {
+                    const id_ecriture = getDateSaisieNow(id_compte);
+                    const dateecriture = new Date(dateDebut);
+                    const montant = Math.abs(resultat);
+
+                    let compteInfo;
+                    let libelle;
+                    let debit, credit;
+
                     if (resultat > 0) {
                         const [compte_120] = await Promise.all([
                             ensureCompte(id_compte, id_dossier, '120', 'Compte A-nouveau', longeurCompte),
                         ]);
+                        compteInfo = compte_120;
+                        libelle = 'Résultat bénéficiaire';
+                        debit = 0;
+                        credit = montant;
                     } else {
                         const [compte_129] = await Promise.all([
-                            ensureCompte(id_compte, id_dossier, '129', 'Compte A-nouvau', longeurCompte),
+                            ensureCompte(id_compte, id_dossier, '129', 'Compte A-nouveau', longeurCompte),
                         ]);
+                        compteInfo = compte_129;
+                        libelle = 'Résultat bénéficiaire';
+                        debit = montant;
+                        credit = 0;
                     }
+
+                    const id_numcpt = compteInfo?.id;
+                    const compte = compteInfo?.compte;
+                    const libelleCompte = compteInfo?.libelle;
+
+                    const rows = await db.sequelize.query(queryCopyJournal + " RETURNING *", {
+                        replacements: { id_dossier, id_exerciceN1, id_compte, dateecriture, id_exercice, id_ecriture, id_journal: idRan },
+                        transaction: t
+                    });
+
+                    const insertedRows = rows[0];
+
+                    if (!insertedRows.length) {
+                        throw new Error("Aucune écriture à reporter pour le RAN");
+                    }
+
+                    const {
+                        devise,
+                        id_devise,
+                        datesaisie,
+                        saisiepar,
+                        modifierpar
+                    } = insertedRows[0];
+
+                    await db.sequelize.query(`
+                        INSERT INTO journals (
+                            id_compte, 
+                            id_dossier,
+                            id_exercice, 
+                            id_ecriture,
+                            id_numcpt, 
+                            id_numcptcentralise,
+                            id_journal,
+                            dateecriture,
+                            datesaisie,
+                            libelle,
+                            debit, 
+                            credit,
+                            devise, 
+                            id_devise, 
+                            saisiepar, 
+                            modifierpar, 
+                            comptegen,
+                            compteaux, 
+                            libelleaux, 
+                            libellecompte, 
+                            vraiedate
+                        )
+                        VALUES (
+                            :id_compte,
+                            :id_dossier,
+                            :id_exercice,
+                            :id_ecriture,
+                            :id_numcpt,
+                            :id_numcpt,
+                            :idRan,
+                            :dateecriture,
+                            :datesaisie,
+                            :libelle,
+                            :debit,
+                            :credit,
+                            :devise,
+                            :id_devise,
+                            :saisiepar,
+                            :modifierpar,
+                            :compte,
+                            :compte,
+                            :libelleCompte,
+                            :libelleCompte,
+                            :dateecriture
+                        )
+                    `, {
+                        replacements: {
+                            id_compte,
+                            id_dossier,
+                            id_exercice,
+                            id_ecriture,
+                            id_numcpt,
+                            idRan,
+                            dateecriture,
+                            datesaisie,
+                            libelle,
+                            debit,
+                            credit,
+                            devise,
+                            id_devise,
+                            saisiepar,
+                            modifierpar,
+                            compte,
+                            libelleCompte
+                        },
+                        type: db.Sequelize.QueryTypes.INSERT,
+                        transaction: t
+                    });
                 }
             } else {
                 const resultatQuery2 = `
@@ -3809,7 +4020,6 @@ exports.genererRan = async (req, res) => {
                 })
 
                 const resultat2 = Number(resultatData2[0].resultat);
-                console.log('Résultat non detaillé : ', resultat2);
             }
         });
 

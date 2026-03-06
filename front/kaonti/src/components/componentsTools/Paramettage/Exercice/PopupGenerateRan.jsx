@@ -21,9 +21,12 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte }) => {
+const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte, listeExercice, idRan }) => {
     const id_exercice = selectedExerciceRow[0];
     const [isDetailled, setIsDetailled] = useState(false);
+
+    const exerciceData = listeExercice.find(val => Number(val.id) === Number(id_exercice));
+    const dateDebut = exerciceData?.date_debut;
 
     const handleSubmit = async () => {
         await axios.post('/administration/traitementSaisie/genererRan', {
@@ -31,7 +34,9 @@ const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExercice
             id_dossier: Number(id_dossier),
             id_exercice: Number(id_exercice),
             isDetailled,
-            longeurCompte: Number(longeurCompte)
+            longeurCompte: Number(longeurCompte),
+            dateDebut,
+            idRan
         }).then((response) => {
             console.log('response?.data : ', response?.data);
         })

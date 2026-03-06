@@ -213,6 +213,7 @@ async function listJournalsByCompte(req, res) {
       const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
       return {
         ...rest,
+        id_immob: rest.id_immob ? Number(rest.id_immob) : null,
         compte: dossierplancomptable?.compte || null,
         journal: codejournal?.code || null
       };
