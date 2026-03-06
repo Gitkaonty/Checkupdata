@@ -388,6 +388,8 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         //     ORDER BY j.dateecriture ASC, j.id ASC
         // `;
 
+        console.log(fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin );
+
         const sql = `
             SELECT 
                 j.*,
@@ -403,10 +405,12 @@ exports.listEcrituresForRapprochement = async (req, res) => {
             AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
         `
+
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
             type: db.Sequelize.QueryTypes.SELECT,
         });
+        // console.log('rows : ', rows);
         return res.json({ state: true, list: rows || [] });
     } catch (err) {
         console.error('[RAPPRO][ECRITURES] error:', err);
