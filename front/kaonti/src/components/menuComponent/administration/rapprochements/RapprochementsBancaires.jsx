@@ -331,6 +331,7 @@ function RapprochementsBancaires() {
       const params = { fileId, compteId, exerciceId: selectedExerciceId, pcId: pcSelected.id, compte: pcSelected.compte, endDate };
       const { data } = await axios.get('/administration/traitementSaisie/rapprochements/ecritures', { params, timeout: 60000 });
       const list = Array.isArray(data?.list) ? data.list : (data?.list ? [data.list] : []);
+      console.log('list : ', list);
       const rowsAll = list.map(it => ({
         id: it.id,
         dateecriture: it.dateecriture,
@@ -345,7 +346,10 @@ function RapprochementsBancaires() {
       }));
       // Filtre strict: afficher non rapprochées OU rapprochées dont la date_rapprochement == date_fin sélectionnée (normalisée)
       const dsel = endDate;
-      const rows = rowsAll.filter(r => !r.rapprocher || (r.rapprocher && r.date_rapprochement === dsel));
+      // console.log('dsel : ', dsel);
+      const rows = rowsAll.filter(r => !r.rapprocher || (r.rapprocher
+        // && r.date_rapprochement === dsel
+      ));
       // Append totals row for alignment (sum of all displayed rows)
       const totDebitAll = rows.reduce((s, r) => s + (Number(r.debit) || 0), 0);
       const totCreditAll = rows.reduce((s, r) => s + (Number(r.credit) || 0), 0);
@@ -353,10 +357,10 @@ function RapprochementsBancaires() {
       setEcrituresTotals({ debit: 0, credit: 0 });
       const totalRow = {
         id: 'TOTAL_ROW',
-        dateecriture: null,
+        dateecriture: 'Total',
         code_journal: '',
         compte_ecriture: '',
-        libelle: 'Total',
+        libelle: '',
         piece: '',
         debit: totDebitAll,
         credit: totCreditAll,
