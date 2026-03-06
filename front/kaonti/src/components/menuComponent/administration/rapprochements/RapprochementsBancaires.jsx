@@ -353,10 +353,10 @@ function RapprochementsBancaires() {
       setEcrituresTotals({ debit: 0, credit: 0 });
       const totalRow = {
         id: 'TOTAL_ROW',
-        dateecriture: null,
+        dateecriture: 'Total',
         code_journal: '',
         compte_ecriture: '',
-        libelle: 'Total',
+        libelle: '',
         piece: '',
         debit: totDebitAll,
         credit: totCreditAll,
