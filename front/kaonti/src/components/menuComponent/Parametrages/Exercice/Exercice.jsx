@@ -583,7 +583,7 @@ export default function ParamExerciceComponent() {
                     open={openDialogCreateFirstExercice}
                 >
                     <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title" style={{ fontWeight: 'bold', width: '600px', height: '50px', backgroundColor: 'transparent' }}>
-
+                        Création du premier exercice
                     </DialogTitle>
 
                     <IconButton
@@ -603,12 +603,7 @@ export default function ParamExerciceComponent() {
                     <DialogContent >
                         <Stack width={"95%"} height={"100%"} spacing={0} alignItems={'center'} alignContent={"center"}
                             direction={"column"} justifyContent={"center"} style={{ marginLeft: '10px' }}>
-                            <Typography sx={{ ml: 0, flex: 1 }} variant="h6" component="div" >
-                                Création du premier exercice
-                            </Typography>
-
-
-                            <Stack style={{ marginTop: 40, width: "450px" }} display={'flex'} direction={'row'} alignItems={'end'} alignContent={'center'} spacing={4}>
+                            <Stack style={{ marginTop: 40, width: "100%" }} direction={'row'} alignContent={'baseline'} justifyContent={'space-between'} alignItems={'baseline'} spacing={2}>
                                 <FormControl
                                     sx={{ width: "200px" }}
                                     error={firstExerciceForm.errors.date_debut && firstExerciceForm.touched.date_debut}
@@ -640,7 +635,7 @@ export default function ParamExerciceComponent() {
                                     </FormHelperText>
                                 </FormControl>
 
-                                <Typography sx={{ ml: 0, pb: 1, flex: 1, }} variant="h7" component="div" >
+                                <Typography variant="body1" >
                                     au
                                 </Typography>
 
@@ -696,7 +691,6 @@ export default function ParamExerciceComponent() {
                     </DialogActions>
                 </BootstrapDialog>
             </form>
-
 
             <TabContext value={"1"}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

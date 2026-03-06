@@ -834,7 +834,7 @@ export default function ImportJournal() {
                             if (compteNotInParamsGen.includes(compteGen) && !mapGen.has(compteGen)) {
                                 mapGen.set(compteGen, {
                                     CompteNum: compteGen,
-                                    CompteLib: item.EcritureLib,
+                                    CompteLib: item.CompteLib,
                                     CompAuxNum: compteAux
                                 });
                             }
