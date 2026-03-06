@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
 import useAuth from './useAuth';
+import { URL } from '../../config/axios';
 
 // Utiliser la même URL de base que axios
-const API_BASE_URL = 'http://localhost:5100';
+const API_BASE_URL = URL;
 
 /**
  * Hook personnalisé pour gérer les imports avec Server-Sent Events (SSE)

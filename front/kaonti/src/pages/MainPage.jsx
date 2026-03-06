@@ -538,7 +538,7 @@ export default function HomePage() {
             }}
           >
             <img
-              src="/Logo Kaonty_2.png"
+              src="/Logo_Kaonty_2.png"
               alt="Logo Kaonty"
               style={{
                 width: '40px',

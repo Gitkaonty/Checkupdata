@@ -7,6 +7,7 @@ const etats = db.etats;
 const compterubriques = db.compterubriques;
 const situations = db.situations;
 const dossiers = db.dossiers;
+const rubriques = db.rubriques;
 
 const getListeExercice = async (req, res) => {
   try {
