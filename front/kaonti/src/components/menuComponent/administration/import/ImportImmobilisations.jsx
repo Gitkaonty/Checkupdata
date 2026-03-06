@@ -185,7 +185,8 @@ export default function ImportImmobilisations() {
                 setSelectedExerciceId(exerciceNId[0]?.id || 0);
             } else {
                 setListeExercice([]);
-                toast.error("Une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -252,10 +253,10 @@ export default function ImportImmobilisations() {
 
     const validerDonnees = () => {
         const anomalies = [];
-        
+
         immobilisationsData.forEach((row, index) => {
             const ligneNum = index + 1;
-            
+
             if (!row.numero_compte || row.numero_compte.trim() === '') {
                 anomalies.push(`Ligne ${ligneNum}: Le numéro de compte est obligatoire`);
             }
@@ -287,7 +288,7 @@ export default function ImportImmobilisations() {
 
         setMsgAnomalie(anomalies);
         setNbrAnomalie(anomalies.length);
-        
+
         if (anomalies.length > 0) {
             setCouleurBoutonAnomalie('#ff6b6b');
             setAnomaliePersiste(true);
@@ -328,7 +329,7 @@ export default function ImportImmobilisations() {
         }).then((response) => {
             const resData = response.data;
             setTraitementWaiting(false);
-            
+
             if (resData.state) {
                 toast.success(resData.msg || 'Import réussi');
                 setImmobilisationsData([]);
@@ -361,7 +362,7 @@ export default function ImportImmobilisations() {
             ) : (
                 <Box sx={{ width: '100%', typography: 'body1' }}>
                     <InfoFileStyle fileInfos={fileInfos} />
-                    
+
                     <Paper elevation={3} sx={{ padding: '20px', marginTop: '20px' }}>
                         <Typography variant="h5" gutterBottom>
                             Import des Immobilisations
