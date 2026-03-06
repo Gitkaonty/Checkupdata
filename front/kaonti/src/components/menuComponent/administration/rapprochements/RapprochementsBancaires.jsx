@@ -347,7 +347,7 @@ function RapprochementsBancaires() {
       // Filtre strict: afficher non rapprochées OU rapprochées dont la date_rapprochement == date_fin sélectionnée (normalisée)
       const dsel = endDate;
       // console.log('dsel : ', dsel);
-      const rows = rowsAll.filter(r => !r.rapprocher || (r.rapprocher 
+      const rows = rowsAll.filter(r => !r.rapprocher || (r.rapprocher
         // && r.date_rapprochement === dsel
       ));
       // Append totals row for alignment (sum of all displayed rows)
