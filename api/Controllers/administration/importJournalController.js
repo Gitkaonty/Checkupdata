@@ -258,6 +258,8 @@ const createNotExistingCompte = async (req, res) => {
   try {
     const { compteId, fileId, compteToCreateGen, compteToCreateAux } = req.body;
 
+    // return console.log('compteToCreateAuxn ,compteToCreateGen : ', compteToCreateAux, compteToCreateGen);
+
     const resData = { state: false, msg: '', list: [] };
 
     const uniqBy = (arr, keyFn) => Array.from(new Map(arr.map(v => [keyFn(v), v])).values());
@@ -626,7 +628,7 @@ const importJournal = async (req, res) => {
               id_numcptcentralise: IdCompAuxNum,
               piece: item.PieceRef,
               piecedate: datePiece,
-              libelle: item.EcritureLib,
+              libelle: item.EcritureLib.toString().substring(0, 50),
               debit,
               credit,
               id_devise: idDevise || 0,
@@ -637,7 +639,7 @@ const importJournal = async (req, res) => {
               modifierpar: userId || 0,
               comptegen: rawGen,
               compteaux: rawAux,
-              libelleaux: item.EcritureLibAux
+              libelleaux: item.EcritureLibAux.toString().substring(0, 50)
               // comptegen: comptegen,
               // compteaux: compteaux,
               // libelleaux: libelleaux
@@ -1101,7 +1103,7 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               id_numcptcentralise: IdCompAuxNum,
               piece: item.PieceRef || '',
               piecedate: datePiece,
-              libelle: String(item.EcritureLib || '').substring(0, 100),
+              libelle: String(item.EcritureLib || '').substring(0, 50),
               debit: debit,
               credit: credit,
               id_devise: devId || 0,
@@ -1113,8 +1115,8 @@ const importJournalWithProgressLogic = async (req, res, progress) => {
               datesaisie: new Date(),
               comptegen: rawGen,
               compteaux: rawAuxToAdd,
-              libelleaux: rawGen === rawAuxToAdd ? foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100) : foundAux?.libelle || String(item.EcritureLib || '').substring(0, 100),
-              libellecompte: foundGen?.libelle || String(item.EcritureLib || '').substring(0, 100),
+              libelleaux: rawGen === rawAuxToAdd ? String(foundGen?.libelle).substring(0, 50) || String(item.EcritureLib || '').substring(0, 50) : String(foundAux?.libelle).substring(0, 50) || String(item.EcritureLib || '').substring(0, 50),
+              libellecompte: foundGen?.libelle || String(item.EcritureLib || '').substring(0, 50),
               vraiedate: vraiedate
             });
 
