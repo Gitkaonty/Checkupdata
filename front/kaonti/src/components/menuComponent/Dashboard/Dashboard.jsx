@@ -301,6 +301,7 @@ export default function DashboardComponent() {
       avecAnalytique
     })
       .then((response) => {
+        console.log(response?.data);
         if (response?.data?.state) {
           setChiffresAffairesNGraph(response?.data?.chiffreAffaireN);
           setChiffresAffairesN1Graph(response?.data?.chiffreAffaireN1);
@@ -437,7 +438,7 @@ export default function DashboardComponent() {
   }, []);
 
   useEffect(() => {
-    if (compteId && fileId && selectedExerciceId && canView && selectedSectionsId.length !== 0) {
+    if (compteId && fileId && selectedExerciceId && canView) {
       getAllInfo();
       getParDefaut();
       getListeJournalEnAttente();

@@ -395,6 +395,8 @@ exports.getAllInfo = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, avecAnalytique, id_axe, id_sections } = req.body;
 
+        console.log('mandea')
+
         if (!id_compte || !id_dossier || !id_exercice) {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
         }
