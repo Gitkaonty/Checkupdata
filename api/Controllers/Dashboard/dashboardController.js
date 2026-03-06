@@ -535,8 +535,8 @@ exports.getAllInfo = async (req, res) => {
         variationTresorerieCaisseN = safeVariation(resultatTresorerieCaisseN, resultatTresorerieCaisseN1);
         evolutionTresorerieCaisseN = getEvolution(variationTresorerieCaisseN, variationTresorerieCaisseN1);
 
-        // console.log('moisNMapped : ', moisNMapped);
-        // console.log('moisN1Mapped : ', moisN1Mapped);
+        console.log('moisNMapped : ', moisNMapped);
+        console.log('moisN1Mapped : ', moisN1Mapped);
 
         return res.json({
 
