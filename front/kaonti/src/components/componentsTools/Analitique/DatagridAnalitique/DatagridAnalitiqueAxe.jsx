@@ -442,7 +442,7 @@ const DatagridAnalitiqueAxe = ({ id_compte, id_dossier, selectedRowAxeId, setSel
                     spacing={0.5}
                 >
                     <Tooltip title="Ajouter une ligne">
-                        <Stack>
+                        <div>
                             <IconButton
                                 disabled={!canAdd || disableAddRowBouton || !isCaActive}
                                 variant="contained"
@@ -456,11 +456,11 @@ const DatagridAnalitiqueAxe = ({ id_compte, id_dossier, selectedRowAxeId, setSel
                             >
                                 <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </div>
                     </Tooltip>
 
                     <Tooltip title="Modifier la ligne sélectionnée">
-                        <Stack>
+                        <div>
                             <IconButton
                                 disabled={(!canModify && selectedRowId > 0) || disableModifyBouton || !isCaActive}
                                 variant="contained"
@@ -474,11 +474,11 @@ const DatagridAnalitiqueAxe = ({ id_compte, id_dossier, selectedRowAxeId, setSel
                             >
                                 <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </div>
                     </Tooltip>
 
                     <Tooltip title="Sauvegarder les modifications">
-                        <Stack>
+                        <div>
                             <IconButton
                                 disabled={(!canAdd && !canModify) || disableSaveBouton || !formNewParam.isValid || !isCaActive}
                                 variant="contained"
@@ -492,11 +492,11 @@ const DatagridAnalitiqueAxe = ({ id_compte, id_dossier, selectedRowAxeId, setSel
                             >
                                 <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </div>
                     </Tooltip>
 
                     <Tooltip title="Annuler les modifications">
-                        <Stack>
+                        <div>
                             <IconButton
                                 disabled={disableCancelBouton || !isCaActive}
                                 variant="contained"
@@ -510,11 +510,11 @@ const DatagridAnalitiqueAxe = ({ id_compte, id_dossier, selectedRowAxeId, setSel
                             >
                                 <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </div>
                     </Tooltip>
 
                     <Tooltip title="Supprimer la ligne sélectionné">
-                        <Stack>
+                        <div>
                             <IconButton
                                 disabled={!canDelete || disableDeleteBouton || !isCaActive}
                                 onClick={handleOpenDialogConfirmDeleteRow}
@@ -528,7 +528,7 @@ const DatagridAnalitiqueAxe = ({ id_compte, id_dossier, selectedRowAxeId, setSel
                             >
                                 <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </div>
                     </Tooltip>
                 </Stack>
 

@@ -60,7 +60,7 @@ export default function ImportBalance() {
     useEffect(() => {
         if (isImporting) {
             setProgressValue(sseProgress);
-            const displayMessage = currentLine > 0 && totalLines > 0 
+            const displayMessage = currentLine > 0 && totalLines > 0
                 ? `${sseMessage} (${currentLine}/${totalLines} lignes)`
                 : sseMessage;
             setTraitementBalanceMsg(displayMessage);
@@ -151,7 +151,8 @@ export default function ImportBalance() {
 
             } else {
                 setListeExercice([]);
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -168,7 +169,8 @@ export default function ImportBalance() {
                 }
             } else {
                 setListeSituation([]);
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -829,7 +831,7 @@ export default function ImportBalance() {
 
                                     <List style={{ marginLeft: "10px" }}>
                                         <ListItem style={{ width: "100px", justifyContent: "center" }}>
-                                            <ListItemButton 
+                                            <ListItemButton
                                                 disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0}
                                                 onClick={() => document.getElementById('fileInput').click()}
                                             >
@@ -872,7 +874,7 @@ export default function ImportBalance() {
                                 </Button>
                             </Stack>
 
-                            <ImportProgressBar 
+                            <ImportProgressBar
                                 isVisible={traitementBalanceWaiting}
                                 message={traitementBalanceMsg}
                                 variant="determinate"
