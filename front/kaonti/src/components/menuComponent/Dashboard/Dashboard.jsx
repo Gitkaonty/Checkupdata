@@ -345,6 +345,9 @@ export default function DashboardComponent() {
           setEvolutionTresorerieCaisseN(response?.data?.evolutionTresorerieCaisseN);
 
           setMoisN(response?.data?.moisNMapped);
+        } else {
+          toast.error(response?.data?.message);
+          clearAllData();
         }
       })
       .catch((err) => {
@@ -437,7 +440,7 @@ export default function DashboardComponent() {
   }, []);
 
   useEffect(() => {
-    if (compteId && fileId && selectedExerciceId && canView && selectedSectionsId.length !== 0) {
+    if (compteId && fileId && selectedExerciceId && canView) {
       getAllInfo();
       getParDefaut();
       getListeJournalEnAttente();
