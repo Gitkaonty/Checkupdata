@@ -254,7 +254,8 @@ export default function DashboardComponent() {
 
       } else {
         setListeExercice([]);
-        toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        return
       }
     })
   }
@@ -271,7 +272,8 @@ export default function DashboardComponent() {
         }
       } else {
         setListeSituation([]);
-        toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        return
       }
     })
   }

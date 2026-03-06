@@ -166,7 +166,8 @@ export default function ConsultationComponent() {
 
             } else {
                 setListeExercice([]);
-                toast.error("Une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -780,7 +781,8 @@ export default function ConsultationComponent() {
                 setListeAnnee(annee)
             } else {
                 setListeAnnee([])
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }

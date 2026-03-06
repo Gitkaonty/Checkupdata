@@ -140,7 +140,8 @@ export default function SaisieComponent() {
 
             } else {
                 setListeExercice([]);
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -157,7 +158,8 @@ export default function SaisieComponent() {
                 }
             } else {
                 setListeSituation([]);
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -599,7 +601,8 @@ export default function SaisieComponent() {
                 setListeAnnee(annee)
             } else {
                 setListeAnnee([])
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }

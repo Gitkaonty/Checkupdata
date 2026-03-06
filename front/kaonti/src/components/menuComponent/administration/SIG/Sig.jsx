@@ -238,7 +238,8 @@ export default function Sig() {
                 getVerouillageEtatFinancier(compteId, id, exerciceNId[0].id);
             } else {
                 setListeExercice([]);
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
@@ -280,7 +281,8 @@ export default function Sig() {
                 }
             } else {
                 setListeSituation([]);
-                toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+                return
             }
         })
     }
