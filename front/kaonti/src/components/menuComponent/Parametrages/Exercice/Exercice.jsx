@@ -81,6 +81,7 @@ export default function ParamExerciceComponent() {
     const [openPopupCodejournal, setOpenPopupCodeJournal] = useState(false);
     const [openPopupGenerateRan, setOpenPopupGenerateRan] = useState(false);
     const [longeurCompte, setLongeurCompte] = useState(0);
+    const [idRan, setIdRan] = useState(null);
 
     //récupération des informations de connexion
     const { auth } = useAuth();
@@ -525,6 +526,7 @@ export default function ParamExerciceComponent() {
             const resData = response?.data;
 
             if (resData?.state) {
+                setIdRan(resData.id);
                 return resData?.exist;
             } else {
                 toast.error(resData?.message || "Erreur inconnue");
@@ -572,6 +574,8 @@ export default function ParamExerciceComponent() {
                         id_dossier={Number(fileId)}
                         selectedExerciceRow={selectedExerciceRow}
                         longeurCompte={longeurCompte}
+                        listeExercice={listeExercice}
+                        idRan={idRan}
                     />
                 )
             }
