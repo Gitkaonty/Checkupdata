@@ -399,6 +399,10 @@ exports.getAllInfo = async (req, res) => {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
         }
 
+        if (avecAnalytique && id_sections.length === 0) {
+            return res.json({ state: false, message: 'Veuillez sélectionner au moins une section' });
+        }
+
         const exerciceNData = await getExerciceById(id_exercice);
         if (!exerciceNData) {
             return res.status(404).json({ state: false, message: "Exercice non trouvé" });
@@ -594,6 +598,10 @@ exports.getListeJournalEnAttente = async (req, res) => {
         const { id_dossier, id_compte, id_exercice, avecAnalytique, id_axe, id_sections } = req.body;
         if (!id_compte || !id_dossier || !id_exercice) {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+        }
+
+        if (avecAnalytique && id_sections.length === 0) {
+            return;
         }
 
         const rows = await getJournalsEnAttente(id_compte, id_dossier, id_exercice, avecAnalytique, id_axe, id_sections);

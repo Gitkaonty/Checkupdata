@@ -635,7 +635,7 @@ export default function ParamExerciceComponent() {
                                     </FormHelperText>
                                 </FormControl>
 
-                                <Typography variant="body1" >
+                                <Typography sx={{ mt: 5 }} variant="body1" >
                                     au
                                 </Typography>
 

@@ -248,6 +248,16 @@ export default function SaisieComponent() {
             headerClassName: 'HeaderbackColor',
         },
         {
+            field: 'lettrage',
+            headerName: 'Let',
+            type: 'string',
+            sortable: true,
+            flex: 0.6,
+            headerAlign: 'left',
+            align: 'left',
+            headerClassName: 'HeaderbackColor',
+        },
+        {
             field: 'dateecriture',
             headerName: 'Date',
             type: 'string',
