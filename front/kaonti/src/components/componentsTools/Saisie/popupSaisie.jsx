@@ -188,11 +188,23 @@ const PopupSaisie = ({
         }
     })
 
-    const compteAssocieCodeJournal = formSaisie.values.valSelectCodeJnl?.compteassocie;
-    const newListeCompteAssocie = listCompteAssocie.filter(val => val !== compteAssocieCodeJournal);
-    const filteredListePlanComptable = compteAssocieCodeJournal
-        ? listePlanComptable.filter(val => !newListeCompteAssocie.includes(val.compte))
-        : listePlanComptable;
+    const typeCodeJournal = (formSaisie.values.valSelectCodeJnl?.type || '').toUpperCase();
+    const compteAssocieCodeJournal = (formSaisie.values.valSelectCodeJnl?.compteassocie || '').trim().toUpperCase();
+
+    const normalizedListCompteAssocie = listCompteAssocie.map(c => c.trim().toUpperCase());
+
+    let newList;
+
+    if (!['BANQUE', 'CAISSE'].includes(typeCodeJournal)) {
+        newList = listePlanComptable.filter(
+            val => !normalizedListCompteAssocie.includes(val.compte.trim().toUpperCase())
+        );
+    } else {
+        const newListeCompteAssocie = normalizedListCompteAssocie.filter(val => val !== compteAssocieCodeJournal);
+        newList = compteAssocieCodeJournal
+            ? listePlanComptable.filter(val => !newListeCompteAssocie.includes(val.compte.trim().toUpperCase()))
+            : listePlanComptable;
+    }
 
     const handleRowModesModelChange = (newRowModesModel) => {
         setRowModesModel(newRowModesModel);
@@ -426,7 +438,7 @@ const PopupSaisie = ({
         setInvalidRows,
         invalidRows,
         selectedCell,
-        listePlanComptable: filteredListePlanComptable,
+        listePlanComptable: newList,
         taux,
         equilibrateDebitCredit,
         tableRows,

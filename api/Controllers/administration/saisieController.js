@@ -388,6 +388,8 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         //     ORDER BY j.dateecriture ASC, j.id ASC
         // `;
 
+        console.log(fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin );
+
         const sql = `
             SELECT 
                 j.*,
@@ -403,10 +405,12 @@ exports.listEcrituresForRapprochement = async (req, res) => {
             AND j.dateecriture BETWEEN :dateDebut AND :dateFin
             ORDER BY j.dateecriture ASC, j.id ASC
         `
+
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
             type: db.Sequelize.QueryTypes.SELECT,
         });
+        // console.log('rows : ', rows);
         return res.json({ state: true, list: rows || [] });
     } catch (err) {
         console.error('[RAPPRO][ECRITURES] error:', err);
@@ -3402,6 +3406,7 @@ exports.reaffecterLigne = async (req, res) => {
 
 // Version SSE pour importImmobilisations
 const { withSSEProgress } = require('../../Middlewares/sseProgressMiddleware');
+const e = require("express");
 
 const importImmobilisationsWithProgressLogic = async (req, res, progress) => {
     try {
@@ -3649,15 +3654,68 @@ exports.getJournalsAvecImmo = async (req, res) => {
     }
 }
 
+const ensureCompte = async (compteId, fileId, compteNum, libelle, longeurCompte) => {
+    const compte = String(compteNum || '').trim();
+    if (!compte) return null;
+
+    const compteFormatted = compte.padEnd(longeurCompte, "0").slice(0, longeurCompte);
+
+    let rows = await db.sequelize.query(
+        `SELECT * FROM dossierplancomptables 
+         WHERE id_compte = :id_compte 
+           AND id_dossier = :id_dossier 
+           AND compte = :compte`,
+        {
+            replacements: { id_compte: compteId, id_dossier: fileId, compte: compteFormatted },
+            type: db.Sequelize.QueryTypes.SELECT
+        }
+    );
+
+    let row = rows[0];
+
+    if (!row) {
+        const result = await db.sequelize.query(
+            `INSERT INTO dossierplancomptables 
+                (id_compte, id_dossier, compte, libelle, nature, typetier, baseaux, pays)
+             VALUES
+                (:id_compte, :id_dossier, :compte, :libelle, 'General', 'general', :baseaux, 'Madagascar')
+             RETURNING *`,
+            {
+                replacements: {
+                    id_compte: compteId,
+                    id_dossier: fileId,
+                    compte: compteFormatted,
+                    libelle: libelle || `Compte ${compteFormatted}`,
+                    baseaux: compteFormatted
+                },
+                type: db.Sequelize.QueryTypes.INSERT
+            }
+        );
+
+        row = result[0][0];
+
+        await db.sequelize.query(
+            `UPDATE dossierplancomptables SET baseaux_id = id WHERE id = :id`,
+            { replacements: { id: row.id }, type: db.Sequelize.QueryTypes.UPDATE }
+        );
+    } else if (libelle && (!row.libelle || row.libelle.trim() === '' || row.libelle === `Compte ${compteFormatted}`)) {
+        await db.sequelize.query(
+            `UPDATE dossierplancomptables SET libelle = :libelle WHERE id = :id`,
+            { replacements: { libelle, id: row.id }, type: db.Sequelize.QueryTypes.UPDATE }
+        );
+        row.libelle = libelle;
+    }
+
+    return row;
+};
+
 exports.genererRan = async (req, res) => {
     try {
-        const { id_dossier, id_exercice, id_compte, isDetailled } = req.body;
+        const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte } = req.body;
 
         const {
             id_exerciceN1,
         } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
-
-        console.log('id_exerciceN1 : ', id_exerciceN1);
 
         const querryRan = `
             DELETE FROM journals
@@ -3684,9 +3742,9 @@ exports.genererRan = async (req, res) => {
                 transaction: t
             });
             if (isDetailled) {
-                const soldeQuery = `
+                const resultatQuery = `
                     SELECT
-                        ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS SOLDE
+                        ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS RESULTAT
                     FROM
                         JOURNALS
                     WHERE
@@ -3712,15 +3770,46 @@ exports.genererRan = async (req, res) => {
                                 )
                         )
                 `;
-                const solde = await db.sequelize.query(soldeQuery, {
+                const resultatData = await db.sequelize.query(resultatQuery, {
                     replacements: { id_dossier, id_exerciceN1, id_compte },
                     type: db.Sequelize.QueryTypes.SELECT,
                     transaction: t
                 })
 
-                console.log('solde : ', Number(solde[0].solde));
+                const resultat = Number(resultatData[0].resultat);
+                console.log('Résultat detaillé : ', resultat);
+                if (resultat !== 0) {
+                    if (resultat > 0) {
+                        const [compte_120] = await Promise.all([
+                            ensureCompte(id_compte, id_dossier, '120', 'Compte A-nouveau', longeurCompte),
+                        ]);
+                    } else {
+                        const [compte_129] = await Promise.all([
+                            ensureCompte(id_compte, id_dossier, '129', 'Compte A-nouvau', longeurCompte),
+                        ]);
+                    }
+                }
             } else {
+                const resultatQuery2 = `
+                    SELECT
+                        ROUND((SUM(CREDIT) - SUM(DEBIT))::NUMERIC, 2) AS RESULTAT
+                    FROM
+                        JOURNALS
+                    WHERE
+                        COMPTEAUX ~ '^[1-5]'
+                        AND ID_COMPTE = :id_compte
+                        AND ID_DOSSIER = :id_dossier
+                        AND ID_EXERCICE = :id_exerciceN1
+                `;
 
+                const resultatData2 = await db.sequelize.query(resultatQuery2, {
+                    replacements: { id_dossier, id_exerciceN1, id_compte },
+                    type: db.Sequelize.QueryTypes.SELECT,
+                    transaction: t
+                })
+
+                const resultat2 = Number(resultatData2[0].resultat);
+                console.log('Résultat non detaillé : ', resultat2);
             }
         });
 

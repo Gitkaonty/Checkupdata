@@ -6,6 +6,7 @@ const exercices = db.exercices;
 const recupInfos = async (id_compte, id_dossier, id_exerciceN) => {
     try {
         const currentExercice = await exercices.findByPk(id_exerciceN);
+        const rangN = currentExercice.rang;
 
         const currentDebutExerciceN = currentExercice?.date_debut;
 
@@ -18,17 +19,30 @@ const recupInfos = async (id_compte, id_dossier, id_exerciceN) => {
 
         const dateFinN1Formatted = dateDebut.toISOString().split('T')[0];
 
+        // const rows = await db.sequelize.query(`
+        //     SELECT id
+        //     FROM exercices
+        //     WHERE
+        //         id_compte = :id_compte
+        //         AND id_dossier = :id_dossier
+        //         AND date_fin = :date_fin
+        // `, {
+        //     type: db.Sequelize.QueryTypes.SELECT,
+        //     replacements: { id_compte, id_dossier, date_fin: new Date(dateFinN1Formatted) }
+        // })
+
         const rows = await db.sequelize.query(`
             SELECT id
             FROM exercices
             WHERE
                 id_compte = :id_compte
                 AND id_dossier = :id_dossier
-                AND date_fin = :date_fin
+                AND rang = :rangNMinus1
+            LIMIT 1
         `, {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, date_fin: new Date(dateFinN1Formatted) }
-        })
+            replacements: { id_compte, id_dossier, rangNMinus1: rangN - 1 }
+        });
 
         const id_exerciceN1 = rows[0]?.id || null;
 

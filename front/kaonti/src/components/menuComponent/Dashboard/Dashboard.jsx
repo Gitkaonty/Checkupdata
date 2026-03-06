@@ -160,6 +160,8 @@ export default function DashboardComponent() {
   const [variationTresorerieCaisseN, setVariationTresorerieCaisseN] = useState(0);
   const [evolutionTresorerieCaisseN, setEvolutionTresorerieCaisseN] = useState('');
 
+  const [moisN, setMoisN] = useState([]);
+
   const [typeAffichage, setTypeAffichage] = useState('Globale');
 
   const [journalData, setJournalData] = useState([]);
@@ -186,6 +188,7 @@ export default function DashboardComponent() {
     setVariationDepenseSalarialeN(0);
     setEvolutionDepenseSalarialeN('');
     setJournalData([]);
+    setMoisN([]);
   }
 
   const filteredData = useMemo(() => {
@@ -251,7 +254,8 @@ export default function DashboardComponent() {
 
       } else {
         setListeExercice([]);
-        toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        return
       }
     })
   }
@@ -268,7 +272,8 @@ export default function DashboardComponent() {
         }
       } else {
         setListeSituation([]);
-        toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+        return
       }
     })
   }
@@ -338,6 +343,8 @@ export default function DashboardComponent() {
           setResultatTresorerieCaisseN1(response?.data?.resultatTresorerieCaisseN1);
           setVariationTresorerieCaisseN(response?.data?.variationTresorerieCaisseN);
           setEvolutionTresorerieCaisseN(response?.data?.evolutionTresorerieCaisseN);
+
+          setMoisN(response?.data?.moisNMapped);
         }
       })
       .catch((err) => {
@@ -345,6 +352,8 @@ export default function DashboardComponent() {
         toast.error(err?.response?.data?.message || err?.message || "Erreur inconnue");
       });
   }
+
+  // console.log('mois : ', moisN);
 
   const handleGetAxes = () => {
     axios.get(`/paramCa/getAxes/${Number(compteId)}/${Number(fileId)}`)
@@ -782,7 +791,7 @@ export default function DashboardComponent() {
                     width={"100%"}
                   >
                     <ApexChart
-                      xAxis={xAxis}
+                      xAxis={moisN}
                       dataN={chiffresAffairesNGraph}
                       dataN1={chiffresAffairesN1Graph}
                       label={"Chiffre d'affaires"}
@@ -859,7 +868,7 @@ export default function DashboardComponent() {
                     }}
                   >
                     <ApexChart
-                      xAxis={xAxis}
+                      xAxis={moisN}
                       dataN={margeBruteNGraph}
                       dataN1={margeBruteN1Graph}
                       label={"Marges brutes"}
@@ -876,7 +885,7 @@ export default function DashboardComponent() {
                     }}
                   >
                     <ApexChart
-                      xAxis={xAxis}
+                      xAxis={moisN}
                       dataN={tresorerieBanqueNGraph}
                       dataN1={tresorerieBanqueN1Graph}
                       label={"Trésoreries banques (Globale)"}
@@ -893,7 +902,7 @@ export default function DashboardComponent() {
                     }}
                   >
                     <ApexChart
-                      xAxis={xAxis}
+                      xAxis={moisN}
                       dataN={tresorerieCaisseNGraph}
                       dataN1={tresorerieCaisseN1Graph}
                       label={"Trésoreries caisses (Globale)"}
