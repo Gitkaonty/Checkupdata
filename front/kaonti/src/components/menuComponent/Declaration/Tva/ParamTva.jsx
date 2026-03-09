@@ -1421,7 +1421,7 @@ export default function ParamTVAComponent() {
       return;
     }
     // console.log('[ParamTVA] GetListeExercice -> id:', id);
-    axios.get(`/paramExercice/listeExercice/${id}`)
+    axios.get(`/paramExercice/listeExercice/${id}/${compteId}`)
       .then((response) => {
         const resData = response.data;
         // console.log('[ParamTVA] GetListeExercice response:', resData);

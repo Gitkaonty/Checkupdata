@@ -7,7 +7,7 @@ const verifyPermission = require('../../Middlewares/verifyPermission');
 const router = express.Router();
 
 //récupérer la liste de dossiers associé l'user et à son compte
-router.get('/listeExercice/:id', paramExerciceController.getListeExercice);
+router.get('/listeExercice/:id/:compteId', paramExerciceController.getListeExercice);
 
 //récupérer la liste de situations associés à l'exercice
 router.get('/listeSituation/:id', paramExerciceController.getListeSituation);

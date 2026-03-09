@@ -944,7 +944,7 @@ const Immobilisations = () => {
   };
 
   const GetListeExercice = (idDossier) => {
-    axios.get(`/paramExercice/listeExercice/${idDossier}`).then((response) => {
+    axios.get(`/paramExercice/listeExercice/${idDossier}/${compteId}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
         setListeExercice(resData.list);

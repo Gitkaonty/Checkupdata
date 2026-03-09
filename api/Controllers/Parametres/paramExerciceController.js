@@ -12,6 +12,7 @@ const rubriques = db.rubriques;
 const getListeExercice = async (req, res) => {
   try {
     const fileId = Number(req.params.id);
+    const compteId = Number(req.params.compteId);
 
     let resData = {
       state: false,
@@ -23,11 +24,13 @@ const getListeExercice = async (req, res) => {
       `
       SELECT *
       FROM exercices
-      WHERE id_dossier = :fileId
+      WHERE 
+        id_dossier = :fileId
+        AND id_compte = :compteId
       ORDER BY date_fin DESC
       `,
       {
-        replacements: { fileId },
+        replacements: { fileId, compteId },
         type: db.Sequelize.QueryTypes.SELECT,
       }
     );
@@ -1111,7 +1114,6 @@ const deleteExercice = async (req, res) => {
 const getListeExerciceById = async (req, res) => {
   try {
     const fileId = req.params.id;
-
     let resData = {
       state: false,
       msg: '',

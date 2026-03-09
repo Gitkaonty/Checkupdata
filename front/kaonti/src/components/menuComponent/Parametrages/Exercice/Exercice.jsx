@@ -74,6 +74,7 @@ export default function ParamExerciceComponent() {
     const [selectedExerciceRow, setSelectedExerciceRow] = useState([]);
     const [exerciceToDeleteId, setExerciceToDeleteId] = useState(0);
     const [exerciceToDeleteRang, setExerciceToDeleteRang] = useState(null);
+    const [listeDevise, setListeDevise] = useState([]);
 
     const [loadingCreateNextExercice, setLoadingCreateNextExercice] = useState(false);
     const [loadingCreatePreviousExercice, setLoadingPreviousExercice] = useState(false);
@@ -210,9 +211,16 @@ export default function ParamExerciceComponent() {
         navigate('/tab/home');
     }
 
+    //Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`).then((response) => {
+            setListeDevise(response.data);
+        })
+    }
+
     //Chargement de la liste des exercices associés à l'id dossier sélectionné
-    const GetListeExercice = (id) => {
-        axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+    const GetListeExercice = () => {
+        axios.get(`/paramExercice/listeExercice/${fileId}/${compteId}`).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 setListeExercice(resData.list);
@@ -226,10 +234,11 @@ export default function ParamExerciceComponent() {
     }
 
     useEffect(() => {
-        if (canView && fileId) {
-            GetListeExercice(fileId);
+        if (canView && fileId && compteId) {
+            GetListeExercice(fileId, compteId);
+            getListeDevises();
         }
-    }, [fileId]);
+    }, [fileId, compteId]);
 
     //Création du premier exercice dans le tableau
     const handleCreateNextExercice = () => {
@@ -539,6 +548,10 @@ export default function ParamExerciceComponent() {
     };
 
     const genererANouveau = async () => {
+        const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
+        if (!defaultDeviseData) {
+            return toast.error('Veuillez sélectionner une devise par défaut dans le paramétrage CRM de ce dossier')
+        }
         const ranExist = await testIfRanExist();
         if (!ranExist) {
             setOpenPopupCodeJournal(true);
@@ -576,6 +589,7 @@ export default function ParamExerciceComponent() {
                         longeurCompte={longeurCompte}
                         listeExercice={listeExercice}
                         idRan={idRan}
+                        defaultDeviseData={listeDevise.find(val => val.par_defaut === true)}
                     />
                 )
             }
@@ -732,6 +746,7 @@ export default function ParamExerciceComponent() {
                                         <Stack
                                             direction={'row'}
                                             spacing={0.5}
+                                            alignContent={'start'}
                                         >
                                             <Tooltip title="Ajouter l'exercice précédent">
                                                 <IconButton
@@ -795,40 +810,36 @@ export default function ParamExerciceComponent() {
                                                 </IconButton>
                                             </Tooltip>
 
-                                            <Tooltip title="Générer A-nouveaux">
-                                                <span>
-                                                    <IconButton
-                                                        disabled={selectedExerciceRow.length === 0}
-                                                        onClick={genererANouveau}
-                                                        variant="contained"
-                                                        style={{
-                                                            width: "35px", height: '35px',
-                                                            borderRadius: "2px", borderColor: "transparent",
-                                                            backgroundColor: "#4CAF50",
-                                                            textTransform: 'none', outline: 'none'
-                                                        }}
-                                                    >
-                                                        <IoMdAddCircle style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
+                                            <Button
+                                                disabled={selectedExerciceRow.length === 0}
+                                                onClick={genererANouveau}
+                                                variant="contained"
+                                                style={{
+                                                    textTransform: 'none',
+                                                    outline: 'none',
+                                                    backgroundColor: initial.theme,
+                                                    color: "white",
+                                                    height: "35px",
+                                                }}
+                                                startIcon={<IoMdAddCircle size={20} />}
+                                            >
+                                                Générer A-nouveaux
+                                            </Button>
 
-                                            <Tooltip title="Annuler A-nouveaux">
-                                                <span>
-                                                    <IconButton
-                                                        disabled={selectedExerciceRow.length === 0}
-                                                        variant="contained"
-                                                        style={{
-                                                            width: "35px", height: '35px',
-                                                            borderRadius: "2px", borderColor: "transparent",
-                                                            backgroundColor: "#F44336",
-                                                            textTransform: 'none', outline: 'none'
-                                                        }}
-                                                    >
-                                                        <MdCancel style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
+                                            <Button
+                                                disabled={selectedExerciceRow.length === 0}
+                                                variant="contained"
+                                                style={{
+                                                    textTransform: 'none',
+                                                    outline: 'none',
+                                                    backgroundColor: '#F44336',
+                                                    color: "white",
+                                                    height: "35px",
+                                                }}
+                                                startIcon={<MdCancel size={20} />}
+                                            >
+                                                Annuler A-noueaux
+                                            </Button>
 
                                             <Tooltip title="Supprimer un exercice">
                                                 <span>
@@ -1026,6 +1037,6 @@ export default function ParamExerciceComponent() {
                     </Stack>
                 </TabPanel>
             </TabContext>
-        </Box>
+        </Box >
     )
 }
