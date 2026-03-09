@@ -751,7 +751,7 @@ export default function ParamExerciceComponent() {
 
                         <Stack
                             direction="row"
-                            spacing={5}
+                            spacing={3}
                             sx={{ width: "100%" }}
                             alignItems="flex-start"
                         >
@@ -943,7 +943,7 @@ export default function ParamExerciceComponent() {
                                 </Stack>
                             </Stack>
                             <Stack
-                                flex={1}
+                                flex={0.6}
                                 minWidth={0}
                             >
                                 <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
