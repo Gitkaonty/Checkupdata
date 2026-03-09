@@ -186,6 +186,11 @@ module.exports = (sequelize, DataTypes) => {
             unique: false,
             allowNull: true
         },
+        id_ecriture_n1: {
+            type: DataTypes.STRING(25),
+            unique: false,
+            allowNull: true
+        }
     }, { timestamps: true },)
     return journals
 }

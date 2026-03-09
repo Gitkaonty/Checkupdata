@@ -3709,12 +3709,113 @@ const ensureCompte = async (compteId, fileId, compteNum, libelle, longeurCompte)
     return row;
 };
 
-const queryCopyJournal = `
-        INSERT INTO journals (
+const queryCopyJournalDetaille = `
+    WITH BASE AS (
+        SELECT
+            id_compte,
+            id_dossier,
+            id_exercice,
+            id_ecriture,
+            datesaisie,
+            dateecriture,
+            id_numcpt,
+            id_numcptcentralise,
+            piece,
+            piecedate,
+            libelle,
+            debit,
+            credit,
+            devise,
+            lettrage,
+            lettragedate,
+            taux,
+            montant_devise,
+            id_immob,
+            num_facture,
+            decltvamois,
+            decltvaannee,
+            decltva,
+            declisimois,
+            declisiannee,
+            declisi,
+            rapprocher,
+            date_rapprochement,
+            comptegen,
+            compteaux,
+            libelleaux,
+            libellecompte
+        FROM public.journals
+        WHERE
+            id_dossier = :id_dossier
+            AND id_exercice = :id_exerciceN1
+            AND id_compte = :id_compte
+            AND lettrage IS NULL
+            AND compteaux !~ '^[67]'
+    ),
+
+    AGG AS (
+        SELECT
+            id_compte,
+            id_dossier,
+            compteaux,
+            id_ecriture,
+            MIN(id_numcpt) AS id_numcpt,
+            MIN(id_numcptcentralise) AS id_numcptcentralise,
+            MIN(piece) AS piece,
+            MIN(piecedate) AS piecedate,
+            MIN(libelle) AS libelle,
+            SUM(debit) AS debit,
+            SUM(credit) AS credit,
+            MIN(devise) AS devise,
+            MIN(lettrage) AS lettrage,
+            MIN(lettragedate) AS lettragedate,
+            MIN(taux) AS taux,
+            SUM(montant_devise) AS montant_devise,
+            MIN(id_immob) AS id_immob,
+            MIN(num_facture) AS num_facture,
+            MIN(decltvamois) AS decltvamois,
+            MIN(decltvaannee) AS decltvaannee,
+            BOOL_OR(decltva) AS decltva,
+            MIN(declisimois) AS declisimois,
+            MIN(declisiannee) AS declisiannee,
+            BOOL_OR(declisi) AS declisi,
+            BOOL_OR(rapprocher) AS rapprocher,
+            MIN(date_rapprochement) AS date_rapprochement,
+            MIN(comptegen) AS comptegen,
+            MIN(libelleaux) AS libelleaux,
+            MIN(libellecompte) AS libellecompte
+        FROM BASE
+        GROUP BY
+            id_compte,
+            id_dossier,
+            compteaux,
+            id_ecriture
+    ),
+
+    SPLIT AS (
+        SELECT
+            *,
+            debit AS split_debit,
+            0 AS split_credit
+        FROM AGG
+        WHERE debit <> 0
+
+        UNION ALL
+
+        SELECT
+            *,
+            0 AS split_debit,
+            credit AS split_credit
+        FROM AGG
+        WHERE credit <> 0
+    )
+
+    INSERT INTO journals (
         id_compte,
         id_dossier,
         id_exercice,
         id_ecriture,
+        id_ecriture_n1,
         datesaisie,
         dateecriture,
         id_journal,
@@ -3755,7 +3856,8 @@ const queryCopyJournal = `
         id_dossier,
         :id_exercice,
         :id_ecriture,
-        datesaisie,
+        id_ecriture,
+        CURRENT_DATE,
         :dateecriture,
         :id_journal,
         id_numcpt,
@@ -3763,47 +3865,198 @@ const queryCopyJournal = `
         piece,
         piecedate,
         libelle,
-        debit,
-        credit,
-        devise,
+        split_debit,
+        split_credit,
+        :devise,
         lettrage,
         lettragedate,
-        saisiepar,
-        modifierpar,
-        fichier,
-        id_devise,
+        id_compte,
+        id_compte,
+        NULL,
+        :id_devise,
         taux,
         montant_devise,
         id_immob,
         num_facture,
-        decltvamois,
-        decltvaannee,
-        decltva,
-        declisimois,
-        declisiannee,
-        declisi,
-        rapprocher,
-        date_rapprochement,
+        0,
+        0,
+        false,
+        0,
+        0,
+        false,
+        false,
+        NULL,
         comptegen,
         compteaux,
         libelleaux,
         libellecompte,
-        vraiedate
-    FROM public.journals
-    WHERE
-        id_dossier = :id_dossier
-        AND id_exercice = :id_exerciceN1
-        AND lettrage IS NULL
-        AND compteaux !~ '^[67]'
+        :dateecriture
+    FROM SPLIT
 `;
+
+const queryCopyJournalNonDetaille = `
+    WITH BASE AS (
+        SELECT *
+        FROM JOURNALS
+        WHERE COMPTEAUX ~ '^[1-5]'
+        AND ID_COMPTE = :id_compte
+        AND ID_DOSSIER = :id_dossier
+        AND ID_EXERCICE = :id_exerciceN1
+    ),
+    
+    AGG AS (
+		SELECT
+			ID_COMPTE,
+			ID_DOSSIER,
+			COMPTEAUX,
+            ID_ECRITURE,
+			MIN(DATESAISIE) AS DATESAISIE,
+            MIN(DATEECRITURE) AS DATEECRITURE,
+			MIN(ID_NUMCPT) AS ID_NUMCPT,
+			MIN(ID_NUMCPTCENTRALISE) AS ID_NUMCPTCENTRALISE,
+			MIN(PIECE) AS PIECE,
+			SUM(DEBIT) AS DEBIT,
+			SUM(CREDIT) AS CREDIT,
+			MIN(LIBELLEAUX) AS LIBELLEAUX,
+			MIN(LIBELLECOMPTE) AS LIBELLECOMPTE,
+			MIN(COMPTEGEN) AS COMPTEGEN,
+			MIN(PIECEDATE) AS PIECEDATE,
+			MIN(LETTRAGEDATE) AS LETTRAGEDATE,
+			MIN(TAUX) AS TAUX,
+            MIN(LETTRAGE) AS LETTRAGE,
+            MIN(DEVISE) AS DEVISE,
+			SUM(MONTANT_DEVISE) AS MONTANT_DEVISE,
+			MIN(NUM_FACTURE) AS NUM_FACTURE,
+			SUM(DECLISIMOIS) AS DECLISIMOIS,
+			SUM(DECLISIANNEE) AS DECLISIANNEE,
+			BOOL_OR(DECLISI) AS DECLISI,
+			SUM(DECLTVAMOIS) AS DECLTVAMOIS,
+			SUM(DECLTVAANNEE) AS DECLTVAANNEE,
+			BOOL_OR(DECLTVA) AS DECLTVA,
+			BOOL_OR(RAPPROCHER) AS RAPPROCHER,
+			MIN(DATE_RAPPROCHEMENT) AS DATE_RAPPROCHEMENT,
+			MIN(ID_IMMOB) AS ID_IMMOB
+		FROM
+			BASE
+        GROUP BY
+            id_compte,
+            id_dossier,
+            compteaux,
+            id_ecriture
+	),
+
+    SPLIT AS (
+        SELECT
+            *,
+            debit AS split_debit,
+            0 AS split_credit
+        FROM AGG
+        WHERE debit <> 0
+
+        UNION ALL
+
+        SELECT
+            *,
+            0 AS split_debit,
+            credit AS split_credit
+        FROM AGG
+        WHERE credit <> 0
+    ),
+
+	TOTAUX AS (
+		SELECT
+			SUM(SPLIT_DEBIT) AS TOTAL_DEBIT,
+			SUM(SPLIT_CREDIT) AS TOTAL_CREDIT
+		FROM
+			SPLIT
+	)
+
+    INSERT INTO journals (
+        id_compte, id_dossier, id_exercice, id_ecriture,
+        datesaisie, dateecriture, id_journal, id_numcpt, id_numcptcentralise,
+        piece, libelle, debit, credit, devise, lettrage, saisiepar, modifierpar,
+        piecedate, lettragedate, fichier, id_devise, taux, montant_devise,
+        num_facture, declisimois, declisiannee, declisi, decltvamois, decltvaannee,
+        decltva, rapprocher, date_rapprochement, id_immob,
+        comptegen, compteaux, libelleaux, libellecompte, vraiedate, id_ecriture_n1
+    )
+
+    SELECT
+        ID_COMPTE, ID_DOSSIER, :id_exercice, :id_ecriture,
+        NOW() AS datesaisie, :dateecriture::date AS dateecriture, :id_journal,
+        ID_NUMCPT, ID_NUMCPTCENTRALISE,
+        PIECE, 'A nouveau 2023 ' || libelleaux AS libelle,
+        SPLIT_DEBIT AS debit,
+        SPLIT_CREDIT AS credit,
+        :devise, LETTRAGE, ID_COMPTE AS saisiepar, ID_COMPTE AS modifierpar,
+        PIECEDATE, LETTRAGEDATE, NULL AS fichier,
+        :id_devise AS id_devise,
+        TAUX, MONTANT_DEVISE,
+        NUM_FACTURE, DECLISIMOIS, DECLISIANNEE, DECLISI,
+        DECLTVAMOIS, DECLTVAANNEE, DECLTVA, RAPPROCHER,
+        DATE_RAPPROCHEMENT, ID_IMMOB,
+        COMPTEGEN, COMPTEAUX, LIBELLEAUX, LIBELLECOMPTE,
+        DATEECRITURE AS vraiedate,
+        ID_ECRITURE AS id_ecriture_n1
+    FROM SPLIT
+
+    UNION ALL
+
+    SELECT
+        B.ID_COMPTE, B.ID_DOSSIER, :id_exercice, :id_ecriture,
+        NOW(), :dateecriture::date, :id_journal,
+        :id_numcpt, :id_numcpt,
+        '', 'Résultat en instance d affectation',
+        CASE WHEN T.TOTAL_DEBIT < T.TOTAL_CREDIT THEN T.TOTAL_CREDIT - T.TOTAL_DEBIT ELSE 0 END,
+        CASE WHEN T.TOTAL_DEBIT > T.TOTAL_CREDIT THEN T.TOTAL_DEBIT - T.TOTAL_CREDIT ELSE 0 END,
+        :devise, NULL, B.ID_COMPTE, B.ID_COMPTE,
+        B.PIECEDATE, B.LETTRAGEDATE, NULL, :id_devise, 0, 0,
+        NULL, 0, 0, FALSE, 0, 0,
+        FALSE, FALSE, NULL, 0,
+        :compte, :compte, :libelle, :libelle, :dateecriture::date, NULL
+    FROM TOTAUX T
+    CROSS JOIN (SELECT * FROM BASE LIMIT 1) B
+    WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT;
+`;
+
+const getCompteInfos = async (id_compte, id_dossier, longeurCompte, resultat) => {
+    let compteInfo;
+    let libelle;
+    let debit, credit;
+    const montant = Math.abs(resultat);
+    if (resultat > 0) {
+        const [compte_120] = await Promise.all([
+            ensureCompte(id_compte, id_dossier, '120', 'Compte A-nouveau', longeurCompte),
+        ]);
+        compteInfo = compte_120;
+        libelle = 'Résultat bénéficiaire';
+        debit = 0;
+        credit = montant;
+    } else {
+        const [compte_129] = await Promise.all([
+            ensureCompte(id_compte, id_dossier, '129', 'Compte A-nouveau', longeurCompte),
+        ]);
+        compteInfo = compte_129;
+        libelle = 'Résultat bénéficiaire';
+        debit = montant;
+        credit = 0;
+    }
+    return { compteInfo, libelle, debit, credit };
+}
 
 exports.genererRan = async (req, res) => {
     try {
-        const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte, dateDebut, idRan } = req.body;
+        const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte, dateDebut, idRan, defaultDeviseData } = req.body;
+
+        console.log('req.body : ', req.body);
 
         const {
             id_exerciceN1,
         } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
+        if (!id_exerciceN1) {
+            return res.json({ state: false, message: 'Aucune exercice N-1 trouvée' });
+        }
 
         const querryRan = `
             DELETE FROM journals
@@ -3829,37 +4082,12 @@ exports.genererRan = async (req, res) => {
                 type: db.Sequelize.QueryTypes.DELETE,
                 transaction: t
             });
+            const id_ecriture = getDateSaisieNow(id_compte);
+            const dateecriture = new Date(dateDebut);
+            const devise = defaultDeviseData?.code;
+            const id_devise = Number(defaultDeviseData?.id);
+
             if (isDetailled) {
-
-                // const resultatQuery = `
-                //     SELECT
-                //         ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS RESULTAT
-                //     FROM
-                //         JOURNALS
-                //     WHERE
-                //         COMPTEAUX ~ '^[6-7]'
-                //         AND ID_ECRITURE IN (
-                //             SELECT DISTINCT
-                //                 J1.ID_ECRITURE
-                //             FROM
-                //                 JOURNALS J1
-                //             WHERE
-                //                 J1.ID_COMPTE = :id_compte
-                //                 AND J1.ID_DOSSIER = :id_dossier
-                //                 AND J1.ID_EXERCICE = :id_exerciceN1
-                //                 AND J1.COMPTEAUX ~ '^[1-5]'
-                //                 AND NOT EXISTS (
-                //                     SELECT
-                //                         1
-                //                     FROM
-                //                         JOURNALS J2
-                //                     WHERE
-                //                         J2.ID_ECRITURE = J1.ID_ECRITURE
-                //                         AND J2.LETTRAGE IS NOT NULL
-                //                 )
-                //         )
-                // `;
-
                 const resultatQuery = `
                     SELECT
                         ROUND((SUM(CREDIT) - SUM(DEBIT))::numeric, 2) AS RESULTAT
@@ -3880,54 +4108,23 @@ exports.genererRan = async (req, res) => {
 
                 const resultat = Number(resultatData[0].resultat);
                 if (resultat !== 0) {
-                    const id_ecriture = getDateSaisieNow(id_compte);
-                    const dateecriture = new Date(dateDebut);
-                    const montant = Math.abs(resultat);
 
-                    let compteInfo;
-                    let libelle;
-                    let debit, credit;
-
-                    if (resultat > 0) {
-                        const [compte_120] = await Promise.all([
-                            ensureCompte(id_compte, id_dossier, '120', 'Compte A-nouveau', longeurCompte),
-                        ]);
-                        compteInfo = compte_120;
-                        libelle = 'Résultat bénéficiaire';
-                        debit = 0;
-                        credit = montant;
-                    } else {
-                        const [compte_129] = await Promise.all([
-                            ensureCompte(id_compte, id_dossier, '129', 'Compte A-nouveau', longeurCompte),
-                        ]);
-                        compteInfo = compte_129;
-                        libelle = 'Résultat bénéficiaire';
-                        debit = montant;
-                        credit = 0;
-                    }
+                    const { compteInfo, libelle, debit, credit } = await getCompteInfos(id_compte, id_dossier, longeurCompte, resultat);
 
                     const id_numcpt = compteInfo?.id;
                     const compte = compteInfo?.compte;
                     const libelleCompte = compteInfo?.libelle;
 
-                    const rows = await db.sequelize.query(queryCopyJournal + " RETURNING *", {
-                        replacements: { id_dossier, id_exerciceN1, id_compte, dateecriture, id_exercice, id_ecriture, id_journal: idRan },
+                    const rows = await db.sequelize.query(queryCopyJournalDetaille + " RETURNING *", {
+                        replacements: { id_dossier, id_exerciceN1, id_compte, dateecriture, id_exercice, id_ecriture, id_journal: idRan, devise, id_devise },
                         transaction: t
                     });
 
                     const insertedRows = rows[0];
 
                     if (!insertedRows.length) {
-                        throw new Error("Aucune écriture à reporter pour le RAN");
+                        return res.json({ state: false, message: 'Aucune écriture à reporter pour le RAN' })
                     }
-
-                    const {
-                        devise,
-                        id_devise,
-                        datesaisie,
-                        saisiepar,
-                        modifierpar
-                    } = insertedRows[0];
 
                     await db.sequelize.query(`
                         INSERT INTO journals (
@@ -3951,7 +4148,15 @@ exports.genererRan = async (req, res) => {
                             compteaux, 
                             libelleaux, 
                             libellecompte, 
-                            vraiedate
+                            vraiedate,
+                            id_immob,
+                            declisimois,
+                            declisiannee, 
+                            declisi, 
+                            decltvamois,
+                            decltvaannee,
+                            decltva,
+                            rapprocher
                         )
                         VALUES (
                             :id_compte,
@@ -3962,19 +4167,27 @@ exports.genererRan = async (req, res) => {
                             :id_numcpt,
                             :idRan,
                             :dateecriture,
-                            :datesaisie,
+                            NOW(),
                             :libelle,
                             :debit,
                             :credit,
                             :devise,
                             :id_devise,
-                            :saisiepar,
-                            :modifierpar,
+                            :id_compte,
+                            :id_compte,
                             :compte,
                             :compte,
                             :libelleCompte,
                             :libelleCompte,
-                            :dateecriture
+                            :dateecriture,
+                            0,
+                            0,
+                            0,
+                            false,
+                            0,
+                            0,
+                            false,
+                            false
                         )
                     `, {
                         replacements: {
@@ -3985,16 +4198,13 @@ exports.genererRan = async (req, res) => {
                             id_numcpt,
                             idRan,
                             dateecriture,
-                            datesaisie,
                             libelle,
                             debit,
                             credit,
-                            devise,
-                            id_devise,
-                            saisiepar,
-                            modifierpar,
                             compte,
-                            libelleCompte
+                            libelleCompte,
+                            devise,
+                            id_devise
                         },
                         type: db.Sequelize.QueryTypes.INSERT,
                         transaction: t
@@ -4020,6 +4230,20 @@ exports.genererRan = async (req, res) => {
                 })
 
                 const resultat2 = Number(resultatData2[0].resultat);
+
+                const { compteInfo } = await getCompteInfos(id_compte, id_dossier, longeurCompte, resultat2);
+
+                const id_numcpt = Number(compteInfo?.id);
+                const libelleCompte = compteInfo?.libelle;
+                const compte = compteInfo?.compte;
+
+                console.log('dateecriture : ', dateecriture);
+
+                await db.sequelize.query(queryCopyJournalNonDetaille, {
+                    replacements: { id_dossier, id_exerciceN1, id_exercice, id_compte, id_ecriture, dateecriture, id_journal: idRan, devise, id_devise, id_numcpt, compte, libelle: libelleCompte, dateecriture },
+                    type: db.Sequelize.QueryTypes.INSERT,
+                    transaction: t
+                })
             }
         });
 
