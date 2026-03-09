@@ -111,4 +111,7 @@ router.post('/getJournalsAvecImmo', saisieController.getJournalsAvecImmo);
 // Générer des écritures à nouveaux
 router.post('/genererRan', saisieController.genererRan);
 
+// Suppréssion des journaux RAN
+router.post('/deleteJournalRan', saisieController.deleteJournalRan);
+
 module.exports = router;

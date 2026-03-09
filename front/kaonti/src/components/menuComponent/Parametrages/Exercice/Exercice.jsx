@@ -1,7 +1,7 @@
-import { React, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Typography, Stack, Paper, IconButton, FormLabel, FormControl, Select, Input, FormHelperText, Button } from '@mui/material';
-import { HiLockClosed, HiPencilSquare } from "react-icons/hi2";
+import { Typography, Stack, IconButton, FormLabel, FormControl, Input, FormHelperText, Button } from '@mui/material';
+import { HiLockClosed } from "react-icons/hi2";
 import Tooltip from '@mui/material/Tooltip';
 import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 import { DataGrid, frFR } from '@mui/x-data-grid';
@@ -75,6 +75,7 @@ export default function ParamExerciceComponent() {
     const [exerciceToDeleteId, setExerciceToDeleteId] = useState(0);
     const [exerciceToDeleteRang, setExerciceToDeleteRang] = useState(null);
     const [listeDevise, setListeDevise] = useState([]);
+    const [openPopupDeleteRan, setOpenPopupDeleteRan] = useState(false);
 
     const [loadingCreateNextExercice, setLoadingCreateNextExercice] = useState(false);
     const [loadingCreatePreviousExercice, setLoadingPreviousExercice] = useState(false);
@@ -560,6 +561,25 @@ export default function ParamExerciceComponent() {
         setOpenPopupGenerateRan(true);
     }
 
+    const handleDeleteANouveau = async (value) => {
+        if (value) {
+            const id_exercice = Number(selectedExerciceRow[0]);
+            await axios.post(`/administration/traitementSaisie/deleteJournalRan`, { id_dossier: Number(fileId), id_exercice, id_compte: Number(compteId) })
+                .then((response) => {
+                    if (response?.data?.state) {
+                        toast.success(response?.data?.message);
+                    } else {
+                        toast.error(response?.data?.message);
+                    }
+                })
+        }
+        setOpenPopupDeleteRan(false);
+    }
+
+    const handleOpenPopupDeleteRan = () => {
+        setOpenPopupDeleteRan(true);
+    }
+
     return (
         <Box>
             {noFile ? <PopupTestSelectedFile confirmationState={sendToHome} /> : null}
@@ -569,6 +589,7 @@ export default function ParamExerciceComponent() {
             {openActionConfirmVerrExercice ? <PopupActionConfirm msg={msgVerrExercice} confirmationState={verrouillerExercice} /> : null}
             {openActionConfirmDeverrExercice ? <PopupActionConfirm msg={msgDeverrExercice} confirmationState={deverrouillerExercice} /> : null}
             {openActionConfirmDeleteExercice ? <PopupActionConfirm msg={msgDeleteExercice} confirmationState={deleteExercice} /> : null}
+            {openPopupDeleteRan && (<PopupActionConfirm msg={"Voulez-vous vraiment supprimer toutes les écritures à nouveau de cet exercice ? Toutes les lettrages associées à ces écritures seront également supprimés"} confirmationState={handleDeleteANouveau} />)}
 
             {
                 openPopupCodejournal && (
@@ -828,6 +849,7 @@ export default function ParamExerciceComponent() {
 
                                             <Button
                                                 disabled={selectedExerciceRow.length === 0}
+                                                onClick={handleOpenPopupDeleteRan}
                                                 variant="contained"
                                                 style={{
                                                     textTransform: 'none',
@@ -838,7 +860,7 @@ export default function ParamExerciceComponent() {
                                                 }}
                                                 startIcon={<MdCancel size={20} />}
                                             >
-                                                Annuler A-noueaux
+                                                Annuler A-nouveaux
                                             </Button>
 
                                             <Tooltip title="Supprimer un exercice">
