@@ -4016,7 +4016,7 @@ const queryCopyJournalNonDetaille = `
         :compte, :compte, :libelle, :libelle, :dateecriture::date, NULL
     FROM TOTAUX T
     CROSS JOIN (SELECT * FROM BASE LIMIT 1) B
-    WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT;
+    WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT
 `;
 
 const getCompteInfos = async (id_compte, id_dossier, longeurCompte, resultat) => {
@@ -4048,7 +4048,8 @@ exports.genererRan = async (req, res) => {
     try {
         const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte, dateDebut, idRan, defaultDeviseData } = req.body;
 
-        console.log('req.body : ', req.body);
+        const texte = isDetailled ? 'détaillées' : 'non détaillées';
+        let nombreGenere = 0;
 
         const {
             id_exerciceN1,
@@ -4104,7 +4105,11 @@ exports.genererRan = async (req, res) => {
                     replacements: { id_dossier, id_exerciceN1, id_compte },
                     type: db.Sequelize.QueryTypes.SELECT,
                     transaction: t
-                })
+                });
+
+                if (!resultatData || resultatData.length === 0 || resultatData[0].resultat === null) {
+                    return res.json({ state: false, message: 'Aucune écriture trouvée' });
+                }
 
                 const resultat = Number(resultatData[0].resultat);
                 if (resultat !== 0) {
@@ -4119,6 +4124,8 @@ exports.genererRan = async (req, res) => {
                         replacements: { id_dossier, id_exerciceN1, id_compte, dateecriture, id_exercice, id_ecriture, id_journal: idRan, devise, id_devise },
                         transaction: t
                     });
+
+                    nombreGenere = rows[0].length + 1;
 
                     const insertedRows = rows[0];
 
@@ -4209,6 +4216,8 @@ exports.genererRan = async (req, res) => {
                         type: db.Sequelize.QueryTypes.INSERT,
                         transaction: t
                     });
+                } else {
+                    return res.json({ state: false, message: 'Le résultat est égal à 0 et la génération automatique a été interrompue' });
                 }
             } else {
                 const resultatQuery2 = `
@@ -4229,25 +4238,34 @@ exports.genererRan = async (req, res) => {
                     transaction: t
                 })
 
+                if (!resultatData2 || resultatData2.length === 0 || resultatData2[0].resultat === null) {
+                    return res.json({ state: false, message: 'Aucune écriture trouvée' });
+                }
+
                 const resultat2 = Number(resultatData2[0].resultat);
 
-                const { compteInfo } = await getCompteInfos(id_compte, id_dossier, longeurCompte, resultat2);
+                if (resultat2 !== 0) {
 
-                const id_numcpt = Number(compteInfo?.id);
-                const libelleCompte = compteInfo?.libelle;
-                const compte = compteInfo?.compte;
+                    const { compteInfo } = await getCompteInfos(id_compte, id_dossier, longeurCompte, resultat2);
 
-                console.log('dateecriture : ', dateecriture);
+                    const id_numcpt = Number(compteInfo?.id);
+                    const libelleCompte = compteInfo?.libelle;
+                    const compte = compteInfo?.compte;
 
-                await db.sequelize.query(queryCopyJournalNonDetaille, {
-                    replacements: { id_dossier, id_exerciceN1, id_exercice, id_compte, id_ecriture, dateecriture, id_journal: idRan, devise, id_devise, id_numcpt, compte, libelle: libelleCompte, dateecriture },
-                    type: db.Sequelize.QueryTypes.INSERT,
-                    transaction: t
-                })
+                    const rows = await db.sequelize.query(queryCopyJournalNonDetaille + ' RETURNING *', {
+                        replacements: { id_dossier, id_exerciceN1, id_exercice, id_compte, id_ecriture, dateecriture, id_journal: idRan, devise, id_devise, id_numcpt, compte, libelle: libelleCompte, dateecriture },
+                        transaction: t
+                    })
+
+                    nombreGenere = rows[0].length;
+
+                } else {
+                    return res.json({ state: false, message: 'Le résultat est égal à 0 et la génération automatique a été interrompue' })
+                }
             }
         });
 
-        return res.json({ state: true, message: 'A-nouveaux générées avec succès' });
+        return res.json({ state: true, message: `${nombreGenere} 'A-nouveaux ${texte}' ${pluralize(nombreGenere, 'générée')} avec succès` });
     } catch (error) {
         console.error("Erreur deleteJournal :", error);
         return res.status(500).json({
