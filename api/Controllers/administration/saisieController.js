@@ -4275,3 +4275,97 @@ exports.genererRan = async (req, res) => {
         });
     }
 }
+
+const queryRan = `
+    SELECT id FROM
+    codejournals
+    WHERE
+        id_compte = :id_compte
+        AND id_dossier = :id_dossier
+        AND TYPE = 'RAN'
+`;
+
+exports.deleteJournalRan = async (req, res) => {
+    try {
+        const { id_dossier, id_exercice, id_compte } = req.body;
+        const notLine = 'Aucune ligne de journal A-nouveaux à supprimer';
+        let nbSupprimes = 0;
+
+        await db.sequelize.transaction(async (t) => {
+            const idRanData = await db.sequelize.query(queryRan, {
+                replacements: { id_dossier, id_compte },
+                type: db.Sequelize.QueryTypes.SELECT,
+                transaction: t
+            });
+            const idMapped = idRanData.map(val => Number(val.id));
+
+            if (idMapped.length === 0) return res.json({ state: false, message: 'Aucune code journal à nouveaux trouvé' });
+
+            const lettragesData = await db.sequelize.query(
+                `
+                    SELECT DISTINCT lettrage 
+                    FROM JOURNALS 
+                    WHERE id_journal IN (:ids) 
+                        AND lettrage IS NOT NULL
+                        AND id_dossier = :id_dossier
+                        AND id_exercice = :id_exercice
+                        AND id_compte = :id_compte
+                `,
+                { replacements: { ids: idMapped, id_dossier, id_exercice, id_compte }, type: db.Sequelize.QueryTypes.SELECT, transaction: t }
+            );
+
+            const lettrages = lettragesData.map(l => l.lettrage);
+
+            if (lettrages.length > 0) {
+                await db.sequelize.query(
+                    `
+                        UPDATE JOURNALS 
+                        SET lettrage = NULL
+                        WHERE lettrage IN (:lettrages) 
+                            AND id_journal NOT IN (:ids)
+                            AND id_dossier = :id_dossier
+                            AND id_exercice = :id_exercice
+                            AND id_compte = :id_compte
+                    `,
+                    { replacements: { lettrages, ids: idMapped, id_dossier, id_exercice, id_compte }, type: db.Sequelize.QueryTypes.UPDATE, transaction: t }
+                );
+            }
+
+            const [deletedRows] = await db.sequelize.query(
+                `
+                    DELETE FROM JOURNALS 
+                    WHERE id_ecriture IN (
+                        SELECT ID_ECRITURE
+                        FROM JOURNALS J
+                        INNER JOIN CODEJOURNALS C ON C.ID = J.ID_JOURNAL
+                        WHERE J.ID_DOSSIER = :id_dossier
+                        AND J.ID_COMPTE = :id_compte
+                        AND J.ID_EXERCICE = :id_exercice
+                        AND C.TYPE = 'RAN'
+                    )
+                    AND id_dossier = :id_dossier
+                    AND id_exercice = :id_exercice
+                    AND id_compte = :id_compte
+                    RETURNING id_ecriture;
+                `,
+                {
+                    replacements: { id_dossier, id_exercice, id_compte },
+                    type: db.Sequelize.QueryTypes.RAW,
+                    transaction: t
+                }
+            );
+
+            nbSupprimes = deletedRows.length;
+        });
+
+        return res.json({ state: true, message: nbSupprimes === 0 ? notLine : `${nbSupprimes} A-nouveaux ${pluralize(nbSupprimes, 'supprimées')} avec succès` });
+
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+};
