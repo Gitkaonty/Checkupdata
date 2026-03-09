@@ -5,6 +5,7 @@ import { init } from '../../../../../init';
 import Checkbox from '@mui/material/Checkbox';
 import { useState } from 'react';
 import axios from '../../../../../config/axios';
+import toast from 'react-hot-toast';
 
 const initial = init[0];
 
@@ -21,7 +22,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte, listeExercice, idRan }) => {
+const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte, listeExercice, idRan, defaultDeviseData }) => {
     const id_exercice = selectedExerciceRow[0];
     const [isDetailled, setIsDetailled] = useState(false);
 
@@ -36,9 +37,14 @@ const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExercice
             isDetailled,
             longeurCompte: Number(longeurCompte),
             dateDebut,
-            idRan
+            idRan,
+            defaultDeviseData
         }).then((response) => {
-            console.log('response?.data : ', response?.data);
+            if (response?.data?.state) {
+                toast.success(response?.data?.message);
+            } else {
+                toast.error(response?.data?.message);
+            }
         })
         handleClose();
     }

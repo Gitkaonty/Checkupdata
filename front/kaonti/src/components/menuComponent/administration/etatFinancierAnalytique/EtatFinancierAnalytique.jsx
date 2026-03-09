@@ -531,7 +531,7 @@ export default function EtatFinancierAnalytique() {
 
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
-        axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+        axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
             const resData = response.data;
             if (resData.state) {
 
