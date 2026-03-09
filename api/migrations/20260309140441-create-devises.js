@@ -10,12 +10,33 @@ module.exports = {
       },
       id_compte: {
         type: Sequelize.BIGINT,
-        allowNull: false
+        allowNull: false,
+        references: {
+          model: 'userscomptes',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      },
+      id_dossier: {
+        type: Sequelize.BIGINT,
+        allowNull: false,
+        references: {
+          model: 'dossiers',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
       id_exercice: {
         type: Sequelize.BIGINT,
         allowNull: false,
-        defaultValue: 0
+        references: {
+          model: 'exercices',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
       date_debut: {
         type: Sequelize.DATE,
