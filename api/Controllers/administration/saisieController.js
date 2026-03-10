@@ -103,6 +103,7 @@ exports.computeSoldesRapprochement = async (req, res) => {
         const rapproId = Number(req.query?.rapproId);
         const endDateParam = req.query?.endDate; // requis pour la ligne sélectionnée
         const soldeBancaireParam = req.query?.soldeBancaire; // optionnel
+        const compte = req.query?.compte;
         if (!fileId || !compteId || !exerciceId || !pcId || !endDateParam || !rapproId) {
             return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
         }
@@ -143,15 +144,17 @@ exports.computeSoldesRapprochement = async (req, res) => {
                 COALESCE(SUM(j.credit),0) AS sum_credit, 
                 COALESCE(SUM(j.debit),0) AS sum_debit 
             FROM journals j
-                JOIN codejournals cj ON cj.id = j.id_journal
-                JOIN dossierplancomptables pc ON pc.id = :pcId
-                JOIN dossierplancomptables c ON c.id = j.id_numcpt
-                WHERE j.id_compte = :compteId
-                AND j.id_dossier = :fileId
-                AND j.id_exercice = :exerciceId
-                AND cj.compteassocie = pc.compte
-                AND j.dateecriture BETWEEN :dateDebut AND :dateFinRappro
-                AND c.compte <> pc.compte
+            JOIN codejournals cj ON cj.id = j.id_journal
+            WHERE j.id_compte = :compteId
+            AND j.id_dossier = :fileId
+            AND j.id_exercice = :exerciceId
+            AND cj.compteassocie = :compte
+            AND j.compteaux <> :compte
+            AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+            AND (
+                j.rapprocher IS NOT TRUE
+                OR (j.rapprocher = TRUE AND j.date_rapprochement = :dateFin)
+            )
         `;
 
         // Total des écritures NON rapprochées uniquement (rapprocher = false)
@@ -164,7 +167,7 @@ exports.computeSoldesRapprochement = async (req, res) => {
         `;
 
         const [totAll] = await db.sequelize.query(sqlAll, {
-            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin, dateFinRappro },
+            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin, dateFinRappro, compte },
             type: db.Sequelize.QueryTypes.SELECT,
         });
         const [totNonRapp] = await db.sequelize.query(sqlNonRapp, {
@@ -174,6 +177,8 @@ exports.computeSoldesRapprochement = async (req, res) => {
 
         // Utiliser la même convention que le grid: Débit - Crédit
         const totalAll = (Number(totAll.sum_credit) || 0) - (Number(totAll.sum_debit) || 0);
+
+        // console.log('totalAll : ', totalAll);
         const totalNonRapp = (Number(totNonRapp.sum_debit) || 0) - (Number(totNonRapp.sum_credit) || 0);
 
         // solde comptable = total Débit - Crédit sur TOUTES les écritures
@@ -373,36 +378,56 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         const dateFin = endDateParam ? new Date(endDateParam) : exo.date_fin;
 
         // SQL: journaux du code journal associé au compte 512 sélectionné, dates incluses, et compte different du 512 sélectionné
-        const sql = `
-            SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
-            FROM journals j
-            JOIN codejournals cj ON cj.id = j.id_journal
-            JOIN dossierplancomptables pc ON pc.id = :pcId
-            JOIN dossierplancomptables c ON c.id = j.id_numcpt
-            WHERE j.id_compte = :compteId
-              AND j.id_dossier = :fileId
-              AND j.id_exercice = :exerciceId
-              AND cj.compteassocie = pc.compte
-              AND j.dateecriture BETWEEN :dateDebut AND :dateFin
-              AND c.compte <> pc.compte
-            ORDER BY j.dateecriture ASC, j.id ASC
-        `;
-
         // const sql = `
-        //     SELECT 
-        //         j.*,
-        //         j.compteaux AS compte_ecriture,
-        //         cj.code AS code_journal
+        //     SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
         //     FROM journals j
         //     JOIN codejournals cj ON cj.id = j.id_journal
+        //     JOIN dossierplancomptables pc ON pc.id = :pcId
+        //     JOIN dossierplancomptables c ON c.id = j.id_numcpt
         //     WHERE j.id_compte = :compteId
-        //     AND j.id_dossier = :fileId
-        //     AND j.id_exercice = :exerciceId
-        //     AND cj.compteassocie = :compte
-        //     AND j.compteaux <> :compte
-        //     AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+        //       AND j.id_dossier = :fileId
+        //       AND j.id_exercice = :exerciceId
+        //       AND cj.compteassocie = pc.compte
+        //       AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+        //       AND c.compte <> pc.compte
         //     ORDER BY j.dateecriture ASC, j.id ASC
-        // `
+        // `;
+
+        // const sql = `
+        // SELECT 
+        //     j.*,
+        //     j.compteaux AS compte_ecriture,
+        //     cj.code AS code_journal
+        // FROM journals j
+        // JOIN codejournals cj ON cj.id = j.id_journal
+        // WHERE j.id_compte = :compteId
+        // AND j.id_dossier = :fileId
+        // AND j.id_exercice = :exerciceId
+        // AND cj.compteassocie = :compte
+        // AND j.compteaux <> :compte
+        // AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+        // AND (
+        //     j.rapprocher IS NOT TRUE
+        //     OR (j.rapprocher = TRUE AND j.date_rapprochement = :dateFin)
+        // )
+        // ORDER BY j.dateecriture ASC, j.id ASC
+        // `;
+
+        const sql = `
+            SELECT 
+                j.*,
+                j.compteaux AS compte_ecriture,
+                cj.code AS code_journal
+            FROM journals j
+            JOIN codejournals cj ON cj.id = j.id_journal
+            WHERE j.id_compte = :compteId
+            AND j.id_dossier = :fileId
+            AND j.id_exercice = :exerciceId
+            AND cj.compteassocie = :compte
+            AND j.compteaux <> :compte
+            AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+            ORDER BY j.dateecriture ASC, j.id ASC
+        `;
 
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
