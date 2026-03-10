@@ -36,4 +36,10 @@ router.get('/listeExerciceById/:id', paramExerciceController.getListeExerciceByI
 //récupérer la liste des années
 router.get('/getListeAnnee/:id_compte/:id_dossier', paramExerciceController.getListeAnnee);
 
+// Récupération de la liste des périodes
+router.get('/getPeriodes/:id_exercice', paramExerciceController.getPeriodes);
+
+// Ajout d'une période
+router.post('/addPeriode', paramExerciceController.addPeriode);
+
 module.exports = router;

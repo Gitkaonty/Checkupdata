@@ -1184,6 +1184,85 @@ const getListeAnnee = async (req, res) => {
   }
 };
 
+const getPeriodes = async (req, res) => {
+  try {
+    const { id_exercice } = req.params;
+
+    if (!id_exercice) {
+      return res.json({ state: false, message: 'Veuillez sélectionner une exercice s\'il vous plaît' });
+    }
+
+    const queryGetPeriod = `
+      SELECT * FROM periodes
+      WHERE 
+        id_exercice = :id_exercice
+      ORDER BY
+        date_debut ASC
+    `;
+
+    const rows = await db.sequelize.query(queryGetPeriod, {
+      replacements: { id_exercice },
+      type: db.Sequelize.QueryTypes.SELECT
+    });
+
+    return res.json({ state: true, data: rows });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+  }
+}
+
+const addPeriode = async (req, res) => {
+  try {
+    const { date_debut, date_fin, id_exercice, id_compte, id_dossier } = req.body;
+
+    if (!id_compte) return res.json({ state: false, message: 'Compte utilisateur obligatoire' });
+    if (!id_dossier) return res.json({ state: false, message: 'Dossier obligatoire' });
+    if (!id_exercice) return res.json({ state: false, message: 'Exercice obligatoire' });
+    if (!date_debut) return res.json({ state: false, message: 'La date début est obligatoire' });
+    if (!date_fin) return res.json({ state: false, message: 'La date fin est obligatoire' });
+
+    const queryAddPeriod = `
+      INSERT INTO periodes (
+        id_compte, 
+        id_dossier, 
+        id_exercice, 
+        date_debut,
+        date_fin
+      )
+      VALUES (
+        :id_compte, 
+        :id_dossier, 
+        :id_exercice, 
+        :date_debut,
+        :date_fin
+      )
+      RETURNING *
+    `;
+
+    const [data] = await db.sequelize.query(queryAddPeriod, {
+      replacements: {
+        id_compte,
+        id_dossier,
+        id_exercice,
+        date_debut,
+        date_fin
+      },
+      type: db.Sequelize.QueryTypes.INSERT
+    });
+
+    if (data.length > 0) {
+      return res.json({ state: true, message: 'Période ajoutée avec succès', data: data[0] });
+    }
+
+    return res.json({ state: false, message: "Erreur lors de l'ajout, veuillez réessayer" });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+  }
+};
 
 module.exports = {
   getListeExercice,
@@ -1195,5 +1274,7 @@ module.exports = {
   deleteExercice,
   getListeSituation,
   getListeExerciceById,
-  getListeAnnee
+  getListeAnnee,
+  getPeriodes,
+  addPeriode
 };

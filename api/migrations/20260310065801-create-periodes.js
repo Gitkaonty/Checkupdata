@@ -1,7 +1,8 @@
 'use strict';
 
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  async up(queryInterface, Sequelize) {
     await queryInterface.createTable('periodes', {
       id: {
         type: Sequelize.BIGINT,
@@ -39,12 +40,12 @@ module.exports = {
         onDelete: 'CASCADE',
       },
       date_debut: {
-        type: Sequelize.DATE,
+        type: Sequelize.DATEONLY,
         unique: false,
         allowNull: false
       },
       date_fin: {
-        type: Sequelize.DATE,
+        type: Sequelize.DATEONLY,
         unique: true,
         allowNull: false
       },
@@ -56,10 +57,13 @@ module.exports = {
         type: Sequelize.DATE,
         defaultValue: Sequelize.fn('NOW')
       }
-    });
+
+    },
+      { timestamps: true }
+    );
   },
 
-  down: async (queryInterface, Sequelize) => {
+  async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('periodes');
   }
 };
