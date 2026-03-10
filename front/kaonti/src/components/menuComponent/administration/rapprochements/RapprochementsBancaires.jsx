@@ -230,7 +230,7 @@ function RapprochementsBancaires() {
   }
 
   const GetListeExercice = (id) => {
-    axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+    axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
         setListeExercice(resData.list);
@@ -853,8 +853,13 @@ function RapprochementsBancaires() {
       }
     }
     GetInfosIdDossier(idFile);
-    GetListeExercice(idFile);
-  }, []);
+  }, [compteId]);
+
+  useEffect(() => {
+    if (fileId && compteId) {
+      GetListeExercice(fileId);
+    }
+  }, [fileId, compteId])
 
   useEffect(() => {
     if (fileId) loadPc512(fileId);

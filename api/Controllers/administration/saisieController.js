@@ -373,38 +373,36 @@ exports.listEcrituresForRapprochement = async (req, res) => {
         const dateFin = endDateParam ? new Date(endDateParam) : exo.date_fin;
 
         // SQL: journaux du code journal associé au compte 512 sélectionné, dates incluses, et compte different du 512 sélectionné
-        // const sql = `
-        //     SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
-        //     FROM journals j
-        //     JOIN codejournals cj ON cj.id = j.id_journal
-        //     JOIN dossierplancomptables pc ON pc.id = :pcId
-        //     JOIN dossierplancomptables c ON c.id = j.id_numcpt
-        //     WHERE j.id_compte = :compteId
-        //       AND j.id_dossier = :fileId
-        //       AND j.id_exercice = :exerciceId
-        //       AND cj.compteassocie = pc.compte
-        //       AND j.dateecriture BETWEEN :dateDebut AND :dateFin
-        //       AND c.compte <> pc.compte
-        //     ORDER BY j.dateecriture ASC, j.id ASC
-        // `;
-
-        console.log(fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin);
-
         const sql = `
-            SELECT 
-                j.*,
-                j.compteaux AS compte_ecriture,
-                cj.code AS code_journal
+            SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
             FROM journals j
             JOIN codejournals cj ON cj.id = j.id_journal
+            JOIN dossierplancomptables pc ON pc.id = :pcId
+            JOIN dossierplancomptables c ON c.id = j.id_numcpt
             WHERE j.id_compte = :compteId
-            AND j.id_dossier = :fileId
-            AND j.id_exercice = :exerciceId
-            AND cj.compteassocie = :compte
-            AND j.compteaux <> :compte
-            AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+              AND j.id_dossier = :fileId
+              AND j.id_exercice = :exerciceId
+              AND cj.compteassocie = pc.compte
+              AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+              AND c.compte <> pc.compte
             ORDER BY j.dateecriture ASC, j.id ASC
-        `
+        `;
+
+        // const sql = `
+        //     SELECT 
+        //         j.*,
+        //         j.compteaux AS compte_ecriture,
+        //         cj.code AS code_journal
+        //     FROM journals j
+        //     JOIN codejournals cj ON cj.id = j.id_journal
+        //     WHERE j.id_compte = :compteId
+        //     AND j.id_dossier = :fileId
+        //     AND j.id_exercice = :exerciceId
+        //     AND cj.compteassocie = :compte
+        //     AND j.compteaux <> :compte
+        //     AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+        //     ORDER BY j.dateecriture ASC, j.id ASC
+        // `
 
         const rows = await db.sequelize.query(sql, {
             replacements: { fileId, compteId, exerciceId, pcId, dateDebut, compte, dateFin },
@@ -1695,62 +1693,50 @@ exports.getJournal = async (req, res) => {
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
-        const firstTenIds = await journals.findAll({
-            attributes: ['id_ecriture', 'createdAt'],
-            where: { id_compte, id_dossier, id_exercice },
-            order: [['createdAt', 'DESC']],
-            raw: true
+        const query = `
+                WITH last_ecritures AS (
+                    SELECT DISTINCT id_ecriture
+                    FROM journals
+                    WHERE id_compte = :id_compte
+                    AND id_dossier = :id_dossier
+                    AND id_exercice = :id_exercice
+                    ORDER BY id_ecriture DESC
+                    LIMIT 10
+                )
+
+                SELECT
+                    j.*,
+                    cj.code AS journal,
+                    d.dossier
+                FROM journals j
+                LEFT JOIN codejournals cj ON cj.id = j.id_journal
+                LEFT JOIN dossiers d ON d.id = j.id_dossier
+                WHERE
+                    j.id_compte = :id_compte
+                    AND j.id_dossier = :id_dossier
+                    AND j.id_exercice = :id_exercice
+                    AND j.id_ecriture IN (SELECT id_ecriture FROM last_ecritures)
+                ORDER BY
+                    CASE 
+                        WHEN cj.type = 'RAN' THEN 0
+                        ELSE 1
+                    END,
+                    j.id_ecriture ASC,
+                    j."createdAt" DESC
+        `;
+
+        const journalData = await db.sequelize.query(query, {
+            replacements: { id_compte, id_dossier, id_exercice },
+            type: db.Sequelize.QueryTypes.SELECT
         });
 
-        const uniqueEcritures = [...new Set(firstTenIds.map(val => val.id_ecriture))];
+        return res.json(journalData);
 
-        const id_ecritures = uniqueEcritures.slice(0, 10);
-
-        const journalData = await journals.findAll({
-            where: {
-                id_compte,
-                id_dossier,
-                id_exercice,
-                id_ecriture: id_ecritures
-            },
-            include: [
-                { model: dossierplancomptable, attributes: ['compte'] },
-                { model: codejournals, attributes: ['code'] },
-                { model: dossiers, attributes: ['dossier'] },
-            ],
-            order: [
-                // ['id_ecriture', 'ASC'],
-                // ['dateecriture', 'ASC'],
-                // ['id', 'ASC']
-                ['createdAt', 'DESC']
-            ]
-        });
-
-        const mappedData = journalData.map(journal => {
-            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-                journal: codejournal?.code || null,
-                dossier: dossier?.dossier || null
-            };
-        });
-
-        if (mappedData.length > 0) {
-            console.log('[JOURNAL][GET] Première ligne:', {
-                id: mappedData[0].id,
-                compte: mappedData[0].compte,
-                journal: mappedData[0].journal,
-                libelle: mappedData[0].libelle
-            });
-        }
-
-        return res.json(mappedData);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
-}
+};
 
 exports.getAllJournal = async (req, res) => {
     try {
@@ -1809,7 +1795,7 @@ exports.getAllJournal = async (req, res) => {
                     WHEN cj.type = 'RAN' THEN 0
                     ELSE 1
                 END,
-                j.dateecriture ASC
+                j.id_ecriture ASC
             `;
 
         const result = await db.sequelize.query(query, {
