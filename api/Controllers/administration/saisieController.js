@@ -1719,35 +1719,35 @@ exports.getJournal = async (req, res) => {
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
         const query = `
-                WITH last_ecritures AS (
-                    SELECT DISTINCT id_ecriture
-                    FROM journals
-                    WHERE id_compte = :id_compte
-                    AND id_dossier = :id_dossier
-                    AND id_exercice = :id_exercice
-                    ORDER BY id_ecriture DESC
-                    LIMIT 10
-                )
+            WITH last_ecritures AS (
+                SELECT id_ecriture
+                FROM journals
+                WHERE id_compte = :id_compte
+                AND id_dossier = :id_dossier
+                AND id_exercice = :id_exercice
+                GROUP BY id_ecriture
+                ORDER BY MAX(id) DESC
+                LIMIT 10
+            )
 
-                SELECT
-                    j.*,
-                    cj.code AS journal,
-                    d.dossier
-                FROM journals j
-                LEFT JOIN codejournals cj ON cj.id = j.id_journal
-                LEFT JOIN dossiers d ON d.id = j.id_dossier
-                WHERE
-                    j.id_compte = :id_compte
-                    AND j.id_dossier = :id_dossier
-                    AND j.id_exercice = :id_exercice
-                    AND j.id_ecriture IN (SELECT id_ecriture FROM last_ecritures)
-                ORDER BY
-                    CASE 
-                        WHEN cj.type = 'RAN' THEN 0
-                        ELSE 1
-                    END,
-                    j.id_ecriture ASC,
-                    j."createdAt" DESC
+            SELECT
+                j.*,
+                cj.type AS journal,
+                d.dossier
+            FROM journals j
+            LEFT JOIN codejournals cj ON cj.id = j.id_journal
+            LEFT JOIN dossiers d ON d.id = j.id_dossier
+            WHERE
+                j.id_compte = :id_compte
+                AND j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+                AND j.id_ecriture IN (SELECT id_ecriture FROM last_ecritures)
+            ORDER BY
+                CASE 
+                    WHEN cj.type = 'RAN' THEN 0
+                    ELSE 1
+                END,
+                j."createdAt" DESC
         `;
 
         const journalData = await db.sequelize.query(query, {

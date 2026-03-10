@@ -8,6 +8,9 @@ const corsOptions = require('./config/corsOptions');
 const verifyJWT = require('./Middlewares/verifyJWT');
 const credentials = require('./Middlewares/credentials');
 
+const pg = require('pg');
+pg.types.setTypeParser(20, val => parseInt(val));
+
 //const userRoutes = require ('./Routes/UserRoutes/userRoutes');
 //const dossierRoutes = require ('./Routes/HomeRoutes/dossierRoutes');
 //const paramPCModeleRoute = require ('./Routes/Parametres/paramPCModeleRoute');
