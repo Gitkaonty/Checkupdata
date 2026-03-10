@@ -61,6 +61,8 @@ export default function SaisieComponent() {
     const [selectedRows, setSelectedRows] = useState([]);
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
+    console.log('selectedRows : ', selectedRows);
+
     const gridRef = useRef(null)
     const [scrollbarVisible, setScrollbarVisible] = useState(false);
 
@@ -858,7 +860,7 @@ export default function SaisieComponent() {
                                         disabled={
                                             !canModify ||
                                             selectedRows.length === 0 ||
-                                            (selectedRows.filter(val => val.id_dossier === fileId)).length === 0 ||
+                                            (selectedRows.filter(val => Number(val.id_dossier) === Number(fileId))).length === 0 ||
                                             isRanTypeSelected
                                         }
                                         variant="contained"
@@ -879,7 +881,7 @@ export default function SaisieComponent() {
                                         disabled={
                                             !canDelete ||
                                             selectedRows.length === 0 ||
-                                            (selectedRows.filter(val => val.id_dossier === fileId)).length === 0 ||
+                                            (selectedRows.filter(val => Number(val.id_dossier) === Number(fileId))).length === 0 ||
                                             isRanTypeSelected
                                         }
                                         variant="contained"

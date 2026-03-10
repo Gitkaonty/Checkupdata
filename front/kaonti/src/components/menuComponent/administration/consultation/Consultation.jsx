@@ -83,10 +83,10 @@ export default function ConsultationComponent() {
 
     const { id } = useParams();
 
-    const [listSaisie, setListSaisie] = useState([]);
     const [filteredList, setFilteredList] = useState(null);
     const [listePlanComptable, setListePlanComptable] = useState([]);
     const [listePlanComptableInitiale, setListePlanComptableInitiale] = useState([]);
+    const [listePcSelectionner, setListePcSelectionner] = useState([]);
     const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
     const [listeDevise, setListeDevise] = useState([]);
     const [listeAnnee, setListeAnnee] = useState([]);
@@ -172,31 +172,6 @@ export default function ConsultationComponent() {
         })
     }
 
-    //Liste saisie
-    const getListeSaisie = () => {
-        axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`).then((response) => {
-            const resData = response.data;
-            if (canView) {
-                setListSaisie(resData);
-            } else {
-                setListSaisie([]);
-            }
-        })
-    }
-
-    //Liste saisie with return statement
-    const getListeSaisieReturn = async () => {
-        const response = await axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`);
-        const resData = response.data;
-        if (canView) {
-            setListSaisie(resData);
-        } else {
-            setListSaisie(resData);
-        }
-        canView ? setListSaisie(resData) : setListSaisie([]);
-        return resData;
-    };
-
     //Récupération du plan comptable
     const getPc = () => {
         axios.get(`/paramPlanComptable/PcIdLibelle/${compteId}/${fileId}`, {
@@ -212,6 +187,24 @@ export default function ConsultationComponent() {
                 }
             })
     }
+
+    // Récupération des listes des comptes à sélectionner
+    const getCompteConsultation = async () => {
+        await axios.post('/administration/traitementSaisie/getCompteConsultation', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), filtrageCompte })
+            .then((response) => {
+                if (response?.data?.state) {
+                    setListePcSelectionner(response?.data?.comptes);
+                } else {
+                    return;
+                }
+            })
+    }
+
+    useEffect(() => {
+        if (compteId && fileId && selectedExerciceId) {
+            getCompteConsultation();
+        }
+    }, [compteId, fileId, selectedExerciceId, filtrageCompte])
 
     // Récupération des listes des comptes associés dans le code journal
     const getCodeJournalsCompteAssocie = () => {
@@ -456,48 +449,36 @@ export default function ConsultationComponent() {
         });
     }
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         if (!valSelectedCompte || valSelectedCompte === 'tout') {
             setFilteredList([]);
             return;
         }
 
-        if (!listePlanComptable || listePlanComptable.length === 0) {
+        if (!listePcSelectionner || listePcSelectionner.length === 0) {
             toast.error("Liste plan comptable pas encore chargée");
             return;
         }
 
-        const compteSelect = (listePlanComptableInitiale || listePlanComptable).find(
-            (item) => item.id === Number(valSelectedCompte)
-        );
-
-        if (!compteSelect || compteSelect.compte == null) {
-            setFilteredList([]);
-            return;
-        }
-
-        const compteSelectStr = compteSelect.compte.toString();
-
-        const filtered = listSaisie.filter(
-            (item) => item.compteaux?.toString() === compteSelectStr
-        );
-
-        setFilteredList(filtered);
+        await axios.post('/administration/traitementSaisie/getJournalsConsultation', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), valSelectedCompte: Number(valSelectedCompte) })
+            .then((response) => {
+                setFilteredList(response?.data);
+            })
     };
 
     const handlePrevious = () => {
-        const currentIndex = listePlanComptable.findIndex(item => item.id === Number(valSelectedCompte));
+        const currentIndex = listePcSelectionner.findIndex(item => item.id === Number(valSelectedCompte));
         if (currentIndex > 0) {
-            setValSelectedCompte(listePlanComptable[currentIndex - 1].id);
+            setValSelectedCompte(listePcSelectionner[currentIndex - 1].id);
         } else if (currentIndex === 0) {
             setValSelectedCompte("tout");
         }
     };
 
     const handleNext = () => {
-        const currentIndex = listePlanComptable.findIndex(item => item.id === Number(valSelectedCompte));
-        if (currentIndex < listePlanComptable.length - 1) {
-            setValSelectedCompte(listePlanComptable[currentIndex + 1].id);
+        const currentIndex = listePcSelectionner.findIndex(item => item.id === Number(valSelectedCompte));
+        if (currentIndex < listePcSelectionner.length - 1) {
+            setValSelectedCompte(listePcSelectionner[currentIndex + 1].id);
         }
     };
 
@@ -522,7 +503,8 @@ export default function ConsultationComponent() {
         return newRows;
     };
 
-    const rowsAvecSolde = calculerSoldeCumule(filteredList ?? listSaisie);
+    // const rowsAvecSolde = calculerSoldeCumule(filteredList ?? listSaisie);
+    const rowsAvecSolde = calculerSoldeCumule(filteredList ?? []);
 
     const ajoutLettrage = () => {
         if (selectedRows.length === 0) {
@@ -652,40 +634,54 @@ export default function ConsultationComponent() {
         }
     }
 
-    const handleOpenSaisiePopup = () => {
+    const handleOpenSaisiePopup = async () => {
         const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
         if (!defaultDeviseData) {
             return toast.error('Veuillez sélectionner une devise par défaut dans le paramétrage CRM de ce dossier')
         }
-        let id_ecriture = '';
-        if (selectedRows.length === 1) {
-            const selectedJournalId = selectedRows[0].id_journal;
-            const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
 
-            if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
-                return toast.error("Impossible de modifier une écriture d'immobilisation");
-            }
+        const selectedRows = rowsAvecSolde.filter(row =>
+            rowSelectionModel.includes(row.id)
+        );
 
-            id_ecriture = selectedRows[0].id_ecriture;
-            const rows = listSaisie
-                .filter((row) => row.id_ecriture === id_ecriture)
-                .map((row) => {
-                    const [annee, mois, jour] = row.dateecriture.split('-');
-                    const compteObj = listePlanComptable.find(pc => pc.compte === row.compteaux);
-
-                    return {
-                        ...row,
-                        jour: parseInt(jour),
-                        mois: parseInt(mois),
-                        compte: Number(compteObj?.id ?? row.id_numcpt),
-                        libelle: compteObj?.libelle ?? row.libelle
-                    };
-                });
-            setSelectedRows(rows);
-            setOpenSaisiePopup(true);
-        } else {
-            toast.error('Sélectionner une ligne pour modifier')
+        if (rowSelectionModel.length !== 1) {
+            toast.error('Sélectionner une ligne pour modifier');
+            return;
         }
+
+        let id_ecriture = '';
+        const selectedJournalId = selectedRows[0].id_journal;
+        const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
+
+        if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
+            return toast.error("Impossible de modifier une écriture d'immobilisation");
+        }
+
+        id_ecriture = selectedRows[0].id_ecriture;
+
+        await axios.post('/administration/traitementSaisie/getJournalsEcriture', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), id_ecriture })
+            .then((response) => {
+                if (response?.data?.state) {
+                    const ecritures = response?.data?.rows;
+                    const rows = ecritures
+                        .map((row) => {
+                            const [annee, mois, jour] = row.dateecriture.split('-');
+                            const compteObj = listePlanComptable.find(pc => pc.compte === row.compteaux);
+
+                            return {
+                                ...row,
+                                jour: parseInt(jour),
+                                mois: parseInt(mois),
+                                compte: Number(compteObj?.id ?? row.id_numcpt),
+                                libelle: compteObj?.libelle ?? row.libelle
+                            };
+                        });
+                    setSelectedRows(rows);
+                    setOpenSaisiePopup(true);
+                } else {
+                    toast.error('Erreur lors de la récupération des écritures');
+                }
+            })
     }
 
     const calculateDebitCredit = (tableRows) => {
@@ -787,13 +783,6 @@ export default function ConsultationComponent() {
         })
     }
 
-    // Liste saisie
-    useEffect(() => {
-        if (fileId && selectedExerciceId && compteId) {
-            getListeSaisie();
-        }
-    }, [selectedPeriodeId, selectedExerciceId, selectedExerciceId, isRefresehed])
-
     //récupérer les informations du dossier sélectionné
     useEffect(() => {
         const navigationEntries = performance.getEntriesByType('navigation');
@@ -817,16 +806,31 @@ export default function ConsultationComponent() {
     }, []);
 
     useEffect(() => {
-        if (listePlanComptable.length > 0 || listePlanComptableInitiale.length > 0 && valSelectedCompte && (fileId && compteId)) {
-            const existe = listePlanComptable.some(item => item.id === Number(valSelectedCompte));
-            if (!existe && valSelectedCompte !== "tout") {
-                setValSelectedCompte("tout");
-                return;
-            }
+        if (!valSelectedCompte) {
+            setFilteredList([]);
+            return;
+        }
 
+        if (!listePcSelectionner || listePcSelectionner.length === 0) {
+            setFilteredList([]);
+            return;
+        }
+
+        const existe = listePcSelectionner.some(
+            item => item.id === Number(valSelectedCompte)
+        );
+
+        if (!existe) {
+            setValSelectedCompte(null);
+            setFilteredList([]);
+            return;
+        }
+
+        if (fileId && compteId) {
             handleSearch();
         }
-    }, [listePlanComptable, listePlanComptableInitiale, valSelectedCompte, listSaisie]);
+
+    }, [valSelectedCompte, listePcSelectionner, isRefresehed]);
 
     useEffect(() => {
         if (fileId && compteId && typeComptabilite !== null) {
@@ -842,50 +846,55 @@ export default function ConsultationComponent() {
         }
     }, [fileId, compteId]);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const resData = await getListeSaisieReturn();
-                const comptesAvecSolde = resData.map(row => String(row.compteaux));
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         try {
+    //             const resData = await getListeSaisieReturn();
+    //             const comptesAvecSolde = resData.map(row => String(row.compteaux));
 
-                const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
-                    comptesAvecSolde.includes(String(plan.compte))
-                );
+    //             const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
+    //                 comptesAvecSolde.includes(String(plan.compte))
+    //             );
 
-                if (filtrageCompte === "1") {
-                    // Comptes mouvementés
-                    setListePlanComptable(listePlanComptableFiltree);
+    //             if (filtrageCompte === "1") {
+    //                 // Comptes mouvementés*
+    //                 // console.log('listePlanComptableFiltree.length : ', listePlanComptableFiltree.length);
+    //                 setListePlanComptable(listePlanComptableFiltree);
 
-                } else if (filtrageCompte === "2") {
-                    // Comptes soldés
-                    const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
-                        const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-                        const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-                        const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-                        return Math.abs(totalDebit - totalCredit) < 0.01;
-                    });
+    //             } else if (filtrageCompte === "2") {
+    //                 // Comptes soldés
+    //                 const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
+    //                     const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
+    //                     const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+    //                     const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+    //                     return Math.abs(totalDebit - totalCredit) < 0.01;
+    //                 });
 
-                    setListePlanComptable(comptesEquilibres);
+    //                 // console.log('comptesEquilibres.length : ', comptesEquilibres.length);
 
-                } else if (filtrageCompte === "3") {
-                    // Comptes non soldés
-                    const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
-                        const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-                        const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-                        const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-                        return Math.abs(totalDebit - totalCredit) >= 0.01;
-                    });
+    //                 setListePlanComptable(comptesEquilibres);
 
-                    setListePlanComptable(comptesDesequilibres);
-                }
-            } catch (error) {
-                console.error("Erreur lors du chargement des écritures :", error);
-            }
-        }
-        if (fileId && compteId) {
-            fetchData();
-        }
-    }, [filtrageCompte, fileId, listePlanComptableInitiale]);
+    //             } else if (filtrageCompte === "3") {
+    //                 // Comptes non soldés
+    //                 const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
+    //                     const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
+    //                     const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+    //                     const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+    //                     return Math.abs(totalDebit - totalCredit) >= 0.01;
+    //                 });
+
+    //                 // console.log('comptesDesequilibres.length : ', comptesDesequilibres.length);
+
+    //                 setListePlanComptable(comptesDesequilibres);
+    //             }
+    //         } catch (error) {
+    //             console.error("Erreur lors du chargement des écritures :", error);
+    //         }
+    //     }
+    //     if (fileId && compteId) {
+    //         fetchData();
+    //     }
+    // }, [filtrageCompte, fileId, listePlanComptableInitiale]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -902,7 +911,7 @@ export default function ConsultationComponent() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [listePlanComptable, valSelectedCompte]);
+    }, [listePcSelectionner, valSelectedCompte]);
 
     // Liste des années
     useEffect(() => {
@@ -1085,8 +1094,10 @@ export default function ConsultationComponent() {
                                         onClick={handleOpenSaisiePopup}
                                         disabled={
                                             !canModify ||
-                                            selectedRows.length === 0 ||
-                                            selectedRows.every(row => Number(row.id_dossier) !== Number(fileId)) ||
+                                            rowSelectionModel.length === 0 ||
+                                            rowsAvecSolde
+                                                .filter(row => rowSelectionModel.includes(row.id))
+                                                .every(row => Number(row.id_dossier) !== Number(fileId)) ||
                                             isRanTypeSelected
                                         }
                                         variant="contained"
@@ -1131,7 +1142,7 @@ export default function ConsultationComponent() {
                                         >
                                             <Autocomplete
                                                 disabled={!canView || !selectedExerciceId || selectedExerciceId === 0}
-                                                value={listePlanComptable.find(item => item.id === Number(valSelectedCompte)) || null}
+                                                value={listePcSelectionner.find(item => item.id === Number(valSelectedCompte)) || null}
                                                 onChange={(event, newValue) => {
                                                     setValSelectedCompte(newValue?.id || null);
                                                 }}
@@ -1151,7 +1162,7 @@ export default function ConsultationComponent() {
                                                         </li>
                                                     );
                                                 }}
-                                                options={listePlanComptable}
+                                                options={listePcSelectionner}
                                                 getOptionLabel={(option) => `${option.compte || ''} - ${option.libelle || ''}`}
                                                 renderInput={(params) => <TextField {...params} label="Compte" variant="standard" />}
                                                 isOptionEqualToValue={(option, value) => option?.id === value?.id}
@@ -1240,8 +1251,6 @@ export default function ConsultationComponent() {
                                     onChange={(e) => {
                                         setFiltrageCompte(e.target.value);
                                         setFilteredList([]);
-                                        setListSaisie([]);
-                                        handleSearch();
                                     }}
                                     value={filtrageCompte}
                                 >
@@ -1405,11 +1414,9 @@ export default function ConsultationComponent() {
                                     }}
                                     rowSelectionModel={rowSelectionModel}
                                     onRowSelectionModelChange={(ids) => {
-                                        const selectedData = rowsAvecSolde.filter((row) => ids.includes(row.id));
-                                        setSelectedRows(selectedData);
+                                        setRowSelectionModel(ids);
 
-                                        const newRowIds = selectedData.map(row => row.id);
-                                        setRowSelectionModel(newRowIds);
+                                        const selectedData = rowsAvecSolde.filter((row) => ids.includes(row.id));
 
                                         const lettrages = selectedData.map(row => row.lettrage);
 
