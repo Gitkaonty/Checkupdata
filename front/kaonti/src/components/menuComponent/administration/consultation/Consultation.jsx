@@ -98,14 +98,6 @@ export default function ConsultationComponent() {
     const [openLettrageDesequilibrePopup, setOpenLettrageDesequilibrePopup] = useState(false);
     const [messageLettrageDesequlibre, setMessageLettrageDesequilibre] = useState('');
 
-    // Vérifier si la sélection contient un type RAN
-    const isRanTypeSelected = useMemo(() => {
-        if (selectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
-        const selectedJournalId = Number(selectedRows[0].id_journal);
-        const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
-        return codeJournal?.type === 'RAN';
-    }, [selectedRows, listeCodeJournaux]);
-
     //Valeur du listbox choix compte
     const [valSelectedCompte, setValSelectedCompte] = useState('')
 
@@ -505,20 +497,32 @@ export default function ConsultationComponent() {
 
     // const rowsAvecSolde = calculerSoldeCumule(filteredList ?? listSaisie);
     const rowsAvecSolde = calculerSoldeCumule(filteredList ?? []);
+    const gridSelectedRows = rowsAvecSolde.filter(row =>
+        rowSelectionModel.includes(row.id)
+    );
+
+    // Vérifier si la sélection contient un type RAN
+    const isRanTypeSelected = useMemo(() => {
+        if (gridSelectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
+        const selectedJournalId = Number(gridSelectedRows[0].id_journal);
+        const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
+        return codeJournal?.type === 'RAN';
+    }, [gridSelectedRows, listeCodeJournaux]);
 
     const ajoutLettrage = () => {
-        if (selectedRows.length === 0) {
+        if (gridSelectedRows.length === 0) {
             toast.error("Aucune ligne sélectionnée");
             return;
         }
-        const isHavingLettrage = selectedRows.some(row => row.lettrage && row.lettrage.trim() !== '');
+
+        const isHavingLettrage = gridSelectedRows.some(row => row.lettrage && row.lettrage.trim() !== '');
         if (isHavingLettrage) {
             toast.error("Il y a déjà une lettrage pour certaines lignes");
         } else {
-            const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
+            const soldeStr = calculateDebitCredit(gridSelectedRows).solde.replace(/\s/g, '').replace(',', '.');
             const solde = parseFloat(soldeStr);
             if (solde === 0) {
-                const ids = selectedRows.map(row => row.id);
+                const ids = gridSelectedRows.map(row => row.id);
                 axiosPrivate.post('/administration/traitementSaisie/addLettrage',
                     {
                         data: ids,
@@ -543,26 +547,50 @@ export default function ConsultationComponent() {
     }
 
     const supprimerLettrage = () => {
-        if (selectedRows.length === 0) {
+        if (gridSelectedRows.length === 0) {
             toast.error("Aucune ligne sélectionnée");
             return;
         }
 
-        const firstLettrage = selectedRows[0].lettrage?.trim();
+        const selectedData = gridSelectedRows;
+
+        const lettrages = selectedData.map(row => row.lettrage);
+
+        const hasNullLettrage = lettrages.some(l => !l || l.trim() === "");
+        if (hasNullLettrage) return toast.error("Les lignes que vous avez sélectionnées n\'ont pas de lettrages");;
+
+        const cleaned = lettrages.map(l => l.trim());
+
+        const allSameLettrage = cleaned.every(l => l === cleaned[0]);
+        if (!allSameLettrage) return toast.error("Les lignes que vous avez sélectionnées ont des lettrages différents");;
+
+        const lettrageValue = cleaned[0];
+
+        const soldeLigne = calculateDebitCredit(selectedData).solde;
+
+        const soldeNum = parseFloat(soldeLigne.toString().replace(',', '.'));
+
+        if (soldeNum !== 0) {
+            setMessageLettrageDesequilibre(`Le lettrage ${lettrageValue} est déséquilibré de ${soldeLigne} ${deviseParDefaut}.\nLes lettrages vont être annulés.`)
+            setSelectedLigneDesequilibre(selectedData);
+            setOpenLettrageDesequilibrePopup(true);
+        }
+
+        const firstLettrage = gridSelectedRows[0].lettrage?.trim();
 
         const allHaveSameLettrage = firstLettrage &&
-            selectedRows.every(row => row.lettrage?.trim() === firstLettrage);
+            gridSelectedRows.every(row => row.lettrage?.trim() === firstLettrage);
 
         if (!allHaveSameLettrage) {
             toast.error("Les lettrages ne sont pas les mêmes ou sont vides");
             return;
         }
 
-        const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
+        const soldeStr = calculateDebitCredit(gridSelectedRows).solde.replace(/\s/g, '').replace(',', '.');
         const solde = parseFloat(soldeStr);
 
         if (solde === 0) {
-            const ids = selectedRows.map(row => row.id);
+            const ids = gridSelectedRows.map(row => row.id);
             axiosPrivate.put('/administration/traitementSaisie/deleteLettrage', {
                 data: ids,
                 id_compte: compteId,
@@ -724,7 +752,7 @@ export default function ConsultationComponent() {
         };
     };
 
-    const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
+    const soldeStr = calculateDebitCredit(gridSelectedRows).solde.replace(/\s/g, '').replace(',', '.');
     const solde = parseFloat(soldeStr);
 
     const soldeLigneStr = calculateDebitCredit(filteredList || []).solde.replace(/\s/g, '').replace(',', '.');
@@ -782,6 +810,10 @@ export default function ConsultationComponent() {
             }
         })
     }
+
+    const currentIndex = listePcSelectionner.findIndex(
+        item => item.id === Number(valSelectedCompte)
+    );
 
     //récupérer les informations du dossier sélectionné
     useEffect(() => {
@@ -845,56 +877,6 @@ export default function ConsultationComponent() {
             getListeDevises();
         }
     }, [fileId, compteId]);
-
-    // useEffect(() => {
-    //     const fetchData = async () => {
-    //         try {
-    //             const resData = await getListeSaisieReturn();
-    //             const comptesAvecSolde = resData.map(row => String(row.compteaux));
-
-    //             const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
-    //                 comptesAvecSolde.includes(String(plan.compte))
-    //             );
-
-    //             if (filtrageCompte === "1") {
-    //                 // Comptes mouvementés*
-    //                 // console.log('listePlanComptableFiltree.length : ', listePlanComptableFiltree.length);
-    //                 setListePlanComptable(listePlanComptableFiltree);
-
-    //             } else if (filtrageCompte === "2") {
-    //                 // Comptes soldés
-    //                 const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
-    //                     const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-    //                     const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-    //                     const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-    //                     return Math.abs(totalDebit - totalCredit) < 0.01;
-    //                 });
-
-    //                 // console.log('comptesEquilibres.length : ', comptesEquilibres.length);
-
-    //                 setListePlanComptable(comptesEquilibres);
-
-    //             } else if (filtrageCompte === "3") {
-    //                 // Comptes non soldés
-    //                 const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
-    //                     const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-    //                     const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-    //                     const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-    //                     return Math.abs(totalDebit - totalCredit) >= 0.01;
-    //                 });
-
-    //                 // console.log('comptesDesequilibres.length : ', comptesDesequilibres.length);
-
-    //                 setListePlanComptable(comptesDesequilibres);
-    //             }
-    //         } catch (error) {
-    //             console.error("Erreur lors du chargement des écritures :", error);
-    //         }
-    //     }
-    //     if (fileId && compteId) {
-    //         fetchData();
-    //     }
-    // }, [filtrageCompte, fileId, listePlanComptableInitiale]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -992,7 +974,7 @@ export default function ConsultationComponent() {
                         id_compte={Number(compteId)}
                         solde={solde}
                         refresh={() => setIsRefreshed(prev => !prev)}
-                        selectedRows={selectedRows}
+                        selectedRows={gridSelectedRows}
                     />
                 )
             }
@@ -1005,7 +987,7 @@ export default function ConsultationComponent() {
                         id_exercice={Number(selectedExerciceId)}
                         id_compte={Number(compteId)}
                         refresh={() => setIsRefreshed(prev => !prev)}
-                        selectedRows={selectedRows}
+                        selectedRows={gridSelectedRows}
                         selectedCompte={valSelectedCompte}
                     />
                 )
@@ -1175,7 +1157,13 @@ export default function ConsultationComponent() {
                                             <Tooltip title={'Ctrl + <--'}>
                                                 <span>
                                                     <Button
-                                                        disabled={!canView || !selectedExerciceId || selectedExerciceId === 0 || valSelectedCompte === 'tout'}
+                                                        disabled={
+                                                            !canView ||
+                                                            !selectedExerciceId ||
+                                                            selectedExerciceId === 0 ||
+                                                            valSelectedCompte === 'tout' ||
+                                                            currentIndex <= 0
+                                                        }
                                                         sx={{
                                                             minWidth: 0,
                                                             padding: 1,
@@ -1210,7 +1198,7 @@ export default function ConsultationComponent() {
                                                         disabled={
                                                             !canView ||
                                                             !selectedExerciceId || selectedExerciceId === 0 ||
-                                                            listePlanComptable.findIndex(item => item.id === valSelectedCompte) >= listePlanComptable.length - 1
+                                                            currentIndex >= listePcSelectionner.length - 1
                                                         }
                                                         sx={{
                                                             minWidth: 0,
@@ -1300,7 +1288,7 @@ export default function ConsultationComponent() {
                                     }}>
 
                                     <Button
-                                        disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canAdd || gridSelectedRows.length === 0 || !valSelectedCompte || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1316,7 +1304,7 @@ export default function ConsultationComponent() {
                                         Réaffecter
                                     </Button>
                                     <Button
-                                        disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canAdd || gridSelectedRows.length === 0 || !valSelectedCompte || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1332,7 +1320,7 @@ export default function ConsultationComponent() {
                                         Lettrer : Avec écart
                                     </Button>
                                     <Button
-                                        disabled={!canAdd || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canAdd || gridSelectedRows.length === 0 || solde !== 0 || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1348,7 +1336,7 @@ export default function ConsultationComponent() {
                                         Lettrer
                                     </Button>
                                     <Button
-                                        disabled={!canDelete || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canDelete || gridSelectedRows.length === 0 || solde !== 0 || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1415,36 +1403,12 @@ export default function ConsultationComponent() {
                                     rowSelectionModel={rowSelectionModel}
                                     onRowSelectionModelChange={(ids) => {
                                         setRowSelectionModel(ids);
-
-                                        const selectedData = rowsAvecSolde.filter((row) => ids.includes(row.id));
-
-                                        const lettrages = selectedData.map(row => row.lettrage);
-
-                                        const hasNullLettrage = lettrages.some(l => !l || l.trim() === "");
-                                        if (hasNullLettrage) return;
-
-                                        const cleaned = lettrages.map(l => l.trim());
-
-                                        const allSameLettrage = cleaned.every(l => l === cleaned[0]);
-                                        if (!allSameLettrage) return;
-
-                                        const lettrageValue = cleaned[0];
-
-                                        const soldeLigne = calculateDebitCredit(selectedData).solde;
-
-                                        const soldeNum = parseFloat(soldeLigne.toString().replace(',', '.'));
-
-                                        if (soldeNum !== 0) {
-                                            setMessageLettrageDesequilibre(`Le lettrage ${lettrageValue} est déséquilibré de ${soldeLigne} ${deviseParDefaut}.\nLes lettrages vont être annulés.`)
-                                            setSelectedLigneDesequilibre(selectedData);
-                                            setOpenLettrageDesequilibrePopup(true);
-                                        }
                                     }}
                                 />
                             </Stack>
                         </Stack>
                         {
-                            selectedRows.length > 0 && (
+                            gridSelectedRows.length > 0 && (
                                 <>
                                     <span>
                                         Débit : <strong
@@ -1452,7 +1416,7 @@ export default function ConsultationComponent() {
                                                 color: '#FF8A8A'
                                             }}
                                         >
-                                            {calculateDebitCredit(selectedRows).debit}
+                                            {calculateDebitCredit(gridSelectedRows).debit}
                                         </strong>,{" "}
                                     </span>
                                     <span>
@@ -1461,24 +1425,24 @@ export default function ConsultationComponent() {
                                                 color: '#FF8A8A'
                                             }}
                                         >
-                                            {calculateDebitCredit(selectedRows).credit}
+                                            {calculateDebitCredit(gridSelectedRows).credit}
                                         </strong>,{" "}
                                     </span>
                                     <span>
                                         Solde : <strong
                                             style={{
-                                                color: `${calculateDebitCredit(selectedRows).solde.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
+                                                color: `${calculateDebitCredit(gridSelectedRows).solde.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
                                             }}
                                         >
-                                            {calculateDebitCredit(selectedRows).solde}
+                                            {calculateDebitCredit(gridSelectedRows).solde}
                                         </strong>
                                     </span>
                                 </>
                             )
                         }
                     </TabPanel>
-                </TabContext>
-            </Box>
+                </TabContext >
+            </Box >
         </>
     )
 }
