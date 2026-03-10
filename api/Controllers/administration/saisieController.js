@@ -4380,3 +4380,177 @@ exports.deleteJournalRan = async (req, res) => {
         });
     }
 };
+
+exports.getCompteConsultation = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, filtrageCompte } = req.body;
+
+        if (!id_compte || !id_dossier || !id_exercice) {
+            return res.status(400).json({
+                state: false,
+                msg: "id_compte, id_dossier et id_exercice sont obligatoires"
+            });
+        }
+
+        let havingCondition = '';
+        if (filtrageCompte === "1") {
+            havingCondition = `HAVING SUM(j.debit) <> 0 OR SUM(j.credit) <> 0`;
+        } else if (filtrageCompte === "2") {
+            havingCondition = `HAVING ABS(SUM(j.debit) - SUM(j.credit)) < 0.01`;
+        } else if (filtrageCompte === "3") {
+            havingCondition = `HAVING ABS(SUM(j.debit) - SUM(j.credit)) >= 0.01`;
+        }
+
+        const query = `
+            SELECT 
+                c.id,
+                c.compte,
+                c.libelle,
+                SUM(j.debit) AS total_debit,
+                SUM(j.credit) AS total_credit
+            FROM dossierplancomptables c
+            INNER JOIN journals j
+                ON j.compteaux = c.compte
+                AND j.id_compte = :id_compte
+                AND j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+            WHERE c.id_compte = :id_compte
+              AND c.id_dossier = :id_dossier
+            GROUP BY c.id, c.compte, c.libelle
+            ${havingCondition}
+            ORDER BY c.compte
+        `;
+
+        const comptes = await db.sequelize.query(query, {
+            replacements: { id_compte, id_dossier, id_exercice },
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+
+        comptes.sort((a, b) => {
+            const regex = /^(\d+)(.*)$/;
+            const matchA = (a.compte || "").match(regex);
+            const matchB = (b.compte || "").match(regex);
+
+            const numA = matchA ? parseInt(matchA[1], 10) : 0;
+            const numB = matchB ? parseInt(matchB[1], 10) : 0;
+
+            if (numA !== numB) return numA - numB;
+
+            const strA = matchA ? matchA[2] : "";
+            const strB = matchB ? matchB[2] : "";
+
+            return strA.localeCompare(strB);
+        });
+
+        return res.json({ state: true, comptes });
+
+    } catch (error) {
+        console.error("Erreur getCompteConsultation :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la récupération des comptes. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+};
+
+exports.getJournalsConsultation = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, valSelectedCompte } = req.body;
+        if (!id_compte || !id_dossier || !id_exercice || !valSelectedCompte) {
+            return res.status(400).json({
+                state: false,
+                msg: "Compte, dossier, exercice et numéro de compte sont obligatoires"
+            });
+        }
+
+        const queryJournals = `
+            SELECT 
+                j.id,
+                d.dossier,
+                j.id_immob,
+                j.id_ecriture,
+                j.id_dossier,
+                j.dateecriture,
+                cj.type AS journal,
+                j.piece, 
+                j.libelle,
+                j.fichier,
+                j.debit, 
+                j.credit, 
+                j.lettrage
+            FROM journals j
+            LEFT JOIN codejournals cj
+                ON j.id_journal = cj.id
+            LEFT JOIN dossiers d
+                ON j.id_dossier = d.id
+            WHERE 
+                j.id_dossier = :id_dossier
+                AND j.id_compte = :id_compte
+                AND j.id_exercice = :id_exercice
+                AND j.id_numcpt = :valSelectedCompte
+        `;
+
+        const data = await db.sequelize.query(queryJournals, {
+            replacements: { id_compte, id_dossier, id_exercice, valSelectedCompte },
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+
+        return res.json(data);
+
+    } catch (error) {
+        console.error("Erreur getCompteConsultation :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la récupération des comptes. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}
+
+exports.getJournalsEcriture = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, id_ecriture } = req.body;
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Le compte utilisateur est obligatoire' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: 'L\'éxercice est obligatoire' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Le dossier est obligatoier' });
+        }
+        if (!id_ecriture) {
+            return res.json({ state: false, message: 'L\'écriture est obligatoire' });
+        }
+
+        const queryEcritures = `
+            SELECT * FROM journals
+            WHERE 
+                id_dossier = :id_dossier
+                AND id_exercice = :id_exercice
+                AND id_compte = :id_compte
+                AND id_ecriture = :id_ecriture         
+        `;
+
+        const rows = await db.sequelize.query(queryEcritures, {
+            replacements: {
+                id_dossier,
+                id_compte,
+                id_exercice,
+                id_ecriture
+            },
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+
+        return res.json({ state: true, rows });
+
+    } catch (error) {
+        console.error("Erreur getCompteConsultation :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la récupération des comptes. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}

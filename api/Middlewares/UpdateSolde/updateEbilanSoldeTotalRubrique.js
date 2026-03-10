@@ -958,94 +958,98 @@ const totalRubriqueEVCP = async (compte_id, dossier_id, exercice_id) => {
                 AND ID_ETAT = 'BILAN'
             ),
 
+            ajustements_agreges_bilan_a_p_n AS (
+                SELECT
+                    ID_RUBRIQUE,
+                    NATURE,
+                    SUM(MONTANT) AS montant
+                FROM AJUSTEMENTS
+                WHERE
+                    ID_COMPTE = :compte_id
+                    AND ID_DOSSIER = :dossier_id
+                    AND ID_EXERCICE = :exercice_id
+                    AND ID_ETAT = 'BILAN'
+                GROUP BY ID_RUBRIQUE, NATURE
+            ),
+
             ligne_detail_bilan_a_p_n AS (
                 SELECT
                     CR.ID_RUBRIQUE,
+
                     COALESCE(
                         SUM(
                             CASE
                                 WHEN CR2.NATURE = 'BRUT'
-                                    AND (
-                                        CR2.CONDITION = 'SOLDE'
-                                        OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                        OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
-                                    )
+                                AND (
+                                    CR2.CONDITION = 'SOLDE'
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                )
                                 THEN
-                                    CASE CR2.SENSCALCUL
-                                        WHEN 'D-C' THEN
-                                            (b.SOLDEDEBIT - b.SOLDECREDIT)
-                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                        WHEN 'C-D' THEN
-                                            (b.SOLDECREDIT - b.SOLDEDEBIT)
-                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                        ELSE 0
-                                    END
+                                    (
+                                        CASE CR2.SENSCALCUL
+                                            WHEN 'D-C' THEN b.SOLDEDEBIT - b.SOLDECREDIT
+                                            WHEN 'C-D' THEN b.SOLDECREDIT - b.SOLDEDEBIT
+                                            ELSE 0
+                                        END
+                                    )
+                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                 ELSE 0
                             END
-                        ),
-                    0)
-                    + COALESCE((
-                        SELECT SUM(A.MONTANT)
-                        FROM AJUSTEMENTS A
-                        WHERE
-                            A.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                            AND A.ID_COMPTE = :compte_id
-                            AND A.ID_DOSSIER = :dossier_id
-                            AND A.ID_EXERCICE = :exercice_id
-                            AND A.ID_ETAT = 'BILAN'
-                            AND A.NATURE = 'BRUT'
-                    ), 0) AS MONTANTBRUT,
+                        ),0
+                    )
+                    + COALESCE(aj_brut.montant,0) AS MONTANTBRUT,
 
                     COALESCE(
                         SUM(
                             CASE
                                 WHEN CR2.NATURE = 'AMORT'
-                                    AND (
-                                        CR2.CONDITION = 'SOLDE'
-                                        OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                        OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
-                                    )
+                                AND (
+                                    CR2.CONDITION = 'SOLDE'
+                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                )
                                 THEN
-                                    CASE CR2.SENSCALCUL
-                                        WHEN 'D-C' THEN
-                                            (b.SOLDEDEBIT - b.SOLDECREDIT)
-                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                        WHEN 'C-D' THEN
-                                            (b.SOLDECREDIT - b.SOLDEDEBIT)
-                                            * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                        ELSE 0
-                                    END
+                                    (
+                                        CASE CR2.SENSCALCUL
+                                            WHEN 'D-C' THEN b.SOLDEDEBIT - b.SOLDECREDIT
+                                            WHEN 'C-D' THEN b.SOLDECREDIT - b.SOLDEDEBIT
+                                            ELSE 0
+                                        END
+                                    )
+                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                 ELSE 0
                             END
-                        ),
-                    0)
-                    + COALESCE((
-                        SELECT SUM(A.MONTANT)
-                        FROM AJUSTEMENTS A
-                        WHERE
-                            A.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                            AND A.ID_COMPTE = :compte_id
-                            AND A.ID_DOSSIER = :dossier_id
-                            AND A.ID_EXERCICE = :exercice_id
-                            AND A.ID_ETAT = 'BILAN'
-                            AND A.NATURE = 'AMORT'
-                    ), 0) AS MONTANTAMORT
+                        ),0
+                    )
+                    + COALESCE(aj_amort.montant,0) AS MONTANTAMORT
 
                 FROM COMPTE_RUBRIQUES_BILAN_A_P_N CR
 
                 LEFT JOIN COMPTERUBRIQUES CR2
                     ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                AND CR2.ID_COMPTE = :compte_id
-                AND CR2.ID_DOSSIER = :dossier_id
-                AND CR2.ID_EXERCICE = :exercice_id
-                AND CR2.ID_ETAT = 'BILAN'
-                AND CR2.ACTIVE = true
+                    AND CR2.ID_COMPTE = :compte_id
+                    AND CR2.ID_DOSSIER = :dossier_id
+                    AND CR2.ID_EXERCICE = :exercice_id
+                    AND CR2.ID_ETAT = 'BILAN'
+                    AND CR2.ACTIVE = true
 
                 LEFT JOIN balance_n b
                     ON CR2.COMPTE IS NOT NULL
-                AND b.COMPTE LIKE CR2.COMPTE || '%'
+                    AND b.COMPTE LIKE CR2.COMPTE || '%'
 
-                GROUP BY CR.ID_RUBRIQUE
+                LEFT JOIN ajustements_agreges_bilan_a_p_n aj_brut
+                    ON aj_brut.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                    AND aj_brut.NATURE = 'BRUT'
+
+                LEFT JOIN ajustements_agreges_bilan_a_p_n aj_amort
+                    ON aj_amort.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                    AND aj_amort.NATURE = 'AMORT'
+
+                GROUP BY
+                    CR.ID_RUBRIQUE,
+                    aj_brut.montant,
+                    aj_amort.montant
             ),
 
             rubrique_unique_bilan_a_p_n AS (
@@ -1732,60 +1736,66 @@ const totalRubriqueDRF = async (compte_id, dossier_id, exercice_id) => {
                                             AND NATURE = 'BRUT'
                                     ),
 
-                                    ligne_detail_crn_n AS (
-                                        SELECT
-                                            CR.ID_RUBRIQUE,
-                                            COALESCE(
-                                                SUM(
-                                                    CASE
-                                                        WHEN CR2.NATURE = 'BRUT'
-                                                            AND (
-                                                                CR2.CONDITION = 'SOLDE'
-                                                                OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
-                                                                OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
-                                                            )
-                                                        THEN
-                                                            CASE CR2.SENSCALCUL
-                                                                WHEN 'D-C' THEN
-                                                                    (b.SOLDEDEBIT - b.SOLDECREDIT)
-                                                                    * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
-                                                                WHEN 'C-D' THEN
-                                                                    (b.SOLDECREDIT - b.SOLDEDEBIT)
+                                            ajustements_agreges_crn AS (
+                                                SELECT
+                                                    ID_RUBRIQUE,
+                                                    NATURE,
+                                                    SUM(MONTANT) AS montant
+                                                FROM AJUSTEMENTS
+                                                WHERE
+                                                    ID_COMPTE = :compte_id
+                                                    AND ID_DOSSIER = :dossier_id
+                                                    AND ID_EXERCICE = :exercice_id
+                                                    AND ID_ETAT = 'CRN'
+                                                GROUP BY ID_RUBRIQUE, NATURE
+                                            ),
+
+                                            ligne_detail_crn_n AS (
+                                                SELECT
+                                                    CR.ID_RUBRIQUE,
+                                                    COALESCE(
+                                                        SUM(
+                                                            CASE
+                                                                WHEN CR2.NATURE = 'BRUT'
+                                                                AND (
+                                                                    CR2.CONDITION = 'SOLDE'
+                                                                    OR (CR2.CONDITION = 'SiD' AND b.SOLDEDEBIT <> 0)
+                                                                    OR (CR2.CONDITION = 'SiC' AND b.SOLDECREDIT <> 0)
+                                                                )
+                                                                THEN
+                                                                    (
+                                                                        CASE CR2.SENSCALCUL
+                                                                            WHEN 'D-C' THEN b.SOLDEDEBIT - b.SOLDECREDIT
+                                                                            WHEN 'C-D' THEN b.SOLDECREDIT - b.SOLDEDEBIT
+                                                                            ELSE 0
+                                                                        END
+                                                                    )
                                                                     * CASE WHEN CR2.EQUATION = 'SOUSTRACTIF' THEN -1 ELSE 1 END
                                                                 ELSE 0
                                                             END
-                                                        ELSE 0
-                                                    END
-                                                ),
-                                            0)
-                                            + COALESCE((
-                                                SELECT SUM(A.MONTANT)
-                                                FROM AJUSTEMENTS A
-                                                WHERE
-                                                    A.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                                                    AND A.ID_COMPTE = :compte_id
-                                                    AND A.ID_DOSSIER = :dossier_id
-                                                    AND A.ID_EXERCICE = :exerciceAnterieur
-                                                    AND A.ID_ETAT = 'CRN'
-                                                    AND A.NATURE = 'BRUT'
-                                            ), 0) AS MONTANTBRUT
+                                                        ),0
+                                                    )
+                                                    + COALESCE(SUM(aj.montant) FILTER (WHERE aj.NATURE = 'BRUT'),0) AS MONTANTBRUT
 
-                                        FROM COMPTE_RUBRIQUES_CRN CR
+                                                FROM COMPTE_RUBRIQUES_CRN CR
 
-                                        LEFT JOIN COMPTERUBRIQUES CR2
-                                            ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
-                                        AND CR2.ID_COMPTE = :compte_id
-                                        AND CR2.ID_DOSSIER = :dossier_id
-                                        AND CR2.ID_EXERCICE = :exerciceAnterieur
-                                        AND CR2.ID_ETAT = 'CRN'
-                                        AND CR2.ACTIVE = true
+                                                LEFT JOIN COMPTERUBRIQUES CR2
+                                                    ON CR2.ID_RUBRIQUE = CR.ID_RUBRIQUE
+                                                    AND CR2.ID_COMPTE = :compte_id
+                                                    AND CR2.ID_DOSSIER = :dossier_id
+                                                    AND CR2.ID_EXERCICE = :exercice_id
+                                                    AND CR2.ID_ETAT = 'CRN'
+                                                    AND CR2.ACTIVE = true
 
-                                        LEFT JOIN balance_n b
-                                            ON CR2.COMPTE IS NOT NULL
-                                        AND b.COMPTE LIKE CR2.COMPTE || '%'
+                                                LEFT JOIN balance_n b
+                                                    ON CR2.COMPTE IS NOT NULL
+                                                    AND b.COMPTE LIKE CR2.COMPTE || '%'
 
-                                        GROUP BY CR.ID_RUBRIQUE
-                                    ),
+                                                LEFT JOIN ajustements_agreges_crn aj
+                                                    ON aj.ID_RUBRIQUE = CR.ID_RUBRIQUE
+
+                                                GROUP BY CR.ID_RUBRIQUE
+                                            ),
 
                                     rubrique_unique_crn_n AS (
                                         SELECT DISTINCT ON (ID_RUBRIQUE) *
