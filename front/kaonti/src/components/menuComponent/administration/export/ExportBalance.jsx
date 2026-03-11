@@ -269,7 +269,6 @@ export default function ExportBalance() {
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
-                setSelectedPeriodeId(exerciceNId[0].id);
             } else {
                 setListeExercice([]);
                 //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
@@ -285,9 +284,9 @@ export default function ExportBalance() {
             if (resData.state) {
                 const list = resData.list;
                 setListeSituation(resData.list);
-                if (list.length > 0) {
-                    setSelectedPeriodeId(list[0].id);
-                }
+                // if (list.length > 0) {
+                //     setSelectedPeriodeId(list[0].id);
+                // }
             } else {
                 setListeSituation([]);
                 //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
@@ -301,7 +300,6 @@ export default function ExportBalance() {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
         setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        setSelectedPeriodeId(exercice_id);
         // Laisser useEffect déclencher le chargement (évite double appels)
     }
 
@@ -315,7 +313,7 @@ export default function ExportBalance() {
 
         if (choix === 0) {
             setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
-            setSelectedPeriodeId(selectedExerciceId);
+            setSelectedPeriodeId(0);
             // Laisser useEffect déclencher le chargement (évite double appels)
         } else if (choix === 1) {
             GetListeSituation(selectedExerciceId);
