@@ -1264,6 +1264,35 @@ const addPeriode = async (req, res) => {
   }
 };
 
+const deletePeriode = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.json({ state: false, message: 'Période non trouvé' });
+    }
+
+    const queryDeletePeriod = `
+      DELETE FROM periodes
+      WHERE id = :id
+    `;
+
+    const [deletedData] = await db.sequelize.query(queryDeletePeriod + ' RETURNING *', {
+      replacements: { id }
+    });
+
+    if (deletedData.length > 0) {
+      return res.json({ state: true, message: 'Période supprimé avec succès' });
+    }
+
+    return res.json({ state: false, message: "Erreur lors de la suppréssion de période, veuillez réessayer" });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+  }
+}
+
 module.exports = {
   getListeExercice,
   createFirstExercice,
@@ -1276,5 +1305,6 @@ module.exports = {
   getListeExerciceById,
   getListeAnnee,
   getPeriodes,
-  addPeriode
+  addPeriode,
+  deletePeriode
 };

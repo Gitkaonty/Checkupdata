@@ -59,7 +59,10 @@ export default function ParamExerciceComponent() {
     const [fileId, setFileId] = useState(0);
     const [fileInfos, setFileInfos] = useState('');
     const [noFile, setNoFile] = useState(false);
+
     const [listeExercice, setListeExercice] = useState([]);
+    const [listePeriode, setListePeriode] = useState([]);
+
     const [openDialogCreateFirstExercice, setEpenDialogCreateFirstExercice] = useState(false);
     const [openActionConfirm, setOpenActionConfirm] = useState(false);
     const [openActionConfirmPrev, setOpenActionConfirmPrev] = useState(false);
@@ -69,9 +72,17 @@ export default function ParamExerciceComponent() {
     const [openActionConfirmDeverrExercice, setOpenActionConfirmDeverrExercice] = useState(false);
     const [msgDeverrExercice, setMsgDeverrExercice] = useState('');
     const [exerciceToUnlock, setExerciceToUnlock] = useState([]);
+
     const [openActionConfirmDeleteExercice, setOpenActionConfirmDeleteExercice] = useState(false);
+    const [openActionConfirmDeletePeriode, setOpenActionConfirmDeletePeriode] = useState(false);
+
     const [msgDeleteExercice, setMsgDeleteExercice] = useState('');
+    const [msgDeletePeriode, setMsgDeletePeriode] = useState('');
+
     const [selectedExerciceRow, setSelectedExerciceRow] = useState([]);
+    const [selectedPeriodeRow, setSelectedPeriodeRow] = useState([]);
+    const [isRefreshedPeriode, setIsRefreshedPeriode] = useState(false);
+
     const [exerciceToDeleteId, setExerciceToDeleteId] = useState(0);
     const [exerciceToDeleteRang, setExerciceToDeleteRang] = useState(null);
     const [listeDevise, setListeDevise] = useState([]);
@@ -234,9 +245,31 @@ export default function ParamExerciceComponent() {
         })
     }
 
+    // Chargement des périodes par exercice
+    const getPeriodes = async () => {
+        const id_exercice = Number(selectedExerciceRow[0]);
+        axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+            .then((response) => {
+                if (response?.data?.state) {
+                    const data = response?.data?.data;
+                    setListePeriode(data);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            })
+    }
+
+    useEffect(() => {
+        if (selectedExerciceRow.length === 1) {
+            getPeriodes();
+        } else {
+            setListePeriode([]);
+        }
+    }, [selectedExerciceRow, isRefreshedPeriode]);
+
     useEffect(() => {
         if (canView && fileId && compteId) {
-            GetListeExercice(fileId, compteId);
+            GetListeExercice();
             getListeDevises();
         }
     }, [fileId, compteId]);
@@ -336,7 +369,7 @@ export default function ParamExerciceComponent() {
         axiosPrivate.post(`/paramExercice/createFirstExercice`, firstExerciceForm.values).then((response) => {
             const resData = response.data;
             if (resData.state) {
-                GetListeExercice(fileId);
+                GetListeExercice();
                 toast.success("La création du premier exercice a été effectuée avec succès");
             } else {
                 toast.error(resData.msg);
@@ -353,7 +386,7 @@ export default function ParamExerciceComponent() {
                 await axiosPrivate.post(`/paramExercice/createNextExercice`, { compteId, fileId }).then((response) => {
                     const resData = response.data;
                     if (resData.state) {
-                        GetListeExercice(fileId);
+                        GetListeExercice();
                         setOpenActionConfirm(false);
                         toast.success("La création de l'exercice suivant a été effectuée avec succès");
                     } else {
@@ -380,7 +413,7 @@ export default function ParamExerciceComponent() {
                 await axiosPrivate.post(`/paramExercice/createPreviewExercice`, { compteId, fileId }).then((response) => {
                     const resData = response.data;
                     if (resData.state) {
-                        GetListeExercice(fileId);
+                        GetListeExercice();
                         setOpenActionConfirmPrev(false);
                         toast.success("La création de l'exercice précédent a été effectuée avec succès");
                     } else {
@@ -419,7 +452,7 @@ export default function ParamExerciceComponent() {
             axios.post(`/paramExercice/verrouillerExercice`, { id_exercice, fileId }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
-                    GetListeExercice(fileId);
+                    GetListeExercice();
                     toast.success("Exercice verrouillé");
                 } else {
                     toast.error(resData.msg);
@@ -449,7 +482,7 @@ export default function ParamExerciceComponent() {
             axios.post(`/paramExercice/deverrouillerExercice`, { id_exercice, fileId }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
-                    GetListeExercice(fileId);
+                    GetListeExercice();
                     toast.success("Exercice déverrouillé");
                 } else {
                     toast.error(resData.msg);
@@ -464,6 +497,10 @@ export default function ParamExerciceComponent() {
         setSelectedExerciceRow(ids);
     }
 
+    const saveSelectedPeriode = (ids) => {
+        setSelectedPeriodeRow(ids);
+    }
+
     const handleDeleteExercice = () => {
         if (selectedExerciceRow.length > 1) {
             toast.error("Veuillez sélectionner un seul exercice avant de continuer.");
@@ -475,7 +512,8 @@ export default function ParamExerciceComponent() {
             return;
         }
 
-        const selectedRow = listeExercice.filter(item => item.id === selectedExerciceRow[0]);
+        const selectedRow = listeExercice.filter(item => Number(item.id) === Number(selectedExerciceRow[0]));
+        console.log('selectedRow : ', selectedRow);
 
         if (selectedRow) {
             if (selectedRow[0].cloture) {
@@ -510,6 +548,33 @@ export default function ParamExerciceComponent() {
         }
     }
 
+    const handleDeletePeriode = () => {
+        const selectedRow = listePeriode.find(item => Number(item.id) === Number(selectedPeriodeRow[0]));
+        console.log('selectedRow : ', selectedRow);
+        if (selectedRow) {
+            setOpenActionConfirmDeletePeriode(true);
+            setMsgDeletePeriode(`Voulez vous vraiement supprimer la période du ${format(selectedRow.date_debut, 'dd/MM/yyyy')} au ${format(selectedRow.date_fin, 'dd/MM/yyyy')} pour cette exercice ?`);
+        }
+    }
+
+    const deletePeriode = async (value) => {
+        if (value) {
+            const id_periode = Number(selectedPeriodeRow[0]);
+            if (id_periode) {
+                await axios.delete(`/paramExercice/deletePeriode/${id_periode}`)
+                    .then((response) => {
+                        if (response?.data?.state) {
+                            toast.success(response?.data?.message);
+                            setIsRefreshedPeriode(prev => !prev);
+                        } else {
+                            toast.error(response?.data?.message);
+                        }
+                    })
+            }
+        }
+        setOpenActionConfirmDeletePeriode(false);
+    }
+
     const deleteExercice = (value) => {
         if (value) {
             const id_exerciceToDelete = exerciceToDeleteId;
@@ -517,7 +582,7 @@ export default function ParamExerciceComponent() {
             axiosPrivate.post(`/paramExercice/deleteExercice`, { id_exerciceToDelete, fileId, rang }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
-                    GetListeExercice(fileId);
+                    GetListeExercice();
                     toast.success("Exercice supprimé");
                 } else {
                     toast.error(resData.msg);
@@ -588,8 +653,9 @@ export default function ParamExerciceComponent() {
             {openActionConfirmPrev ? <PopupActionConfirm msg={"Voulez-vous vraiment continuer la création de l'exercice précédent ?"} confirmationState={createPreviewExercice} isLoading={loadingCreatePreviousExercice} /> : null}
             {openActionConfirmVerrExercice ? <PopupActionConfirm msg={msgVerrExercice} confirmationState={verrouillerExercice} /> : null}
             {openActionConfirmDeverrExercice ? <PopupActionConfirm msg={msgDeverrExercice} confirmationState={deverrouillerExercice} /> : null}
-            {openActionConfirmDeleteExercice ? <PopupActionConfirm msg={msgDeleteExercice} confirmationState={deleteExercice} /> : null}
-            {openPopupDeleteRan && (<PopupActionConfirm msg={"Voulez-vous vraiment supprimer toutes les écritures à nouveau de cet exercice ? Toutes les lettrages associées à ces écritures seront également supprimés"} confirmationState={handleDeleteANouveau} />)}
+            {openActionConfirmDeleteExercice ? <PopupActionConfirm msg={msgDeleteExercice} isDelete={true} confirmationState={deleteExercice} /> : null}
+            {openActionConfirmDeletePeriode && (<PopupActionConfirm msg={msgDeletePeriode} isDelete={true} confirmationState={deletePeriode} />)}
+            {openPopupDeleteRan && (<PopupActionConfirm msg={"Voulez-vous vraiment supprimer toutes les écritures à nouveau de cet exercice ? Toutes les lettrages associées à ces écritures seront également supprimés"} isDelete={true} confirmationState={handleDeleteANouveau} />)}
 
             {
                 openPopupCodejournal && (
@@ -977,8 +1043,8 @@ export default function ParamExerciceComponent() {
                                             <Tooltip title="Supprimer la ligne sélectionné">
                                                 <div>
                                                     <IconButton
-                                                        disabled={!canDelete || selectedExerciceRow.length === 0}
-                                                        // onClick={handleOpenDialogConfirmDeleteRow}
+                                                        disabled={!canDelete || selectedPeriodeRow.length === 0}
+                                                        onClick={handleDeletePeriode}
                                                         variant="contained"
                                                         style={{
                                                             width: "35px", height: '35px',
@@ -1034,7 +1100,7 @@ export default function ParamExerciceComponent() {
                                         rowHeight={DataGridStyle.rowHeight}
                                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                         editMode='row'
-                                        rows={[]}
+                                        rows={listePeriode}
                                         columns={PeriodColumnHeader}
                                         initialState={{
                                             pagination: {
@@ -1047,11 +1113,11 @@ export default function ParamExerciceComponent() {
                                         columnVisibilityModel={{
                                             id: false,
                                         }}
-                                    // onRowSelectionModelChange={ids => {
-                                    //     const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
-                                    //     saveSelectedExercice(single);
-                                    // }}
-                                    // rowSelectionModel={selectedExerciceRow}
+                                        onRowSelectionModelChange={ids => {
+                                            const single = Array.isArray(ids) && ids.length ? [ids[ids.length - 1]] : [];
+                                            saveSelectedPeriode(single);
+                                        }}
+                                        rowSelectionModel={selectedPeriodeRow}
                                     />
                                 </Stack>
                             </Stack>

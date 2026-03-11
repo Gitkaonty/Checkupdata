@@ -42,4 +42,7 @@ router.get('/getPeriodes/:id_exercice', paramExerciceController.getPeriodes);
 // Ajout d'une période
 router.post('/addPeriode', paramExerciceController.addPeriode);
 
+// Suppréssion d'une période
+router.delete('/deletePeriode/:id', paramExerciceController.deletePeriode);
+
 module.exports = router;
