@@ -39,6 +39,7 @@ import PopupCodeJouralNotExist from '../../administration/import/PopupCodeJoural
 import PopupGenerateRan from '../../../componentsTools/Paramettage/Exercice/PopupGenerateRan';
 import { TbPlaylistAdd } from "react-icons/tb";
 import PopupAddPeriode from '../../../componentsTools/Paramettage/Exercice/PopupAddPeriode';
+import PopupLettrageDesequilibre from '../../../componentsTools/Paramettage/Exercice/PopupLettrageDesequilibre';
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
@@ -84,6 +85,8 @@ export default function ParamExerciceComponent() {
 
     const [openActionConfirmDeleteExercice, setOpenActionConfirmDeleteExercice] = useState(false);
     const [openActionConfirmDeletePeriode, setOpenActionConfirmDeletePeriode] = useState(false);
+    const [openPopupLettrageDesequilibre, setOpenPopupLettrageDesequilibre] = useState(false);
+    const [compteLettrageData, setCompteLettrageData] = useState([]);
 
     const [msgDeleteExercice, setMsgDeleteExercice] = useState('');
     const [msgDeletePeriode, setMsgDeletePeriode] = useState('');
@@ -730,16 +733,28 @@ export default function ParamExerciceComponent() {
     };
 
     const genererANouveau = async () => {
+        const id_exercice = Number(selectedExerciceRow[0]);
         const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
         if (!defaultDeviseData) {
             return toast.error('Veuillez sélectionner une devise par défaut dans le paramétrage CRM de ce dossier')
         }
         const ranExist = await testIfRanExist();
-        if (!ranExist) {
-            setOpenPopupCodeJournal(true);
-            return;
-        }
-        setOpenPopupGenerateRan(true);
+        await axios.post(`/administration/traitementSaisie/controleLettrageDesequilibre`, {
+            id_dossier: Number(fileId),
+            id_compte: Number(compteId),
+            id_exercice
+        }).then((response) => {
+            if (response?.data?.state) {
+                if (!ranExist) {
+                    setOpenPopupCodeJournal(true);
+                    return;
+                }
+                setOpenPopupGenerateRan(true);
+            } else {
+                setOpenPopupLettrageDesequilibre(true);
+                setCompteLettrageData(response?.data?.data);
+            }
+        })
     }
 
     const handleDeleteANouveau = async (value) => {
@@ -803,6 +818,14 @@ export default function ParamExerciceComponent() {
                     periodeForm={periodeForm}
                     handleSubmit={addPeriode}
                     open={openDialogCreatePeriode}
+                />
+            )}
+
+            {openPopupLettrageDesequilibre && (
+                <PopupLettrageDesequilibre
+                    onClose={() => setOpenPopupLettrageDesequilibre(false)}
+                    open={openPopupLettrageDesequilibre}
+                    data={compteLettrageData}
                 />
             )}
 
