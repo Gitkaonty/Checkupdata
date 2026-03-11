@@ -123,4 +123,7 @@ router.post('/getJournalsConsultation', saisieController.getJournalsConsultation
 // Récupération des lignes dans une écritures dans le journal
 router.post('/getJournalsEcriture', saisieController.getJournalsEcriture);
 
+// Récupération des infos des comptes dans le journal qui ont des lettrage déséquilibré
+router.post('/controleLettrageDesequilibre', saisieController.controleLettrageDesequilibre);
+
 module.exports = router;
