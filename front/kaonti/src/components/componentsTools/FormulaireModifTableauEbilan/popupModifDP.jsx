@@ -189,7 +189,13 @@ const PopupModifDP = ({ choix, confirmationState, data, deviseParDefaut }) => {
                                     <MenuItem key="AUTRE" value="AUTRE">Autres provisions</MenuItem>
                                 </Select>
 
-                                <FormHelperText style={{ color: 'red', width: '350px' }}>
+                                <FormHelperText
+                                    style={{
+                                        color: 'red',
+                                        marginLeft: 0,
+                                        fontSize: "12px",
+                                    }}
+                                >
                                     {formData.errors.nature_prov && formData.touched.nature_prov && formData.errors.nature_prov}
                                 </FormHelperText>
                             </FormControl>

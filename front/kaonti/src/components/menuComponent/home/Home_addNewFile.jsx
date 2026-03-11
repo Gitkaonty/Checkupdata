@@ -1325,7 +1325,13 @@ export default function AddNewFile({ confirmationState }) {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikDomBank.errors.banque && useFormikDomBank.touched.banque && useFormikDomBank.errors.banque}
                         </FormHelperText>
                     </FormControl>
@@ -1365,7 +1371,13 @@ export default function AddNewFile({ confirmationState }) {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikDomBank.errors.numcompte && useFormikDomBank.touched.numcompte && useFormikDomBank.errors.numcompte}
                         </FormHelperText>
                     </FormControl>
@@ -1405,7 +1417,13 @@ export default function AddNewFile({ confirmationState }) {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikDomBank.errors.devise && useFormikDomBank.touched.devise && useFormikDomBank.errors.devise}
                         </FormHelperText>
                     </FormControl>

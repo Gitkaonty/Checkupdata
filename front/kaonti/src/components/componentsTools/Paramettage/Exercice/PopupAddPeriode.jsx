@@ -73,7 +73,12 @@ const PopupAddPeriode = ({ handleClose, periodeForm, handleSubmit, open }) => {
                                         },
                                     }}
                                 />
-                                <FormHelperText>
+                                <FormHelperText
+                                    style={{
+                                        marginLeft: 0,
+                                        fontSize: "12px",
+                                    }}
+                                >
                                     {periodeForm.errors.date_debut &&
                                         periodeForm.touched.date_debut &&
                                         periodeForm.errors.date_debut}
@@ -108,7 +113,12 @@ const PopupAddPeriode = ({ handleClose, periodeForm, handleSubmit, open }) => {
                                         },
                                     }}
                                 />
-                                <FormHelperText>
+                                <FormHelperText
+                                    style={{
+                                        marginLeft: 0,
+                                        fontSize: "12px",
+                                    }}
+                                >
                                     {periodeForm.errors.date_fin &&
                                         periodeForm.touched.date_fin &&
                                         periodeForm.errors.date_fin}

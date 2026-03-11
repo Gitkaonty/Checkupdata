@@ -214,7 +214,13 @@ const PopupModifNE = ({ compteId, fileId, exerciceId, choix, confirmationState, 
                                     <MenuItem key="SE" value="SE">Suivi des emprunts</MenuItem>
                                 </Select>
 
-                                <FormHelperText>
+                                <FormHelperText
+                                    style={{
+                                        color: 'red',
+                                        marginLeft: 0,
+                                        fontSize: "12px",
+                                    }}
+                                >
                                     {formData.errors.tableau && formData.touched.tableau && formData.errors.tableau}
                                 </FormHelperText>
                             </FormControl>
@@ -254,7 +260,13 @@ const PopupModifNE = ({ compteId, fileId, exerciceId, choix, confirmationState, 
                                         ))
                                     }
                                 </Select>
-                                <FormHelperText >
+                                <FormHelperText
+                                    style={{
+                                        color: 'red',
+                                        marginLeft: 0,
+                                        fontSize: "12px",
+                                    }}
+                                >
                                     {formData.errors.ref_note && formData.touched.ref_note && formData.errors.ref_note}
                                 </FormHelperText>
                             </FormControl>

@@ -265,7 +265,13 @@ export default function ParamCodeJournalComponent() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewCodeJournal.errors.code && formikNewCodeJournal.touched.code && formikNewCodeJournal.errors.code}
                         </FormHelperText>
                     </FormControl>
@@ -298,7 +304,13 @@ export default function ParamCodeJournalComponent() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewCodeJournal.errors.libelle && formikNewCodeJournal.touched.libelle && formikNewCodeJournal.errors.libelle}
                         </FormHelperText>
                     </FormControl>
@@ -337,7 +349,13 @@ export default function ParamCodeJournalComponent() {
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewCodeJournal.errors.type && formikNewCodeJournal.touched.type && formikNewCodeJournal.errors.type}
                         </FormHelperText>
                     </FormControl>
@@ -641,7 +659,13 @@ export default function ParamCodeJournalComponent() {
                             disabled={!isEditable}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewCodeJournal.errors.nif && formikNewCodeJournal.touched.nif && formikNewCodeJournal.errors.nif}
                         </FormHelperText>
                     </FormControl>
@@ -676,7 +700,13 @@ export default function ParamCodeJournalComponent() {
                             disabled={!isEditable} // Désactiver complètement si non éditable
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewCodeJournal.errors.libelle && formikNewCodeJournal.touched.libelle && formikNewCodeJournal.errors.libelle}
                         </FormHelperText>
                     </FormControl>
@@ -711,7 +741,13 @@ export default function ParamCodeJournalComponent() {
                             disabled={!isEditable} // Désactiver complètement si non éditable
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewCodeJournal.errors.adresse && formikNewCodeJournal.touched.adresse && formikNewCodeJournal.errors.adresse}
                         </FormHelperText>
                     </FormControl>
