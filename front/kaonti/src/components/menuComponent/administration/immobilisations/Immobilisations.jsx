@@ -179,7 +179,6 @@ const Immobilisations = () => {
     const selectedPcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? selectedPcIds[0] : null;
     // Backend attend id_numcpt = id de dossierplancomptables (FK), pas le numéro de compte
     const idNumcpt = Number(detailsForm?.pc_id ?? selectedPcId ?? 0);
-    // console.log('idNumcpt : ', idNumcpt);
     if (!idNumcpt) {
       // toast("Aucun PC sélectionné (id_numcpt manquant)", { icon: 'ℹ️' });
       setJournalLoading(false);
@@ -193,7 +192,6 @@ const Immobilisations = () => {
     });
 
     let list = Array.isArray(data?.list) ? data.list : [];
-    console.log('list : ', list);
 
     if (detailsForm?.lien_ecriture_id) {
       const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
@@ -761,7 +759,6 @@ const Immobilisations = () => {
     if (!confirmed) return;
 
     const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
-    console.log('[DELETE] idSel:', idSel, 'detailsSelectionModel:', detailsSelectionModel);
     if (!idSel) return;
 
     try {
@@ -769,7 +766,6 @@ const Immobilisations = () => {
       const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const url = `/administration/traitementSaisie/immobilisations/details/${idSel}`;
       const params = { fileId: fid, compteId: onePcId ?? compteId, exerciceId: exoId };
-      console.log('[DELETE] URL:', url, 'Params:', params);
 
       await axios.delete(url, { params });
 
@@ -819,11 +815,13 @@ const Immobilisations = () => {
 
       if (detailsDialogMode === 'add') {
         const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
+        // return console.log('payload : ', payload);
         await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
         toast.success('Détail ajouté');
         await fetchDetails();
       } else {
         const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
+        // return console.log('payload : ', payload);
         await axios.put(`/administration/traitementSaisie/immobilisations/details/${detailsForm.id}`, payload);
         toast.success('Détail modifié');
         await fetchDetails();
@@ -1054,18 +1052,11 @@ const Immobilisations = () => {
               }
 
               setLoadingEcritures(true);
-              console.log('[IMMO][FRONTEND] Envoi de la requête de génération:', {
-                fileId: fid,
-                compteId,
-                exerciceId: exoId,
-                detailedByMonth
-              });
               const { data } = await axios.post(
                 '/administration/traitementSaisie/immobilisations/ecritures/generate',
                 { fileId: fid, compteId, exerciceId: exoId, detailedByMonth: detailedByMonth === 'oui' },
                 { timeout: 60000 }
               );
-              console.log('[IMMO][FRONTEND] Réponse du serveur:', data);
               if (data?.state) {
                 toast.success(`${data?.msg || 'Écritures générées'} (${Number(data?.created_lignes) || 0} lignes)`);
                 setOpenConfirmGenerateEcritures(false);
@@ -1154,7 +1145,6 @@ const Immobilisations = () => {
                       params: { fileId: fid, compteId: firstRow.id, exerciceId: exoId, pcId: firstRow.id },
                       timeout: 60000,
                     });
-                    console.log('[IMPORT_SUCCESS] Détails rechargés:', detailsData);
                     const detailsList = Array.isArray(detailsData?.list) ? detailsData.list : [];
                     setDetailsRows(detailsList);
                   }
@@ -1934,6 +1924,7 @@ const Immobilisations = () => {
                     onSubmit={submitDetailsForm}
                     loading={detailsLoading}
                     onOpenLienEcriture={handleOpenLienEcriture}
+                    setDetailsForm={setDetailsForm}
                   />
 
                   <Dialog open={lienDialogOpen} onClose={() => setLienDialogOpen(false)} maxWidth="md">
