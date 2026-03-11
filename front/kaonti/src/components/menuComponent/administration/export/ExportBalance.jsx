@@ -108,6 +108,7 @@ export default function ExportBalance() {
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
+    const [listePeriode, setListePeriode] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
 
     const [axesData, setAxesData] = useState([]);
@@ -152,10 +153,13 @@ export default function ExportBalance() {
 
     const doExport = useCallback(async (type) => {
         try {
-            if (!compteId || !fileId || !selectedPeriodeId) {
+            if (!compteId || !fileId || !selectedExerciceId) {
                 toast.error('Veuillez sélectionner un exercice valide avant d\'exporter.');
                 return;
             }
+            const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+            const date_debut_periode = periodeData?.date_debut;
+            const date_fin_periode = periodeData?.date_fin;
             setTraitementJournalMsg('Génération en cours...');
             setTraitementJournalWaiting(true);
             const url = type === 'pdf' ? '/administration/exportBalance/pdf' : '/administration/exportBalance/excel';
@@ -165,8 +169,10 @@ export default function ExportBalance() {
                 movmentedCpt: movmentedCpt,
                 compteId,
                 fileId,
-                exerciceId: selectedPeriodeId,
-                data: balance
+                exerciceId: selectedExerciceId,
+                data: balance,
+                date_debut_periode,
+                date_fin_periode
             };
             const response = await axios.post(url, body, { responseType: 'blob' });
             const blobType = type === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -174,7 +180,7 @@ export default function ExportBalance() {
             const blob = new Blob([response.data], { type: blobType });
             const link = document.createElement('a');
             link.href = window.URL.createObjectURL(blob);
-            link.download = `Balance_${fileId}_${selectedPeriodeId}.${ext}`;
+            link.download = `Balance_${fileId}_${selectedExerciceId}.${ext}`;
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -185,7 +191,22 @@ export default function ExportBalance() {
             setTraitementJournalMsg('');
             handleCloseExportMenu();
         }
-    }, [checked, unsoldedCompte, movmentedCpt, compteId, fileId, selectedPeriodeId, handleCloseExportMenu, balance]);
+    }, [checked, unsoldedCompte, movmentedCpt, compteId, fileId, selectedExerciceId, handleCloseExportMenu, balance]);
+
+    // Chargement des périodes par exercice
+    const getPeriodes = async () => {
+        const id_exercice = Number(selectedExerciceId);
+
+        axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+            .then((response) => {
+                if (response?.data?.state) {
+                    const data = response?.data?.data;
+                    setListePeriode(data);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            });
+    };
 
     //récupérer les informations du dossier sélectionné
     useEffect(() => {
@@ -208,6 +229,12 @@ export default function ExportBalance() {
         GetInfosIdDossier(idFile);
         GetListeExercice(idFile);
     }, []);
+
+    useEffect(() => {
+        if (selectedExerciceId) {
+            getPeriodes();
+        }
+    }, [selectedExerciceId]);
 
     const GetInfosIdDossier = (id) => {
         axios.get(`/home/FileInfos/${id}`).then((response) => {
@@ -278,6 +305,10 @@ export default function ExportBalance() {
         // Laisser useEffect déclencher le chargement (évite double appels)
     }
 
+    const handleChangePeriod = (period_id) => {
+        setSelectedPeriodeId(period_id);
+    }
+
     //Choix période
     const handleChangePeriode = (choix) => {
         setSelectedPeriodeChoiceId(choix);
@@ -294,8 +325,11 @@ export default function ExportBalance() {
     //Récupération de la balance
     const recupBalance = (centraliser, unSolded, movmentedCpt, compteId, fileId, exerciceId, type, id_axes, id_sections) => {
         const id_sectionMapped = id_sections.map(val => Number(val.id));
+        const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+        const date_debut_periode = periodeData?.date_debut;
+        const date_fin_periode = periodeData?.date_fin;
         if (type === 3) {
-            axios.post(`/administration/exportBalance/recupBalanceAnalytiqueFromJournal`, { centraliser, unSolded, movmentedCpt, compteId, fileId, exerciceId, type, axeId: id_axes, sectionId: id_sectionMapped }).then((response) => {
+            axios.post(`/administration/exportBalance/recupBalanceAnalytiqueFromJournal`, { centraliser, unSolded, movmentedCpt, compteId, fileId, exerciceId, type, axeId: id_axes, sectionId: id_sectionMapped, date_debut_periode, date_fin_periode }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
                     canView ? setBalance(resData.list) : setBalance([]);
@@ -308,7 +342,7 @@ export default function ExportBalance() {
                 setTraitementJournalMsg('');
             });
         } else {
-            axios.post(`/administration/exportBalance/recupBalanceFromJournal`, { centraliser, unSolded, movmentedCpt, compteId, fileId, exerciceId, type }).then((response) => {
+            axios.post(`/administration/exportBalance/recupBalanceFromJournal`, { centraliser, unSolded, movmentedCpt, compteId, fileId, exerciceId, type, date_debut_periode, date_fin_periode }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
                     canView ? setBalance(resData.list) : setBalance([]);
@@ -323,50 +357,50 @@ export default function ExportBalance() {
         }
     }
 
-    const actualizeBalance = async () => {
-        try {
-            const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
+    // const actualizeBalance = async () => {
+    //     try {
+    //         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
 
-            const response = await axios.post('/administration/exportBalance/actualizeBalance', {
-                id_compte: Number(compteId),
-                id_exercice: Number(selectedExerciceId),
-                id_dossier: Number(fileId),
-                type,
-                id_axe: Number(selectedAxeId),
-                id_sections: id_sectionMapped
-            });
+    //         const response = await axios.post('/administration/exportBalance/actualizeBalance', {
+    //             id_compte: Number(compteId),
+    //             id_exercice: Number(selectedExerciceId),
+    //             id_dossier: Number(fileId),
+    //             type,
+    //             id_axe: Number(selectedAxeId),
+    //             id_sections: id_sectionMapped
+    //         });
 
-            if (response?.data?.state) {
-                toast.success(response?.data?.message);
-                setIsRefreshed(prev => !prev);
-            } else {
-                toast.error(response?.data?.message || response?.data?.msg);
-            }
-        } catch (err) {
-            toast.error("Erreur lors de l'actualisation");
-            console.error(err);
-        }
-    };
+    //         if (response?.data?.state) {
+    //             toast.success(response?.data?.message);
+    //             setIsRefreshed(prev => !prev);
+    //         } else {
+    //             toast.error(response?.data?.message || response?.data?.msg);
+    //         }
+    //     } catch (err) {
+    //         toast.error("Erreur lors de l'actualisation");
+    //         console.error(err);
+    //     }
+    // };
 
     useEffect(() => {
-        if (!compteId || !fileId || !selectedPeriodeId) return;
+        if (!compteId || !fileId || !selectedExerciceId) return;
         if (balanceFetchTimer.current) clearTimeout(balanceFetchTimer.current);
         setTraitementJournalWaiting(true);
         setTraitementJournalMsg('Chargement de la balance...');
         balanceFetchTimer.current = setTimeout(() => {
-            recupBalance(checked, unsoldedCompte, movmentedCpt, compteId, fileId, selectedPeriodeId, type, selectedAxeId, selectedSectionsId);
+            recupBalance(checked, unsoldedCompte, movmentedCpt, compteId, fileId, selectedExerciceId, type, selectedAxeId, selectedSectionsId);
         }, 200);
         return () => {
             if (balanceFetchTimer.current) clearTimeout(balanceFetchTimer.current);
         };
-    }, [fileId, selectedPeriodeId, checked, unsoldedCompte, movmentedCpt, type, selectedAxeId, selectedSectionsId, isRefreshed]);
+    }, [fileId, selectedExerciceId, checked, unsoldedCompte, movmentedCpt, type, selectedAxeId, selectedSectionsId, isRefreshed, selectedPeriodeId]);
 
     //Formulaire pour l'import du journal
     const formikImport = useFormik({
         initialValues: {
             idCompte: compteId,
             idDossier: fileId,
-            idExercice: selectedPeriodeId,
+            idExercice: selectedExerciceId,
             type: 'CSV',
             choixImport: '',
             journalData: [],
@@ -508,7 +542,7 @@ export default function ExportBalance() {
                                 <FormControl variant="standard" sx={{ m: 1, minWidth: 150 }}>
                                     <InputLabel id="demo-simple-select-standard-label">Période</InputLabel>
                                     <Select
-                                        disabled
+                                        // disabled
                                         labelId="demo-simple-select-standard-label"
                                         id="demo-simple-select-standard"
                                         value={selectedPeriodeChoiceId}
@@ -530,15 +564,20 @@ export default function ExportBalance() {
                                         labelId="demo-simple-select-standard-label"
                                         id="demo-simple-select-standard"
                                         value={selectedPeriodeId}
+                                        disabled={selectedPeriodeChoiceId === 0}
                                         label={"valSelect"}
-                                        onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                                        onChange={(e) => {
+                                            // handleChangeDateIntervalle(e.target.value)
+                                            // setSelectedPeriodeId(e.target.value);
+                                            handleChangePeriod(e.target.value)
+                                        }}
                                         sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
                                         MenuProps={{
                                             disableScrollLock: true
                                         }}
                                     >
-                                        {listeSituation?.map((option) => (
-                                            <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                                        {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                                            <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
                                         ))
                                         }
                                     </Select>
@@ -652,7 +691,7 @@ export default function ExportBalance() {
                                         )
                                     }
                                 </Stack>
-                                {
+                                {/* {
                                     type === 3 && (
                                         <Stack
                                             direction={'row'}
@@ -690,7 +729,7 @@ export default function ExportBalance() {
                                             </div>
                                         </Stack>
                                     )
-                                }
+                                } */}
                             </Stack>
 
                             <Stack width={"100%"} height={"60px"} spacing={0.5} alignItems={"center"} alignContent={"center"} direction={"row"} style={{ marginLeft: "0px", marginTop: "0px" }}>

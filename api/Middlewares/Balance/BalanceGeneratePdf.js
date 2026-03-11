@@ -1,4 +1,4 @@
-const generateBalanceContent = async (id_compte, id_dossier, id_exercice, centraliser, unSolded, movmentedCpt, data) => {
+const generateBalanceContent = async (data) => {
   const buildTable = (data) => {
     const body = [];
     body.push([

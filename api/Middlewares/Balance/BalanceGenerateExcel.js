@@ -3,16 +3,7 @@ const path = require('path');
 
 const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
-function fmtDate(dateString) {
-  if (!dateString) return '';
-  const d = new Date(dateString);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-}
-
-async function exportBalanceTableExcel(id_compte, id_dossier, id_exercice, centraliser, unSolded, movmentedCpt, workbook, dossierName, compteName, exStart, exEnd, data) {
+async function exportBalanceTableExcel(workbook, dossierName, data, texteDatePeriode) {
   const ws = workbook.addWorksheet('Balance');
 
   const logoId = workbook.addImage({
@@ -47,7 +38,7 @@ async function exportBalanceTableExcel(id_compte, id_dossier, id_exercice, centr
   dossierCell.font = { bold: true, size: 14 };
   dossierCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  const periodeRow = ws.addRow([`Période du : ${fmtDate(exStart) || ''} au ${fmtDate(exEnd) || ''}`]);
+  const periodeRow = ws.addRow([texteDatePeriode]);
   ws.mergeCells(`A${periodeRow.number}:F${periodeRow.number}`);
   const periodeCell = ws.getCell(`A${periodeRow.number}`);
   periodeCell.font = { italic: true, size: 12, color: { argb: 'FF555555' } };
