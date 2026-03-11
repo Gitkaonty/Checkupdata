@@ -194,6 +194,8 @@ const Immobilisations = () => {
 
     let list = Array.isArray(data?.list) ? data.list : [];
 
+    console.log('list : ', list);
+
     if (detailsForm?.lien_ecriture_id) {
       const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
       if (journalAlready) setPreselectedJournal(journalAlready);
@@ -209,7 +211,7 @@ const Immobilisations = () => {
     }
 
     const filteredList = list.filter(journal => {
-      const libre = !journal.id_immob;
+      const libre = !Number(journal.id_immob);
       const dejaSelectionne = Number(journal.id) === Number(detailsForm?.lien_ecriture_id);
       const preselected = Number(preselectedJournal?.id) === Number(journal.id);
       return libre || dejaSelectionne || preselected;
