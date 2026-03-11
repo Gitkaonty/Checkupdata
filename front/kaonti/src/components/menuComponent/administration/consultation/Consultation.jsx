@@ -56,6 +56,7 @@ export default function ConsultationComponent() {
     const axiosPrivate = useAxiosPrivate();
     const [typeComptabilite, setTypeComptabilite] = useState(null);
     const [isTypeComptaAutre, setIsTypeComptaAutre] = useState(false);
+    const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
 
     const [fileInfos, setFileInfos] = useState('');
     const [fileId, setFileId] = useState(0);
@@ -83,10 +84,10 @@ export default function ConsultationComponent() {
 
     const { id } = useParams();
 
-    const [listSaisie, setListSaisie] = useState([]);
     const [filteredList, setFilteredList] = useState(null);
     const [listePlanComptable, setListePlanComptable] = useState([]);
     const [listePlanComptableInitiale, setListePlanComptableInitiale] = useState([]);
+    const [listePcSelectionner, setListePcSelectionner] = useState([]);
     const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
     const [listeDevise, setListeDevise] = useState([]);
     const [listeAnnee, setListeAnnee] = useState([]);
@@ -97,14 +98,6 @@ export default function ConsultationComponent() {
     const [selectedLigneDesequilibre, setSelectedLigneDesequilibre] = useState([]);
     const [openLettrageDesequilibrePopup, setOpenLettrageDesequilibrePopup] = useState(false);
     const [messageLettrageDesequlibre, setMessageLettrageDesequilibre] = useState('');
-
-    // Vérifier si la sélection contient un type RAN
-    const isRanTypeSelected = useMemo(() => {
-        if (selectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
-        const selectedJournalId = Number(selectedRows[0].id_journal);
-        const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
-        return codeJournal?.type === 'RAN';
-    }, [selectedRows, listeCodeJournaux]);
 
     //Valeur du listbox choix compte
     const [valSelectedCompte, setValSelectedCompte] = useState('')
@@ -152,7 +145,7 @@ export default function ConsultationComponent() {
 
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
-        axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+        axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
             const resData = response.data;
             if (resData.state) {
 
@@ -172,31 +165,6 @@ export default function ConsultationComponent() {
         })
     }
 
-    //Liste saisie
-    const getListeSaisie = () => {
-        axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`).then((response) => {
-            const resData = response.data;
-            if (canView) {
-                setListSaisie(resData);
-            } else {
-                setListSaisie([]);
-            }
-        })
-    }
-
-    //Liste saisie with return statement
-    const getListeSaisieReturn = async () => {
-        const response = await axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`);
-        const resData = response.data;
-        if (canView) {
-            setListSaisie(resData);
-        } else {
-            setListSaisie(resData);
-        }
-        canView ? setListSaisie(resData) : setListSaisie([]);
-        return resData;
-    };
-
     //Récupération du plan comptable
     const getPc = () => {
         axios.get(`/paramPlanComptable/PcIdLibelle/${compteId}/${fileId}`, {
@@ -212,6 +180,35 @@ export default function ConsultationComponent() {
                 }
             })
     }
+
+    //Choix période
+    const handleChangePeriode = (choix) => {
+        setSelectedPeriodeChoiceId(choix);
+        if (choix === 0) {
+            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
+            setSelectedPeriodeId(selectedExerciceId);
+        } else if (choix === 1) {
+            GetListeSituation(selectedExerciceId);
+        }
+    }
+
+    // Récupération des listes des comptes à sélectionner
+    const getCompteConsultation = async () => {
+        await axios.post('/administration/traitementSaisie/getCompteConsultation', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), filtrageCompte })
+            .then((response) => {
+                if (response?.data?.state) {
+                    setListePcSelectionner(response?.data?.comptes);
+                } else {
+                    return;
+                }
+            })
+    }
+
+    useEffect(() => {
+        if (compteId && fileId && selectedExerciceId) {
+            getCompteConsultation();
+        }
+    }, [compteId, fileId, selectedExerciceId, filtrageCompte])
 
     // Récupération des listes des comptes associés dans le code journal
     const getCodeJournalsCompteAssocie = () => {
@@ -456,48 +453,36 @@ export default function ConsultationComponent() {
         });
     }
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         if (!valSelectedCompte || valSelectedCompte === 'tout') {
             setFilteredList([]);
             return;
         }
 
-        if (!listePlanComptable || listePlanComptable.length === 0) {
+        if (!listePcSelectionner || listePcSelectionner.length === 0) {
             toast.error("Liste plan comptable pas encore chargée");
             return;
         }
 
-        const compteSelect = (listePlanComptableInitiale || listePlanComptable).find(
-            (item) => item.id === Number(valSelectedCompte)
-        );
-
-        if (!compteSelect || compteSelect.compte == null) {
-            setFilteredList([]);
-            return;
-        }
-
-        const compteSelectStr = compteSelect.compte.toString();
-
-        const filtered = listSaisie.filter(
-            (item) => item.compteaux?.toString() === compteSelectStr
-        );
-
-        setFilteredList(filtered);
+        await axios.post('/administration/traitementSaisie/getJournalsConsultation', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), valSelectedCompte: Number(valSelectedCompte) })
+            .then((response) => {
+                setFilteredList(response?.data);
+            })
     };
 
     const handlePrevious = () => {
-        const currentIndex = listePlanComptable.findIndex(item => item.id === Number(valSelectedCompte));
+        const currentIndex = listePcSelectionner.findIndex(item => item.id === Number(valSelectedCompte));
         if (currentIndex > 0) {
-            setValSelectedCompte(listePlanComptable[currentIndex - 1].id);
+            setValSelectedCompte(listePcSelectionner[currentIndex - 1].id);
         } else if (currentIndex === 0) {
             setValSelectedCompte("tout");
         }
     };
 
     const handleNext = () => {
-        const currentIndex = listePlanComptable.findIndex(item => item.id === Number(valSelectedCompte));
-        if (currentIndex < listePlanComptable.length - 1) {
-            setValSelectedCompte(listePlanComptable[currentIndex + 1].id);
+        const currentIndex = listePcSelectionner.findIndex(item => item.id === Number(valSelectedCompte));
+        if (currentIndex < listePcSelectionner.length - 1) {
+            setValSelectedCompte(listePcSelectionner[currentIndex + 1].id);
         }
     };
 
@@ -522,21 +507,34 @@ export default function ConsultationComponent() {
         return newRows;
     };
 
-    const rowsAvecSolde = calculerSoldeCumule(filteredList ?? listSaisie);
+    // const rowsAvecSolde = calculerSoldeCumule(filteredList ?? listSaisie);
+    const rowsAvecSolde = calculerSoldeCumule(filteredList ?? []);
+    const gridSelectedRows = rowsAvecSolde.filter(row =>
+        rowSelectionModel.includes(row.id)
+    );
+
+    // Vérifier si la sélection contient un type RAN
+    const isRanTypeSelected = useMemo(() => {
+        if (gridSelectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
+        const selectedJournalId = Number(gridSelectedRows[0].id_journal);
+        const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
+        return codeJournal?.type === 'RAN';
+    }, [gridSelectedRows, listeCodeJournaux]);
 
     const ajoutLettrage = () => {
-        if (selectedRows.length === 0) {
+        if (gridSelectedRows.length === 0) {
             toast.error("Aucune ligne sélectionnée");
             return;
         }
-        const isHavingLettrage = selectedRows.some(row => row.lettrage && row.lettrage.trim() !== '');
+
+        const isHavingLettrage = gridSelectedRows.some(row => row.lettrage && row.lettrage.trim() !== '');
         if (isHavingLettrage) {
             toast.error("Il y a déjà une lettrage pour certaines lignes");
         } else {
-            const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
+            const soldeStr = calculateDebitCredit(gridSelectedRows).solde.replace(/\s/g, '').replace(',', '.');
             const solde = parseFloat(soldeStr);
             if (solde === 0) {
-                const ids = selectedRows.map(row => row.id);
+                const ids = gridSelectedRows.map(row => row.id);
                 axiosPrivate.post('/administration/traitementSaisie/addLettrage',
                     {
                         data: ids,
@@ -561,26 +559,50 @@ export default function ConsultationComponent() {
     }
 
     const supprimerLettrage = () => {
-        if (selectedRows.length === 0) {
+        if (gridSelectedRows.length === 0) {
             toast.error("Aucune ligne sélectionnée");
             return;
         }
 
-        const firstLettrage = selectedRows[0].lettrage?.trim();
+        const selectedData = gridSelectedRows;
+
+        const lettrages = selectedData.map(row => row.lettrage);
+
+        const hasNullLettrage = lettrages.some(l => !l || l.trim() === "");
+        if (hasNullLettrage) return toast.error("Les lignes que vous avez sélectionnées n\'ont pas de lettrages");;
+
+        const cleaned = lettrages.map(l => l.trim());
+
+        const allSameLettrage = cleaned.every(l => l === cleaned[0]);
+        if (!allSameLettrage) return toast.error("Les lignes que vous avez sélectionnées ont des lettrages différents");;
+
+        const lettrageValue = cleaned[0];
+
+        const soldeLigne = calculateDebitCredit(selectedData).solde;
+
+        const soldeNum = parseFloat(soldeLigne.toString().replace(',', '.'));
+
+        if (soldeNum !== 0) {
+            setMessageLettrageDesequilibre(`Le lettrage ${lettrageValue} est déséquilibré de ${soldeLigne} ${deviseParDefaut}.\nLes lettrages vont être annulés.`)
+            setSelectedLigneDesequilibre(selectedData);
+            setOpenLettrageDesequilibrePopup(true);
+        }
+
+        const firstLettrage = gridSelectedRows[0].lettrage?.trim();
 
         const allHaveSameLettrage = firstLettrage &&
-            selectedRows.every(row => row.lettrage?.trim() === firstLettrage);
+            gridSelectedRows.every(row => row.lettrage?.trim() === firstLettrage);
 
         if (!allHaveSameLettrage) {
             toast.error("Les lettrages ne sont pas les mêmes ou sont vides");
             return;
         }
 
-        const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
+        const soldeStr = calculateDebitCredit(gridSelectedRows).solde.replace(/\s/g, '').replace(',', '.');
         const solde = parseFloat(soldeStr);
 
         if (solde === 0) {
-            const ids = selectedRows.map(row => row.id);
+            const ids = gridSelectedRows.map(row => row.id);
             axiosPrivate.put('/administration/traitementSaisie/deleteLettrage', {
                 data: ids,
                 id_compte: compteId,
@@ -652,40 +674,54 @@ export default function ConsultationComponent() {
         }
     }
 
-    const handleOpenSaisiePopup = () => {
+    const handleOpenSaisiePopup = async () => {
         const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
         if (!defaultDeviseData) {
             return toast.error('Veuillez sélectionner une devise par défaut dans le paramétrage CRM de ce dossier')
         }
-        let id_ecriture = '';
-        if (selectedRows.length === 1) {
-            const selectedJournalId = selectedRows[0].id_journal;
-            const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
 
-            if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
-                return toast.error("Impossible de modifier une écriture d'immobilisation");
-            }
+        const selectedRows = rowsAvecSolde.filter(row =>
+            rowSelectionModel.includes(row.id)
+        );
 
-            id_ecriture = selectedRows[0].id_ecriture;
-            const rows = listSaisie
-                .filter((row) => row.id_ecriture === id_ecriture)
-                .map((row) => {
-                    const [annee, mois, jour] = row.dateecriture.split('-');
-                    const compteObj = listePlanComptable.find(pc => pc.compte === row.compteaux);
-
-                    return {
-                        ...row,
-                        jour: parseInt(jour),
-                        mois: parseInt(mois),
-                        compte: Number(compteObj?.id ?? row.id_numcpt),
-                        libelle: compteObj?.libelle ?? row.libelle
-                    };
-                });
-            setSelectedRows(rows);
-            setOpenSaisiePopup(true);
-        } else {
-            toast.error('Sélectionner une ligne pour modifier')
+        if (rowSelectionModel.length !== 1) {
+            toast.error('Sélectionner une ligne pour modifier');
+            return;
         }
+
+        let id_ecriture = '';
+        const selectedJournalId = selectedRows[0].id_journal;
+        const codeJournal = listeCodeJournaux.find(cj => cj.id === Number(selectedJournalId));
+
+        if (codeJournal && codeJournal.type === 'OD' && codeJournal.code === 'Imau') {
+            return toast.error("Impossible de modifier une écriture d'immobilisation");
+        }
+
+        id_ecriture = selectedRows[0].id_ecriture;
+
+        await axios.post('/administration/traitementSaisie/getJournalsEcriture', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), id_ecriture })
+            .then((response) => {
+                if (response?.data?.state) {
+                    const ecritures = response?.data?.rows;
+                    const rows = ecritures
+                        .map((row) => {
+                            const [annee, mois, jour] = row.dateecriture.split('-');
+                            const compteObj = listePlanComptable.find(pc => pc.compte === row.compteaux);
+
+                            return {
+                                ...row,
+                                jour: parseInt(jour),
+                                mois: parseInt(mois),
+                                compte: Number(compteObj?.id ?? row.id_numcpt),
+                                libelle: compteObj?.libelle ?? row.libelle
+                            };
+                        });
+                    setSelectedRows(rows);
+                    setOpenSaisiePopup(true);
+                } else {
+                    toast.error('Erreur lors de la récupération des écritures');
+                }
+            })
     }
 
     const calculateDebitCredit = (tableRows) => {
@@ -728,7 +764,7 @@ export default function ConsultationComponent() {
         };
     };
 
-    const soldeStr = calculateDebitCredit(selectedRows).solde.replace(/\s/g, '').replace(',', '.');
+    const soldeStr = calculateDebitCredit(gridSelectedRows).solde.replace(/\s/g, '').replace(',', '.');
     const solde = parseFloat(soldeStr);
 
     const soldeLigneStr = calculateDebitCredit(filteredList || []).solde.replace(/\s/g, '').replace(',', '.');
@@ -787,12 +823,9 @@ export default function ConsultationComponent() {
         })
     }
 
-    // Liste saisie
-    useEffect(() => {
-        if (fileId && selectedExerciceId && compteId) {
-            getListeSaisie();
-        }
-    }, [selectedPeriodeId, selectedExerciceId, selectedExerciceId, isRefresehed])
+    const currentIndex = listePcSelectionner.findIndex(
+        item => item.id === Number(valSelectedCompte)
+    );
 
     //récupérer les informations du dossier sélectionné
     useEffect(() => {
@@ -817,16 +850,31 @@ export default function ConsultationComponent() {
     }, []);
 
     useEffect(() => {
-        if (listePlanComptable.length > 0 || listePlanComptableInitiale.length > 0 && valSelectedCompte && (fileId && compteId)) {
-            const existe = listePlanComptable.some(item => item.id === Number(valSelectedCompte));
-            if (!existe && valSelectedCompte !== "tout") {
-                setValSelectedCompte("tout");
-                return;
-            }
+        if (!valSelectedCompte) {
+            setFilteredList([]);
+            return;
+        }
 
+        if (!listePcSelectionner || listePcSelectionner.length === 0) {
+            setFilteredList([]);
+            return;
+        }
+
+        const existe = listePcSelectionner.some(
+            item => item.id === Number(valSelectedCompte)
+        );
+
+        if (!existe) {
+            setValSelectedCompte(null);
+            setFilteredList([]);
+            return;
+        }
+
+        if (fileId && compteId) {
             handleSearch();
         }
-    }, [listePlanComptable, listePlanComptableInitiale, valSelectedCompte, listSaisie]);
+
+    }, [valSelectedCompte, listePcSelectionner, isRefresehed]);
 
     useEffect(() => {
         if (fileId && compteId && typeComptabilite !== null) {
@@ -843,51 +891,6 @@ export default function ConsultationComponent() {
     }, [fileId, compteId]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const resData = await getListeSaisieReturn();
-                const comptesAvecSolde = resData.map(row => String(row.compteaux));
-
-                const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
-                    comptesAvecSolde.includes(String(plan.compte))
-                );
-
-                if (filtrageCompte === "1") {
-                    // Comptes mouvementés
-                    setListePlanComptable(listePlanComptableFiltree);
-
-                } else if (filtrageCompte === "2") {
-                    // Comptes soldés
-                    const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
-                        const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-                        const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-                        const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-                        return Math.abs(totalDebit - totalCredit) < 0.01;
-                    });
-
-                    setListePlanComptable(comptesEquilibres);
-
-                } else if (filtrageCompte === "3") {
-                    // Comptes non soldés
-                    const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
-                        const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-                        const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-                        const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-                        return Math.abs(totalDebit - totalCredit) >= 0.01;
-                    });
-
-                    setListePlanComptable(comptesDesequilibres);
-                }
-            } catch (error) {
-                console.error("Erreur lors du chargement des écritures :", error);
-            }
-        }
-        if (fileId && compteId) {
-            fetchData();
-        }
-    }, [filtrageCompte, fileId, listePlanComptableInitiale]);
-
-    useEffect(() => {
         const handleKeyDown = (e) => {
             if (canView) {
                 if (e.ctrlKey && e.key === "ArrowRight") {
@@ -902,7 +905,7 @@ export default function ConsultationComponent() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [listePlanComptable, valSelectedCompte]);
+    }, [listePcSelectionner, valSelectedCompte]);
 
     // Liste des années
     useEffect(() => {
@@ -983,7 +986,7 @@ export default function ConsultationComponent() {
                         id_compte={Number(compteId)}
                         solde={solde}
                         refresh={() => setIsRefreshed(prev => !prev)}
-                        selectedRows={selectedRows}
+                        selectedRows={gridSelectedRows}
                     />
                 )
             }
@@ -996,7 +999,7 @@ export default function ConsultationComponent() {
                         id_exercice={Number(selectedExerciceId)}
                         id_compte={Number(compteId)}
                         refresh={() => setIsRefreshed(prev => !prev)}
-                        selectedRows={selectedRows}
+                        selectedRows={gridSelectedRows}
                         selectedCompte={valSelectedCompte}
                     />
                 )
@@ -1046,8 +1049,13 @@ export default function ConsultationComponent() {
                                             disabled
                                             labelId="demo-simple-select-standard-label"
                                             id="demo-simple-select-standard"
-                                            label={"periode"}
+                                            value={selectedPeriodeChoiceId}
+                                            label={"valSelect"}
+                                            onChange={(e) => handleChangePeriode(e.target.value)}
                                             sx={{ width: "150px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
+                                            MenuProps={{
+                                                disableScrollLock: true
+                                            }}
                                         >
                                             <MenuItem value={0}>Toutes</MenuItem>
                                             <MenuItem value={1}>Situations</MenuItem>
@@ -1085,8 +1093,10 @@ export default function ConsultationComponent() {
                                         onClick={handleOpenSaisiePopup}
                                         disabled={
                                             !canModify ||
-                                            selectedRows.length === 0 ||
-                                            selectedRows.every(row => Number(row.id_dossier) !== Number(fileId)) ||
+                                            rowSelectionModel.length === 0 ||
+                                            rowsAvecSolde
+                                                .filter(row => rowSelectionModel.includes(row.id))
+                                                .every(row => Number(row.id_dossier) !== Number(fileId)) ||
                                             isRanTypeSelected
                                         }
                                         variant="contained"
@@ -1131,7 +1141,7 @@ export default function ConsultationComponent() {
                                         >
                                             <Autocomplete
                                                 disabled={!canView || !selectedExerciceId || selectedExerciceId === 0}
-                                                value={listePlanComptable.find(item => item.id === Number(valSelectedCompte)) || null}
+                                                value={listePcSelectionner.find(item => item.id === Number(valSelectedCompte)) || null}
                                                 onChange={(event, newValue) => {
                                                     setValSelectedCompte(newValue?.id || null);
                                                 }}
@@ -1151,7 +1161,7 @@ export default function ConsultationComponent() {
                                                         </li>
                                                     );
                                                 }}
-                                                options={listePlanComptable}
+                                                options={listePcSelectionner}
                                                 getOptionLabel={(option) => `${option.compte || ''} - ${option.libelle || ''}`}
                                                 renderInput={(params) => <TextField {...params} label="Compte" variant="standard" />}
                                                 isOptionEqualToValue={(option, value) => option?.id === value?.id}
@@ -1164,7 +1174,13 @@ export default function ConsultationComponent() {
                                             <Tooltip title={'Ctrl + <--'}>
                                                 <span>
                                                     <Button
-                                                        disabled={!canView || !selectedExerciceId || selectedExerciceId === 0 || valSelectedCompte === 'tout'}
+                                                        disabled={
+                                                            !canView ||
+                                                            !selectedExerciceId ||
+                                                            selectedExerciceId === 0 ||
+                                                            valSelectedCompte === 'tout' ||
+                                                            currentIndex <= 0
+                                                        }
                                                         sx={{
                                                             minWidth: 0,
                                                             padding: 1,
@@ -1199,7 +1215,7 @@ export default function ConsultationComponent() {
                                                         disabled={
                                                             !canView ||
                                                             !selectedExerciceId || selectedExerciceId === 0 ||
-                                                            listePlanComptable.findIndex(item => item.id === valSelectedCompte) >= listePlanComptable.length - 1
+                                                            currentIndex >= listePcSelectionner.length - 1
                                                         }
                                                         sx={{
                                                             minWidth: 0,
@@ -1240,8 +1256,6 @@ export default function ConsultationComponent() {
                                     onChange={(e) => {
                                         setFiltrageCompte(e.target.value);
                                         setFilteredList([]);
-                                        setListSaisie([]);
-                                        handleSearch();
                                     }}
                                     value={filtrageCompte}
                                 >
@@ -1291,7 +1305,7 @@ export default function ConsultationComponent() {
                                     }}>
 
                                     <Button
-                                        disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canAdd || gridSelectedRows.length === 0 || !valSelectedCompte || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1307,7 +1321,7 @@ export default function ConsultationComponent() {
                                         Réaffecter
                                     </Button>
                                     <Button
-                                        disabled={!canAdd || selectedRows.length === 0 || !valSelectedCompte || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canAdd || gridSelectedRows.length === 0 || !valSelectedCompte || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1323,7 +1337,7 @@ export default function ConsultationComponent() {
                                         Lettrer : Avec écart
                                     </Button>
                                     <Button
-                                        disabled={!canAdd || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canAdd || gridSelectedRows.length === 0 || solde !== 0 || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1339,7 +1353,7 @@ export default function ConsultationComponent() {
                                         Lettrer
                                     </Button>
                                     <Button
-                                        disabled={!canDelete || selectedRows.length === 0 || solde !== 0 || selectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
+                                        disabled={!canDelete || gridSelectedRows.length === 0 || solde !== 0 || gridSelectedRows.every(row => Number(row.id_dossier) !== Number(fileId))}
                                         variant="contained"
                                         style={{
                                             textTransform: 'none',
@@ -1405,39 +1419,13 @@ export default function ConsultationComponent() {
                                     }}
                                     rowSelectionModel={rowSelectionModel}
                                     onRowSelectionModelChange={(ids) => {
-                                        const selectedData = rowsAvecSolde.filter((row) => ids.includes(row.id));
-                                        setSelectedRows(selectedData);
-
-                                        const newRowIds = selectedData.map(row => row.id);
-                                        setRowSelectionModel(newRowIds);
-
-                                        const lettrages = selectedData.map(row => row.lettrage);
-
-                                        const hasNullLettrage = lettrages.some(l => !l || l.trim() === "");
-                                        if (hasNullLettrage) return;
-
-                                        const cleaned = lettrages.map(l => l.trim());
-
-                                        const allSameLettrage = cleaned.every(l => l === cleaned[0]);
-                                        if (!allSameLettrage) return;
-
-                                        const lettrageValue = cleaned[0];
-
-                                        const soldeLigne = calculateDebitCredit(selectedData).solde;
-
-                                        const soldeNum = parseFloat(soldeLigne.toString().replace(',', '.'));
-
-                                        if (soldeNum !== 0) {
-                                            setMessageLettrageDesequilibre(`Le lettrage ${lettrageValue} est déséquilibré de ${soldeLigne} ${deviseParDefaut}.\nLes lettrages vont être annulés.`)
-                                            setSelectedLigneDesequilibre(selectedData);
-                                            setOpenLettrageDesequilibrePopup(true);
-                                        }
+                                        setRowSelectionModel(ids);
                                     }}
                                 />
                             </Stack>
                         </Stack>
                         {
-                            selectedRows.length > 0 && (
+                            gridSelectedRows.length > 0 && (
                                 <>
                                     <span>
                                         Débit : <strong
@@ -1445,7 +1433,7 @@ export default function ConsultationComponent() {
                                                 color: '#FF8A8A'
                                             }}
                                         >
-                                            {calculateDebitCredit(selectedRows).debit}
+                                            {calculateDebitCredit(gridSelectedRows).debit}
                                         </strong>,{" "}
                                     </span>
                                     <span>
@@ -1454,24 +1442,24 @@ export default function ConsultationComponent() {
                                                 color: '#FF8A8A'
                                             }}
                                         >
-                                            {calculateDebitCredit(selectedRows).credit}
+                                            {calculateDebitCredit(gridSelectedRows).credit}
                                         </strong>,{" "}
                                     </span>
                                     <span>
                                         Solde : <strong
                                             style={{
-                                                color: `${calculateDebitCredit(selectedRows).solde.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
+                                                color: `${calculateDebitCredit(gridSelectedRows).solde.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
                                             }}
                                         >
-                                            {calculateDebitCredit(selectedRows).solde}
+                                            {calculateDebitCredit(gridSelectedRows).solde}
                                         </strong>
                                     </span>
                                 </>
                             )
                         }
                     </TabPanel>
-                </TabContext>
-            </Box>
+                </TabContext >
+            </Box >
         </>
     )
 }

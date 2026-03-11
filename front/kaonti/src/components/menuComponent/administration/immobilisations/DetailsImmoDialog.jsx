@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Stack, TextField, Button, InputAdornment, MenuItem, Typography, Box, Tab, IconButton, Checkbox, FormControlLabel,
@@ -14,7 +14,7 @@ import { init } from '../../../../../init';
 import FormatedInput from '../../../componentsTools/FormatedInput';
 import { FaSquarePlus } from "react-icons/fa6";
 
-const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, onSubmit, loading = false, onOpenLienEcriture }) => {
+const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, onSubmit, loading = false, onOpenLienEcriture, setDetailsForm }) => {
     const ancienneDateSortieRef = useRef(form.date_sortie);
     const initial = init[0];
 
@@ -33,111 +33,128 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
     const numOrZero = (v) => (isEmpty(v) ? 0 : Number(v));
 
     const handleMontantCalc = (e) => {
-        const montantRaw = e.target.value;
-        const montant = isEmpty(montantRaw) ? '' : toNum(montantRaw);
-        const avantReprise = numOrNull(form.amort_avant_reprise);
-        const taux = numOrNull(form.taux_tva);
-        const tva = numOrNull(form.montant_tva);
-        const ht = numOrNull(form.montant_ht);
-        const next = { ...form, montant };
+        const montant = isEmpty(e.target.value) ? '' : toNum(e.target.value);
 
-        if (montant === '' || isNaN(Number(montant))) {
-            onChange(next);
-            return;
-        }
+        const next = recalc(
+            { ...form, montant },
+            "montant"
+        );
 
-        if (taux !== null) {
-            const nvTva = round2(montant * taux / (100 + taux));
-            const nvHt = round2(montant - nvTva - avantReprise);
-            next.montant_tva = nvTva;
-            next.montant_ht = nvHt;
-        } else if (tva !== null) {
-            const nvHt = round2(montant - tva - avantReprise);
-            const nvTaux = nvHt ? round2((tva / nvHt) * 100) : 0;
-            next.montant_ht = nvHt;
-            next.taux_tva = nvTaux;
-        } else if (ht !== null) {
-            const nvTva = round2(montant - ht);
-            const nvTaux = ht ? round2((nvTva / ht) * 100) : 0;
-            next.montant_tva = nvTva;
-            next.taux_tva = nvTaux;
-        }
-
-        onChange(next);
+        setDetailsForm(next);
     };
 
     const handleTauxTvaCalc = (e) => {
-        const tauxRaw = e.target.value;
-        const taux = isEmpty(tauxRaw) ? '' : toNum(tauxRaw);
-        const montant = numOrNull(form.montant);
-        const next = { ...form, taux_tva: taux };
+        const taux = isEmpty(e.target.value) ? '' : toNum(e.target.value);
 
-        if (taux === '' || montant === null || isNaN(Number(taux))) {
-            onChange(next);
-            return;
-        }
+        const next = recalc(
+            { ...form, taux_tva: taux },
+            "taux"
+        );
 
-        const nvTva = round2(montant * taux / (100 + taux));
-        const nvHt = round2(montant - nvTva);
-
-        next.montant_tva = nvTva;
-        next.montant_ht = nvHt;
-
-        onChange(next);
+        setDetailsForm(next);
     };
 
     const handleMontantTvaCalc = (e) => {
-        const tvaRaw = e.target.value;
-        const tva = isEmpty(tvaRaw) ? '' : toNum(tvaRaw);
-        const montant = numOrNull(form.montant);
-        const next = { ...form, montant_tva: tva };
+        const tva = isEmpty(e.target.value) ? '' : toNum(e.target.value);
 
-        if (tva === '' || montant === null || isNaN(Number(tva))) {
-            onChange(next);
-            return;
-        }
+        const next = recalc(
+            { ...form, montant_tva: tva },
+            "tva"
+        );
 
-        const nvHt = round2(montant - tva);
-        const nvTaux = montant ? round2((tva / (montant - tva)) * 100) : 0;
-        next.montant_ht = nvHt;
-        next.taux_tva = nvTaux;
-
-        onChange(next);
+        setDetailsForm(next);
     };
 
     const handleMontantHtCalc = (e) => {
-        const htRaw = e.target.value;
-        const ht = isEmpty(htRaw) ? '' : toNum(htRaw);
-        const montant = numOrNull(form.montant);
-        const next = { ...form, montant_ht: ht };
+        const ht = isEmpty(e.target.value) ? '' : toNum(e.target.value);
 
-        if (ht === '' || montant === null || isNaN(Number(ht))) {
-            onChange(next);
-            return;
-        }
-
-        const nvTva = round2(montant - ht);
-        const nvTaux = ht ? round2((nvTva / ht) * 100) : 0;
-        next.montant_tva = nvTva;
-        next.taux_tva = nvTaux;
-
-        const totalComp = numOrZero(next.total_amortissement_comp);
-        const derogComp = numOrZero(next.derogatoire_comp);
-        next.vnc = round2(numOrZero(ht) - totalComp - derogComp);
+        const next = recalc(
+            { ...form, montant_ht: ht },
+            "ht"
+        );
 
         onChange(next);
     };
 
     const handleMontantAvantReprise = (e) => {
-        const avantRepriseRaw = e.target.value;
-        const avantReprise = isEmpty(avantRepriseRaw) ? '' : toNum(avantRepriseRaw);
-        const next = { ...form };
+        const amort = isEmpty(e.target.value) ? '' : toNum(e.target.value);
 
-        next.amort_avant_reprise = avantReprise;
-        next.montant_ht = next.montant_ht - avantReprise;
+        const next = recalc(
+            { ...form, amort_avant_reprise: amort },
+            "amort"
+        );
 
-        onChange(next);
-    }
+        setDetailsForm(next);
+    };
+
+    const recalc = (values, driver) => {
+
+        const montant = numOrNull(values.montant);
+        const taux = numOrNull(values.taux_tva);
+        const tva = numOrNull(values.montant_tva);
+        const amort = numOrZero(values.amort_avant_reprise);
+
+        const next = { ...values };
+
+        if (montant === null || montant === 0) {
+            next.montant_tva = '';
+            next.montant_ht = '';
+            next.taux_tva = values.taux_tva ?? '';
+            return next;
+        }
+
+        let calcTva = tva ?? 0;
+
+        if (driver === "taux") {
+
+            if (taux === null) return next;
+
+            calcTva = round2(montant * taux / (100 + taux));
+            next.montant_tva = calcTva;
+        }
+
+        else if (driver === "tva") {
+
+            if (tva === null) return next;
+
+            calcTva = tva;
+
+            const htTemp = montant - calcTva;
+
+            if (htTemp > 0) {
+                next.taux_tva = round2((calcTva / htTemp) * 100);
+            }
+        }
+
+        else if (driver === "montant") {
+
+            if (taux !== null) {
+                calcTva = round2(montant * taux / (100 + taux));
+                next.montant_tva = calcTva;
+            }
+            else if (tva !== null) {
+                calcTva = tva;
+            }
+        }
+
+        else if (driver === "amort") {
+
+            calcTva = tva ?? 0;
+        }
+
+        next.montant_ht = round2(montant - calcTva - amort);
+
+        if (next.montant_ht < 0) {
+            next.montant_ht = 0;
+        }
+
+        const totalComp = numOrZero(next.total_amortissement_comp);
+        const derogComp = numOrZero(next.derogatoire_comp);
+
+        next.vnc = round2(next.montant_ht - totalComp - derogComp);
+
+        return next;
+    };
 
     // Recompute total amortissement (comptable) and VNC when a comptable amort field changes
     const handleAmortComp = (key) => (e) => {
@@ -326,6 +343,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 label="Taux TVA"
                                 type="text"
                                 value={form.taux_tva || ''}
+                                disabled={!form.montant || form.montant === 0}
                                 onChange={handleTauxTvaCalc}
                                 variant="standard"
                                 size="small"
@@ -337,6 +355,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                                 label="Montant TVA"
                                 type="text"
                                 value={form.montant_tva || ''}
+                                disabled={!form.montant || form.montant === 0}
                                 onChange={handleMontantTvaCalc}
                                 variant="standard"
                                 size="small"
@@ -346,7 +365,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
                         </Stack>
                         <Stack direction={"row"} spacing={2} sx={{ mt: 2 }}>
                             <TextField
-                                disabled={!repriseComp}
+                                disabled={!repriseComp || !form.montant || form.montant === 0}
                                 label="Amortissement avant reprise"
                                 type="text"
                                 value={form.amort_avant_reprise || ''}
@@ -692,7 +711,7 @@ const DetailsImmoDialog = ({ open, mode = 'add', form = {}, onChange, onClose, o
 
                     }}
                 >
-                    {mode === 'add' ? 'Enregistrer' : 'Enregistrer'}
+                    Enregistrer
                 </Button>
             </DialogActions>
 

@@ -61,6 +61,8 @@ export default function SaisieComponent() {
     const [selectedRows, setSelectedRows] = useState([]);
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
+    console.log('selectedRows : ', selectedRows);
+
     const gridRef = useRef(null)
     const [scrollbarVisible, setScrollbarVisible] = useState(false);
 
@@ -126,7 +128,7 @@ export default function SaisieComponent() {
 
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
-        axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+        axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 setListeExercice(resData.list);
@@ -240,6 +242,16 @@ export default function SaisieComponent() {
         {
             field: 'dossier',
             headerName: 'Dossier',
+            type: 'string',
+            sortable: true,
+            flex: 0.6,
+            headerAlign: 'left',
+            align: 'left',
+            headerClassName: 'HeaderbackColor',
+        },
+        {
+            field: 'lettrage',
+            headerName: 'Let',
             type: 'string',
             sortable: true,
             flex: 0.6,
@@ -848,7 +860,7 @@ export default function SaisieComponent() {
                                         disabled={
                                             !canModify ||
                                             selectedRows.length === 0 ||
-                                            (selectedRows.filter(val => val.id_dossier === fileId)).length === 0 ||
+                                            (selectedRows.filter(val => Number(val.id_dossier) === Number(fileId))).length === 0 ||
                                             isRanTypeSelected
                                         }
                                         variant="contained"
@@ -869,7 +881,7 @@ export default function SaisieComponent() {
                                         disabled={
                                             !canDelete ||
                                             selectedRows.length === 0 ||
-                                            (selectedRows.filter(val => val.id_dossier === fileId)).length === 0 ||
+                                            (selectedRows.filter(val => Number(val.id_dossier) === Number(fileId))).length === 0 ||
                                             isRanTypeSelected
                                         }
                                         variant="contained"

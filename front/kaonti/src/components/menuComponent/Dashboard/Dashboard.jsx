@@ -240,7 +240,7 @@ export default function DashboardComponent() {
 
   //Récupérer la liste des exercices
   const GetListeExercice = (id) => {
-    axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+    axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
         setListeExercice(resData.list);
@@ -346,6 +346,9 @@ export default function DashboardComponent() {
           setEvolutionTresorerieCaisseN(response?.data?.evolutionTresorerieCaisseN);
 
           setMoisN(response?.data?.moisNMapped);
+        } else {
+          toast.error(response?.data?.message);
+          clearAllData();
         }
       })
       .catch((err) => {

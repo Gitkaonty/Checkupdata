@@ -175,6 +175,11 @@ module.exports = {
                 unique: false,
                 allowNull: true
             },
+            id_ecriture_n1: {
+                type: Sequelize.STRING(25),
+                unique: false,
+                allowNull: true
+            }
         },
             { timestamps: true }
         );

@@ -255,7 +255,13 @@ export default function ParamTVAComponent() {
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewParamTva.errors.compte && formikNewParamTva.touched.compte && formikNewParamTva.errors.compte}
                         </FormHelperText>
                     </FormControl>
@@ -323,7 +329,13 @@ export default function ParamTVAComponent() {
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formikNewParamTva.errors.code && formikNewParamTva.touched.code && formikNewParamTva.errors.code}
                         </FormHelperText>
                     </FormControl>

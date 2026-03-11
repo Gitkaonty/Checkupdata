@@ -111,4 +111,16 @@ router.post('/getJournalsAvecImmo', saisieController.getJournalsAvecImmo);
 // Générer des écritures à nouveaux
 router.post('/genererRan', saisieController.genererRan);
 
+// Suppréssion des journaux RAN
+router.post('/deleteJournalRan', saisieController.deleteJournalRan);
+
+// Récupération des comptes pour la consultation
+router.post('/getCompteConsultation', saisieController.getCompteConsultation);
+
+// Récupération des journaux dans la consultation
+router.post('/getJournalsConsultation', saisieController.getJournalsConsultation);
+
+// Récupération des lignes dans une écritures dans le journal
+router.post('/getJournalsEcriture', saisieController.getJournalsEcriture);
+
 module.exports = router;

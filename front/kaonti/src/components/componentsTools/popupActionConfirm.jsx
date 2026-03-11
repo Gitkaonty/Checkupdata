@@ -19,7 +19,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupActionConfirm = ({ msg, confirmationState, isLoading }) => {
+const PopupActionConfirm = ({ msg, confirmationState, isLoading, isDelete }) => {
     const handleConfirm = () => confirmationState(true);
     const handleClose = () => { isLoading ? null : confirmationState(false) };
 
@@ -85,7 +85,7 @@ const PopupActionConfirm = ({ msg, confirmationState, isLoading }) => {
                         gap: '8px',
                     }}
                 >
-                    <span>Poursuivre</span>
+                    <span>{isDelete ? 'Supprimer' : 'Poursuivre'}</span>
                     {isLoading && <CircularProgress size={18} color="inherit" />}
                 </Button>
 

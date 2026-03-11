@@ -166,7 +166,13 @@ export const DatagridBHIAPCdetail = ({ compteId, fileId, exerciceId, etatId, rub
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.compte && formNewParam.touched.compte && formNewParam.errors.compte}
                         </FormHelperText>
                     </FormControl>

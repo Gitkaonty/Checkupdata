@@ -230,7 +230,7 @@ function RapprochementsBancaires() {
   }
 
   const GetListeExercice = (id) => {
-    axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+    axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
         setListeExercice(resData.list);
@@ -253,7 +253,7 @@ function RapprochementsBancaires() {
         const { data: pcs } = await axios.get('/administration/traitementSaisie/rapprochements/pcs', { params: { fileId: fid, compteId }, timeout: 60000 });
         if (pcs?.state) {
           const list = Array.isArray(pcs.list) ? pcs.list : (pcs.list ? [pcs.list] : []);
-          try { console.log('[RAPPRO][PCS][FILTERED]', { fileId: fid, compteId, count: list.length, list }); } catch { }
+          // try { console.log('[RAPPRO][PCS][FILTERED]', { fileId: fid, compteId, count: list.length, list }); } catch { }
           // Affichage strict: si vide, on montre vide
           setPc512Rows(list);
           if (list.length === 0) {
@@ -281,7 +281,7 @@ function RapprochementsBancaires() {
       if (ids.length === 0) { toast('Sélectionner des écritures', { icon: 'ℹ️' }); return; }
       const dateRapprochement = String(sel.date_fin).substring(0, 10);
       await axios.post('/administration/traitementSaisie/rapprochements/ecritures/mark', {
-        ids, fileId, compteId, exerciceId: selectedExerciceId, rapprocher: !!mark, dateRapprochement
+        ids, fileId, compteId, exerciceId: selectedExerciceId, rapprocher: !!mark, dateRapprochement,
       });
       toast.success(mark ? 'Écritures rapprochées' : 'Rapprochement annulé');
       // Recompute soldes first (uses date_fin selection) then reload ecritures
@@ -304,6 +304,7 @@ function RapprochementsBancaires() {
         rapproId: sel.id,
         endDate: String(sel.date_fin).substring(0, 10),
         soldeBancaire: sel.solde_bancaire ?? null,
+        compte: pcSelected.compte
       };
       try { console.debug('[RAPPRO][FRONT][SOLDES][REQUEST]', params); } catch { }
       const { data } = await axios.get('/administration/traitementSaisie/rapprochements/soldes', { params });
@@ -331,7 +332,6 @@ function RapprochementsBancaires() {
       const params = { fileId, compteId, exerciceId: selectedExerciceId, pcId: pcSelected.id, compte: pcSelected.compte, endDate };
       const { data } = await axios.get('/administration/traitementSaisie/rapprochements/ecritures', { params, timeout: 60000 });
       const list = Array.isArray(data?.list) ? data.list : (data?.list ? [data.list] : []);
-      console.log('list : ', list);
       const rowsAll = list.map(it => ({
         id: it.id,
         dateecriture: it.dateecriture,
@@ -348,7 +348,7 @@ function RapprochementsBancaires() {
       const dsel = endDate;
       // console.log('dsel : ', dsel);
       const rows = rowsAll.filter(r => !r.rapprocher || (r.rapprocher
-        // && r.date_rapprochement === dsel
+        && r.date_rapprochement === dsel
       ));
       // Append totals row for alignment (sum of all displayed rows)
       const totDebitAll = rows.reduce((s, r) => s + (Number(r.debit) || 0), 0);
@@ -853,8 +853,13 @@ function RapprochementsBancaires() {
       }
     }
     GetInfosIdDossier(idFile);
-    GetListeExercice(idFile);
-  }, []);
+  }, [compteId]);
+
+  useEffect(() => {
+    if (fileId && compteId) {
+      GetListeExercice(fileId);
+    }
+  }, [fileId, compteId])
 
   useEffect(() => {
     if (fileId) loadPc512(fileId);

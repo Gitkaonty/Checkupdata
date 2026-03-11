@@ -34,15 +34,15 @@ export default function PopupImportModelePlanComptable({ onSuccess }) {
     const [traitementModelePcWaiting, setTraitementModelePcWaiting] = useState(false);
     const [traitementModelePcMsg, setTraitementModelePcMsg] = useState('');
     const [progressValue, setProgressValue] = useState(0);
-    
+
     // Hook SSE pour la progression en temps réel
-    const { 
-        isImporting, 
-        progress: sseProgress, 
-        message: sseMessage, 
-        currentLine, 
-        totalLines, 
-        startImport 
+    const {
+        isImporting,
+        progress: sseProgress,
+        message: sseMessage,
+        currentLine,
+        totalLines,
+        startImport
     } = useSSEImport();
     const [anomaliePersiste, setAnomaliePersiste] = useState(false);
     const [nameExist, setNameExist] = useState(false);
@@ -81,7 +81,7 @@ export default function PopupImportModelePlanComptable({ onSuccess }) {
     useEffect(() => {
         if (isImporting) {
             setProgressValue(sseProgress);
-            const displayMessage = currentLine > 0 && totalLines > 0 
+            const displayMessage = currentLine > 0 && totalLines > 0
                 ? `${sseMessage} (${currentLine}/${totalLines} lignes)`
                 : sseMessage;
             setTraitementModelePcMsg(displayMessage);
@@ -384,7 +384,13 @@ export default function PopupImportModelePlanComptable({ onSuccess }) {
                                 onBlur={(e) => formikImport.setFieldValue('nomModele', e.target.value)}
                             />
 
-                            <FormHelperText style={{ color: 'red' }}>
+                            <FormHelperText
+                                style={{
+                                    color: 'red',
+                                    marginLeft: 0,
+                                    fontSize: "12px",
+                                }}
+                            >
                                 {formikImport.errors.nomModele && formikImport.touched.nomModele && formikImport.errors.nomModele}
                             </FormHelperText>
                         </FormControl>
@@ -458,7 +464,7 @@ export default function PopupImportModelePlanComptable({ onSuccess }) {
                         </Button>
                     </Stack>
 
-                    <ImportProgressBar 
+                    <ImportProgressBar
                         isVisible={traitementModelePcWaiting || isImporting}
                         message={traitementModelePcMsg}
                         variant="determinate"

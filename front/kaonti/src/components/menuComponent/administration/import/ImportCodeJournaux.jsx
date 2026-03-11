@@ -1,6 +1,6 @@
 import { React, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, Paper, Box, Tab, Badge, Button, Divider, TextField, FormHelperText } from '@mui/material';
+import { Typography, Stack, Paper, Box, Tab, Badge, Button } from '@mui/material';
 import { init } from '../../../../../init';
 import useAuth from '../../../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
@@ -212,7 +212,7 @@ export default function ImportCodeJournaux() {
             nbrAnom = nbrAnom + 1;
         }
 
-        const banqueOrCaisse = data.filter(item => 
+        const banqueOrCaisse = data.filter(item =>
             item.type && (item.type.toUpperCase() === 'BANQUE' || item.type.toUpperCase() === 'CAISSE')
         );
         const missingCompteAssocie = banqueOrCaisse.filter(item => !item.compteassocie || item.compteassocie.trim() === '');
@@ -222,9 +222,9 @@ export default function ImportCodeJournaux() {
         }
 
         const banqueTypes = data.filter(item => item.type && item.type.toUpperCase() === 'BANQUE');
-        const missingBanqueFields = banqueTypes.filter(item => 
-            !item.nif || item.nif.trim() === '' || 
-            !item.stat || item.stat.trim() === '' || 
+        const missingBanqueFields = banqueTypes.filter(item =>
+            !item.nif || item.nif.trim() === '' ||
+            !item.stat || item.stat.trim() === '' ||
             !item.adresse || item.adresse.trim() === ''
         );
         if (missingBanqueFields.length > 0) {

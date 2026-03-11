@@ -401,6 +401,10 @@ exports.getAllInfo = async (req, res) => {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
         }
 
+        if (avecAnalytique && id_sections.length === 0) {
+            return res.json({ state: false, message: 'Veuillez sélectionner au moins une section' });
+        }
+
         const exerciceNData = await getExerciceById(id_exercice);
         if (!exerciceNData) {
             return res.status(404).json({ state: false, message: "Exercice non trouvé" });
@@ -484,13 +488,7 @@ exports.getAllInfo = async (req, res) => {
                     year: startYearN1 + (month < moisN[0].month ? 1 : 0)
                 };
             });
-
-            // console.log('moisN1Aligned : ', moisN1Aligned);
-
-            // moisN1 = getMonthsBetween(exerciceN1Data[0]?.date_debut, exerciceN1Data[0]?.date_fin);
-
-            // moisN1Mapped = moisN1.map(val => val.label + ' ' + val.year);
-
+            
             const mappedDataN1 = await getJournalData(id_compte, id_dossier, id_exerciceN1);
             let mappedDataAnalytiqueN1 = [];
             if (avecAnalytique) {
@@ -596,6 +594,10 @@ exports.getListeJournalEnAttente = async (req, res) => {
         const { id_dossier, id_compte, id_exercice, avecAnalytique, id_axe, id_sections } = req.body;
         if (!id_compte || !id_dossier || !id_exercice) {
             return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+        }
+
+        if (avecAnalytique && id_sections.length === 0) {
+            return;
         }
 
         const rows = await getJournalsEnAttente(id_compte, id_dossier, id_exercice, avecAnalytique, id_axe, id_sections);

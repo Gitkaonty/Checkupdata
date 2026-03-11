@@ -7,7 +7,7 @@ const verifyPermission = require('../../Middlewares/verifyPermission');
 const router = express.Router();
 
 //récupérer la liste de dossiers associé l'user et à son compte
-router.get('/listeExercice/:id', paramExerciceController.getListeExercice);
+router.get('/listeExercice/:id/:compteId', paramExerciceController.getListeExercice);
 
 //récupérer la liste de situations associés à l'exercice
 router.get('/listeSituation/:id', paramExerciceController.getListeSituation);
@@ -35,5 +35,14 @@ router.get('/listeExerciceById/:id', paramExerciceController.getListeExerciceByI
 
 //récupérer la liste des années
 router.get('/getListeAnnee/:id_compte/:id_dossier', paramExerciceController.getListeAnnee);
+
+// Récupération de la liste des périodes
+router.get('/getPeriodes/:id_exercice', paramExerciceController.getPeriodes);
+
+// Ajout d'une période
+router.post('/addPeriode', paramExerciceController.addPeriode);
+
+// Suppréssion d'une période
+router.delete('/deletePeriode/:id', paramExerciceController.deletePeriode);
 
 module.exports = router;

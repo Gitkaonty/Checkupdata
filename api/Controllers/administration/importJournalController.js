@@ -1183,7 +1183,7 @@ const testIfRanExist = async (req, res) => {
     if (!id_compte) return res.json({ state: false, exist: false, message: 'Compte non trouvé' });
 
     const query = `
-      SELECT 1 FROM codejournals
+      SELECT id FROM codejournals
       WHERE id_dossier = :id_dossier
         AND id_compte = :id_compte
         AND type = 'RAN'
@@ -1197,7 +1197,8 @@ const testIfRanExist = async (req, res) => {
 
     return res.json({
       state: true,
-      exist: !!row
+      exist: !!row,
+      id : row.id
     });
 
   } catch (error) {

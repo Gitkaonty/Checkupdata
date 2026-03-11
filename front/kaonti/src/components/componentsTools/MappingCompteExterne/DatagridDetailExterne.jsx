@@ -221,11 +221,11 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
                 const typesAvecIdEtat = ['RUBRIQUE', 'TITRE', 'TOTAL', 'TOTAL SOUS-RUBRIQUES', 'SOUS-TOTAL', 'SOUS-RUBRIQUE'];
 
                 const options = typesAvecIdEtat.includes(typeRubrique)
-                    ? tableau.filter(val => val.value === id_etat) 
+                    ? tableau.filter(val => val.value === id_etat)
                     : tableau.filter(val => {
                         if (val.value === id_etat) return false;
                         if (id_etat === 'TFTD' && val.value === 'TFTI') return false;
-                        if (id_etat === 'TFTI' && val.value === 'TFTD') return false; 
+                        if (id_etat === 'TFTI' && val.value === 'TFTD') return false;
                         return true;
                     });
 
@@ -245,7 +245,13 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.tableau && formNewParam.touched.tableau && formNewParam.errors.tableau}
                         </FormHelperText>
                     </FormControl>
@@ -283,7 +289,13 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.compte && formNewParam.touched.compte && formNewParam.errors.compte}
                         </FormHelperText>
                     </FormControl>
@@ -320,7 +332,13 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.condition && formNewParam.touched.condition && formNewParam.errors.condition}
                         </FormHelperText>
                     </FormControl>
@@ -359,7 +377,13 @@ const DatagridDetailExterne = ({ compteId, fileId, exerciceId, id_etat, rubrique
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.equation && formNewParam.touched.equation && formNewParam.errors.equation}
                         </FormHelperText>
                     </FormControl>

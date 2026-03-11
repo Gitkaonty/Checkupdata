@@ -268,7 +268,7 @@ export default function ImportJournal() {
 
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
-        axios.get(`/paramExercice/listeExercice/${id}`).then((response) => {
+        axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
             const resData = response.data;
             if (resData.state) {
 
@@ -1114,7 +1114,13 @@ export default function ImportJournal() {
                                         <MenuItem key={"FEC"} value={"FEC"}>FEC</MenuItem>
                                     </Select>
 
-                                    <FormHelperText style={{ color: 'red' }}>
+                                    <FormHelperText
+                                        style={{
+                                            color: 'red',
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >
                                         {formikImport.errors.type && formikImport.touched.type && formikImport.errors.type}
                                     </FormHelperText>
                                 </FormControl>
@@ -1136,7 +1142,13 @@ export default function ImportJournal() {
                                         <MenuItem key={"UPDATE"} value={"UPDATE"}>Importer sans écraser</MenuItem>
                                     </Select>
 
-                                    <FormHelperText style={{ color: 'red' }}>
+                                    <FormHelperText
+                                        style={{
+                                            color: 'red',
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >
                                         {formikImport.errors.choixImport && formikImport.touched.choixImport && formikImport.errors.choixImport}
                                     </FormHelperText>
                                 </FormControl>

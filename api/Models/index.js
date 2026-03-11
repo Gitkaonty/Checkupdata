@@ -113,6 +113,8 @@ db.consolidationDossier = require('./consolidationDossierModel')(sequelize, Data
 db.consolidationCompte = require('./consolidationCompteModel')(sequelize, DataTypes);
 db.dossierPasswordAccess = require('./dossiersMotDePasseAcces')(sequelize, DataTypes);
 
+db.periodes = require('./periode')(sequelize, DataTypes);
+
 //
 db.compteRubriquesExternesMatrices = require('./compteRubriqueExterneMatriceModel')(sequelize, DataTypes);
 db.rubriquesExternesMatrices = require('./rubriquesExterneMatriceModel')(sequelize, DataTypes);
@@ -342,6 +344,16 @@ db.caSections.belongsTo(db.dossiers, { foreignKey: 'id_dossier', targetKey: 'id'
 
 db.caSections.belongsTo(db.caAxes, { foreignKey: 'id_axe', targetKey: 'id', as: 'axe' });
 db.caAxes.hasMany(db.caSections, { foreignKey: 'id_axe', sourceKey: 'id', as: 'sections' });
+
+// Periode
+db.userscomptes.hasMany(db.periodes, { foreignKey: 'id_compte', sourceKey: 'id' });
+db.periodes.belongsTo(db.userscomptes, { foreignKey: 'id_compte', targetKey: 'id' });
+
+db.dossiers.hasMany(db.periodes, { foreignKey: 'id_dossier', sourceKey: 'id' });
+db.periodes.belongsTo(db.dossiers, { foreignKey: 'id_dossier', targetKey: 'id' });
+
+db.exercices.hasMany(db.periodes, { foreignKey: 'id_exercice', sourceKey: 'id', as: 'periodes' });
+db.periodes.belongsTo(db.exercices, { foreignKey: 'id_exercice', targetKey: 'id', as: 'exercice' });
 
 // Analytique
 db.userscomptes.hasMany(db.analytiques, { foreignKey: 'id_compte', sourceKey: 'id' });

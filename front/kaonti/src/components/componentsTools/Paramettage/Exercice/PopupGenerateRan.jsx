@@ -5,6 +5,7 @@ import { init } from '../../../../../init';
 import Checkbox from '@mui/material/Checkbox';
 import { useState } from 'react';
 import axios from '../../../../../config/axios';
+import toast from 'react-hot-toast';
 
 const initial = init[0];
 
@@ -21,9 +22,12 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte }) => {
+const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte, listeExercice, idRan, defaultDeviseData }) => {
     const id_exercice = selectedExerciceRow[0];
     const [isDetailled, setIsDetailled] = useState(false);
+
+    const exerciceData = listeExercice.find(val => Number(val.id) === Number(id_exercice));
+    const dateDebut = exerciceData?.date_debut;
 
     const handleSubmit = async () => {
         await axios.post('/administration/traitementSaisie/genererRan', {
@@ -31,9 +35,16 @@ const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExercice
             id_dossier: Number(id_dossier),
             id_exercice: Number(id_exercice),
             isDetailled,
-            longeurCompte: Number(longeurCompte)
+            longeurCompte: Number(longeurCompte),
+            dateDebut,
+            idRan,
+            defaultDeviseData
         }).then((response) => {
-            console.log('response?.data : ', response?.data);
+            if (response?.data?.state) {
+                toast.success(response?.data?.message);
+            } else {
+                toast.error(response?.data?.message);
+            }
         })
         handleClose();
     }

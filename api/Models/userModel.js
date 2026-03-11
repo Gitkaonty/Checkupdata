@@ -1,7 +1,3 @@
-//user model
-const { Sequelize, DataTypes } = require('sequelize');
-
-const userscomptes = require('./compteModel');
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define("user", {
         id: {
