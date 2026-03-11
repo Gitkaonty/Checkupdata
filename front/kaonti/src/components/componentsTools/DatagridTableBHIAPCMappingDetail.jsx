@@ -542,35 +542,39 @@ export const DatagridBHIAPCdetail = ({ compteId, fileId, exerciceId, etatId, rub
                     <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"left"} alignContent={"left"}
                         direction={"row"} justifyContent={"right"} style={{ marginRight: "0px" }}>
                         <Tooltip title="Ajouter une ligne">
-                            <IconButton
-                                disabled={!canAdd || disableAddRowBouton}
-                                variant="contained"
-                                onClick={handleOpenDialogAddNewRow}
-                                style={{
-                                    width: "35px", height: '35px',
-                                    borderRadius: "2px", borderColor: "transparent",
-                                    backgroundColor: initial.theme,
-                                    textTransform: 'none', outline: 'none'
-                                }}
-                            >
-                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                            </IconButton>
+                            <span>
+                                <IconButton
+                                    disabled={!canAdd || disableAddRowBouton}
+                                    variant="contained"
+                                    onClick={handleOpenDialogAddNewRow}
+                                    style={{
+                                        width: "35px", height: '35px',
+                                        borderRadius: "2px", borderColor: "transparent",
+                                        backgroundColor: initial.theme,
+                                        textTransform: 'none', outline: 'none'
+                                    }}
+                                >
+                                    <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                </IconButton>
+                            </span>
                         </Tooltip>
 
                         <Tooltip title="Modifier la ligne sélectionnée">
-                            <IconButton
-                                disabled={(!canModify && selectedRowId > 0) || disableModifyBouton}
-                                variant="contained"
-                                onClick={handleEditClick(selectedRowId)}
-                                style={{
-                                    width: "35px", height: '35px',
-                                    borderRadius: "2px", borderColor: "transparent",
-                                    backgroundColor: initial.theme,
-                                    textTransform: 'none', outline: 'none'
-                                }}
-                            >
-                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                            </IconButton>
+                            <span>
+                                <IconButton
+                                    disabled={(!canModify && selectedRowId > 0) || disableModifyBouton}
+                                    variant="contained"
+                                    onClick={handleEditClick(selectedRowId)}
+                                    style={{
+                                        width: "35px", height: '35px',
+                                        borderRadius: "2px", borderColor: "transparent",
+                                        backgroundColor: initial.theme,
+                                        textTransform: 'none', outline: 'none'
+                                    }}
+                                >
+                                    <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                </IconButton>
+                            </span>
                         </Tooltip>
 
                         <Tooltip title="Sauvegarder les modifications">
@@ -653,6 +657,11 @@ export const DatagridBHIAPCdetail = ({ compteId, fileId, exerciceId, etatId, rub
                             },
                             '& .MuiDataGrid-virtualScroller': {
                                 maxHeight: '100%',
+                            },
+                            '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: initial.theme,
+                                color: 'white',
+                                fontWeight: 'bold',
                             },
                         }}
                         rowHeight={DataGridStyle.rowHeight}

@@ -802,7 +802,7 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                     )}
 
                     <Tooltip title="Importer des sections">
-                        <Stack>
+                        <span>
                             <IconButton
                                 disabled={!canAdd || !isCaActive || !(selectedRowAxeId.length > 0)}
                                 variant="contained"
@@ -816,11 +816,11 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             >
                                 <MdFileUpload style={{ width: '25px', height: '25px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </span>
                     </Tooltip>
 
                     <Tooltip title="Ajouter une ligne">
-                        <Stack>
+                        <span>
                             <IconButton
                                 disabled={!canAdd || disableAddRowBouton || !isCaActive || !(selectedRowAxeId.length > 0)}
                                 variant="contained"
@@ -834,11 +834,11 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             >
                                 <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </span>
                     </Tooltip>
 
                     <Tooltip title="Modifier la ligne sélectionnée">
-                        <Stack>
+                        <span>
                             <IconButton
                                 disabled={(!canModify && selectedRowId > 0) || disableModifyBouton || !isCaActive || !(selectedRowAxeId.length > 0)}
                                 variant="contained"
@@ -852,11 +852,11 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             >
                                 <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </span>
                     </Tooltip>
 
                     <Tooltip title="Sauvegarder les modifications">
-                        <Stack>
+                        <span>
                             <IconButton
                                 disabled={(!canAdd && !canModify) || disableSaveBouton || !formNewParam.isValid || !isCaActive || !(selectedRowAxeId.length > 0)}
                                 variant="contained"
@@ -870,11 +870,11 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             >
                                 <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </span>
                     </Tooltip>
 
                     <Tooltip title="Annuler les modifications">
-                        <Stack>
+                        <span>
                             <IconButton
                                 disabled={disableCancelBouton || !isCaActive || !(selectedRowAxeId.length > 0)}
                                 variant="contained"
@@ -888,11 +888,11 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             >
                                 <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </span>
                     </Tooltip>
 
                     <Tooltip title="Supprimer la ligne sélectionné">
-                        <Stack>
+                        <span>
                             <IconButton
                                 disabled={!canDelete || disableDeleteBouton || !isCaActive || !(selectedRowAxeId.length > 0)}
                                 onClick={handleOpenDialogConfirmDeleteRow}
@@ -906,7 +906,7 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             >
                                 <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
                             </IconButton>
-                        </Stack>
+                        </span>
                     </Tooltip>
                 </Stack>
 
@@ -939,6 +939,11 @@ const DatagridAnalitiqueSection = ({ selectedRowAxeId, id_compte, id_dossier, is
                             '& .MuiOutlinedInput-notchedOutline': {
                                 border: 'none',
                             },
+                            '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: initial.theme,
+                                color: 'white',
+                                fontWeight: 'bold',
+                            }
                         }}
                         rowHeight={DataGridStyle.rowHeight}
                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}

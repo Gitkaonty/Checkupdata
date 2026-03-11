@@ -1577,7 +1577,6 @@ const PopupAddNewAccount = ({
                                                                     disableRowSelectionOnClick
                                                                     disableSelectionOnClick={true}
                                                                     slots={{ toolbar: QuickFilter }}
-                                                                    sx={DataGridStyle.sx}
                                                                     rowHeight={DataGridStyle.rowHeight}
                                                                     columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                                                     onRowSelectionModelChange={ids => {
@@ -1601,6 +1600,21 @@ const PopupAddNewAccount = ({
                                                                     checkboxSelection={DataGridStyle.checkboxSelection}
                                                                     columnVisibilityModel={{
                                                                         id: false,
+                                                                    }}
+                                                                    sx={{
+                                                                        ...DataGridStyle.sx,
+                                                                        '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                                                            outline: 'none',
+                                                                            border: 'none',
+                                                                        },
+                                                                        '& .MuiDataGrid-virtualScroller': {
+                                                                            maxHeight: '100%',
+                                                                        },
+                                                                        '& .MuiDataGrid-columnHeaders': {
+                                                                            backgroundColor: initial.theme,
+                                                                            color: 'white',
+                                                                            fontWeight: 'bold',
+                                                                        },
                                                                     }}
                                                                 />
                                                             </Stack>
@@ -1653,7 +1667,6 @@ const PopupAddNewAccount = ({
                                                                     disableRowSelectionOnClick
                                                                     disableSelectionOnClick={true}
                                                                     slots={{ toolbar: QuickFilter }}
-                                                                    sx={DataGridStyle.sx}
                                                                     rowHeight={DataGridStyle.rowHeight}
                                                                     columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                                                     onRowSelectionModelChange={ids => {
@@ -1677,6 +1690,21 @@ const PopupAddNewAccount = ({
                                                                     checkboxSelection={DataGridStyle.checkboxSelection}
                                                                     columnVisibilityModel={{
                                                                         id: false,
+                                                                    }}
+                                                                    sx={{
+                                                                        ...DataGridStyle.sx,
+                                                                        '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                                                            outline: 'none',
+                                                                            border: 'none',
+                                                                        },
+                                                                        '& .MuiDataGrid-virtualScroller': {
+                                                                            maxHeight: '100%',
+                                                                        },
+                                                                        '& .MuiDataGrid-columnHeaders': {
+                                                                            backgroundColor: initial.theme,
+                                                                            color: 'white',
+                                                                            fontWeight: 'bold',
+                                                                        },
                                                                     }}
                                                                 />
                                                             </Stack>

@@ -651,6 +651,11 @@ const PopupAjustRubriqueDRFEbilan = ({ actionState, row, column, value, canModif
                                         outline: 'none',
                                         border: 'none',
                                     },
+                                    '& .MuiDataGrid-columnHeaders': {
+                                        backgroundColor: initial.theme,
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                    },
                                 }}
                                 rowHeight={DataGridStyle.rowHeight}
                                 columnHeaderHeight={DataGridStyle.columnHeaderHeight}

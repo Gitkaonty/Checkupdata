@@ -657,7 +657,6 @@ const popupAjustRubriqueSADEbilan = ({ actionState, row, column, value, canModif
                                 disableSelectionOnClick={true}
                                 localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                 slots={{ toolbar: QuickFilter }}
-                                sx={DataGridStyle.sx}
                                 rowHeight={DataGridStyle.rowHeight}
                                 columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                 rows={listAjust}
@@ -688,6 +687,21 @@ const popupAjustRubriqueSADEbilan = ({ actionState, row, column, value, canModif
                                 checkboxSelection={DataGridStyle.checkboxSelection}
                                 columnVisibilityModel={{
                                     id: false,
+                                }}
+                                sx={{
+                                    ...DataGridStyle.sx,
+                                    '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                        outline: 'none',
+                                        border: 'none',
+                                    },
+                                    '& .MuiDataGrid-virtualScroller': {
+                                        maxHeight: '100%',
+                                    },
+                                    '& .MuiDataGrid-columnHeaders': {
+                                        backgroundColor: initial.theme,
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                    },
                                 }}
                                 rowSelectionModel={selectedRow}
                                 onRowEditStart={(params, event) => {

@@ -516,6 +516,7 @@ export default function ConsultationComponent() {
     // Vérifier si la sélection contient un type RAN
     const isRanTypeSelected = useMemo(() => {
         if (gridSelectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
+        console.log('gridSelectedRows[0] : ', gridSelectedRows[0]);
         const selectedJournalId = Number(gridSelectedRows[0].id_journal);
         const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
         return codeJournal?.type === 'RAN';
@@ -1398,7 +1399,12 @@ export default function ConsultationComponent() {
                                         '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
                                             outline: 'none',
                                             border: 'none',
-                                        }
+                                        },
+                                        '& .MuiDataGrid-columnHeaders': {
+                                            backgroundColor: initial.theme,
+                                            color: 'white',
+                                            fontWeight: 'bold',
+                                        },
                                     }}
                                     rowHeight={DataGridStyle.rowHeight}
                                     columnHeaderHeight={DataGridStyle.columnHeaderHeight}
