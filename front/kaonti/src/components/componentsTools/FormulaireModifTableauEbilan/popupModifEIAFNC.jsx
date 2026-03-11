@@ -212,7 +212,13 @@ const PopupModifEIAFNC = ({ choix, confirmationState, data, deviseParDefaut }) =
                                 <MenuItem key="PART" value="PART">Participation</MenuItem>
                             </Select>
 
-                            <FormHelperText style={{ width: '350px' }}>
+                            <FormHelperText
+                                style={{
+                                    color: 'red',
+                                    marginLeft: 0,
+                                    fontSize: "12px",
+                                }}
+                            >
                                 {formData.errors.rubriques_poste && formData.touched.rubriques_poste && formData.errors.rubriques_poste}
                             </FormHelperText>
                         </FormControl>

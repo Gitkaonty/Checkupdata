@@ -1008,7 +1008,13 @@ export default function ParamPlanComptableModele() {
                                             <FormControlLabel onChange={(e) => saveModelePcValue(e.target.value)} value="modeleLibre" control={<Radio />} label="Modèle libre" />
                                             <FormControlLabel onChange={(e) => saveModelePcValue(e.target.value)} value="aPartirModelDossier" control={<Radio />} label="A partir d'un modèle de dossier existant" style={{ marginTop: '-15px' }} />
                                         </RadioGroup>
-                                        <FormHelperText>
+                                        <FormHelperText
+                                            style={{
+                                                color: 'red',
+                                                marginLeft: 0,
+                                                fontSize: "12px",
+                                            }}
+                                        >
                                             {formNewModel.errors.model && formNewModel.touched.model && formNewModel.errors.model}
                                         </FormHelperText>
                                     </FormControl>
@@ -1034,7 +1040,13 @@ export default function ParamPlanComptableModele() {
                                         ))}
                                     </Select>
 
-                                    <FormHelperText>
+                                    <FormHelperText
+                                        style={{
+                                            color: 'red',
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >
                                         {formNewModel.errors.id_dossier && formNewModel.touched.id_dossier && formNewModel.errors.id_dossier}
                                     </FormHelperText>
                                 </FormControl>
@@ -1050,7 +1062,13 @@ export default function ParamPlanComptableModele() {
                                         style={{ width: "400px", marginLeft: "10px" }}
                                     />
 
-                                    <FormHelperText>
+                                    <FormHelperText
+                                        style={{
+                                            color: 'red',
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >
                                         {formNewModel.errors.model_name && formNewModel.touched.model_name && formNewModel.errors.model_name}
                                     </FormHelperText>
                                 </FormControl>

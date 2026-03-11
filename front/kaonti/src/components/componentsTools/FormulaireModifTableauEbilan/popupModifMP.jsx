@@ -213,7 +213,13 @@ const PopupModifMP = ({ choix, confirmationState, data, deviseParDefaut }) => {
                                     <MenuItem key="AUTRE" value="AUTRE">Autres marchés</MenuItem>
                                 </Select>
                                 {formData.touched.marche && formData.errors.marche && (
-                                    <FormHelperText>{formData.errors.marche}</FormHelperText>
+                                    <FormHelperText
+                                        style={{
+                                            color: 'red',
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >{formData.errors.marche}</FormHelperText>
                                 )}
                             </FormControl>
 

@@ -643,8 +643,8 @@ export default function ImportModelePlanComptable() {
     }
 
     return (
-        <Box sx={{ 
-            width: 'calc(100% - 40px)', 
+        <Box sx={{
+            width: 'calc(100% - 40px)',
             maxWidth: 'calc(100vw - 100px)',
             padding: '0 0 0 30px',
             boxSizing: 'border-box'
@@ -655,22 +655,22 @@ export default function ImportModelePlanComptable() {
             {nameExist ? <PopupInformation msg={"Le nom du modèle existe déjà. Veuillez spécifier un autre."} confirmationState={handleCloseInformationNameExist} /> : null}
 
             <form onSubmit={formikImport.handleSubmit}>
-                <Stack 
-                    width={"100%"} 
-                    height={"100%"} 
-                    spacing={2} 
-                    alignItems={"flex-start"} 
-                    alignContent={"flex-start"} 
+                <Stack
+                    width={"100%"}
+                    height={"100%"}
+                    spacing={2}
+                    alignItems={"flex-start"}
+                    alignContent={"flex-start"}
                     justifyContent={"stretch"}
                 >
 
-                    <Typography 
-                        style={{ 
-                            marginTop: "50px", 
+                    <Typography
+                        style={{
+                            marginTop: "50px",
                             marginBottom: "30px"
-                        }} 
-                        variant='h6' 
-                        sx={{ color: "black" }} 
+                        }}
+                        variant='h6'
+                        sx={{ color: "black" }}
                         align='left'
                     >
                         Administration - Import modèle plan comptable
@@ -686,7 +686,13 @@ export default function ImportModelePlanComptable() {
                                 onBlur={(e) => formikImport.setFieldValue('nomModele', e.target.value)}
                             />
 
-                            <FormHelperText style={{ color: 'red' }}>
+                            <FormHelperText
+                                style={{
+                                    color: 'red',
+                                    marginLeft: 0,
+                                    fontSize: "12px",
+                                }}
+                            >
                                 {formikImport.errors.nomModele && formikImport.touched.nomModele && formikImport.errors.nomModele}
                             </FormHelperText>
                         </FormControl>

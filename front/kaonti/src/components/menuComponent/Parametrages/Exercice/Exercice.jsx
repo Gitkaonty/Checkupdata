@@ -667,7 +667,6 @@ export default function ParamExerciceComponent() {
 
     const handleDeletePeriode = () => {
         const selectedRow = listePeriode.find(item => Number(item.id) === Number(selectedPeriodeRow[0]));
-        console.log('selectedRow : ', selectedRow);
         if (selectedRow) {
             setOpenActionConfirmDeletePeriode(true);
             setMsgDeletePeriode(`Voulez vous vraiement supprimer la période du ${format(selectedRow.date_debut, 'dd/MM/yyyy')} au ${format(selectedRow.date_fin, 'dd/MM/yyyy')} pour cette exercice ?`);
@@ -859,7 +858,12 @@ export default function ParamExerciceComponent() {
                                             },
                                         }}
                                     />
-                                    <FormHelperText>
+                                    <FormHelperText
+                                        style={{
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >
                                         {firstExerciceForm.errors.date_debut &&
                                             firstExerciceForm.touched.date_debut &&
                                             firstExerciceForm.errors.date_debut}
@@ -894,7 +898,12 @@ export default function ParamExerciceComponent() {
                                             },
                                         }}
                                     />
-                                    <FormHelperText>
+                                    <FormHelperText
+                                        style={{
+                                            marginLeft: 0,
+                                            fontSize: "12px",
+                                        }}
+                                    >
                                         {firstExerciceForm.errors.date_fin &&
                                             firstExerciceForm.touched.date_fin &&
                                             firstExerciceForm.errors.date_fin}

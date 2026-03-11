@@ -190,7 +190,13 @@ export const Datagriddetail = ({ compteId, fileId, exerciceId, etatId, rubriqueI
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.compte && formNewParam.touched.compte && formNewParam.errors.compte}
                         </FormHelperText>
                     </FormControl>
@@ -228,7 +234,13 @@ export const Datagriddetail = ({ compteId, fileId, exerciceId, etatId, rubriqueI
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.condition && formNewParam.touched.condition && formNewParam.errors.condition}
                         </FormHelperText>
                     </FormControl>
@@ -267,7 +279,13 @@ export const Datagriddetail = ({ compteId, fileId, exerciceId, etatId, rubriqueI
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {formNewParam.errors.equation && formNewParam.touched.equation && formNewParam.errors.equation}
                         </FormHelperText>
                     </FormControl>

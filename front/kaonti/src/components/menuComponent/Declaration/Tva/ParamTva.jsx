@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Stack, Paper, IconButton, FormControl, InputLabel, Select, MenuItem, Input, FormHelperText, Dialog, DialogTitle, DialogContent, DialogActions, Grid, TextField, Menu } from '@mui/material';
+import { Typography, Stack, Paper, IconButton, FormControl, InputLabel, Select, MenuItem, Input, Dialog, DialogTitle, DialogContent, DialogActions, Grid, TextField, Menu } from '@mui/material';
 
 import Button from '@mui/material/Button';
 import { IoAddSharp } from "react-icons/io5";
@@ -498,137 +498,265 @@ export default function ParamTVAComponent() {
         timeout: 60000
       });
 
-    if (data?.state) {
-      const updatedRows = Array.isArray(data.list) ? data.list : (data.list ? [data.list] : []);
+      if (data?.state) {
+        const updatedRows = Array.isArray(data.list) ? data.list : (data.list ? [data.list] : []);
 
-      // Récupérer aussi les écritures associées pour la même période
-      let assocList = [];
-      try {
-        const { data: assoc } = await axios.get(`/declaration/tva/ecritureassociee/${compteId}/${fileId}/${selectedExerciceId}`, {
-          params: { mois: Number(valSelectMois), annee: Number(valSelectAnnee), _cb: Date.now() },
-          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-          timeout: 60000,
-        });
-        assocList = Array.isArray(assoc?.list) ? assoc.list : [];
-      } catch (e) {
-        // silencieux: on enrichira seulement avec paramTva si indisponible
-      }
-
-      // Construire un index id_ecriture -> compte tiers classe 4 (et libellé)
-      const assocByEcriture = (() => {
+        // Récupérer aussi les écritures associées pour la même période
+        let assocList = [];
         try {
-          const map = new Map();
-          const isTiers = (c) => {
-            const s = (c || '').toString();
-            // Tiers de classe 4, mais on EXCLUT 445* (comptes TVA)
-            return s.startsWith('4') && !s.startsWith('445');
-          };
-          try { console.debug('[ANNEXES][TIERS] assocList count =', assocList.length, 'sample =', assocList[0]); } catch {}
-          for (const it of assocList) {
-            const ids = [it?.id, it?.id_ecriture, it?.id_ecriture_source, it?.id_ecriture_associe, it?.idecriture, it?.ecriture_id]
-              .map(x => Number(x))
-              .filter(n => Number.isFinite(n) && n > 0);
-            // Backend enrichi: la ligne TVA peut contenir directement la contrepartie tiers
-            const cpt = it?.tiers_compte || it?.compte || it?.compte_cetralise || it?.compte_centralise || it?.compte_centralise2;
-            const lib = it?.tiers_libelle || it?.libelle || it?.libelle_compte || it?.libelle_centralise;
-            if (ids.length === 0 || !cpt) continue;
-            if (!isTiers(cpt)) continue;
-            for (const ide of ids) {
-              if (!map.has(ide)) map.set(ide, { compte: cpt, libelle: lib });
-            }
-          }
-          try { console.debug('[ANNEXES][TIERS] assoc index size =', map.size); } catch {}
-          return map;
-        } catch {
-          return new Map();
+          const { data: assoc } = await axios.get(`/declaration/tva/ecritureassociee/${compteId}/${fileId}/${selectedExerciceId}`, {
+            params: { mois: Number(valSelectMois), annee: Number(valSelectAnnee), _cb: Date.now() },
+            headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+            timeout: 60000,
+          });
+          assocList = Array.isArray(assoc?.list) ? assoc.list : [];
+        } catch (e) {
+          // silencieux: on enrichira seulement avec paramTva si indisponible
         }
-      })();
 
-      // Index générique: id_ecriture -> première ligne associée (peut être 445*)
-      const assocByEcritureAny = (() => {
-        try {
-          const map = new Map();
-          for (const it of assocList) {
-            const ids = [it?.id, it?.id_ecriture, it?.id_ecriture_source, it?.id_ecriture_associe, it?.idecriture, it?.ecriture_id]
-              .map(x => Number(x))
-              .filter(n => Number.isFinite(n) && n > 0);
-            const cpt = it?.compte || it?.compte_cetralise || it?.compte_centralise || it?.compte_centralise2;
-            const lib = it?.libelle || it?.libelle_compte || it?.libelle_centralise;
-            if (ids.length === 0) continue;
-            for (const ide of ids) {
-              if (!map.has(ide)) map.set(ide, { compte: cpt, libelle: lib });
+        // Construire un index id_ecriture -> compte tiers classe 4 (et libellé)
+        const assocByEcriture = (() => {
+          try {
+            const map = new Map();
+            const isTiers = (c) => {
+              const s = (c || '').toString();
+              // Tiers de classe 4, mais on EXCLUT 445* (comptes TVA)
+              return s.startsWith('4') && !s.startsWith('445');
+            };
+            try { console.debug('[ANNEXES][TIERS] assocList count =', assocList.length, 'sample =', assocList[0]); } catch { }
+            for (const it of assocList) {
+              const ids = [it?.id, it?.id_ecriture, it?.id_ecriture_source, it?.id_ecriture_associe, it?.idecriture, it?.ecriture_id]
+                .map(x => Number(x))
+                .filter(n => Number.isFinite(n) && n > 0);
+              // Backend enrichi: la ligne TVA peut contenir directement la contrepartie tiers
+              const cpt = it?.tiers_compte || it?.compte || it?.compte_cetralise || it?.compte_centralise || it?.compte_centralise2;
+              const lib = it?.tiers_libelle || it?.libelle || it?.libelle_compte || it?.libelle_centralise;
+              if (ids.length === 0 || !cpt) continue;
+              if (!isTiers(cpt)) continue;
+              for (const ide of ids) {
+                if (!map.has(ide)) map.set(ide, { compte: cpt, libelle: lib });
+              }
             }
+            try { console.debug('[ANNEXES][TIERS] assoc index size =', map.size); } catch { }
+            return map;
+          } catch {
+            return new Map();
           }
-          try { console.debug('[ANNEXES][ASSOC ANY] index size =', map.size); } catch {}
-          return map;
-        } catch {
-          return new Map();
-        }
-      })();
+        })();
 
-      // Helper normalisation compte
-      const norm = (v) => {
-        const s = (v ?? '').toString().trim();
-        const onlyDigits = s.replace(/\D+/g, '');
-        return onlyDigits || s;
-      };
-      // Construire des index: par compte, par libellé et par id_cptcompta
-      const { paramIndex, paramLabelIndex, paramIdIndex } = (() => {
-        try {
-          const list = Array.isArray(paramTva) ? paramTva : [];
-          const byCompte = new Map();
-          const byLabel = new Map();
-          const byId = new Map();
-          for (const p of list) {
-            const c = (p["dossierplancomptable.compte"] || p.compte || p.cptcompta || '').toString().trim();
-            const key = norm(c);
-            const code = p["listecodetva.code"] || p.code || p.code_tva || p.codetva;
-            const lib = p["listecodetva.libelle"] || p.libelle || p.codedescription;
-            if (key) {
-              if (!byCompte.has(key)) byCompte.set(key, { code, lib, raw: p });
+        // Index générique: id_ecriture -> première ligne associée (peut être 445*)
+        const assocByEcritureAny = (() => {
+          try {
+            const map = new Map();
+            for (const it of assocList) {
+              const ids = [it?.id, it?.id_ecriture, it?.id_ecriture_source, it?.id_ecriture_associe, it?.idecriture, it?.ecriture_id]
+                .map(x => Number(x))
+                .filter(n => Number.isFinite(n) && n > 0);
+              const cpt = it?.compte || it?.compte_cetralise || it?.compte_centralise || it?.compte_centralise2;
+              const lib = it?.libelle || it?.libelle_compte || it?.libelle_centralise;
+              if (ids.length === 0) continue;
+              for (const ide of ids) {
+                if (!map.has(ide)) map.set(ide, { compte: cpt, libelle: lib });
+              }
             }
-            const lkey = String(lib ?? '').toUpperCase().replace(/\s+/g, ' ').trim();
-            if (lkey) {
-              if (!byLabel.has(lkey)) byLabel.set(lkey, { code, lib, raw: p });
+            try { console.debug('[ANNEXES][ASSOC ANY] index size =', map.size); } catch { }
+            return map;
+          } catch {
+            return new Map();
+          }
+        })();
+
+        // Helper normalisation compte
+        const norm = (v) => {
+          const s = (v ?? '').toString().trim();
+          const onlyDigits = s.replace(/\D+/g, '');
+          return onlyDigits || s;
+        };
+        // Construire des index: par compte, par libellé et par id_cptcompta
+        const { paramIndex, paramLabelIndex, paramIdIndex } = (() => {
+          try {
+            const list = Array.isArray(paramTva) ? paramTva : [];
+            const byCompte = new Map();
+            const byLabel = new Map();
+            const byId = new Map();
+            for (const p of list) {
+              const c = (p["dossierplancomptable.compte"] || p.compte || p.cptcompta || '').toString().trim();
+              const key = norm(c);
+              const code = p["listecodetva.code"] || p.code || p.code_tva || p.codetva;
+              const lib = p["listecodetva.libelle"] || p.libelle || p.codedescription;
+              if (key) {
+                if (!byCompte.has(key)) byCompte.set(key, { code, lib, raw: p });
+              }
+              const lkey = String(lib ?? '').toUpperCase().replace(/\s+/g, ' ').trim();
+              if (lkey) {
+                if (!byLabel.has(lkey)) byLabel.set(lkey, { code, lib, raw: p });
+              }
+              const idc = Number(p.id_cptcompta);
+              if (Number.isFinite(idc) && idc > 0 && !byId.has(idc)) byId.set(idc, { code, lib, raw: p });
             }
-            const idc = Number(p.id_cptcompta);
-            if (Number.isFinite(idc) && idc > 0 && !byId.has(idc)) byId.set(idc, { code, lib, raw: p });
+            try { console.debug('[ANNEXES][ENRICH] paramIndex size =', byCompte.size, 'paramLabelIndex size =', byLabel.size, 'paramIdIndex size =', byId.size); } catch { }
+            return { paramIndex: byCompte, paramLabelIndex: byLabel, paramIdIndex: byId };
+          } catch {
+            return { paramIndex: new Map(), paramLabelIndex: new Map(), paramIdIndex: new Map() };
           }
-          try { console.debug('[ANNEXES][ENRICH] paramIndex size =', byCompte.size, 'paramLabelIndex size =', byLabel.size, 'paramIdIndex size =', byId.size); } catch {}
-          return { paramIndex: byCompte, paramLabelIndex: byLabel, paramIdIndex: byId };
-        } catch {
-          return { paramIndex: new Map(), paramLabelIndex: new Map(), paramIdIndex: new Map() };
-        }
-      })();
+        })();
 
-      // Index du plan comptable: id -> compte (pour traduire id_numcpt des annexes)
-      const pcIdToCompte = (() => {
-        try {
-          const list = Array.isArray(pc) ? pc : [];
-          const map = new Map();
-          for (const p of list) {
-            const idc = Number(p.id);
-            const c = (p.compte || '').toString().trim();
-            if (Number.isFinite(idc) && c) map.set(idc, c);
+        // Index du plan comptable: id -> compte (pour traduire id_numcpt des annexes)
+        const pcIdToCompte = (() => {
+          try {
+            const list = Array.isArray(pc) ? pc : [];
+            const map = new Map();
+            for (const p of list) {
+              const idc = Number(p.id);
+              const c = (p.compte || '').toString().trim();
+              if (Number.isFinite(idc) && c) map.set(idc, c);
+            }
+            try { console.debug('[ANNEXES][ENRICH] pcIdToCompte size =', map.size); } catch { }
+            return map;
+          } catch {
+            return new Map();
           }
-          try { console.debug('[ANNEXES][ENRICH] pcIdToCompte size =', map.size); } catch {}
-          return map;
-        } catch {
-          return new Map();
-        }
-      })();
+        })();
 
-      setAnnexesRows(prevRows => {
-        // Créer une map des lignes existantes pour un accès rapide
-        const existingRowsMap = new Map(prevRows.map(row => [row.id, row]));
-        
-        return updatedRows.map(row => {
-          const existingRow = existingRowsMap.get(row.id);
-          
-          // Si la ligne existe déjà, conserver son état d'anomalie et son commentaire
-          if (existingRow) {
+        setAnnexesRows(prevRows => {
+          // Créer une map des lignes existantes pour un accès rapide
+          const existingRowsMap = new Map(prevRows.map(row => [row.id, row]));
+
+          return updatedRows.map(row => {
+            const existingRow = existingRowsMap.get(row.id);
+
+            // Si la ligne existe déjà, conserver son état d'anomalie et son commentaire
+            if (existingRow) {
+              const enriched = { ...row };
+              // Laisser Nature vide par défaut (saisie manuelle), sans écraser si déjà rempli
+              {
+                const nat = String(enriched.nature ?? '').trim();
+                const natLower = nat.toLowerCase();
+                if (nat === '' || nat === '-' || natLower === 'null' || natLower === 'undefined' || natLower === 'general' || natLower === 'général' || natLower === 'general ' || natLower === 'général ') {
+                  enriched.nature = '';
+                }
+              }
+              // Enrichir code_tva si vide
+              if (!enriched.code_tva) {
+                let key = norm(enriched.compte || enriched.cpt || enriched.num_compte);
+                if (!key && enriched.id_numcpt) {
+                  const acc = pcIdToCompte.get(Number(enriched.id_numcpt));
+                  if (acc) key = norm(acc);
+                }
+                const hit = key ? paramIndex.get(key) : undefined;
+                if (hit?.code) {
+                  enriched.code_tva = hit.code;
+                } else {
+                  const lkey = String(enriched.raison_sociale || enriched.libelle_operation || enriched.libelle || '').toUpperCase().replace(/\s+/g, ' ').trim();
+                  const hit2 = lkey ? paramLabelIndex.get(lkey) : undefined;
+                  if (hit2?.code) {
+                    enriched.code_tva = hit2.code;
+                  } else {
+                    const idnum = Number(enriched.id_numcpt);
+                    const hit3 = Number.isFinite(idnum) ? paramIdIndex.get(idnum) : undefined;
+                    if (hit3?.code) {
+                      enriched.code_tva = hit3.code;
+                    } else {
+                      try { console.debug('[ANNEXES][MISS] no code for row id=', row.id, 'compte=', enriched.compte, 'id_numcpt=', enriched.id_numcpt, 'label=', enriched.raison_sociale || enriched.libelle_operation || enriched.libelle); } catch { }
+                    }
+                  }
+                }
+              }
+              const _isEmptyText = (v) => {
+                const s = (v ?? '').toString().trim();
+                return s === '' || s === '-';
+              };
+              {
+                const keepRsBlank = enriched.raison_sociale === '';
+                let hasTiers = false;
+                // Si le backend fournit directement tiers_compte/tiers_libelle, on les privilégie
+                const directTiersCompte = (enriched.tiers_compte || row.tiers_compte || '').toString();
+                const directTiersLibelle = (enriched.tiers_libelle || row.tiers_libelle || '').toString();
+                if (directTiersCompte && directTiersCompte.startsWith('4') && !directTiersCompte.startsWith('445')) {
+                  const pcRowDirect = Array.isArray(pc) ? pc.find(p => (p.compte || '').toString() === directTiersCompte) : null;
+                  if (!keepRsBlank) {
+                    enriched.raison_sociale = pcRowDirect?.libelle || directTiersLibelle || enriched.raison_sociale;
+                  }
+                  if (_isEmptyText(enriched.nif)) enriched.nif = pcRowDirect?.nif || enriched.nif;
+                  if (_isEmptyText(enriched.stat)) enriched.stat = pcRowDirect?.statistique || pcRowDirect?.stat || enriched.stat;
+                  if (_isEmptyText(enriched.adresse)) enriched.adresse = pcRowDirect?.adresse || pcRowDirect?.adressesansnif || pcRowDirect?.adresseetranger || enriched.adresse;
+                  hasTiers = Boolean((pcRowDirect?.libelle || directTiersLibelle) && String(pcRowDirect?.libelle || directTiersLibelle).trim() !== '');
+                }
+                const ideCandidates = [enriched.id_ecriture, enriched.id_ecriture_associe, enriched.id_ecriture_source]
+                  .map(x => Number(x))
+                  .filter(n => Number.isFinite(n) && n > 0);
+                try { console.debug('[ANNEXES][TIERS] ideCandidates existing row id=', row.id, ideCandidates); } catch { }
+                let assocTiers = null;
+                for (const ide of ideCandidates) {
+                  assocTiers = assocByEcriture.get(ide);
+                  if (assocTiers) break;
+                }
+                if (assocTiers?.compte) {
+                  // Chercher libellé côté plan comptable pour ce compte tiers
+                  const pcRow = Array.isArray(pc) ? pc.find(p => (p.compte || '').toString() === assocTiers.compte.toString()) : null;
+                  // Toujours remplacer par le libellé tiers si trouvé
+                  if (!keepRsBlank) {
+                    enriched.raison_sociale = pcRow?.libelle || assocTiers.libelle || enriched.raison_sociale;
+                  }
+                  if (_isEmptyText(enriched.nif)) {
+                    enriched.nif = assocTiers?.nif || pcRow?.nif || enriched.nif;
+                  }
+                  if (_isEmptyText(enriched.stat)) {
+                    enriched.stat = assocTiers?.statistique || assocTiers?.stat || pcRow?.statistique || pcRow?.stat || enriched.stat;
+                  }
+                  if (_isEmptyText(enriched.adresse)) {
+                    enriched.adresse = assocTiers?.adresse || assocTiers?.adressesansnif || assocTiers?.adresseetranger || pcRow?.adresse || pcRow?.adressesansnif || pcRow?.adresseetranger || enriched.adresse;
+                  }
+                  hasTiers = true;
+                } else {
+                  // Fallback ultime: si aucune contrepartie classe 4, utiliser le libellé de la ligne associée (même 445*)
+                  if (!hasTiers && !keepRsBlank) {
+                    let assocAny = null;
+                    for (const ide of ideCandidates) {
+                      assocAny = assocByEcritureAny.get(ide);
+                      if (assocAny) break;
+                    }
+                    if (assocAny?.libelle) {
+                      enriched.raison_sociale = assocAny.libelle;
+                    } else {
+                      try { console.debug('[ANNEXES][TIERS MISS] no assoc for row id=', row.id, 'ids=', ideCandidates); } catch { }
+                    }
+                  }
+                }
+              }
+              return {
+                ...enriched,
+                anomalies: existingRow.anomalies || row.anomalies || false,
+                commentaire: existingRow.commentaire || row.commentaire || ''
+              };
+            }
+
+            // Pour les nouvelles lignes, calculer les anomalies si nécessaire
+            const isEmpty = (v) => {
+              if (v === null || v === undefined) return true;
+              const s = String(v).trim();
+              if (s === '') return true;
+              const low = s.toLowerCase();
+              return low === 'n/a' || low === 'na' || low === 'null' || low === 'undefined' || low === '-' || low === '0';
+            };
+
+            const notesSet = new Set(
+              String(row?.commentaire || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean)
+            );
+            if (isEmpty(row?.nif)) notesSet.add('NIF vide');
+            if (isEmpty(row?.stat)) notesSet.add('STAT vide');
+            if (row?.raison_sociale !== '' && isEmpty(row?.raison_sociale)) notesSet.add('Raison sociale vide');
+            if (isEmpty(row?.adresse)) notesSet.add('Adresse vide');
+            if (isEmpty(row?.reference_facture)) notesSet.add('Référence facture vide');
+            if (isEmpty(row?.date_facture)) notesSet.add('Date facture vide');
+            if (!row?.code_tva) notesSet.add('Code TVA introuvable pour le compte');
+            const notes = Array.from(notesSet);
+
             const enriched = { ...row };
-            // Laisser Nature vide par défaut (saisie manuelle), sans écraser si déjà rempli
+            // Laisser Nature vide par défaut (saisie manuelle)
             {
               const nat = String(enriched.nature ?? '').trim();
               const natLower = nat.toLowerCase();
@@ -657,12 +785,12 @@ export default function ParamTVAComponent() {
                   if (hit3?.code) {
                     enriched.code_tva = hit3.code;
                   } else {
-                    try { console.debug('[ANNEXES][MISS] no code for row id=', row.id, 'compte=', enriched.compte, 'id_numcpt=', enriched.id_numcpt, 'label=', enriched.raison_sociale || enriched.libelle_operation || enriched.libelle); } catch {}
+                    try { console.debug('[ANNEXES][MISS] no code for NEW row', enriched); } catch { }
                   }
                 }
               }
             }
-            const _isEmptyText = (v) => {
+            const _isEmptyTextNew = (v) => {
               const s = (v ?? '').toString().trim();
               return s === '' || s === '-';
             };
@@ -677,39 +805,36 @@ export default function ParamTVAComponent() {
                 if (!keepRsBlank) {
                   enriched.raison_sociale = pcRowDirect?.libelle || directTiersLibelle || enriched.raison_sociale;
                 }
-                if (_isEmptyText(enriched.nif)) enriched.nif = pcRowDirect?.nif || enriched.nif;
-                if (_isEmptyText(enriched.stat)) enriched.stat = pcRowDirect?.statistique || pcRowDirect?.stat || enriched.stat;
-                if (_isEmptyText(enriched.adresse)) enriched.adresse = pcRowDirect?.adresse || pcRowDirect?.adressesansnif || pcRowDirect?.adresseetranger || enriched.adresse;
+                if (_isEmptyTextNew(enriched.nif)) enriched.nif = pcRowDirect?.nif || enriched.nif;
+                if (_isEmptyTextNew(enriched.stat)) enriched.stat = pcRowDirect?.statistique || pcRowDirect?.stat || enriched.stat;
+                if (_isEmptyTextNew(enriched.adresse)) enriched.adresse = pcRowDirect?.adresse || pcRowDirect?.adressesansnif || pcRowDirect?.adresseetranger || enriched.adresse;
                 hasTiers = Boolean((pcRowDirect?.libelle || directTiersLibelle) && String(pcRowDirect?.libelle || directTiersLibelle).trim() !== '');
               }
               const ideCandidates = [enriched.id_ecriture, enriched.id_ecriture_associe, enriched.id_ecriture_source]
                 .map(x => Number(x))
                 .filter(n => Number.isFinite(n) && n > 0);
-              try { console.debug('[ANNEXES][TIERS] ideCandidates existing row id=', row.id, ideCandidates); } catch {}
+              try { console.debug('[ANNEXES][TIERS] ideCandidates NEW row', ideCandidates); } catch { }
               let assocTiers = null;
               for (const ide of ideCandidates) {
                 assocTiers = assocByEcriture.get(ide);
                 if (assocTiers) break;
               }
               if (assocTiers?.compte) {
-                // Chercher libellé côté plan comptable pour ce compte tiers
                 const pcRow = Array.isArray(pc) ? pc.find(p => (p.compte || '').toString() === assocTiers.compte.toString()) : null;
-                // Toujours remplacer par le libellé tiers si trouvé
                 if (!keepRsBlank) {
                   enriched.raison_sociale = pcRow?.libelle || assocTiers.libelle || enriched.raison_sociale;
                 }
-                if (_isEmptyText(enriched.nif)) {
+                if (_isEmptyTextNew(enriched.nif)) {
                   enriched.nif = assocTiers?.nif || pcRow?.nif || enriched.nif;
                 }
-                if (_isEmptyText(enriched.stat)) {
+                if (_isEmptyTextNew(enriched.stat)) {
                   enriched.stat = assocTiers?.statistique || assocTiers?.stat || pcRow?.statistique || pcRow?.stat || enriched.stat;
                 }
-                if (_isEmptyText(enriched.adresse)) {
+                if (_isEmptyTextNew(enriched.adresse)) {
                   enriched.adresse = assocTiers?.adresse || assocTiers?.adressesansnif || assocTiers?.adresseetranger || pcRow?.adresse || pcRow?.adressesansnif || pcRow?.adresseetranger || enriched.adresse;
                 }
                 hasTiers = true;
               } else {
-                // Fallback ultime: si aucune contrepartie classe 4, utiliser le libellé de la ligne associée (même 445*)
                 if (!hasTiers && !keepRsBlank) {
                   let assocAny = null;
                   for (const ide of ideCandidates) {
@@ -718,157 +843,32 @@ export default function ParamTVAComponent() {
                   }
                   if (assocAny?.libelle) {
                     enriched.raison_sociale = assocAny.libelle;
-                  } else {
-                    try { console.debug('[ANNEXES][TIERS MISS] no assoc for row id=', row.id, 'ids=', ideCandidates); } catch {}
                   }
                 }
               }
             }
+            if (enriched.raison_sociale === '') {
+              const idx = notes.indexOf('Raison sociale vide');
+              if (idx !== -1) notes.splice(idx, 1);
+            }
             return {
               ...enriched,
-              anomalies: existingRow.anomalies || row.anomalies || false,
-              commentaire: existingRow.commentaire || row.commentaire || ''
+              anomalies: notes.length > 0,
+              commentaire: notes.join(', ')
             };
-          }
-          
-          // Pour les nouvelles lignes, calculer les anomalies si nécessaire
-          const isEmpty = (v) => {
-            if (v === null || v === undefined) return true;
-            const s = String(v).trim();
-            if (s === '') return true;
-            const low = s.toLowerCase();
-            return low === 'n/a' || low === 'na' || low === 'null' || low === 'undefined' || low === '-' || low === '0';
-          };
-          
-          const notesSet = new Set(
-            String(row?.commentaire || '')
-              .split(',')
-              .map(s => s.trim())
-              .filter(Boolean)
-          );
-          if (isEmpty(row?.nif)) notesSet.add('NIF vide');
-          if (isEmpty(row?.stat)) notesSet.add('STAT vide');
-          if (row?.raison_sociale !== '' && isEmpty(row?.raison_sociale)) notesSet.add('Raison sociale vide');
-          if (isEmpty(row?.adresse)) notesSet.add('Adresse vide');
-          if (isEmpty(row?.reference_facture)) notesSet.add('Référence facture vide');
-          if (isEmpty(row?.date_facture)) notesSet.add('Date facture vide');
-          if (!row?.code_tva) notesSet.add('Code TVA introuvable pour le compte');
-          const notes = Array.from(notesSet);
-          
-          const enriched = { ...row };
-          // Laisser Nature vide par défaut (saisie manuelle)
-          {
-            const nat = String(enriched.nature ?? '').trim();
-            const natLower = nat.toLowerCase();
-            if (nat === '' || nat === '-' || natLower === 'null' || natLower === 'undefined' || natLower === 'general' || natLower === 'général' || natLower === 'general ' || natLower === 'général ') {
-              enriched.nature = '';
-            }
-          }
-          // Enrichir code_tva si vide
-          if (!enriched.code_tva) {
-            let key = norm(enriched.compte || enriched.cpt || enriched.num_compte);
-            if (!key && enriched.id_numcpt) {
-              const acc = pcIdToCompte.get(Number(enriched.id_numcpt));
-              if (acc) key = norm(acc);
-            }
-            const hit = key ? paramIndex.get(key) : undefined;
-            if (hit?.code) {
-              enriched.code_tva = hit.code;
-            } else {
-              const lkey = String(enriched.raison_sociale || enriched.libelle_operation || enriched.libelle || '').toUpperCase().replace(/\s+/g, ' ').trim();
-              const hit2 = lkey ? paramLabelIndex.get(lkey) : undefined;
-              if (hit2?.code) {
-                enriched.code_tva = hit2.code;
-              } else {
-                const idnum = Number(enriched.id_numcpt);
-                const hit3 = Number.isFinite(idnum) ? paramIdIndex.get(idnum) : undefined;
-                if (hit3?.code) {
-                  enriched.code_tva = hit3.code;
-                } else {
-                  try { console.debug('[ANNEXES][MISS] no code for NEW row', enriched); } catch {}
-                }
-              }
-            }
-          }
-          const _isEmptyTextNew = (v) => {
-            const s = (v ?? '').toString().trim();
-            return s === '' || s === '-';
-          };
-          {
-            const keepRsBlank = enriched.raison_sociale === '';
-            let hasTiers = false;
-            // Si le backend fournit directement tiers_compte/tiers_libelle, on les privilégie
-            const directTiersCompte = (enriched.tiers_compte || row.tiers_compte || '').toString();
-            const directTiersLibelle = (enriched.tiers_libelle || row.tiers_libelle || '').toString();
-            if (directTiersCompte && directTiersCompte.startsWith('4') && !directTiersCompte.startsWith('445')) {
-              const pcRowDirect = Array.isArray(pc) ? pc.find(p => (p.compte || '').toString() === directTiersCompte) : null;
-              if (!keepRsBlank) {
-                enriched.raison_sociale = pcRowDirect?.libelle || directTiersLibelle || enriched.raison_sociale;
-              }
-              if (_isEmptyTextNew(enriched.nif)) enriched.nif = pcRowDirect?.nif || enriched.nif;
-              if (_isEmptyTextNew(enriched.stat)) enriched.stat = pcRowDirect?.statistique || pcRowDirect?.stat || enriched.stat;
-              if (_isEmptyTextNew(enriched.adresse)) enriched.adresse = pcRowDirect?.adresse || pcRowDirect?.adressesansnif || pcRowDirect?.adresseetranger || enriched.adresse;
-              hasTiers = Boolean((pcRowDirect?.libelle || directTiersLibelle) && String(pcRowDirect?.libelle || directTiersLibelle).trim() !== '');
-            }
-            const ideCandidates = [enriched.id_ecriture, enriched.id_ecriture_associe, enriched.id_ecriture_source]
-              .map(x => Number(x))
-              .filter(n => Number.isFinite(n) && n > 0);
-            try { console.debug('[ANNEXES][TIERS] ideCandidates NEW row', ideCandidates); } catch {}
-            let assocTiers = null;
-            for (const ide of ideCandidates) {
-              assocTiers = assocByEcriture.get(ide);
-              if (assocTiers) break;
-            }
-            if (assocTiers?.compte) {
-              const pcRow = Array.isArray(pc) ? pc.find(p => (p.compte || '').toString() === assocTiers.compte.toString()) : null;
-              if (!keepRsBlank) {
-                enriched.raison_sociale = pcRow?.libelle || assocTiers.libelle || enriched.raison_sociale;
-              }
-              if (_isEmptyTextNew(enriched.nif)) {
-                enriched.nif = assocTiers?.nif || pcRow?.nif || enriched.nif;
-              }
-              if (_isEmptyTextNew(enriched.stat)) {
-                enriched.stat = assocTiers?.statistique || assocTiers?.stat || pcRow?.statistique || pcRow?.stat || enriched.stat;
-              }
-              if (_isEmptyTextNew(enriched.adresse)) {
-                enriched.adresse = assocTiers?.adresse || assocTiers?.adressesansnif || assocTiers?.adresseetranger || pcRow?.adresse || pcRow?.adressesansnif || pcRow?.adresseetranger || enriched.adresse;
-              }
-              hasTiers = true;
-            } else {
-              if (!hasTiers && !keepRsBlank) {
-                let assocAny = null;
-                for (const ide of ideCandidates) {
-                  assocAny = assocByEcritureAny.get(ide);
-                  if (assocAny) break;
-                }
-                if (assocAny?.libelle) {
-                  enriched.raison_sociale = assocAny.libelle;
-                }
-              }
-            }
-          }
-          if (enriched.raison_sociale === '') {
-            const idx = notes.indexOf('Raison sociale vide');
-            if (idx !== -1) notes.splice(idx, 1);
-          }
-          return {
-            ...enriched,
-            anomalies: notes.length > 0,
-            commentaire: notes.join(', ')
-          };
+          });
         });
-      });
-    } else {
-      setAnnexesRows([]);
-      if (data?.msg) {
-        toast.error(data.msg);
+      } else {
+        setAnnexesRows([]);
+        if (data?.msg) {
+          toast.error(data.msg);
+        }
       }
+    } catch (e) {
+      console.error('[Annexes] fetch error', e);
+      // toast.error("Erreur lors du chargement des annexes");
     }
-  } catch (e) {
-    console.error('[Annexes] fetch error', e);
-    // toast.error("Erreur lors du chargement des annexes");
-  }
-};
+  };
 
   /**
    * Génère les annexes TVA automatiquement.

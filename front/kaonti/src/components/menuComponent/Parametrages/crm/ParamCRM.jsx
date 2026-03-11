@@ -480,7 +480,13 @@ export default function ParamCRM() {
                                 </MenuItem>
                             ))}
                         </Select>
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikAssocie.errors.type && useFormikAssocie.touched.type && useFormikAssocie.errors.type}
                         </FormHelperText>
                     </FormControl>
@@ -516,7 +522,13 @@ export default function ParamCRM() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikAssocie.errors.nom && useFormikAssocie.touched.nom && useFormikAssocie.errors.nom}
                         </FormHelperText>
                     </FormControl>
@@ -548,7 +560,13 @@ export default function ParamCRM() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikAssocie.errors.adresse && useFormikAssocie.touched.adresse && useFormikAssocie.errors.adresse}
                         </FormHelperText>
                     </FormControl>
@@ -674,7 +692,13 @@ export default function ParamCRM() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikAssocie.errors.nombreparts && useFormikAssocie.touched.nombreparts && useFormikAssocie.errors.nombreparts}
                         </FormHelperText>
                     </FormControl>
@@ -1411,7 +1435,13 @@ export default function ParamCRM() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikDomBank.errors.banque && useFormikDomBank.touched.banque && useFormikDomBank.errors.banque}
                         </FormHelperText>
                     </FormControl>
@@ -1451,7 +1481,13 @@ export default function ParamCRM() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikDomBank.errors.numcompte && useFormikDomBank.touched.numcompte && useFormikDomBank.errors.numcompte}
                         </FormHelperText>
                     </FormControl>
@@ -1491,7 +1527,13 @@ export default function ParamCRM() {
                             disableUnderline={true}
                         />
 
-                        <FormHelperText style={{ color: 'red' }}>
+                        <FormHelperText
+                            style={{
+                                color: 'red',
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            }}
+                        >
                             {useFormikDomBank.errors.devise && useFormikDomBank.touched.devise && useFormikDomBank.errors.devise}
                         </FormHelperText>
                     </FormControl>
