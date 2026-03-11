@@ -30,6 +30,16 @@ const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPO
 const logoBase64 = fs.readFileSync(logoPath).toString('base64');
 const logoImage = `data:image/png;base64,${logoBase64}`;
 
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+};
+
 const recupBalance = async (req, res) => {
     try {
         const { centraliser, unSolded, movmentedCpt, compteId, fileId, exerciceId, type } = req.body || {};
@@ -114,7 +124,9 @@ const recupBalanceFromJournal = async (req, res) => {
             centraliser = false,
             unSolded = false,
             movmentedCpt = false,
-            type = null
+            type = null,
+            date_debut_periode,
+            date_fin_periode
         } = req.body;
 
         if (!compteId) {
@@ -125,6 +137,11 @@ const recupBalanceFromJournal = async (req, res) => {
         }
         if (!exerciceId) {
             return res.json({ state: false, msg: 'Exercice vide' })
+        }
+
+        let dateFilter = '';
+        if (date_debut_periode && date_fin_periode) {
+            dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
         }
 
         const rows = await db.sequelize.query(
@@ -147,6 +164,7 @@ const recupBalanceFromJournal = async (req, res) => {
                     OR (:type = 1 AND J.COMPTEGEN LIKE '401%')
                     OR (:type = 2 AND J.COMPTEGEN LIKE '411%')
                 )
+                ${dateFilter}
             GROUP BY
                 ${centraliser ? 'J.COMPTEGEN' : 'J.COMPTEAUX'}
             HAVING
@@ -162,7 +180,9 @@ const recupBalanceFromJournal = async (req, res) => {
                     id_exercice: Number(exerciceId),
                     unSolded: unSolded ? 1 : 0,
                     movmentedCpt: movmentedCpt ? 1 : 0,
-                    type: Number(type)
+                    type: Number(type),
+                    date_debut_periode,
+                    date_fin_periode
                 },
                 type: db.Sequelize.QueryTypes.SELECT
             });
@@ -325,7 +345,7 @@ const recupBalanceCa = async (req, res) => {
 
 const actualizeBalance = async (req, res) => {
     try {
-        const { id_compte, id_dossier, id_exercice, type, id_axe, id_sections } = req.body;
+        const { id_compte, id_dossier, id_exercice, type } = req.body;
         if (type === 3) {
             await createAnalytiqueIfNotExist(id_compte, id_dossier, id_exercice);
             return res.json({ state: true, message: "Balance mise à jour avec succès" })
@@ -342,7 +362,7 @@ module.exports = {
     recupBalance,
     exportPdf: async (req, res) => {
         try {
-            const { centraliser = false, unSolded = false, movmentedCpt = false, compteId, fileId, exerciceId, data } = req.body || {};
+            const { compteId, fileId, exerciceId, data, date_debut_periode, date_fin_periode } = req.body || {};
 
             if (!compteId || !fileId || !exerciceId) {
                 return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
@@ -350,22 +370,11 @@ module.exports = {
 
             const dossier = await dossiers.findByPk(fileId);
             const exercice = await exercices.findByPk(exerciceId);
-            const compte = await userscomptes.findByPk(compteId, { attributes: ['id', 'nom'], raw: true });
 
-            const { buildTable, list } = await generateBalanceContent(compteId, fileId, exerciceId, centraliser, unSolded, movmentedCpt, data);
+            const { buildTable, list } = await generateBalanceContent(data);
             if (!list || list.length === 0) {
                 return res.status(404).json({ state: false, msg: 'Aucune donnée de balance.' });
             }
-
-            const formatDate = (dateString) => {
-                if (!dateString) return '';
-                const date = new Date(dateString);
-                if (isNaN(date.getTime())) return String(dateString);
-                const dd = String(date.getDate()).padStart(2, '0');
-                const mm = String(date.getMonth() + 1).padStart(2, '0');
-                const yyyy = date.getFullYear();
-                return `${dd}/${mm}/${yyyy}`;
-            };
 
             const fonts = {
                 Helvetica: {
@@ -375,6 +384,14 @@ module.exports = {
                     bolditalics: 'Helvetica-BoldOblique'
                 }
             };
+
+            let texteDatePeriode = '';
+
+            if (date_debut_periode && date_fin_periode) {
+                texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+            } else {
+                texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+            }
 
             const docDefinition = {
                 pageSize: 'A4',
@@ -388,7 +405,7 @@ module.exports = {
                         style: 'subheader', margin: [0, 0, 0, 20]
                     },
                     {
-                        text: `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`,
+                        text: texteDatePeriode,
                         alignment: 'left',
                         style: 'subheader2', margin: [0, 0, 0, 20]
                     },
@@ -435,17 +452,24 @@ module.exports = {
     },
     exportExcel: async (req, res) => {
         try {
-            const { centraliser = false, unSolded = false, movmentedCpt = false, compteId, fileId, exerciceId, data } = req.body || {};
+            const { compteId, fileId, exerciceId, data, date_debut_periode, date_fin_periode } = req.body || {};
             if (!compteId || !fileId || !exerciceId) {
                 return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
             }
 
+            let texteDatePeriode = '';
+
             const dossier = await dossiers.findByPk(fileId);
             const exercice = await exercices.findByPk(exerciceId);
-            const compte = await userscomptes.findByPk(compteId, { attributes: ['id', 'nom'], raw: true });
+
+            if (date_debut_periode && date_fin_periode) {
+                texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+            } else {
+                texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+            }
 
             const workbook = new ExcelJS.Workbook();
-            await exportBalanceTableExcel(compteId, fileId, exerciceId, centraliser, unSolded, movmentedCpt, workbook, dossier?.dossier, compte?.nom, exercice?.date_debut, exercice?.date_fin, data);
+            await exportBalanceTableExcel(workbook, dossier?.dossier, data, texteDatePeriode);
             workbook.views = [{ activeTab: 0 }];
 
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
