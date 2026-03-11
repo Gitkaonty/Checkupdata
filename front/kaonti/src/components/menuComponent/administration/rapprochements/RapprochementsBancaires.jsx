@@ -253,7 +253,7 @@ function RapprochementsBancaires() {
         const { data: pcs } = await axios.get('/administration/traitementSaisie/rapprochements/pcs', { params: { fileId: fid, compteId }, timeout: 60000 });
         if (pcs?.state) {
           const list = Array.isArray(pcs.list) ? pcs.list : (pcs.list ? [pcs.list] : []);
-          try { console.log('[RAPPRO][PCS][FILTERED]', { fileId: fid, compteId, count: list.length, list }); } catch { }
+          // try { console.log('[RAPPRO][PCS][FILTERED]', { fileId: fid, compteId, count: list.length, list }); } catch { }
           // Affichage strict: si vide, on montre vide
           setPc512Rows(list);
           if (list.length === 0) {
