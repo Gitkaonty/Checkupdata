@@ -113,6 +113,11 @@ const DatagridHistoriqueISI = ({ columns, rows, DATAGRID_HEIGHT, setHistoriqueIs
                             '& .MuiDataGrid-row.highlight-row': {
                                 backgroundColor: '#d9fdd3 !important',
                             },
+                            '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: initial.theme,
+                                color: 'white',
+                                fontWeight: 'bold',
+                            },
                             height: "100%",
                             minHeight: DATAGRID_HEIGHT
                         }}

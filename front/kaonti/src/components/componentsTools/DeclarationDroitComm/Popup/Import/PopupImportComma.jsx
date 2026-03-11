@@ -807,6 +807,11 @@ const PopupImportComma = ({ confirmationState, setIsRefreshed, nature, compteId,
                                         '& .MuiOutlinedInput-notchedOutline': {
                                             border: 'none',
                                         },
+                                        '& .MuiDataGrid-columnHeaders': {
+                                            backgroundColor: initial.theme,
+                                            color: 'white',
+                                            fontWeight: 'bold',
+                                        },
                                     }}
                                     rows={csvData.map((row, index) => ({ id: index, ...row }))}
                                     columns={columns}

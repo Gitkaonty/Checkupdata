@@ -526,35 +526,39 @@ const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIs
                             direction={"row"} justifyContent={"right"}
                         >
                             <Tooltip title="Ajouter une ligne">
-                                <IconButton
-                                    disabled={!canAdd || disableAddRowBouton}
-                                    onClick={handleOpenDialogAddNew}
-                                    variant="contained"
-                                    style={{
-                                        width: "35px", height: '35px',
-                                        borderRadius: "2px", borderColor: "transparent",
-                                        backgroundColor: initial.theme,
-                                        textTransform: 'none', outline: 'none'
-                                    }}
-                                >
-                                    <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                </IconButton>
+                                <span>
+                                    <IconButton
+                                        disabled={!canAdd || disableAddRowBouton}
+                                        onClick={handleOpenDialogAddNew}
+                                        variant="contained"
+                                        style={{
+                                            width: "35px", height: '35px',
+                                            borderRadius: "2px", borderColor: "transparent",
+                                            backgroundColor: initial.theme,
+                                            textTransform: 'none', outline: 'none'
+                                        }}
+                                    >
+                                        <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                    </IconButton>
+                                </span>
                             </Tooltip>
 
                             <Tooltip title="Modifier la ligne sélectionnée">
-                                <IconButton
-                                    disabled={(!canModify && selectedRowId > 0) || disableModifyBouton}
-                                    onClick={handleEditClick(selectedRowId)}
-                                    variant="contained"
-                                    style={{
-                                        width: "35px", height: '35px',
-                                        borderRadius: "2px", borderColor: "transparent",
-                                        backgroundColor: initial.theme,
-                                        textTransform: 'none', outline: 'none'
-                                    }}
-                                >
-                                    <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                </IconButton>
+                                <span>
+                                    <IconButton
+                                        disabled={(!canModify && selectedRowId > 0) || disableModifyBouton}
+                                        onClick={handleEditClick(selectedRowId)}
+                                        variant="contained"
+                                        style={{
+                                            width: "35px", height: '35px',
+                                            borderRadius: "2px", borderColor: "transparent",
+                                            backgroundColor: initial.theme,
+                                            textTransform: 'none', outline: 'none'
+                                        }}
+                                    >
+                                        <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                    </IconButton>
+                                </span>
                             </Tooltip>
 
                             <Tooltip title="Sauvegarder les modifications">
@@ -630,6 +634,11 @@ const PopupAjustRubriqueEbilanEtatFinancier = ({ actionState, row, column, setIs
                                     '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
                                         outline: 'none',
                                         border: 'none',
+                                    },
+                                    '& .MuiDataGrid-columnHeaders': {
+                                        backgroundColor: initial.theme,
+                                        color: 'white',
+                                        fontWeight: 'bold',
                                     },
                                 }}
                                 rowHeight={DataGridStyle.rowHeight}

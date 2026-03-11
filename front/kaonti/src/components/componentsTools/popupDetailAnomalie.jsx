@@ -273,7 +273,6 @@ const PopupDetailAnomalie = ({ id_compte, id_dossier, id_exercice, title, rows, 
                         disableSelectionOnClick={true}
                         localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                         slots={{ toolbar: QuickFilter }}
-                        sx={DataGridStyle.sx}
                         rowHeight={DataGridStyle.rowHeight}
                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                         editMode='row'
@@ -288,6 +287,21 @@ const PopupDetailAnomalie = ({ id_compte, id_dossier, id_exercice, title, rows, 
                         initialState={{
                             pagination: {
                                 paginationModel: { page: 0, pageSize: 100 },
+                            },
+                        }}
+                        sx={{
+                            ...DataGridStyle.sx,
+                            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                outline: 'none',
+                                border: 'none',
+                            },
+                            '& .MuiDataGrid-virtualScroller': {
+                                maxHeight: '100%',
+                            },
+                            '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: initial.theme,
+                                color: 'white',
+                                fontWeight: 'bold',
                             },
                         }}
                         experimentalFeatures={{ newEditingApi: true }}
