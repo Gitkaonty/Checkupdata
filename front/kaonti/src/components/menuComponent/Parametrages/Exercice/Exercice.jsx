@@ -38,8 +38,12 @@ import { MdCancel } from "react-icons/md";
 import PopupCodeJouralNotExist from '../../administration/import/PopupCodeJouralNotExist';
 import PopupGenerateRan from '../../../componentsTools/Paramettage/Exercice/PopupGenerateRan';
 import { TbPlaylistAdd } from "react-icons/tb";
+import PopupAddPeriode from '../../../componentsTools/Paramettage/Exercice/PopupAddPeriode';
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
+    '& .MuiDialog-paper': {
+        height: '300px',
+    },
     '& .MuiDialogContent-root': {
         padding: theme.spacing(2),
     },
@@ -64,6 +68,8 @@ export default function ParamExerciceComponent() {
     const [listePeriode, setListePeriode] = useState([]);
 
     const [openDialogCreateFirstExercice, setEpenDialogCreateFirstExercice] = useState(false);
+    const [openDialogCreatePeriode, setOpenDialogCreatePeriode] = useState(false);
+
     const [openActionConfirm, setOpenActionConfirm] = useState(false);
     const [openActionConfirmPrev, setOpenActionConfirmPrev] = useState(false);
     const [openActionConfirmVerrExercice, setOpenActionConfirmVerrExercice] = useState(false);
@@ -72,6 +78,9 @@ export default function ParamExerciceComponent() {
     const [openActionConfirmDeverrExercice, setOpenActionConfirmDeverrExercice] = useState(false);
     const [msgDeverrExercice, setMsgDeverrExercice] = useState('');
     const [exerciceToUnlock, setExerciceToUnlock] = useState([]);
+
+    const [dateDebutPeriode, setDateDebutPeriode] = useState('');
+    const [dateFinExercice, setDateFinExercice] = useState('');
 
     const [openActionConfirmDeleteExercice, setOpenActionConfirmDeleteExercice] = useState(false);
     const [openActionConfirmDeletePeriode, setOpenActionConfirmDeletePeriode] = useState(false);
@@ -248,16 +257,36 @@ export default function ParamExerciceComponent() {
     // Chargement des périodes par exercice
     const getPeriodes = async () => {
         const id_exercice = Number(selectedExerciceRow[0]);
+        const selectedRow = listeExercice.find(item => Number(item.id) === id_exercice);
+        const dateDebutExercice = selectedRow?.date_debut;
+        const dateFinExercice = selectedRow?.date_fin;
+        setDateFinExercice(dateFinExercice);
+
         axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
             .then((response) => {
                 if (response?.data?.state) {
                     const data = response?.data?.data;
+
+                    const maxDateFin = data.length > 0
+                        ? (() => {
+                            const d = new Date(Math.max(...data.map(d => new Date(d.date_fin))));
+                            d.setDate(d.getDate() + 1);
+                            return d;
+                        })()
+                        : new Date(dateDebutExercice);
+
+                    const maxDateFinStr = maxDateFin
+                        ? maxDateFin.toISOString().split('T')[0]
+                        : null;
+
+                    setDateDebutPeriode(maxDateFinStr);
+
                     setListePeriode(data);
                 } else {
                     toast.error(response?.data?.message);
                 }
-            })
-    }
+            });
+    };
 
     useEffect(() => {
         if (selectedExerciceRow.length === 1) {
@@ -301,6 +330,23 @@ export default function ParamExerciceComponent() {
 
     const handleCloseDialogCreateFirstExercice = () => {
         setEpenDialogCreateFirstExercice(false);
+    }
+
+    const handleOpenDialogCreatePeriode = () => {
+        const id_exercice = Number(selectedExerciceRow[0]);
+        if (id_exercice) {
+            periodeForm.setFieldValue('id_compte', Number(compteId));
+            periodeForm.setFieldValue('id_dossier', Number(fileId));
+            periodeForm.setFieldValue('id_exercice', Number(id_exercice));
+            periodeForm.setFieldValue('date_debut', dateDebutPeriode);
+            setOpenDialogCreatePeriode(true);
+        } else {
+            toast.error('Veuillez sélectionner une exercice');
+        }
+    }
+
+    const handleCloseDialogCreatePeriode = () => {
+        setOpenDialogCreatePeriode(false);
     }
 
     //formule pour la création du premier exercice
@@ -365,6 +411,64 @@ export default function ParamExerciceComponent() {
         },
     });
 
+    const periodeForm = useFormik({
+        initialValues: {
+            id_compte: '',
+            id_dossier: '',
+            id_exercice: 0,
+            date_debut: '',
+            date_fin: ''
+        },
+
+        validationSchema: Yup.object({
+            date_debut: Yup.string()
+                .matches(
+                    /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
+                    'La date doit être au format yyyy-mm-dd'
+                )
+                .test('is-valid-date', 'La date doit être valide', (value) => {
+                    if (!value) return false;
+                    const [year, month, day] = value.split('-').map(Number);
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    return day >= 1 && day <= daysInMonth;
+                })
+                .required('La date est requise'),
+
+            date_fin: Yup.string()
+                .matches(
+                    /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
+                    'La date doit être au format yyyy-mm-dd'
+                )
+                .test('is-valid-date', 'La date doit être valide', (value) => {
+                    if (!value) return false;
+                    const [year, month, day] = value.split('-').map(Number);
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    return day >= 1 && day <= daysInMonth;
+                })
+                .test('max-date-fin', `La date fin ne doit pas dépasser ${dateFinExercice}`, (value) => {
+                    if (!value) return false;
+                    if (!dateFinExercice) return true;
+                    const fin = new Date(value);
+                    const max = new Date(dateFinExercice);
+                    return fin <= max;
+                })
+                .required('La date est requise'),
+        }),
+
+        validate: (values) => {
+            const errors = {};
+            if (values.date_debut && values.date_fin) {
+                const startDate = new Date(values.date_debut);
+                const endDate = new Date(values.date_fin);
+
+                if (startDate > endDate) {
+                    errors.date_fin = 'La date fin ne doit pas être antérieure à la date de début';
+                }
+            }
+            return errors;
+        },
+    });
+
     const createFirstExercice = () => {
         axiosPrivate.post(`/paramExercice/createFirstExercice`, firstExerciceForm.values).then((response) => {
             const resData = response.data;
@@ -376,6 +480,10 @@ export default function ParamExerciceComponent() {
             }
             handleCloseDialogCreateFirstExercice();
         });
+    }
+
+    const addPeriode = () => {
+        console.log('periodeForm.values : ', periodeForm.values);
     }
 
     //création de l'exercie suivant
@@ -513,7 +621,6 @@ export default function ParamExerciceComponent() {
         }
 
         const selectedRow = listeExercice.filter(item => Number(item.id) === Number(selectedExerciceRow[0]));
-        console.log('selectedRow : ', selectedRow);
 
         if (selectedRow) {
             if (selectedRow[0].cloture) {
@@ -681,13 +788,21 @@ export default function ParamExerciceComponent() {
                 )
             }
 
+            {openDialogCreatePeriode && (
+                <PopupAddPeriode
+                    handleClose={handleCloseDialogCreatePeriode}
+                    periodeForm={periodeForm}
+                    handleSubmit={addPeriode}
+                />
+            )}
+
             <form onSubmit={firstExerciceForm.handleSubmit}>
                 <BootstrapDialog
                     onClose={handleCloseDialogCreateFirstExercice}
                     aria-labelledby="customized-dialog-title"
                     open={openDialogCreateFirstExercice}
                 >
-                    <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title" style={{ fontWeight: 'bold', width: '600px', height: '50px', backgroundColor: 'transparent' }}>
+                    <DialogTitle sx={{ m: 0 }} id="customized-dialog-title" style={{ fontWeight: 'bold', width: '600px', backgroundColor: 'transparent' }}>
                         Création du premier exercice
                     </DialogTitle>
 
@@ -708,7 +823,7 @@ export default function ParamExerciceComponent() {
                     <DialogContent >
                         <Stack width={"95%"} height={"100%"} spacing={0} alignItems={'center'} alignContent={"center"}
                             direction={"column"} justifyContent={"center"} style={{ marginLeft: '10px' }}>
-                            <Stack style={{ marginTop: 40, width: "100%" }} direction={'row'} alignContent={'baseline'} justifyContent={'space-between'} alignItems={'baseline'} spacing={2}>
+                            <Stack style={{ width: "100%" }} direction={'row'} alignContent={'baseline'} justifyContent={'space-between'} alignItems={'baseline'} spacing={2}>
                                 <FormControl
                                     sx={{ width: "200px" }}
                                     error={firstExerciceForm.errors.date_debut && firstExerciceForm.touched.date_debut}
@@ -740,9 +855,9 @@ export default function ParamExerciceComponent() {
                                     </FormHelperText>
                                 </FormControl>
 
-                                <Typography sx={{ mt: 5 }} variant="body1" >
+                                {/* <Typography sx={{ mt: 5 }} variant="body1" >
                                     au
-                                </Typography>
+                                </Typography> */}
 
                                 <FormControl
                                     sx={{ width: "200px" }}
@@ -1027,7 +1142,7 @@ export default function ParamExerciceComponent() {
                                                     <IconButton
                                                         disabled={!canAdd || selectedExerciceRow.length === 0}
                                                         variant="contained"
-                                                        // onClick={handleOpenDialogAddNewRow}
+                                                        onClick={handleOpenDialogCreatePeriode}
                                                         style={{
                                                             width: "35px", height: '35px',
                                                             borderRadius: "2px", borderColor: "transparent",
