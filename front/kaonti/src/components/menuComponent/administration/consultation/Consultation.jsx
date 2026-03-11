@@ -56,6 +56,7 @@ export default function ConsultationComponent() {
     const axiosPrivate = useAxiosPrivate();
     const [typeComptabilite, setTypeComptabilite] = useState(null);
     const [isTypeComptaAutre, setIsTypeComptaAutre] = useState(false);
+    const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
 
     const [fileInfos, setFileInfos] = useState('');
     const [fileId, setFileId] = useState(0);
@@ -178,6 +179,17 @@ export default function ConsultationComponent() {
                     toast.error(resData.msg);
                 }
             })
+    }
+
+    //Choix période
+    const handleChangePeriode = (choix) => {
+        setSelectedPeriodeChoiceId(choix);
+        if (choix === 0) {
+            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
+            setSelectedPeriodeId(selectedExerciceId);
+        } else if (choix === 1) {
+            GetListeSituation(selectedExerciceId);
+        }
     }
 
     // Récupération des listes des comptes à sélectionner
@@ -1037,8 +1049,13 @@ export default function ConsultationComponent() {
                                             disabled
                                             labelId="demo-simple-select-standard-label"
                                             id="demo-simple-select-standard"
-                                            label={"periode"}
+                                            value={selectedPeriodeChoiceId}
+                                            label={"valSelect"}
+                                            onChange={(e) => handleChangePeriode(e.target.value)}
                                             sx={{ width: "150px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
+                                            MenuProps={{
+                                                disableScrollLock: true
+                                            }}
                                         >
                                             <MenuItem value={0}>Toutes</MenuItem>
                                             <MenuItem value={1}>Situations</MenuItem>
