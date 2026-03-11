@@ -80,7 +80,7 @@ export default function ParamExerciceComponent() {
     const [exerciceToUnlock, setExerciceToUnlock] = useState([]);
 
     const [dateDebutPeriode, setDateDebutPeriode] = useState('');
-    const [dateFinExercice, setDateFinExercice] = useState('');
+    const [dateFinExercice, setDateFinExercice] = useState(Date());
 
     const [openActionConfirmDeleteExercice, setOpenActionConfirmDeleteExercice] = useState(false);
     const [openActionConfirmDeletePeriode, setOpenActionConfirmDeletePeriode] = useState(false);
@@ -446,7 +446,7 @@ export default function ParamExerciceComponent() {
                     const daysInMonth = new Date(year, month, 0).getDate();
                     return day >= 1 && day <= daysInMonth;
                 })
-                .test('max-date-fin', `La date fin ne doit pas dépasser ${dateFinExercice}`, (value) => {
+                .test('max-date-fin', `La date fin ne doit pas dépasser ${format(dateFinExercice, 'dd/MM/yyyy')}`, (value) => {
                     if (!value) return false;
                     if (!dateFinExercice) return true;
                     const fin = new Date(value);
