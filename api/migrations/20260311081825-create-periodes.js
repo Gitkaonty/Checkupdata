@@ -41,12 +41,10 @@ module.exports = {
       },
       date_debut: {
         type: Sequelize.DATEONLY,
-        unique: false,
         allowNull: false
       },
       date_fin: {
         type: Sequelize.DATEONLY,
-        unique: true,
         allowNull: false
       },
       createdAt: {

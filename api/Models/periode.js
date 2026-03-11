@@ -32,12 +32,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         date_debut: {
             type: DataTypes.DATEONLY,
-            unique: false,
             allowNull: false
         },
         date_fin: {
             type: DataTypes.DATEONLY,
-            unique: true,
             allowNull: false
         },
     }, { timestamps: true })
