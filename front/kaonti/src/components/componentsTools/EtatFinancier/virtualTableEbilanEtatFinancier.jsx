@@ -18,16 +18,16 @@ import { FaRegPenToSquare } from "react-icons/fa6";
 import { init } from '../../../../init';
 import axios from '../../../../config/axios';
 
-const VirtualTableEbilanEtatFinaciere = ({ refreshTable, columns, rows, noCollapsible, state, setIsRefreshed, type, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const VirtualTableEbilanEtatFinaciere = ({ columns, rows, noCollapsible, state, setIsRefreshed, canModify, canAdd, canDelete, canView, deviseParDefaut, periodeData }) => {
   const initial = init[0];
-  const targetColumnId = 'libelle';
   const [openRows, setOpenRows] = useState({});
   const [openTableDetail, setOpenTableDetail] = useState(false);
   const [detailRow, setDetailRow] = useState([]);
   const [detailColumnHeader, setDetailColumnHeader] = useState();
-  const [detailValue, setDetailValue] = useState();
 
   const [rowInfo, setRowInfo] = useState({});
+  const date_debut_periode = periodeData?.date_debut;
+  const date_fin_periode = periodeData?.date_fin;
 
   const toggleRow = (rowKey, row) => {
     axios.post('/administration/etatFinancier/getEtatFinancierDetail', {
@@ -36,7 +36,9 @@ const VirtualTableEbilanEtatFinaciere = ({ refreshTable, columns, rows, noCollap
       id_exercice: row.id_exercice,
       id_etat: row.id_etat,
       id_rubrique: row.id_rubrique,
-      subtable: row.subtable
+      subtable: row.subtable,
+      date_debut_periode,
+      date_fin_periode
     })
       .then((response) => {
         const resData = response?.data;
@@ -73,7 +75,6 @@ const VirtualTableEbilanEtatFinaciere = ({ refreshTable, columns, rows, noCollap
     if (isClickable) {
       setDetailRow(row || []);
       setDetailColumnHeader(column);
-      setDetailValue(value);
       setOpenTableDetail(true);
     }
   };
