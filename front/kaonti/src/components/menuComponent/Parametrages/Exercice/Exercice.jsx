@@ -346,6 +346,7 @@ export default function ParamExerciceComponent() {
     }
 
     const handleCloseDialogCreatePeriode = () => {
+        periodeForm.resetForm();
         setOpenDialogCreatePeriode(false);
     }
 
@@ -482,8 +483,17 @@ export default function ParamExerciceComponent() {
         });
     }
 
-    const addPeriode = () => {
-        console.log('periodeForm.values : ', periodeForm.values);
+    const addPeriode = async () => {
+        await axios.post(`/paramExercice/addPeriode`, periodeForm.values)
+            .then((response) => {
+                if (response?.data?.state) {
+                    handleCloseDialogCreatePeriode();
+                    toast.success(response?.data?.message);
+                    setIsRefreshedPeriode(prev => !prev);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            })
     }
 
     //création de l'exercie suivant
@@ -793,6 +803,7 @@ export default function ParamExerciceComponent() {
                     handleClose={handleCloseDialogCreatePeriode}
                     periodeForm={periodeForm}
                     handleSubmit={addPeriode}
+                    open={openDialogCreatePeriode}
                 />
             )}
 
