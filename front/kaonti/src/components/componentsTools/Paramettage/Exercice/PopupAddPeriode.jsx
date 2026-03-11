@@ -18,13 +18,13 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const PopupAddPeriode = ({ handleClose, periodeForm, handleSubmit }) => {
+const PopupAddPeriode = ({ handleClose, periodeForm, handleSubmit, open }) => {
     return (
         <form onSubmit={periodeForm.handleSubmit}>
             <BootstrapDialog
                 onClose={handleClose}
                 aria-labelledby="customized-dialog-title"
-                open={true}
+                open={open}
             >
                 <DialogTitle sx={{ m: 0 }} id="customized-dialog-title" style={{ fontWeight: 'bold', width: '600px', backgroundColor: 'transparent' }}>
                     Création d'une période
