@@ -14,6 +14,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { DataGridStyle } from '../DatagridToolsStyle';
 
 export default function CsvAnomaliesDialog({ open, onClose, anomalies = [], personnels = [] }) {
 
@@ -39,15 +40,9 @@ export default function CsvAnomaliesDialog({ open, onClose, anomalies = [], pers
         />
       )
     },
-<<<<<<< HEAD
     {
       field: 'personnelId',
-      headerName: 'Personnel ID',
-=======
-    { 
-      field: 'personnelId', 
-      headerName: 'Matricule / Personnel', 
->>>>>>> jaela/Jaela_tva
+      headerName: 'Matricule / Personnel',
       width: 120,
       renderCell: (params) => {
         // Récupérer l'ID ou le matricule depuis les données CSV
@@ -67,19 +62,11 @@ export default function CsvAnomaliesDialog({ open, onClose, anomalies = [], pers
       headerName: 'Nom/Prénom',
       width: 150,
       renderCell: (params) => {
-<<<<<<< HEAD
-        // Récupérer l'ID du personnel depuis les données CSV
-        const personnelId = params.row.data.personnel_id || params.row.data.personnelId;
-
-        // Chercher le personnel dans la liste
-        const personnel = personnels.find(p => String(p.id) === String(personnelId));
-
-=======
         const data = params.row?.data || {};
         // Récupérer l'ID du personnel ou le matricule depuis les données CSV
         const personnelId = data.personnel_id || data.personnelId;
         const matricule = data.matricule || data.Matricule || data.matricule_employe;
-        
+
         // Chercher le personnel dans la liste
         let personnel = undefined;
         if (personnelId !== undefined) {
@@ -89,8 +76,7 @@ export default function CsvAnomaliesDialog({ open, onClose, anomalies = [], pers
           const normalize = (m) => String(m ?? '').replace(/\s/g, '').toLowerCase();
           personnel = personnels.find(p => normalize(p.matricule) === normalize(matricule));
         }
-        
->>>>>>> jaela/Jaela_tva
+
         if (personnel) {
           return `${personnel.nom || ''} ${personnel.prenom || ''}`.trim();
         }
@@ -98,29 +84,16 @@ export default function CsvAnomaliesDialog({ open, onClose, anomalies = [], pers
         return 'Personnel introuvable';
       }
     },
-<<<<<<< HEAD
     {
       field: 'type_erreur',
-      headerName: 'Type d\'erreur',
+      headerName: "Type d'erreur",
       width: 150,
       renderCell: (params) => {
-        const errorTypes = params.row.errors;
+        const errorTypes = Array.isArray(params.row?.errors) ? params.row.errors : [];
         const severity = errorTypes.includes('personnel_introuvable') ? 'error' :
           errorTypes.includes('champ_manquant') ? 'warning' :
             errorTypes.includes('valeur_negative') ? 'error' : 'info';
 
-=======
-    { 
-      field: 'type_erreur', 
-      headerName: "Type d'erreur", 
-      width: 150,
-      renderCell: (params) => {
-        const errorTypes = Array.isArray(params.row?.errors) ? params.row.errors : [];
-        const severity = errorTypes.includes('personnel_introuvable') ? 'error' : 
-                        errorTypes.includes('champ_manquant') ? 'warning' :
-                        errorTypes.includes('valeur_negative') ? 'error' : 'info';
-        
->>>>>>> jaela/Jaela_tva
         return (
           <Chip
             label={errorTypes[0]?.replace('_', ' ') || 'Erreur inconnue'}
@@ -285,7 +258,21 @@ export default function CsvAnomaliesDialog({ open, onClose, anomalies = [], pers
                 sx={{
                   '& .MuiDataGrid-row:hover': {
                     backgroundColor: 'rgba(255,152,0,0.05)',
-                  }
+                  },
+                  ...DataGridStyle.sx,
+                  '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                    outline: 'none',
+                    border: 'none',
+                  },
+                  '& .MuiDataGrid-virtualScroller': {
+                    maxHeight: '100%',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: initial.theme,
+                    color: 'white',
+                    fontWeight: 'bold',
+                  },
+
                 }}
               />
             </Box>

@@ -53,6 +53,11 @@ export const Datagridbase = ({ row_id, tableRow }) => {
                     outline: 'none',
                     border: 'none',
                 },
+                '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: initial.theme,
+                    color: 'white',
+                    fontWeight: 'bold',
+                },
             }}
             rowHeight={DataGridStyle.rowHeight}
             columnHeaderHeight={DataGridStyle.columnHeaderHeight}

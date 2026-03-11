@@ -225,7 +225,12 @@ const DatagridDetailEcritureAssocie = ({
                                 },
                                 '& .MuiDataGrid-row.highlight-row': {
                                     backgroundColor: '#d9fdd3 !important',
-                                }
+                                },
+                                '& .MuiDataGrid-columnHeaders': {
+                                    backgroundColor: initial.theme,
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                },
                             }}
                             rowHeight={DataGridStyle.rowHeight}
                             columnHeaderHeight={DataGridStyle.columnHeaderHeight}

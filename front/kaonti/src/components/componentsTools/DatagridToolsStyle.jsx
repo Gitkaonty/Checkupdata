@@ -1,6 +1,7 @@
 import { GridToolbarQuickFilter, GridToolbarContainer } from '@mui/x-data-grid';
 import { Stack } from '@mui/material';
-
+import { init } from '../../../init';
+const initial = init[0];
 export default function QuickFilter() {
   return (
     <GridToolbarContainer>
@@ -66,8 +67,17 @@ export const DataGridStyle = {
     },
     '& .MuiDataGrid-footerContainer': {
       left: 100
-
     },
+    '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+      outline: 'none',
+      border: 'none',
+    },
+    '& .MuiDataGrid-columnHeaders': {
+      backgroundColor: initial.theme,
+      color: 'white',
+      fontWeight: 'bold',
+    },
+
   },
   checkboxSelection: true,
   pagination: true
