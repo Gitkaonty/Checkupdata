@@ -22,10 +22,10 @@ router.get('/getAjustementExterne', etatFinancierController.getAjustementExterne
 router.delete('/deleteAjustementExterne/:id', verifyJWT, verifyPermission('DELETE'), etatFinancierController.deleteAjustementExterne);
 
 // Exportation en pdf
-router.get('/exportEtatFinancierToPdf/:id_compte/:id_dossier/:id_exercice/:id_etat', etatFinancierController.exportEtatFinancierToPdf);
+router.get('/exportEtatFinancierToPdf/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_etat', etatFinancierController.exportEtatFinancierToPdf);
 
 // Exportation en excel
-router.get('/exportEtatFinancierToExcel/:id_compte/:id_dossier/:id_exercice/:id_etat', etatFinancierController.exportEtatFinancierToExcel);
+router.get('/exportEtatFinancierToExcel/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_etat', etatFinancierController.exportEtatFinancierToExcel);
 
 // Exporter tout en excel
 router.get('/exportAllEtatFinancierToExcel/:id_compte/:id_dossier/:id_exercice', etatFinancierController.exportAllEtatFinancierToExcel);

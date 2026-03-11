@@ -259,6 +259,7 @@ export default function EtatFinancier() {
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
+    const [listePeriode, setListePeriode] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
 
     const [showBilan, setShowBilan] = useState('actif');
@@ -304,10 +305,25 @@ export default function EtatFinancier() {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
         setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        setSelectedPeriodeId(exercice_id);
+        // setSelectedPeriodeId(exercice_id);
 
         getVerouillageEtatFinancier(compteId, fileId, exercice_id);
     }
+
+    // Chargement des périodes par exercice
+    const getPeriodes = async () => {
+        const id_exercice = Number(selectedExerciceId);
+
+        axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+            .then((response) => {
+                if (response?.data?.state) {
+                    const data = response?.data?.data;
+                    setListePeriode(data);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            });
+    };
 
     //Choix période
     const handleChangePeriode = (choix) => {
@@ -315,7 +331,7 @@ export default function EtatFinancier() {
 
         if (choix === 0) {
             setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
-            setSelectedPeriodeId(selectedExerciceId);
+            setSelectedPeriodeId(0);
 
             getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
         } else if (choix === 1) {
@@ -377,6 +393,10 @@ export default function EtatFinancier() {
                     setDeviseParDefaut(defaultDevise.code);
                 }
             })
+    }
+
+    const handleChangePeriod = (period_id) => {
+        setSelectedPeriodeId(period_id);
     }
 
     //===========================================================================================
@@ -531,7 +551,7 @@ export default function EtatFinancier() {
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
-                setSelectedPeriodeId(exerciceNId[0].id);
+                // setSelectedPeriodeId(exerciceNId[0].id);
 
                 getVerouillageEtatFinancier(compteId, id, exerciceNId[0].id);
             } else {
@@ -579,9 +599,9 @@ export default function EtatFinancier() {
             if (resData.state) {
                 const list = resData.list;
                 setListeSituation(resData.list);
-                if (list.length > 0) {
-                    setSelectedPeriodeId(list[0].id);
-                }
+                // if (list.length > 0) {
+                //     setSelectedPeriodeId(list[0].id);
+                // }
             } else {
                 setListeSituation([]);
                 //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
@@ -591,10 +611,15 @@ export default function EtatFinancier() {
     }
 
     const getEtatFinancier = () => {
+        const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+        const date_debut_periode = periodeData?.date_debut;
+        const date_fin_periode = periodeData?.date_fin;
         axios.post(`/administration/etatFinancier/getEtatFinancier`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
-            id_exercice: Number(selectedExerciceId)
+            id_exercice: Number(selectedExerciceId),
+            date_debut_periode,
+            date_fin_periode
         })
             .then((response) => {
                 const resData = response?.data;
@@ -629,14 +654,16 @@ export default function EtatFinancier() {
             libelle = "EVCP"
         }
 
+        let id_periode = Number(selectedPeriodeId) ?? 0;
+
         if (type === "PDF") {
             window.open(
-                `${URL}/administration/etatFinancier/exportEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`,
+                `${URL}/administration/etatFinancier/exportEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${libelle}`,
                 "_blank"
             );
         } else {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancier/exportEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`;
+            link.href = `${URL}/administration/etatFinancier/exportEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${libelle}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -687,7 +714,13 @@ export default function EtatFinancier() {
             getEtatFinancier();
             getListeDevises();
         }
-    }, [fileId, compteId, selectedExerciceId, isRefreshed])
+    }, [fileId, compteId, selectedExerciceId, isRefreshed, selectedPeriodeId])
+
+    useEffect(() => {
+        if (selectedExerciceId) {
+            getPeriodes();
+        }
+    }, [selectedExerciceId]);
 
     return (
         <Box>
@@ -777,16 +810,21 @@ export default function EtatFinancier() {
                                     <Select
                                         labelId="demo-simple-select-standard-label"
                                         id="demo-simple-select-standard"
+                                        disabled={selectedPeriodeChoiceId === 0}
                                         value={selectedPeriodeId}
                                         label={"valSelect"}
-                                        onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                                        onChange={(e) => {
+                                            // handleChangeDateIntervalle(e.target.value)
+                                            // setSelectedPeriodeId(e.target.value);
+                                            handleChangePeriod(e.target.value)
+                                        }}
                                         sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
                                         MenuProps={{
                                             disableScrollLock: true
                                         }}
                                     >
-                                        {listeSituation?.map((option) => (
-                                            <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                                        {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                                            <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
                                         ))
                                         }
                                     </Select>
@@ -897,6 +935,7 @@ export default function EtatFinancier() {
                                                     state={verrBilan}
                                                     setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                                 />
                                             </Stack>
                                             : null
@@ -917,6 +956,7 @@ export default function EtatFinancier() {
                                                     state={verrBilan}
                                                     setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                                 />
                                             </Stack>
                                             : null
@@ -986,6 +1026,7 @@ export default function EtatFinancier() {
                                                 state={verrCrn}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1053,6 +1094,7 @@ export default function EtatFinancier() {
                                                 state={verrCrf}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1120,6 +1162,7 @@ export default function EtatFinancier() {
                                                 state={verrTftd}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1187,6 +1230,7 @@ export default function EtatFinancier() {
                                                 state={verrTfti}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1271,6 +1315,7 @@ export default function EtatFinancier() {
                                                 state={verrEvcp}
                                                 setIsRefreshed={() => setIsRefreshed(prev => !prev)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 

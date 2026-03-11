@@ -33,6 +33,7 @@ const exercices = db.exercices;
 const userscomptes = db.userscomptes;
 const etatsEtatFinancier = db.etatsEtatFinancier;
 const rubriqueExternesEvcp = db.rubriqueExternesEvcp;
+const periodes = db.periodes;
 
 const generateBilanContent = etatFinancierGeneratePdf.generateBilanContent;
 const generateBilanActifContent = etatFinancierGeneratePdf.generateBilanActifContent;
@@ -88,9 +89,9 @@ const formatDate = (dateStr) => {
     return `${jour.padStart(2, '0')}-${mois.padStart(2, '0')}-${annee}`;
 };
 
-const infoBlock = (dossier, compte, exercice) => ([
+const infoBlock = (dossier, compte, exercice, texteDatePeriode) => ([
     { text: `Dossier : ${dossier?.dossier}`, style: 'subTitle', margin: [0, 0, 0, 5] },
-    { text: `Période du : ${formatDate(exercice.date_debut)} au ${formatDate(exercice.date_fin)}`, style: 'subTitle1', margin: [0, 0, 0, 10] }
+    { text: texteDatePeriode, style: 'subTitle1', margin: [0, 0, 0, 10] }
 ]);
 
 const generateTableauAuto = async (id_dossier, id_exercice, id_compte, id_etat) => {
@@ -528,13 +529,20 @@ exports.deleteAjustementExterne = async (req, res) => {
 
 exports.exportEtatFinancierToPdf = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_etat, id_periode } = req.params;
         if (!id_dossier || !id_compte || !id_exercice || !id_etat) {
             return res.status(400).json({ msg: 'Paramètres manquants' });
         }
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
         const compte = await userscomptes.findByPk(id_compte);
+        const periode = await periodes.findByPk(id_periode);
+
+        let date_debut_periode, date_fin_periode = null;
+        if (periode) {
+            date_debut_periode = periode?.date_debut;
+            date_fin_periode = periode?.date_fin;
+        }
 
         const fonts = {
             Helvetica: {
@@ -547,17 +555,25 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
 
         const printer = new PdfPrinter(fonts);
 
+        let texteDatePeriode = '';
+
+        if (date_debut_periode && date_fin_periode) {
+            texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+        } else {
+            texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+        }
+
         let docDefinition = {}
         if (id_etat === 'BILAN') {
-            const { buildTable, bilanActifData, bilanPassifData } = await generateBilanContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, bilanActifData, bilanPassifData } = await generateBilanContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Bilan actif', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(bilanActifData, 'actif'),
                     { text: '', pageBreak: 'before' },
                     { text: 'Bilan passif', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(bilanPassifData, 'passif')
                 ],
                 background: function (currentPage, pageSize) {
@@ -581,11 +597,11 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'CRN') {
-            const { buildTable, crnData } = await generateCrnContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, crnData } = await generateCrnContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Compte de résultat par nature', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(crnData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -609,11 +625,11 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'CRF') {
-            const { buildTable, crfData } = await generateCrfContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, crfData } = await generateCrfContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Compte de résultat par fonction', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(crfData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -637,11 +653,11 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'TFTD') {
-            const { buildTable, tftdData } = await generateTftdContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, tftdData } = await generateTftdContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Tableau de flux de trésoreries méthode directe', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(tftdData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -665,11 +681,11 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'TFTI') {
-            const { buildTable, tftiData } = await generateTftiContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, tftiData } = await generateTftiContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Tableau de flux de trésoreries méthode indirecte', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(tftiData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -699,7 +715,7 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                 pageOrientation: 'landscape',
                 content: [
                     { text: 'Etat de variation des capitaux propres', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(evcpData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -723,13 +739,13 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'SIG') {
-            const { buildTable, sigData } = await generateSigContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, sigData } = await generateSigContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 pageSize: 'A4',
                 pageOrientation: 'landscape',
                 content: [
                     { text: 'Soldes intermédiaires de géstion', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(sigData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -770,7 +786,7 @@ exports.exportEtatFinancierToPdf = async (req, res) => {
 
 exports.exportEtatFinancierToExcel = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_etat, id_periode } = req.params;
         if (!id_dossier || !id_compte || !id_exercice || !id_etat) {
             return res.status(400).json({ msg: 'Paramètres manquants' });
         }
@@ -1016,7 +1032,7 @@ exports.lockEtatFinancier = async (req, res) => {
 
 exports.getEtatFinancier = async (req, res) => {
     try {
-        const { id_compte, id_dossier, id_exercice, id_etat } = req.body;
+        const { id_compte, id_dossier, id_exercice, id_etat, date_debut_periode, date_fin_periode } = req.body;
         // if (!id_etat) {
         //   return res.json({ state: false, message: 'Tableau non trouvé' });
         // }
@@ -1030,7 +1046,7 @@ exports.getEtatFinancier = async (req, res) => {
             return res.json({ state: false, message: ('Exercice non trouvé') });
         }
 
-        const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice, id_etat);
+        const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
 
         const rubriqueExterneEvcpData = (await rubriqueExternesEvcp.findAll({
             where: {
@@ -1086,7 +1102,7 @@ exports.getEtatFinancier = async (req, res) => {
 
 exports.getSig = async (req, res) => {
     try {
-        const { id_compte, id_dossier, id_exercice, id_etat } = req.body;
+        const { id_compte, id_dossier, id_exercice, id_etat, date_debut_periode, date_fin_periode } = req.body;
         // if (!id_etat) {
         //   return res.json({ state: false, message: 'Tableau non trouvé' });
         // }
@@ -1100,7 +1116,7 @@ exports.getSig = async (req, res) => {
             return res.json({ state: false, message: ('Exercice non trouvé') });
         }
 
-        const data = await getSigComplet(id_compte, id_dossier, id_exercice, id_etat);
+        const data = await getSigComplet(id_compte, id_dossier, id_exercice, id_etat, date_debut_periode, date_fin_periode);
 
         return res.json({
             liste: data,
@@ -1114,7 +1130,7 @@ exports.getSig = async (req, res) => {
 
 exports.getEtatFinancierDetail = async (req, res) => {
     try {
-        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable } = req.body;
+        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable, date_debut_periode, date_fin_periode } = req.body;
         if (!id_etat) {
             return res.json({ state: false, message: 'Tableau non trouvé' });
         }
@@ -1130,7 +1146,7 @@ exports.getEtatFinancierDetail = async (req, res) => {
         if (!id_rubrique) {
             return res.json({ state: false, message: 'Rubrique non trouvé' });
         }
-        const data = await getDetailLigneEtatFinancier(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable);
+        const data = await getDetailLigneEtatFinancier(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, date_debut_periode, date_fin_periode);
         return res.json({ state: true, detail: data });
     } catch (error) {
         console.log(error);
