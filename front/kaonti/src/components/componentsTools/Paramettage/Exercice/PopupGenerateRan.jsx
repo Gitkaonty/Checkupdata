@@ -1,4 +1,4 @@
-import { Typography, Stack, Button, Dialog, DialogContent, DialogActions, IconButton, DialogTitle, FormControlLabel } from '@mui/material';
+import { Typography, Stack, Button, Dialog, DialogContent, DialogActions, IconButton, DialogTitle, FormControlLabel, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import { init } from '../../../../../init';
@@ -25,37 +25,53 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExerciceRow, longeurCompte, listeExercice, idRan, defaultDeviseData }) => {
     const id_exercice = selectedExerciceRow[0];
     const [isDetailled, setIsDetailled] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const exerciceData = listeExercice.find(val => Number(val.id) === Number(id_exercice));
     const dateDebut = exerciceData?.date_debut;
 
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     const handleSubmit = async () => {
-        await axios.post('/administration/traitementSaisie/genererRan', {
-            id_compte: Number(id_compte),
-            id_dossier: Number(id_dossier),
-            id_exercice: Number(id_exercice),
-            isDetailled,
-            longeurCompte: Number(longeurCompte),
-            dateDebut,
-            idRan,
-            defaultDeviseData
-        }).then((response) => {
-            if (response?.data?.state) {
-                toast.success(response?.data?.message);
-            } else {
-                toast.error(response?.data?.message);
-            }
-        })
-        handleClose();
+        setIsLoading(true);
+        try {
+            await sleep(5000);
+            await axios.post('/administration/traitementSaisie/genererRan', {
+                id_compte: Number(id_compte),
+                id_dossier: Number(id_dossier),
+                id_exercice: Number(id_exercice),
+                isDetailled,
+                longeurCompte: Number(longeurCompte),
+                dateDebut,
+                idRan,
+                defaultDeviseData
+            }).then((response) => {
+                if (response?.data?.state) {
+                    toast.success(response?.data?.message);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            })
+        } catch (error) {
+            const errMsg = error.response?.data?.message || error.message || "Erreur inconnue";
+            toast.error(errMsg);
+        } finally {
+            handleClose();
+        }
+        setIsLoading(false);
     }
 
     return (
         <BootstrapDialog
-            onClose={handleClose}
             aria-labelledby="confirmation-dialog-title"
             open={true}
             maxWidth="sm"
             fullWidth
+            onClose={(event, reason) => {
+                if (isLoading) return;
+                if (reason === "backdropClick") return;
+                handleClose();
+            }}
         >
             <DialogTitle
                 id="customized-dialog-title"
@@ -81,6 +97,7 @@ const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExercice
                     top: 8,
                     color: (theme) => theme.palette.grey[500],
                 }}
+                disabled={isLoading}
             >
                 <CloseIcon />
             </IconButton>
@@ -120,16 +137,29 @@ const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExercice
                             autoFocus
                             style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}
                             onClick={handleClose}
+                            disabled={isLoading}
                         >
                             Annuler
                         </Button>
                         <Button
                             autoFocus
-                            style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}
+                            style={{
+                                backgroundColor: initial.theme,
+                                color: 'white',
+                                width: isLoading ? '110px' : '100px',
+                                textTransform: 'none',
+                                outline: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                            }}
                             type='submit'
                             onClick={handleSubmit}
+                            disabled={isLoading}
                         >
-                            Générer
+                            <span>Générer</span>
+                            {isLoading && <CircularProgress size={18} color="inherit" />}
                         </Button>
                     </Stack>
                 </Stack>

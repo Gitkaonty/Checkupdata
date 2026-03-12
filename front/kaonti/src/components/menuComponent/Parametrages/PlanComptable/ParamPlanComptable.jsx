@@ -632,7 +632,7 @@ export default function ParamPlanComptable() {
 
     //Affichage du plan comptable
     const showPc = () => {
-        axios.post(`/paramPlanComptable/pc`, { fileId, compteId }).then((response) => {
+        axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 let listePc = resData.liste;

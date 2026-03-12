@@ -142,7 +142,7 @@ export default function ParamChiffreAffairesComponent() {
     }
 
     const recupPc = () => {
-        axios.post(`/paramPlanComptable/pc`, { fileId }).then((response) => {
+        axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 const pcToFilter = resData.liste || [];
@@ -172,12 +172,12 @@ export default function ParamChiffreAffairesComponent() {
     }
 
     useEffect(() => {
-        if (fileId && fileId !== '0' && fileId !== 0 && fileId !== null && fileId !== undefined) {
+        if (fileId && compteId) {
             recupPc();
             GetListeCodeTva();
             getListeParamTva();
         }
-    }, [fileId]);
+    }, [fileId, compteId]);
 
     const handleChangeCompte = (value) => {
         const infosCompte = pc?.filter((row) => row.id === value) || [];

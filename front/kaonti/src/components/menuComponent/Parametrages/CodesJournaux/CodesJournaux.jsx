@@ -161,8 +161,7 @@ export default function ParamCodeJournalComponent() {
 
     //Récupération du plan comptable
     const showPc = () => {
-        console.log('[showPc] Chargement du plan comptable pour fileId:', fileId, 'compteId:', compteId);
-        axiosPrivate.post(`/paramPlanComptable/pc`, { fileId, compteId }).then((response) => {
+        axiosPrivate.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             console.log('[showPc] Réponse reçue:', resData);
             if (resData.state) {
@@ -179,12 +178,11 @@ export default function ParamCodeJournalComponent() {
     }
 
     useEffect(() => {
-        console.log('[useEffect] canView:', canView, 'fileId:', fileId);
-        if (canView && fileId) {
+        if (canView && fileId && compteId) {
             showPc();
             GetListeCodeJournaux(fileId);
         }
-    }, [fileId]);
+    }, [fileId, compteId]);
 
     //Entete du tableau
     const type = [

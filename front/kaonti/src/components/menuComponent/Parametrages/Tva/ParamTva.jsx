@@ -150,7 +150,7 @@ export default function ParamTVAComponent() {
 
     //Récupération du plan comptable
     const recupPc = () => {
-        axios.post(`/paramPlanComptable/pc`, { fileId }).then((response) => {
+        axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 const pcToFilter = resData.liste;
@@ -178,10 +178,12 @@ export default function ParamTVAComponent() {
     }
 
     useEffect(() => {
-        recupPc();
-        GetListeCodeTva();
-        getListeParamTva();
-    }, [fileId]);
+        if (fileId && compteId) {
+            recupPc();
+            GetListeCodeTva();
+            getListeParamTva();
+        }
+    }, [fileId, compteId]);
 
     //filtrer et associer à formik le choix de compte
     const handleChangeCompte = (value) => {
