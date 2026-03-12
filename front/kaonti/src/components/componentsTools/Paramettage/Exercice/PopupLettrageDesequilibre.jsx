@@ -7,7 +7,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 const initial = init[0];
 
-const PopupLettrageDesequilibre = ({ onClose, open, data }) => {
+const PopupLettrageDesequilibre = ({ onClose, open, data, setOpenPopupGenerateRan }) => {
 
     const column = [
         {
@@ -239,6 +239,16 @@ const PopupLettrageDesequilibre = ({ onClose, open, data }) => {
                     style={{ backgroundColor: initial.theme, color: 'white', width: "100px", textTransform: 'none', outline: 'none' }}
                 >
                     Fermer
+                </Button>
+                <Button
+                    autoFocus
+                    onClick={() => {
+                        onClose();
+                        setOpenPopupGenerateRan();
+                    }}
+                    style={{ backgroundColor: initial.theme, color: 'white', width: "180px", textTransform: 'none', outline: 'none' }}
+                >
+                    Générer quand même
                 </Button>
             </DialogActions>
         </Dialog>

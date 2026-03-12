@@ -4026,6 +4026,8 @@ exports.genererRan = async (req, res) => {
             return res.json({ state: false, message: 'Aucune exercice N-1 trouvée' });
         }
 
+        let createdData = [];
+
         const querryRan = `
             DELETE FROM journals j
             USING codejournals c
@@ -4088,6 +4090,8 @@ exports.genererRan = async (req, res) => {
                         replacements: { id_dossier, id_exerciceN1, id_exercice, id_compte, id_ecriture, dateecriture, id_journal: idRan, devise, id_devise, id_numcpt, compte, libelle: libelleCompte, dateecriture, libelleJournal },
                         transaction: t
                     });
+
+                    createdData = rows;
 
                     nombreGenere = rows[0].length;
 
@@ -4197,6 +4201,8 @@ exports.genererRan = async (req, res) => {
                         transaction: t
                     })
 
+                    createdData = rows;
+
                     nombreGenere = rows[0].length;
 
                 } else {
@@ -4204,6 +4210,20 @@ exports.genererRan = async (req, res) => {
                 }
             }
         });
+
+        const entries = createdData[0];
+
+        const totals = entries.reduce(
+            (acc, item) => {
+                acc.totalDebit += item.debit || 0;
+                acc.totalCredit += item.credit || 0;
+                return acc;
+            },
+            { totalDebit: 0, totalCredit: 0 }
+        );
+
+        console.log('Total Débit :', totals.totalDebit);
+        console.log('Total Crédit :', totals.totalCredit);
 
         return res.json({ state: true, message: `${nombreGenere} 'A-nouveaux ${texte}' ${pluralize(nombreGenere, 'générée')} avec succès` });
     } catch (error) {
@@ -4403,7 +4423,7 @@ exports.getJournalsConsultation = async (req, res) => {
                 j.id_dossier,
                 j.dateecriture,
                 j.id_journal,
-                cj.code AS journal,
+                cj.type AS journal,
                 j.piece, 
                 j.libelle,
                 j.fichier,

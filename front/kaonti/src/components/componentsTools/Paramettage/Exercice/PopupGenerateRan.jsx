@@ -35,7 +35,7 @@ const PopupGenerateRan = ({ handleClose, id_compte, id_dossier, selectedExercice
     const handleSubmit = async () => {
         setIsLoading(true);
         try {
-            await sleep(5000);
+            // await sleep(5000);
             await axios.post('/administration/traitementSaisie/genererRan', {
                 id_compte: Number(id_compte),
                 id_dossier: Number(id_dossier),
