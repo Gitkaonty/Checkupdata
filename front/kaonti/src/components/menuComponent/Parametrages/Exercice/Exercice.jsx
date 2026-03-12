@@ -767,6 +767,9 @@ export default function ParamExerciceComponent() {
                 }
                 setOpenPopupGenerateRan(true);
             } else {
+                if (response?.data?.noExercice) {
+                    return toast.error(response?.data?.message);
+                }
                 setOpenPopupLettrageDesequilibre(true);
                 setCompteLettrageData(response?.data?.data);
             }

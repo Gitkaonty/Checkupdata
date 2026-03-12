@@ -61,8 +61,6 @@ export default function SaisieComponent() {
     const [selectedRows, setSelectedRows] = useState([]);
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
-    console.log('selectedRows : ', selectedRows);
-
     const gridRef = useRef(null)
     const [scrollbarVisible, setScrollbarVisible] = useState(false);
 
@@ -249,16 +247,16 @@ export default function SaisieComponent() {
             align: 'left',
             headerClassName: 'HeaderbackColor',
         },
-        {
-            field: 'lettrage',
-            headerName: 'Let',
-            type: 'string',
-            sortable: true,
-            flex: 0.6,
-            headerAlign: 'left',
-            align: 'left',
-            headerClassName: 'HeaderbackColor',
-        },
+        // {
+        //     field: 'comptegen',
+        //     headerName: 'Let',
+        //     type: 'string',
+        //     sortable: true,
+        //     flex: 0.6,
+        //     headerAlign: 'left',
+        //     align: 'left',
+        //     headerClassName: 'HeaderbackColor',
+        // },
         {
             field: 'dateecriture',
             headerName: 'Date',

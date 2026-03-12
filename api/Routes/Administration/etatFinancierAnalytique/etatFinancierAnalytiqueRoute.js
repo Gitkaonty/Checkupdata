@@ -22,16 +22,16 @@ router.get('/getAjustementExterneAnalytique', etatFinancierControllerAnalytique.
 router.delete('/deleteAjustementExterneAnalytique/:id', verifyJWT, verifyPermission('DELETE'), etatFinancierControllerAnalytique.deleteAjustementExterneAnalytique);
 
 // Exportation en pdf
-router.get('/exportEtatFinancierAnalytiqueToPdf/:id_compte/:id_dossier/:id_exercice/:id_etat/:id_axe/:id_section', etatFinancierControllerAnalytique.exportEtatFinancierAnalytiqueToPdf);
+router.get('/exportEtatFinancierAnalytiqueToPdf/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_etat/:id_axe/:id_section', etatFinancierControllerAnalytique.exportEtatFinancierAnalytiqueToPdf);
 
 // Exportation en excel
-router.get('/exportEtatFinancierAnalytiqueToExcel/:id_compte/:id_dossier/:id_exercice/:id_etat/:id_axe/:id_section', etatFinancierControllerAnalytique.exportEtatFinancierAnalytiqueToExcel);
+router.get('/exportEtatFinancierAnalytiqueToExcel/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_etat/:id_axe/:id_section', etatFinancierControllerAnalytique.exportEtatFinancierAnalytiqueToExcel);
 
 // Exporter tout en excel
-router.get('/exportAllEtatFinancierAnalytiqueToExcel/:id_compte/:id_dossier/:id_exercice/:id_axe/:id_section', etatFinancierControllerAnalytique.exportAllEtatFinancierAnalytiqueToExcel);
+router.get('/exportAllEtatFinancierAnalytiqueToExcel/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_axe/:id_section', etatFinancierControllerAnalytique.exportAllEtatFinancierAnalytiqueToExcel);
 
 // Exporter tout en PDF
-router.get('/exportAllEtatFinancierAnalytiqueToPdf/:id_compte/:id_dossier/:id_exercice/:id_axe/:id_section', etatFinancierControllerAnalytique.exportAllEtatFinancierAnalytiqueToPdf);
+router.get('/exportAllEtatFinancierAnalytiqueToPdf/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_axe/:id_section', etatFinancierControllerAnalytique.exportAllEtatFinancierAnalytiqueToPdf);
 
 // Récupération des états du tableau états financiers
 router.post('/getVerouillageEtatFinancierAnalytique', etatFinancierControllerAnalytique.getVerouillageEtatFinancierAnalytique);

@@ -1,10 +1,15 @@
 const db = require('../../Models');
 const recupExerciceN1 = require('../../Middlewares/Standard/recupExerciceN1');
 
-const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_axe, id_section) => {
+const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_axe, id_section, date_debut_periode, date_fin_periode, type) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
+    let dateFilter = '';
+    if (date_debut_periode && date_fin_periode && type === 'N') {
+        dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
+    }
 
     const rows = await db.sequelize.query(
         `
@@ -48,7 +53,6 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id
                 J.ID_DOSSIER = :id_dossier
                 AND J.ID_EXERCICE = :id_exercice
                 AND J.ID_COMPTE = :id_compte
-
                 AND NOT EXISTS (
                     SELECT 1
                     FROM DOSSIERPLANCOMPTABLES DPC
@@ -58,6 +62,7 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id
                         AND DPC.ID_COMPTE = :id_exercice
                         AND DPC.NATURE = 'Collectif'
                 )
+                ${dateFilter}
 
                 AND A.ID_AXE = :id_axe
                 AND A.ID_SECTION IN (:id_section)
@@ -2569,25 +2574,25 @@ const runEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1, id_axe, id_section }
+            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1, id_axe, id_section, date_debut_periode, date_fin_periode }
         }
     );
 
     return rows;
 }
 
-const getEtatFinancierAnalytiqueComplet = async (id_compte, id_dossier, id_exercice, id_etat, id_axe, id_section) => {
+const getEtatFinancierAnalytiqueComplet = async (id_compte, id_dossier, id_exercice, id_etat, id_axe, id_section, date_debut_periode, date_fin_periode) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
 
-    const rowsN = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_section);
+    const rowsN = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_section, date_debut_periode, date_fin_periode, 'N');
 
     const id_exercice_N1 = id_exerciceN1 ?? 0;
     let rowsN1 = [];
 
     if (id_exercice_N1 !== 0) {
-        rowsN1 = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice_N1, id_axe, id_section);
+        rowsN1 = await runEtatFinancierAnalytique(id_compte, id_dossier, id_exercice_N1, id_axe, id_section, date_debut_periode, date_fin_periode, 'N');
     }
 
     const mapN1 = Object.fromEntries(
@@ -2605,7 +2610,12 @@ const getEtatFinancierAnalytiqueComplet = async (id_compte, id_dossier, id_exerc
     return finalRows;
 };
 
-const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, id_axe, id_section) => {
+const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, id_axe, id_section, date_debut_periode, date_fin_periode) => {
+    let dateFilter = '';
+    if (date_debut_periode && date_fin_periode) {
+        dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
+    }
+
     const rows = await db.sequelize.query(
         `
             WITH balance AS (
@@ -2649,7 +2659,6 @@ const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_e
                     J.ID_DOSSIER = :id_dossier
                     AND J.ID_EXERCICE = :id_exercice
                     AND J.ID_COMPTE = :id_compte
-
                     AND NOT EXISTS (
                         SELECT 1
                         FROM DOSSIERPLANCOMPTABLES DPC
@@ -2659,6 +2668,7 @@ const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_e
                             AND DPC.ID_COMPTE = :id_exercice
                             AND DPC.NATURE = 'Collectif'
                     )
+                    ${dateFilter}
 
                     AND A.ID_AXE = :id_axe
                     AND A.ID_SECTION IN (:id_section)
@@ -2789,7 +2799,7 @@ const getDetailLigneEtatFinancierAnalytique = async (id_compte, id_dossier, id_e
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_rubrique, id_etat, subtable, id_axe, id_section }
+            replacements: { id_compte, id_dossier, id_exercice, id_rubrique, id_etat, subtable, id_axe, id_section, date_debut_periode, date_fin_periode }
         }
     )
 

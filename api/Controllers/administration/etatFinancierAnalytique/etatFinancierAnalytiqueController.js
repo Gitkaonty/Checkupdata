@@ -19,6 +19,7 @@ const etatsEtatFinancierAnalitiques = db.etatsEtatFinancierAnalitiques;
 const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
 const caAxes = db.caAxes;
 const caSections = db.caSections;
+const periodes = db.periodes;
 
 const recupEtatFinancierAnalytique = require('../../../Middlewares/Administration/EtatFinancierAnalytique');
 const getEtatFinancierAnalytiqueComplet = recupEtatFinancierAnalytique.getEtatFinancierAnalytiqueComplet;
@@ -293,7 +294,7 @@ exports.getEtatFinancierAnalytiqueGlobal = async (req, res) => {
 
 exports.generateTableEtatFinancierAnalytique = async (req, res) => {
     try {
-        const { id_dossier, id_exercice, id_compte, id_etat, id_axe, id_sections } = req.body;
+        const { id_dossier, id_exercice, id_compte, id_etat, id_axe, id_sections, date_debut_periode, date_fin_periode, } = req.body;
 
         if (!id_compte) {
             return res.status(200).json({ state: false, message: 'id_compte manquant' });
@@ -359,7 +360,7 @@ exports.generateTableEtatFinancierAnalytique = async (req, res) => {
 
             success = actifSuccess && passifSuccess;
         } else if (id_etat === 'EVCP') {
-            success = await totalRubriqueExterneEVCPAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_sections);
+            success = await totalRubriqueExterneEVCPAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_sections, date_debut_periode, date_fin_periode,);
         } else {
             success = await generateTableauAnalytiqueAuto(id_dossier, id_exercice, id_compte, id_etat, id_axe, id_sections);
         }
@@ -405,7 +406,9 @@ exports.addModifyAjustementExterneAnalytique = async (req, res) => {
             motif,
             montant,
             id_axe,
-            id_sections
+            id_sections,
+            date_debut_periode,
+            date_fin_periode,
         } = req.body;
 
         let resData = {
@@ -478,10 +481,11 @@ exports.addModifyAjustementExterneAnalytique = async (req, res) => {
         }
 
         if (id_etat === 'EVCP') {
-            await totalRubriqueExterneEVCPAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_sections);
-        } else {
-            await updateSoldeEtatFinancierAnalytique(id_dossier, id_compte, id_exercice, id_etat, id_axe, id_sections);
+            await totalRubriqueExterneEVCPAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_sections, date_debut_periode, date_fin_periode,);
         }
+        //  else {
+        //     await updateSoldeEtatFinancierAnalytique(id_dossier, id_compte, id_exercice, id_etat, id_axe, id_sections);
+        // }
 
         return res.json(resData);
     } catch (error) {
@@ -530,7 +534,9 @@ exports.deleteAjustementExterneAnalytique = async (req, res) => {
         const { id } = req.params;
         const {
             id_axe,
-            id_sections
+            id_sections,
+            date_debut_periode,
+            date_fin_periode
         } = req.body;
 
         let resData = {
@@ -562,10 +568,11 @@ exports.deleteAjustementExterneAnalytique = async (req, res) => {
         });
 
         if (id_etat === 'EVCP') {
-            await totalRubriqueExterneEVCPAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_sections);
-        } else {
-            await updateSoldeEtatFinancierAnalytique(id_dossier, id_compte, id_exercice, id_etat, id_axe, id_sections);
+            await totalRubriqueExterneEVCPAnalytique(id_compte, id_dossier, id_exercice, id_axe, id_sections, date_debut_periode, date_fin_periode,);
         }
+        // else {
+        //     await updateSoldeEtatFinancierAnalytique(id_dossier, id_compte, id_exercice, id_etat, id_axe, id_sections);
+        // }
 
         if (stateDeleting > 0) {
             resData.state = true;
@@ -645,14 +652,14 @@ exports.lockEtatFinancierAnalytique = async (req, res) => {
     }
 }
 
-const infoBlock = (dossier, compte, exercice) => ([
+const infoBlock = (dossier, compte, exercice, texteDatePeriode) => ([
     { text: `Dossier : ${dossier?.dossier}`, style: 'subTitle', margin: [0, 0, 0, 5] },
-    { text: `Période du : ${formatDate(exercice.date_debut)} au ${formatDate(exercice.date_fin)}`, style: 'subTitle1', margin: [0, 0, 0, 10] }
+    { text: texteDatePeriode, style: 'subTitle1', margin: [0, 0, 0, 10] }
 ]);
 
 exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat, id_axe, id_section } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_etat, id_axe, id_section, id_periode } = req.params;
         const sections = id_section
             ? id_section.split(',').map(id => Number(id))
             : [];
@@ -665,6 +672,13 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
         const compte = await userscomptes.findByPk(id_compte);
+        const periode = await periodes.findByPk(id_periode);
+
+        let date_debut_periode, date_fin_periode = null;
+        if (periode) {
+            date_debut_periode = periode?.date_debut;
+            date_fin_periode = periode?.date_fin;
+        }
 
         const fonts = {
             Helvetica: {
@@ -677,17 +691,25 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
         const printer = new PdfPrinter(fonts);
 
+        let texteDatePeriode = '';
+
+        if (date_debut_periode && date_fin_periode) {
+            texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+        } else {
+            texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+        }
+
         let docDefinition = {}
         if (id_etat === 'BILAN') {
-            const { buildTable, bilanActifData, bilanPassifData } = await generateBilanAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
+            const { buildTable, bilanActifData, bilanPassifData } = await generateBilanAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Bilan actif', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(bilanActifData, 'actif'),
                     { text: '', pageBreak: 'before' },
                     { text: 'Bilan passif', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(bilanPassifData, 'passif')
                 ],
                 background: function (currentPage, pageSize) {
@@ -711,11 +733,11 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'CRN') {
-            const { buildTable, crnData } = await generateCrnAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
+            const { buildTable, crnData } = await generateCrnAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Compte de résultat par nature', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(crnData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -739,11 +761,11 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'CRF') {
-            const { buildTable, crfData } = await generateCrfAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
+            const { buildTable, crfData } = await generateCrfAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Compte de résultat par fonction', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(crfData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -767,11 +789,11 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'TFTD') {
-            const { buildTable, tftdData } = await generateTftdAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
+            const { buildTable, tftdData } = await generateTftdAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Tableau de flux de trésoreries méthode directe', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(tftdData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -795,11 +817,11 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'TFTI') {
-            const { buildTable, tftiData } = await generateTftiAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections);
+            const { buildTable, tftiData } = await generateTftiAnalytiqueContent(id_compte, id_dossier, id_exercice, id_axe, sections, date_debut_periode, date_fin_periode);
             docDefinition = {
                 content: [
                     { text: 'Tableau de flux de trésoreries méthode indirecte', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(tftiData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -823,13 +845,13 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
                 defaultStyle: { font: 'Helvetica', fontSize: 7 }
             };
         } else if (id_etat === 'EVCP') {
-            const { buildTable, evcpData } = await generateEvcpAnalytiqueContent(id_compte, id_dossier, id_exercice);
+            const { buildTable, evcpData } = await generateEvcpAnalytiqueContent(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
             docDefinition = {
                 pageSize: 'A4',
                 pageOrientation: 'landscape',
                 content: [
                     { text: 'Etat de variation des capitaux propres', style: 'title' },
-                    infoBlock(dossier, compte, exercice),
+                    infoBlock(dossier, compte, exercice, texteDatePeriode),
                     ...buildTable(evcpData)
                 ],
                 background: function (currentPage, pageSize) {
@@ -870,7 +892,7 @@ exports.exportEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
 exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_etat, id_axe, id_section } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_etat, id_axe, id_section, id_periode } = req.params;
         const sections = id_section
             ? id_section.split(',').map(id => Number(id))
             : [];
@@ -883,6 +905,13 @@ exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
         const compte = await userscomptes.findByPk(id_compte);
+        const periode = await periodes.findByPk(id_periode);
+
+        let date_debut_periode, date_fin_periode = null;
+        if (periode) {
+            date_debut_periode = periode?.date_debut;
+            date_fin_periode = periode?.date_fin;
+        }
 
         const workbook = new ExcelJS.Workbook();
         if (id_etat === 'BILAN') {
@@ -979,7 +1008,7 @@ const generatePdfBuffer = (printer, docDefinition) => {
 
 exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_axe, id_section } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_axe, id_section, id_periode } = req.params;
         const sectionsAxes = id_section
             ? id_section.split(',').map(id => Number(id))
             : [];
@@ -992,6 +1021,13 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
         const compte = await userscomptes.findByPk(id_compte);
+        const periode = await periodes.findByPk(id_periode);
+
+        let date_debut_periode, date_fin_periode = null;
+        if (periode) {
+            date_debut_periode = periode?.date_debut;
+            date_fin_periode = periode?.date_fin;
+        }
 
         const fonts = {
             Helvetica: {
@@ -1002,6 +1038,14 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
             }
         };
         const printer = new PdfPrinter(fonts);
+
+        let texteDatePeriode = '';
+
+        if (date_debut_periode && date_fin_periode) {
+            texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+        } else {
+            texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+        }
 
         const sections = [
             { generator: generateBilanActifAnalytiqueContent, title: 'Bilan Actif', landscape: false },
@@ -1017,7 +1061,7 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
         for (let i = 0; i < sections.length; i++) {
             const { generator, title, landscape } = sections[i];
-            const { buildTable, ...data } = await generator(id_compte, id_dossier, id_exercice, id_axe, sectionsAxes);
+            const { buildTable, ...data } = await generator(id_compte, id_dossier, id_exercice, id_axe, sectionsAxes, date_debut_periode, date_fin_periode);
             const tableData = Object.values(data).find(v => Array.isArray(v)) || [];
 
             const content = [
@@ -1025,7 +1069,7 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
                     text: title,
                     style: 'title',
                 },
-                infoBlock(dossier, compte, exercice),
+                infoBlock(dossier, compte, exercice, texteDatePeriode),
                 ...(buildTable && tableData.length > 0 ? buildTable(tableData) : [{ text: 'Aucune donnée', italics: true }])
             ];
 
@@ -1077,7 +1121,7 @@ exports.exportAllEtatFinancierAnalytiqueToPdf = async (req, res) => {
 
 exports.getEtatFinancierAnalytique = async (req, res) => {
     try {
-        const { id_compte, id_dossier, id_exercice, id_etat, axeId, sectionId } = req.body;
+        const { id_compte, id_dossier, id_exercice, id_etat, axeId, sectionId, date_debut_periode, date_fin_periode } = req.body;
         // if (!id_etat) {
         //   return res.json({ state: false, message: 'Tableau non trouvé' });
         // }
@@ -1093,7 +1137,7 @@ exports.getEtatFinancierAnalytique = async (req, res) => {
         if (!axeId) return res.json({ state: true, msg: 'Axe vide' });
         if (!sectionId || sectionId.length === 0) return res.json({ state: true, msg: 'Section vide' });
 
-        const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, id_etat, axeId, sectionId);
+        const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, id_etat, axeId, sectionId, date_debut_periode, date_fin_periode);
 
         const rubriqueExterneEvcpData = (await rubriqueExternesEvcpAnalytiques.findAll({
             where: {
@@ -1149,7 +1193,7 @@ exports.getEtatFinancierAnalytique = async (req, res) => {
 
 exports.getEtatFinancierAnalytiqueDetail = async (req, res) => {
     try {
-        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable, axeId, sectionId } = req.body;
+        const { id_etat, id_dossier, id_exercice, id_compte, id_rubrique, subtable, axeId, sectionId, date_debut_periode, date_fin_periode } = req.body;
         if (!id_etat) {
             return res.json({ state: false, message: 'Tableau non trouvé' });
         }
@@ -1165,7 +1209,7 @@ exports.getEtatFinancierAnalytiqueDetail = async (req, res) => {
         if (!id_rubrique) {
             return res.json({ state: false, message: 'Rubrique non trouvé' });
         }
-        const data = await getDetailLigneEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, axeId, sectionId);
+        const data = await getDetailLigneEtatFinancierAnalytique(id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, axeId, sectionId, date_debut_periode, date_fin_periode);
         return res.json({ state: true, detail: data });
     } catch (error) {
         console.log(error);

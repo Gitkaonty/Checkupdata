@@ -16,7 +16,7 @@ import { FaRegPenToSquare } from "react-icons/fa6";
 import { init } from '../../../../init';
 import PopupAjustRubriqueEvcpEtatFinancierAnalytique from './popup/popupAjustRubriqueEvcpEtatFinancierAnalytique';
 
-const virtualTableEvcpEtatFinancierAnalytique = ({ columns, rows, noCollapsible, state, setIsRefreshed, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const virtualTableEvcpEtatFinancierAnalytique = ({ columns, rows, noCollapsible, state, setIsRefreshed, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut, periodeData }) => {
   const initial = init[0];
   const targetColumnId = 'libelle';
   const [openRows, setOpenRows] = useState({});
@@ -105,6 +105,7 @@ const virtualTableEvcpEtatFinancierAnalytique = ({ columns, rows, noCollapsible,
             canDelete={canDelete}
             canModify={canModify}
             deviseParDefaut={deviseParDefaut}
+            periodeData={periodeData}
           />
           :
           null

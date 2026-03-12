@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { DataGrid, frFR } from '@mui/x-data-grid';
 import QuickFilter from './DatagridToolsStyle';
 import { DataGridStyle } from './DatagridToolsStyle';
+import { init } from '../../../init';
+
+const initial = init[0];
 
 export const Datagridbase = ({ row_id, tableRow }) => {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);

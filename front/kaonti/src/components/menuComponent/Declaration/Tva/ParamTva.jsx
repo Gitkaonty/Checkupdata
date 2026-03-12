@@ -1593,7 +1593,7 @@ export default function ParamTVAComponent() {
       console.warn('[ParamTVA] recupPc skipped, fileId vide');
       return;
     }
-    axios.post(`/paramPlanComptable/pc`, { fileId }).then((response) => {
+    axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
       const resData = response.data;
       if (resData.state) {
         const pcToFilter = resData.liste;
@@ -1631,10 +1631,15 @@ export default function ParamTVAComponent() {
   }
 
   useEffect(() => {
-    recupPc();
     GetListeCodeTva();
     getListeParamTva();
   }, [fileId]);
+
+  useEffect(() => {
+    if (compteId && fileId) {
+      recupPc();
+    }
+  }, [compteId, fileId])
 
   // Recharger les données quand refreshCounter change (après calculs automatiques)
   useEffect(() => {

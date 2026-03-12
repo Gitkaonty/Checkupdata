@@ -329,7 +329,7 @@ export default function ImportJournal() {
 
     //Récupération du plan comptable
     const recupPlanComptable = (fileId, compteId) => {
-        axios.post(`/paramPlanComptable/pc`, { fileId, compteId }).then((response) => {
+        axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 const list = Array.isArray(resData.liste) ? resData.liste : [];
