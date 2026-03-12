@@ -4512,19 +4512,19 @@ exports.controleLettrageDesequilibre = async (req, res) => {
             SELECT
                 MAX(J.id) AS id,
                 J.LETTRAGE,
-                MAX(J.COMPTEAUX) AS COMPTE,
+                J.COMPTEAUX AS COMPTE,
                 SUM(J.DEBIT) AS TOTAL_DEBIT,
                 SUM(J.CREDIT) AS TOTAL_CREDIT,
                 SUM(J.DEBIT) - SUM(J.CREDIT) AS SOLDE
-            FROM
-                JOURNALS J
+            FROM JOURNALS J
             WHERE
                 J.ID_DOSSIER = :id_dossier
                 AND J.ID_EXERCICE = :id_exerciceN1
                 AND J.ID_COMPTE = :id_compte
-                AND J.LETTRAGE IS NOT NULL
+                AND COALESCE(J.LETTRAGE, '') <> ''
             GROUP BY
-                J.LETTRAGE
+                J.LETTRAGE,
+                J.COMPTEAUX
             HAVING
                 SUM(J.DEBIT) <> SUM(J.CREDIT)
             ORDER BY
