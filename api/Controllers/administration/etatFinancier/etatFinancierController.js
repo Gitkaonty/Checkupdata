@@ -328,7 +328,7 @@ exports.getEtatFinancierGlobal = async (req, res) => {
 
 exports.generateTableEtatFinancier = async (req, res) => {
     try {
-        const { id_dossier, id_exercice, id_compte } = req.body;
+        const { id_dossier, id_exercice, id_compte, date_debut_periode, date_fin_periode } = req.body;
 
         if (!id_compte) {
             return res.status(400).json({ state: false, message: 'id_compte manquant' });
@@ -340,7 +340,7 @@ exports.generateTableEtatFinancier = async (req, res) => {
             return res.status(400).json({ state: false, message: 'id_exercice manquant' });
         }
 
-        await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
+        await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
 
         return res.status(200).json({
             state: true,
@@ -368,7 +368,9 @@ exports.addModifyAjustementExterne = async (req, res) => {
             id_etat,
             nature,
             motif,
-            montant
+            montant,
+            date_debut_periode,
+            date_fin_periode
         } = req.body;
 
         let resData = {
@@ -441,7 +443,7 @@ exports.addModifyAjustementExterne = async (req, res) => {
         }
 
         if (id_etat === 'EVCP') {
-            await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
+            await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
         }
 
         return res.json(resData);
@@ -489,6 +491,7 @@ exports.getAjustementExterne = async (req, res) => {
 exports.deleteAjustementExterne = async (req, res) => {
     try {
         const { id } = req.params;
+        const { date_debut_periode, date_fin_periode } = req.body;
 
         let resData = {
             state: false,
@@ -513,7 +516,7 @@ exports.deleteAjustementExterne = async (req, res) => {
         });
 
         if (id_etat === 'EVCP') {
-            await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice);
+            await totalRubriqueExterneEVCP(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
         }
 
         if (stateDeleting > 0) {
@@ -1148,6 +1151,7 @@ exports.getEtatFinancier = async (req, res) => {
 exports.getSig = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, id_etat, date_debut_periode, date_fin_periode } = req.body;
+
         // if (!id_etat) {
         //   return res.json({ state: false, message: 'Tableau non trouvé' });
         // }
@@ -1161,7 +1165,7 @@ exports.getSig = async (req, res) => {
             return res.json({ state: false, message: ('Exercice non trouvé') });
         }
 
-        const data = await getSigComplet(id_compte, id_dossier, id_exercice, id_etat, date_debut_periode, date_fin_periode);
+        const data = await getSigComplet(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
 
         return res.json({
             liste: data,

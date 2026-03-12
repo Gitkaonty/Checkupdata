@@ -2560,7 +2560,7 @@ const runEtatFinancier = async (id_compte, id_dossier, id_exercice, date_debut_p
     return rows;
 }
 
-const runSig = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode, type) => {
+const runSig = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
