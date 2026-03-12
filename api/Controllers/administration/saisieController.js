@@ -1806,7 +1806,7 @@ exports.getAllJournal = async (req, res) => {
             )
             SELECT
                 j.*,
-                cj.type AS journal,
+                cj.code AS journal,
                 d.dossier AS dossier
             FROM journals j
             JOIN dossiers d ON d.id = j.id_dossier
@@ -1912,7 +1912,7 @@ exports.getJournalFiltered = async (req, res) => {
             )
             SELECT
                 j.*,
-                cj.type AS journal,
+                cj.code AS journal,
                 d.dossier
             FROM journals j
             JOIN journals_filtres jf ON jf.id_ecriture = j.id_ecriture
