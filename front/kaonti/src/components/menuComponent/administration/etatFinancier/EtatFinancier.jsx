@@ -355,13 +355,18 @@ export default function EtatFinancier() {
     //Refresh tableau
     const handleRefreshTable = async (value) => {
         if (value) {
+            const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+            const date_debut_periode = periodeData?.date_debut;
+            const date_fin_periode = periodeData?.date_fin;
             setIsLoading(true);
             try {
                 await axios.post('/administration/etatFinancier/generateTableEtatFinancier', {
                     id_compte: Number(compteId),
                     id_dossier: Number(fileId),
                     id_exercice: Number(selectedExerciceId),
-                    id_etat: tableToRefresh
+                    id_etat: tableToRefresh,
+                    date_debut_periode,
+                    date_fin_periode
                 }).then((response) => {
                     const resData = response?.data;
                     if (resData.state) {
@@ -715,7 +720,7 @@ export default function EtatFinancier() {
             getEtatFinancier();
             getListeDevises();
         }
-    }, [fileId, compteId, selectedExerciceId, isRefreshed, selectedPeriodeId])
+    }, [fileId, compteId, selectedExerciceId, isRefreshed, selectedPeriodeId]);
 
     useEffect(() => {
         if (selectedExerciceId) {

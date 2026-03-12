@@ -405,7 +405,7 @@ const generateTftdContent = async (id_compte, id_dossier, id_exercice, date_debu
 }
 
 const generateTftiContent = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode) => {
-    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice);
+    const data = await getEtatFinancierComplet(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
     const tftiData = data.filter(val => val.id_etat === 'TFTI');
 
     const buildTable = (data) => {
@@ -570,8 +570,8 @@ const generateEvcpContent = async (id_compte, id_dossier, id_exercice) => {
     }
 }
 
-const generateSigContent = async (id_compte, id_dossier, id_exercice) => {
-    const sigData = await getSigComplet(id_compte, id_dossier, id_exercice);
+const generateSigContent = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode) => {
+    const sigData = await getSigComplet(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
     const buildTable = (data) => {
         const body = [];
 
