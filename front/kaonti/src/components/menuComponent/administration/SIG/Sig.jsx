@@ -105,7 +105,9 @@ export default function Sig() {
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
+    const [listePeriode, setListePeriode] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
+    const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
 
     const [verrSig, setVerrSig] = useState(false);
 
@@ -130,10 +132,25 @@ export default function Sig() {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
         setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        setSelectedPeriodeId(exercice_id);
+        // setSelectedPeriodeId(exercice_id);
 
         getVerouillageEtatFinancier(compteId, fileId, exercice_id);
     }
+
+    // Chargement des périodes par exercice
+    const getPeriodes = async () => {
+        const id_exercice = Number(selectedExerciceId);
+
+        axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+            .then((response) => {
+                if (response?.data?.state) {
+                    const data = response?.data?.data;
+                    setListePeriode(data);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            });
+    };
 
     //Choix période
     const handleChangePeriode = (choix) => {
@@ -141,7 +158,7 @@ export default function Sig() {
 
         if (choix === 0) {
             setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
-            setSelectedPeriodeId(selectedExerciceId);
+            setSelectedPeriodeId(0);
 
             getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
         } else if (choix === 1) {
@@ -288,10 +305,16 @@ export default function Sig() {
     }
 
     const getEtatFinancierGlobal = () => {
+        console.log('Appelé');
+        const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+        const date_debut_periode = periodeData?.date_debut;
+        const date_fin_periode = periodeData?.date_fin;
         axios.post(`/administration/etatFinancier/getSig`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
-            id_exercice: Number(selectedExerciceId)
+            id_exercice: Number(selectedExerciceId),
+            date_debut_periode,
+            date_fin_periode
         })
             .then((response) => {
                 if (response?.data?.state) {
@@ -306,19 +329,36 @@ export default function Sig() {
     // Générer une tableau en PDF ou Excel
     const exportFile = (type) => {
         let libelle = "SIG";
+        let id_periode = Number(selectedPeriodeId) ?? 0;
 
         if (type === "PDF") {
             window.open(
-                `${URL}/administration/etatFinancier/exportEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`,
+                `${URL}/administration/etatFinancier/exportEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${libelle}`,
                 "_blank"
             );
         } else {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancier/exportEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`;
+            link.href = `${URL}/administration/etatFinancier/exportEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${libelle}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
+    }
+
+    const handleChangePeriod = (period_id) => {
+        setSelectedPeriodeId(period_id);
+    }
+
+    // Récupération données liste des devises
+    const getListeDevises = () => {
+        axios.get(`/devises/devise/compte/${compteId}/${fileId}`)
+            .then((response) => {
+                const data = response.data;
+                const defaultDevise = data.find(val => val.par_defaut === true);
+                if (defaultDevise) {
+                    setDeviseParDefaut(defaultDevise.code);
+                }
+            })
     }
 
     //récupérer les informations du dossier sélectionné
@@ -346,8 +386,15 @@ export default function Sig() {
     useEffect(() => {
         if (canView && fileId && compteId && selectedExerciceId) {
             getEtatFinancierGlobal();
+            getListeDevises();
         }
-    }, [fileId, compteId, selectedExerciceId, isRefreshed])
+    }, [fileId, compteId, selectedExerciceId, isRefreshed, selectedPeriodeId]);
+
+    useEffect(() => {
+        if (selectedExerciceId) {
+            getPeriodes();
+        }
+    }, [selectedExerciceId]);
 
     return (
         <>
@@ -438,16 +485,21 @@ export default function Sig() {
                                         <Select
                                             labelId="demo-simple-select-standard-label"
                                             id="demo-simple-select-standard"
+                                            disabled={selectedPeriodeChoiceId === 0}
                                             value={selectedPeriodeId}
                                             label={"valSelect"}
-                                            onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                                            onChange={(e) => {
+                                                // handleChangeDateIntervalle(e.target.value)
+                                                // setSelectedPeriodeId(e.target.value);
+                                                handleChangePeriod(e.target.value)
+                                            }}
                                             sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
                                             MenuProps={{
                                                 disableScrollLock: true
                                             }}
                                         >
-                                            {listeSituation?.map((option) => (
-                                                <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                                            {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                                                <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
                                             ))
                                             }
                                         </Select>
@@ -514,7 +566,9 @@ export default function Sig() {
                                             columns={sigColumn}
                                             rows={sigData}
                                             state={verrSig}
+                                            deviseParDefaut={deviseParDefaut}
                                             setIsRefreshed={() => setIsRefreshed(prev => !prev)}
+                                            periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                         />
                                     </Stack>
 

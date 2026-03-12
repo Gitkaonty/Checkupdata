@@ -185,14 +185,14 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
-        
+
         link.setAttribute('href', url);
         link.setAttribute('download', 'modele_import_analytique.csv');
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         toast.success('Modèle téléchargé avec succès');
     }
 
@@ -264,8 +264,8 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                     confirmationState={handleCloseAnomalieDetails}
                 />
             )}
-            <Dialog 
-                open={open} 
+            <Dialog
+                open={open}
                 onClose={handleClose}
                 maxWidth="md"
                 PaperProps={{
@@ -286,18 +286,18 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                                 <Button
                                     onClick={handleOpenAnomalieDetails}
                                     startIcon={
-                                        <Badge 
+                                        <Badge
                                             badgeContent={nbrAnomalie}
                                             color="error"
                                             overlap="circular"
                                         >
-                                            <IoWarningOutline size={22}/>
+                                            <IoWarningOutline size={22} />
                                         </Badge>
                                     }
-                                    sx={{ 
+                                    sx={{
                                         minWidth: "auto",
                                         padding: 0.5,
-                                        color: 'red', 
+                                        color: 'red',
                                         backgroundColor: 'transparent',
                                         marginTop: -0.5
                                     }}
@@ -381,7 +381,6 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                                     <DataGrid
                                         localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                                         slots={{ toolbar: QuickFilter }}
-                                        sx={DataGridStyle.sx}
                                         rowHeight={DataGridStyle.rowHeight}
                                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                                         columns={columns}
@@ -389,6 +388,21 @@ export default function PopupImportAnalitique({ open, onClose, fileId, compteId,
                                         initialState={{
                                             pagination: {
                                                 paginationModel: { page: 0, pageSize: 50 },
+                                            },
+                                        }}
+                                        sx={{
+                                            ...DataGridStyle.sx,
+                                            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+                                                outline: 'none',
+                                                border: 'none',
+                                            },
+                                            '& .MuiDataGrid-virtualScroller': {
+                                                maxHeight: '100%',
+                                            },
+                                            '& .MuiDataGrid-columnHeaders': {
+                                                backgroundColor: initial.theme,
+                                                color: 'white',
+                                                fontWeight: 'bold',
                                             },
                                         }}
                                         pageSizeOptions={[50, 100]}

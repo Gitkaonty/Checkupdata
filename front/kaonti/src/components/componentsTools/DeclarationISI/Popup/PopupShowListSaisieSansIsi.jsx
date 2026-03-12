@@ -122,6 +122,11 @@ const PopupShowListSaisieSansIsi = ({ confirmationState, listSaiseSansIsi, selec
                                 '& .MuiDataGrid-row.highlight-separator': {
                                     borderBottom: '1px solid red',
                                 },
+                                '& .MuiDataGrid-columnHeaders': {
+                                    backgroundColor: initial.theme,
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                },
                             }}
                             rowHeight={DataGridStyle.rowHeight}
                             columnHeaderHeight={DataGridStyle.columnHeaderHeight}

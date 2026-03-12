@@ -3913,6 +3913,7 @@ const queryCopyJournalNonDetaille = `
         AND ID_COMPTE = :id_compte
         AND ID_DOSSIER = :id_dossier
         AND ID_EXERCICE = :id_exerciceN1
+        AND lettrage IS NULL
     ),
     
     AGG AS (
@@ -4058,6 +4059,16 @@ const getCompteInfos = async (id_compte, id_dossier, longeurCompte, resultat) =>
 exports.genererRan = async (req, res) => {
     try {
         const { id_dossier, id_exercice, id_compte, isDetailled, longeurCompte, dateDebut, idRan, defaultDeviseData } = req.body;
+
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Le compte utilisateur est obligatoire' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: 'L\'éxercice est obligatoire' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Le dossier est obligatoier' });
+        }
 
         const texte = isDetailled ? 'détaillées' : 'non détaillées';
         let nombreGenere = 0;
@@ -4406,17 +4417,18 @@ exports.getCompteConsultation = async (req, res) => {
                 c.id,
                 c.compte,
                 c.libelle,
-                SUM(j.debit) AS total_debit,
-                SUM(j.credit) AS total_credit
+                d.dossier
             FROM dossierplancomptables c
-            INNER JOIN journals j
+            LEFT JOIN dossiers d
+                ON d.id = c.id_dossier
+            LEFT JOIN journals j
                 ON j.compteaux = c.compte
                 AND j.id_compte = :id_compte
                 AND j.id_dossier = :id_dossier
                 AND j.id_exercice = :id_exercice
             WHERE c.id_compte = :id_compte
               AND c.id_dossier = :id_dossier
-            GROUP BY c.id, c.compte, c.libelle
+            GROUP BY c.id, c.compte, c.libelle, d.dossier
             ${havingCondition}
             ORDER BY c.compte
         `;
@@ -4472,6 +4484,7 @@ exports.getJournalsConsultation = async (req, res) => {
                 j.id_ecriture,
                 j.id_dossier,
                 j.dateecriture,
+                j.id_journal,
                 cj.type AS journal,
                 j.piece, 
                 j.libelle,
@@ -4544,6 +4557,68 @@ exports.getJournalsEcriture = async (req, res) => {
         });
 
         return res.json({ state: true, rows });
+
+    } catch (error) {
+        console.error("Erreur getCompteConsultation :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la récupération des comptes. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+}
+
+exports.controleLettrageDesequilibre = async (req, res) => {
+    try {
+        const { id_dossier, id_exercice, id_compte } = req.body;
+
+        if (!id_compte) {
+            return res.json({ state: false, message: 'Le compte utilisateur est obligatoire' });
+        }
+        if (!id_exercice) {
+            return res.json({ state: false, message: 'L\'éxercice est obligatoire' });
+        }
+        if (!id_dossier) {
+            return res.json({ state: false, message: 'Le dossier est obligatoier' });
+        }
+
+        const queryLettrageNonEquilibre = `
+            SELECT
+                MAX(J.id) AS id,
+                J.LETTRAGE,
+                MAX(J.COMPTEAUX) AS COMPTE,
+                SUM(J.DEBIT) AS TOTAL_DEBIT,
+                SUM(J.CREDIT) AS TOTAL_CREDIT,
+                SUM(J.DEBIT) - SUM(J.CREDIT) AS SOLDE
+            FROM
+                JOURNALS J
+            WHERE
+                J.ID_DOSSIER = :id_dossier
+                AND J.ID_EXERCICE = :id_exercice
+                AND J.ID_COMPTE = :id_compte
+                AND J.LETTRAGE IS NOT NULL
+            GROUP BY
+                J.LETTRAGE
+            HAVING
+                SUM(J.DEBIT) <> SUM(J.CREDIT)
+            ORDER BY
+                J.LETTRAGE
+        `;
+
+        const data = await db.sequelize.query(queryLettrageNonEquilibre, {
+            replacements: {
+                id_compte,
+                id_dossier,
+                id_exercice
+            },
+            type: db.sequelize.QueryTypes.SELECT
+        })
+
+        if (data.length > 0) {
+            return res.json({ state: false, data })
+        }
+
+        return res.json({ state: true })
 
     } catch (error) {
         console.error("Erreur getCompteConsultation :", error);

@@ -1,10 +1,15 @@
 const db = require('../../Models');
 const recupExerciceN1 = require('../../Middlewares/Standard/recupExerciceN1');
 
-const runEtatFinancier = async (id_compte, id_dossier, id_exercice) => {
+const runEtatFinancier = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode, type) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
+    let dateFilter = '';
+    if (date_debut_periode && date_fin_periode && type === 'N') {
+        dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
+    }
 
     const rows = await db.sequelize.query(
         `
@@ -49,6 +54,7 @@ const runEtatFinancier = async (id_compte, id_dossier, id_exercice) => {
                     AND DPC.ID_COMPTE = :id_compte
                     AND DPC.NATURE = 'Collectif'
                 )
+                ${dateFilter}
 
             GROUP BY
                 J.COMPTEAUX
@@ -2547,17 +2553,23 @@ const runEtatFinancier = async (id_compte, id_dossier, id_exercice) => {
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1 }
+            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1, date_debut_periode, date_fin_periode }
         }
     );
 
     return rows;
 }
 
-const runSig = async (id_compte, id_dossier, id_exercice) => {
+const runSig = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
+
+    let dateFilter = '';
+    if (date_debut_periode && date_fin_periode) {
+        dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
+    }
+
     const rows = await db.sequelize.query(
         `
         -- BALANCE N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N 
@@ -2601,6 +2613,7 @@ const runSig = async (id_compte, id_dossier, id_exercice) => {
                     AND DPC.ID_COMPTE = :id_compte
                     AND DPC.NATURE = 'Collectif'
                 )
+                ${dateFilter}
 
             GROUP BY
                 J.COMPTEAUX
@@ -3087,25 +3100,25 @@ const runSig = async (id_compte, id_dossier, id_exercice) => {
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1 }
+            replacements: { id_compte, id_dossier, id_exercice, id_exercice_N1: id_exerciceN1, date_debut_periode, date_fin_periode }
         }
     );
 
     return rows;
 }
 
-const getEtatFinancierComplet = async (id_compte, id_dossier, id_exercice, id_etat) => {
+const getEtatFinancierComplet = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode) => {
     const {
         id_exerciceN1,
     } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
 
-    const rowsN = await runEtatFinancier(id_compte, id_dossier, id_exercice);
+    const rowsN = await runEtatFinancier(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode, 'N');
 
     const id_exercice_N1 = id_exerciceN1 ?? 0;
     let rowsN1 = [];
 
     if (id_exercice_N1 !== 0) {
-        rowsN1 = await runEtatFinancier(id_compte, id_dossier, id_exercice_N1);
+        rowsN1 = await runEtatFinancier(id_compte, id_dossier, id_exercice_N1, date_debut_periode, date_fin_periode, 'N1');
     }
 
     const mapN1 = Object.fromEntries(
@@ -3123,8 +3136,8 @@ const getEtatFinancierComplet = async (id_compte, id_dossier, id_exercice, id_et
     return finalRows;
 };
 
-const getSigComplet = async (id_compte, id_dossier, id_exercice) => {
-    const rows = await runSig(id_compte, id_dossier, id_exercice);
+const getSigComplet = async (id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode) => {
+    const rows = await runSig(id_compte, id_dossier, id_exercice, date_debut_periode, date_fin_periode);
     const finalRows = rows.map(r => ({
         id_compte,
         id_dossier,
@@ -3134,7 +3147,12 @@ const getSigComplet = async (id_compte, id_dossier, id_exercice) => {
     return finalRows;
 }
 
-const getDetailLigneEtatFinancier = async (id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable) => {
+const getDetailLigneEtatFinancier = async (id_compte, id_dossier, id_exercice, id_etat, id_rubrique, subtable, date_debut_periode, date_fin_periode) => {
+    let dateFilter = '';
+    if (date_debut_periode && date_fin_periode) {
+        dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
+    }
+
     const rows = await db.sequelize.query(
         `
             WITH balance AS (
@@ -3171,6 +3189,7 @@ const getDetailLigneEtatFinancier = async (id_compte, id_dossier, id_exercice, i
                             AND DPC.ID_COMPTE = :id_compte
                             AND DPC.NATURE = 'Collectif'
                     )
+                    ${dateFilter}
                 GROUP BY J.COMPTEAUX
             ),
 
@@ -3297,7 +3316,7 @@ const getDetailLigneEtatFinancier = async (id_compte, id_dossier, id_exercice, i
         `,
         {
             type: db.Sequelize.QueryTypes.SELECT,
-            replacements: { id_compte, id_dossier, id_exercice, id_rubrique, id_etat, subtable }
+            replacements: { id_compte, id_dossier, id_exercice, id_rubrique, id_etat, subtable, date_debut_periode, date_fin_periode }
         }
     )
 

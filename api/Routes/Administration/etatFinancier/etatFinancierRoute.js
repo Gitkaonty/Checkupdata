@@ -22,16 +22,16 @@ router.get('/getAjustementExterne', etatFinancierController.getAjustementExterne
 router.delete('/deleteAjustementExterne/:id', verifyJWT, verifyPermission('DELETE'), etatFinancierController.deleteAjustementExterne);
 
 // Exportation en pdf
-router.get('/exportEtatFinancierToPdf/:id_compte/:id_dossier/:id_exercice/:id_etat', etatFinancierController.exportEtatFinancierToPdf);
+router.get('/exportEtatFinancierToPdf/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_etat', etatFinancierController.exportEtatFinancierToPdf);
 
 // Exportation en excel
-router.get('/exportEtatFinancierToExcel/:id_compte/:id_dossier/:id_exercice/:id_etat', etatFinancierController.exportEtatFinancierToExcel);
+router.get('/exportEtatFinancierToExcel/:id_compte/:id_dossier/:id_exercice/:id_periode/:id_etat', etatFinancierController.exportEtatFinancierToExcel);
 
 // Exporter tout en excel
-router.get('/exportAllEtatFinancierToExcel/:id_compte/:id_dossier/:id_exercice', etatFinancierController.exportAllEtatFinancierToExcel);
+router.get('/exportAllEtatFinancierToExcel/:id_compte/:id_dossier/:id_periode/:id_exercice', etatFinancierController.exportAllEtatFinancierToExcel);
 
 // Exporter tout en PDF
-router.get('/exportAllEtatFinancierToPdf/:id_compte/:id_dossier/:id_exercice', etatFinancierController.exportAllEtatFinancierToPdf);
+router.get('/exportAllEtatFinancierToPdf/:id_compte/:id_dossier/:id_periode/:id_exercice', etatFinancierController.exportAllEtatFinancierToPdf);
 
 // Récupération des états du tableau états financiers
 router.post('/getVerouillageEtatFinancier', etatFinancierController.getVerouillageEtatFinancier);

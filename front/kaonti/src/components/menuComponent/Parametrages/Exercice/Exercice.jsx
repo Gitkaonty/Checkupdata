@@ -39,6 +39,7 @@ import PopupCodeJouralNotExist from '../../administration/import/PopupCodeJoural
 import PopupGenerateRan from '../../../componentsTools/Paramettage/Exercice/PopupGenerateRan';
 import { TbPlaylistAdd } from "react-icons/tb";
 import PopupAddPeriode from '../../../componentsTools/Paramettage/Exercice/PopupAddPeriode';
+import PopupLettrageDesequilibre from '../../../componentsTools/Paramettage/Exercice/PopupLettrageDesequilibre';
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
@@ -80,10 +81,12 @@ export default function ParamExerciceComponent() {
     const [exerciceToUnlock, setExerciceToUnlock] = useState([]);
 
     const [dateDebutPeriode, setDateDebutPeriode] = useState('');
-    const [dateFinExercice, setDateFinExercice] = useState('');
+    const [dateFinExercice, setDateFinExercice] = useState(Date());
 
     const [openActionConfirmDeleteExercice, setOpenActionConfirmDeleteExercice] = useState(false);
     const [openActionConfirmDeletePeriode, setOpenActionConfirmDeletePeriode] = useState(false);
+    const [openPopupLettrageDesequilibre, setOpenPopupLettrageDesequilibre] = useState(false);
+    const [compteLettrageData, setCompteLettrageData] = useState([]);
 
     const [msgDeleteExercice, setMsgDeleteExercice] = useState('');
     const [msgDeletePeriode, setMsgDeletePeriode] = useState('');
@@ -335,6 +338,22 @@ export default function ParamExerciceComponent() {
     const handleOpenDialogCreatePeriode = () => {
         const id_exercice = Number(selectedExerciceRow[0]);
         if (id_exercice) {
+            const selectedRow = listeExercice.find(item => Number(item.id) === id_exercice);
+
+            const debutFormated = new Date(dateDebutPeriode);
+
+            if (debutFormated) {
+                debutFormated.setDate(debutFormated.getDate() - 1);
+            }
+
+            const debutStr = debutFormated
+                ? debutFormated.toISOString().split('T')[0]
+                : null;
+
+            if (selectedRow?.date_fin === debutStr) {
+                return toast.error('La date de fin de la période est égale à la date de clôture de l\'exercice. Impossible d\'ajouter une nouvelle période.');
+            }
+
             periodeForm.setFieldValue('id_compte', Number(compteId));
             periodeForm.setFieldValue('id_dossier', Number(fileId));
             periodeForm.setFieldValue('id_exercice', Number(id_exercice));
@@ -446,7 +465,7 @@ export default function ParamExerciceComponent() {
                     const daysInMonth = new Date(year, month, 0).getDate();
                     return day >= 1 && day <= daysInMonth;
                 })
-                .test('max-date-fin', `La date fin ne doit pas dépasser ${dateFinExercice}`, (value) => {
+                .test('max-date-fin', `La date fin ne doit pas dépasser ${format(dateFinExercice, 'dd/MM/yyyy')}`, (value) => {
                     if (!value) return false;
                     if (!dateFinExercice) return true;
                     const fin = new Date(value);
@@ -730,16 +749,28 @@ export default function ParamExerciceComponent() {
     };
 
     const genererANouveau = async () => {
+        const id_exercice = Number(selectedExerciceRow[0]);
         const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
         if (!defaultDeviseData) {
             return toast.error('Veuillez sélectionner une devise par défaut dans le paramétrage CRM de ce dossier')
         }
         const ranExist = await testIfRanExist();
-        if (!ranExist) {
-            setOpenPopupCodeJournal(true);
-            return;
-        }
-        setOpenPopupGenerateRan(true);
+        await axios.post(`/administration/traitementSaisie/controleLettrageDesequilibre`, {
+            id_dossier: Number(fileId),
+            id_compte: Number(compteId),
+            id_exercice
+        }).then((response) => {
+            if (response?.data?.state) {
+                if (!ranExist) {
+                    setOpenPopupCodeJournal(true);
+                    return;
+                }
+                setOpenPopupGenerateRan(true);
+            } else {
+                setOpenPopupLettrageDesequilibre(true);
+                setCompteLettrageData(response?.data?.data);
+            }
+        })
     }
 
     const handleDeleteANouveau = async (value) => {
@@ -803,6 +834,14 @@ export default function ParamExerciceComponent() {
                     periodeForm={periodeForm}
                     handleSubmit={addPeriode}
                     open={openDialogCreatePeriode}
+                />
+            )}
+
+            {openPopupLettrageDesequilibre && (
+                <PopupLettrageDesequilibre
+                    onClose={() => setOpenPopupLettrageDesequilibre(false)}
+                    open={openPopupLettrageDesequilibre}
+                    data={compteLettrageData}
                 />
             )}
 
