@@ -46,7 +46,7 @@ const CompteTab = ({
 
     // Ouverture du dialogue d'ajout
     const handleOpenDialogConfirmAddSousCompte = (type) => {
-        if (selectedRowCompteIds.length !== 1) {
+        if (!selectedRowCompteIds) {
             setOpenDialogAddSousCompte(false);
             return toast.error('Veuillez sélectionner une seule compte pour ajouter une sous compte');
         }
@@ -213,7 +213,7 @@ const CompteTab = ({
                 <Tooltip title="Ajouter une ligne">
                     <Stack>
                         <IconButton
-                            disabled={selectedRowCompteIds.length !== 1}
+                            disabled={!selectedRowCompteIds}
                             onClick={() => handleOpenDialogConfirmAddSousCompte('Ajout')}
                             variant="contained"
                             style={{
