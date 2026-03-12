@@ -590,7 +590,7 @@ export default function HomePage() {
           <div
             style={{
               position: "relative",
-              width: "100.7%",
+              width: "100.4%",
               marginBottom: 0,
               marginTop: 48,
               marginLeft: 10,

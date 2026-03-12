@@ -274,6 +274,7 @@ export default function EtatFinancierAnalytique() {
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
+    const [listePeriode, setListePeriode] = useState([]);
     const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
 
     const [showBilan, setShowBilan] = useState('actif');
@@ -322,15 +323,30 @@ export default function EtatFinancierAnalytique() {
         getVerouillageEtatFinancierAnalytique(compteId, fileId, exercice_id);
     }
 
+    // Chargement des périodes par exercice
+    const getPeriodes = async () => {
+        const id_exercice = Number(selectedExerciceId);
+
+        axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+            .then((response) => {
+                if (response?.data?.state) {
+                    const data = response?.data?.data;
+                    setListePeriode(data);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            });
+    };
+
     //Choix période
     const handleChangePeriode = (choix) => {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
             setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
-            setSelectedPeriodeId(selectedExerciceId);
+            setSelectedPeriodeId(0);
 
-            getVerouillageEtatFinancierAnalytique(compteId, fileId, selectedExerciceId);
+            getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
         } else if (choix === 1) {
             GetListeSituation(selectedExerciceId);
         }
@@ -352,6 +368,9 @@ export default function EtatFinancierAnalytique() {
     //Refresh tableau
     const handleRefreshTable = async (value) => {
         if (value) {
+            const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+            const date_debut_periode = periodeData?.date_debut;
+            const date_fin_periode = periodeData?.date_fin;
             setIsLoading(true);
             const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
             try {
@@ -361,7 +380,9 @@ export default function EtatFinancierAnalytique() {
                     id_exercice: Number(selectedExerciceId),
                     id_etat: tableToRefresh,
                     id_axe: selectedAxeId,
-                    id_sections: id_sectionMapped
+                    id_sections: id_sectionMapped,
+                    date_debut_periode,
+                    date_fin_periode
                 }).then((response) => {
                     const resData = response?.data;
                     if (resData.state) {
@@ -601,14 +622,24 @@ export default function EtatFinancierAnalytique() {
         })
     }
 
+    const handleChangePeriod = (period_id) => {
+        setSelectedPeriodeId(period_id);
+    }
+
     const getEtatFinancierAnalytiqueGlobal = () => {
+        const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
+        const date_debut_periode = periodeData?.date_debut;
+        const date_fin_periode = periodeData?.date_fin;
+
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
         axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytique`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(selectedExerciceId),
             axeId: axeId,
-            sectionId: id_sectionMapped
+            sectionId: id_sectionMapped,
+            date_debut_periode,
+            date_fin_periode
         })
             .then((response) => {
                 if (response?.data?.state) {
@@ -642,17 +673,18 @@ export default function EtatFinancierAnalytique() {
         } else if (value === "6") {
             libelle = "EVCP"
         }
+        let id_periode = Number(selectedPeriodeId) ?? 0;
 
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
 
         if (type === "PDF") {
             window.open(
-                `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${libelle}/${axeId}/${id_sectionMapped}`,
+                `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${libelle}/${axeId}/${id_sectionMapped}`,
                 "_blank"
             );
         } else {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${libelle}/${axeId}/${id_sectionMapped}`;
+            link.href = `${URL}/administration/etatFinancierAnalytique/exportEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${libelle}/${axeId}/${id_sectionMapped}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -660,15 +692,16 @@ export default function EtatFinancierAnalytique() {
     }
     // Générer toutes les tableaux en PDF ou Excel
     const exportAllFile = (type) => {
+        let id_periode = Number(selectedPeriodeId) ?? 0;
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
         if (type === 'PDF') {
             window.open(
-                `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${axeId}/${id_sectionMapped}`,
+                `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToPdf/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${axeId}/${id_sectionMapped}`,
                 "_blank"
             );
         } else if (type === 'EXCEL') {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${axeId}/${id_sectionMapped}`;
+            link.href = `${URL}/administration/etatFinancierAnalytique/exportAllEtatFinancierAnalytiqueToExcel/${compteId}/${fileId}/${selectedExerciceId}/${id_periode}/${axeId}/${id_sectionMapped}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -744,7 +777,7 @@ export default function EtatFinancierAnalytique() {
             getEtatFinancierAnalytiqueGlobal();
             getListeDevises();
         }
-    }, [fileId, compteId, selectedExerciceId, selectedAxeId, selectedSectionsId, isRefreshed])
+    }, [fileId, compteId, selectedExerciceId, selectedAxeId, selectedSectionsId, isRefreshed, selectedPeriodeId])
 
     useEffect(() => {
         if (!sectionsData.length) return;
@@ -760,6 +793,12 @@ export default function EtatFinancierAnalytique() {
 
         setSelectedSectionsId(matched);
     }, [sectionsData]);
+
+    useEffect(() => {
+        if (selectedExerciceId) {
+            getPeriodes();
+        }
+    }, [selectedExerciceId]);
 
     return (
         <Box>
@@ -849,20 +888,24 @@ export default function EtatFinancierAnalytique() {
                                     <Select
                                         labelId="demo-simple-select-standard-label"
                                         id="demo-simple-select-standard"
+                                        disabled={selectedPeriodeChoiceId === 0}
                                         value={selectedPeriodeId}
                                         label={"valSelect"}
-                                        onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                                        onChange={(e) => {
+                                            handleChangePeriod(e.target.value)
+                                        }}
                                         sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
                                         MenuProps={{
                                             disableScrollLock: true
                                         }}
                                     >
-                                        {listeSituation?.map((option) => (
-                                            <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                                        {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                                            <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
                                         ))
                                         }
                                     </Select>
                                 </FormControl>
+
                             </Stack>
                             {
                                 <ExportEtatFinancierAnalytiqueButtonAll
@@ -1096,6 +1139,7 @@ export default function EtatFinancierAnalytique() {
                                                     id_axe={selectedAxeId}
                                                     id_sections={selectedSectionsId.map(val => val.id)}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                                 />
                                             </Stack>
                                             : null
@@ -1118,6 +1162,7 @@ export default function EtatFinancierAnalytique() {
                                                     id_axe={selectedAxeId}
                                                     id_sections={selectedSectionsId.map(val => val.id)}
                                                     deviseParDefaut={deviseParDefaut}
+                                                    periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                                 />
                                             </Stack>
                                             : null
@@ -1205,6 +1250,7 @@ export default function EtatFinancierAnalytique() {
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1290,6 +1336,7 @@ export default function EtatFinancierAnalytique() {
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1375,6 +1422,7 @@ export default function EtatFinancierAnalytique() {
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1460,6 +1508,7 @@ export default function EtatFinancierAnalytique() {
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
@@ -1546,6 +1595,7 @@ export default function EtatFinancierAnalytique() {
                                                 id_axe={selectedAxeId}
                                                 id_sections={selectedSectionsId.map(val => val.id)}
                                                 deviseParDefaut={deviseParDefaut}
+                                                periodeData={listePeriode.find(val => Number(val.id) === selectedPeriodeId)}
                                             />
                                         </Stack>
 
