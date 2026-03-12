@@ -34,7 +34,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const popupAjustRubriqueEvcpEtatFinancier = ({ actionState, row, column, setIsRefreshed, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const popupAjustRubriqueEvcpEtatFinancier = ({ actionState, row, column, setIsRefreshed, canModify, canAdd, canDelete, canView, deviseParDefaut, periodeData }) => {
     const apiRef = useGridApiRef();
     const axiosPrivate = useAxiosPrivate();
     const [selectedRowId, setSelectedRowId] = useState([]);
@@ -46,6 +46,8 @@ const popupAjustRubriqueEvcpEtatFinancier = ({ actionState, row, column, setIsRe
     const [editableRow, setEditableRow] = useState(true);
     const [openDialogDeleteRow, setOpenDialogDeleteRow] = useState(false);
     const [disableAddRowBouton, setDisableAddRowBouton] = useState(false);
+    const date_debut_periode = periodeData?.date_debut;
+    const date_fin_periode = periodeData?.date_fin;
 
     const nature = column === 'capitalsocial'
         ? 'CAPSOC'
@@ -297,7 +299,7 @@ const popupAjustRubriqueEvcpEtatFinancier = ({ actionState, row, column, setIsRe
             [id]: { mode: GridRowModes.View, ignoreModifications: true },
         });
 
-        const newFormDataFinal = { ...formDataFinal, state: true };
+        const newFormDataFinal = { ...formDataFinal, date_debut_periode, date_fin_periode, state: true };
         axiosPrivate.post(`/administration/etatFinancier/addModifyAjustementExterne`, newFormDataFinal).then((response) => {
             const resData = response.data;
             if (resData.state) {
@@ -332,7 +334,14 @@ const popupAjustRubriqueEvcpEtatFinancier = ({ actionState, row, column, setIsRe
                     setOpenDialogDeleteRow(false);
                     return;
                 }
-                axiosPrivate.delete(`/administration/etatFinancier/deleteAjustementExterne/${Number(idToDelete)}`).then((response) => {
+                axiosPrivate.delete(`/administration/etatFinancier/deleteAjustementExterne/${Number(idToDelete)}`,
+                    {
+                        data: {
+                            date_debut_periode,
+                            date_fin_periode
+                        }
+                    }
+                ).then((response) => {
                     const resData = response.data;
 
                     if (resData.state) {
