@@ -338,6 +338,22 @@ export default function ParamExerciceComponent() {
     const handleOpenDialogCreatePeriode = () => {
         const id_exercice = Number(selectedExerciceRow[0]);
         if (id_exercice) {
+            const selectedRow = listeExercice.find(item => Number(item.id) === id_exercice);
+
+            const debutFormated = new Date(dateDebutPeriode);
+
+            if (debutFormated) {
+                debutFormated.setDate(debutFormated.getDate() - 1);
+            }
+
+            const debutStr = debutFormated
+                ? debutFormated.toISOString().split('T')[0]
+                : null;
+
+            if (selectedRow?.date_fin === debutStr) {
+                return toast.error('La date de fin de la période est égale à la date de clôture de l\'exercice. Impossible d\'ajouter une nouvelle période.');
+            }
+
             periodeForm.setFieldValue('id_compte', Number(compteId));
             periodeForm.setFieldValue('id_dossier', Number(fileId));
             periodeForm.setFieldValue('id_exercice', Number(id_exercice));
