@@ -197,7 +197,7 @@ export default function ImportBalance() {
 
     //Récupération du plan comptable
     const recupPlanComptable = () => {
-        axios.post(`/paramPlanComptable/pc`, { fileId }).then((response) => {
+        axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 setPlanComptable(resData.liste);
@@ -208,8 +208,10 @@ export default function ImportBalance() {
     }
 
     useEffect(() => {
-        recupPlanComptable();
-    }, [fileId]);
+        if (compteId && fileId) {
+            recupPlanComptable();
+        }
+    }, [fileId, compteId]);
 
     //afficher ou non les détails des anomalies de l'import
     const handleOpenAnomalieDetails = () => {

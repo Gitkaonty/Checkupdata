@@ -1727,7 +1727,7 @@ exports.getJournal = async (req, res) => {
                 AND id_exercice = :id_exercice
                 GROUP BY id_ecriture
                 ORDER BY MAX(id) DESC
-                LIMIT 10
+                LIMIT 100
             )
 
             SELECT
