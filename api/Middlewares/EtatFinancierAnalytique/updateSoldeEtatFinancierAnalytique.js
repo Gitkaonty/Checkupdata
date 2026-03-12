@@ -408,11 +408,16 @@ const updateSoldeEtatFinancierAnalytique = async (id_dossier, id_compte, id_exer
     );
 }
 
-const totalRubriqueExterneEVCPAnalytique = async (id_compte, id_dossier, id_exercice, id_axe, id_sections) => {
+const totalRubriqueExterneEVCPAnalytique = async (id_compte, id_dossier, id_exercice, id_axe, id_sections, date_debut_periode, date_fin_periode) => {
     try {
         const {
             id_exerciceN1,
         } = await recupExerciceN1(id_compte, id_dossier, id_exercice);
+
+        let dateFilter = '';
+        if (date_debut_periode && date_fin_periode) {
+            dateFilter = 'AND J.DATEECRITURE BETWEEN :date_debut_periode AND :date_fin_periode';
+        }
 
         const exercice_idN1 = id_exerciceN1 ? id_exerciceN1 : 0;
 
@@ -469,6 +474,7 @@ const totalRubriqueExterneEVCPAnalytique = async (id_compte, id_dossier, id_exer
 
                     AND A.ID_AXE = :id_axe
                     AND A.ID_SECTION IN (:id_sections)
+                    ${dateFilter}
 
                 GROUP BY J.COMPTEAUX
             )
@@ -505,7 +511,7 @@ const totalRubriqueExterneEVCPAnalytique = async (id_compte, id_dossier, id_exer
             AND tabA.id_etat = 'EVCP' AND tabA.id_rubrique = '14'
         `,
             {
-                replacements: { id_compte, id_dossier, id_exercice, id_axe, id_sections },
+                replacements: { id_compte, id_dossier, id_exercice, id_axe, id_sections, date_debut_periode, date_fin_periode },
                 type: db.Sequelize.QueryTypes.UPDATE
             }
         );

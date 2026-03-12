@@ -34,7 +34,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-const popupAjustRubriqueEvcpEtatFinancierAnalytique = ({ actionState, row, column, setIsRefreshed, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const popupAjustRubriqueEvcpEtatFinancierAnalytique = ({ actionState, row, column, setIsRefreshed, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut, periodeData }) => {
     const apiRef = useGridApiRef();
     const axiosPrivate = useAxiosPrivate();
     const [selectedRowId, setSelectedRowId] = useState([]);
@@ -46,6 +46,8 @@ const popupAjustRubriqueEvcpEtatFinancierAnalytique = ({ actionState, row, colum
     const [editableRow, setEditableRow] = useState(true);
     const [openDialogDeleteRow, setOpenDialogDeleteRow] = useState(false);
     const [disableAddRowBouton, setDisableAddRowBouton] = useState(false);
+    const date_debut_periode = periodeData?.date_debut;
+    const date_fin_periode = periodeData?.date_fin;
 
     const nature = column === 'capitalsocial'
         ? 'CAPSOC'
@@ -299,7 +301,7 @@ const popupAjustRubriqueEvcpEtatFinancierAnalytique = ({ actionState, row, colum
             [id]: { mode: GridRowModes.View, ignoreModifications: true },
         });
 
-        const newFormDataFinal = { ...formDataFinal, state: true };
+        const newFormDataFinal = { ...formDataFinal, date_debut_periode, date_fin_periode, state: true };
         axiosPrivate.post(`/administration/etatFinancierAnalytique/addModifyAjustementExterneAnalytique`, newFormDataFinal).then((response) => {
             const resData = response.data;
             if (resData.state) {
@@ -336,7 +338,9 @@ const popupAjustRubriqueEvcpEtatFinancierAnalytique = ({ actionState, row, colum
                 }
                 axiosPrivate.delete(`/administration/etatFinancierAnalytique/deleteAjustementExterneAnalytique/${Number(idToDelete)}`,
                     {
-                        data: { id_axe, id_sections }
+                        data: {
+                            id_axe, id_sections, date_debut_periode, date_fin_periode
+                        }
                     }
                 ).then((response) => {
                     const resData = response.data;
