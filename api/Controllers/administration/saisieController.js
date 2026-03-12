@@ -4423,7 +4423,7 @@ exports.getJournalsConsultation = async (req, res) => {
                 j.id_dossier,
                 j.dateecriture,
                 j.id_journal,
-                cj.code AS journal,
+                cj.type AS journal,
                 j.piece, 
                 j.libelle,
                 j.fichier,
