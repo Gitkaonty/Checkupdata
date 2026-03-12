@@ -309,12 +309,12 @@ export default function Sig() {
 
         if (type === "PDF") {
             window.open(
-                `${URL}/administration/etatFinancier/exportEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`,
+                `${URL}/administration/etatFinancier/exportEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}/0/${libelle}`,
                 "_blank"
             );
         } else {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancier/exportEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}/${libelle}`;
+            link.href = `${URL}/administration/etatFinancier/exportEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}/0/${libelle}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

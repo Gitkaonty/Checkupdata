@@ -672,14 +672,15 @@ export default function EtatFinancier() {
 
     // Générer toutes les tableaux en PDF ou Excel
     const exportAllFile = (type) => {
+        let id_periode = Number(selectedPeriodeId) ?? 0;
         if (type === 'PDF') {
             window.open(
-                `${URL}/administration/etatFinancier/exportAllEtatFinancierToPdf/${compteId}/${fileId}/${selectedExerciceId}`,
+                `${URL}/administration/etatFinancier/exportAllEtatFinancierToPdf/${compteId}/${fileId}/${id_periode}/${selectedExerciceId}`,
                 "_blank"
             );
         } else if (type === 'EXCEL') {
             const link = document.createElement('a');
-            link.href = `${URL}/administration/etatFinancier/exportAllEtatFinancierToExcel/${compteId}/${fileId}/${selectedExerciceId}`;
+            link.href = `${URL}/administration/etatFinancier/exportAllEtatFinancierToExcel/${compteId}/${fileId}/${id_periode}/${selectedExerciceId}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
