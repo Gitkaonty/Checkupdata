@@ -179,7 +179,7 @@ const PopupLettrageDesequilibre = ({ onClose, open, data }) => {
                             marginLeft: "0px",
                             marginTop: "10px"
                         }}
-                        height={"510px"}>
+                        height={"390px"}>
                         <DataGrid
                             disableMultipleSelection={DataGridStyle.disableMultipleSelection}
                             disableColumnSelector={DataGridStyle.disableColumnSelector}
