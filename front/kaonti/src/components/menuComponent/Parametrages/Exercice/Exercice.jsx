@@ -749,22 +749,24 @@ export default function ParamExerciceComponent() {
     };
 
     const genererANouveau = async () => {
+        const ranExist = await testIfRanExist();
+        if (!ranExist) {
+            setOpenPopupCodeJournal(true);
+            return;
+        }
+
         const id_exercice = Number(selectedExerciceRow[0]);
         const defaultDeviseData = listeDevise.find(val => val.par_defaut === true);
         if (!defaultDeviseData) {
             return toast.error('Veuillez sélectionner une devise par défaut dans le paramétrage CRM de ce dossier')
         }
-        const ranExist = await testIfRanExist();
+
         await axios.post(`/administration/traitementSaisie/controleLettrageDesequilibre`, {
             id_dossier: Number(fileId),
             id_compte: Number(compteId),
             id_exercice
         }).then((response) => {
             if (response?.data?.state) {
-                if (!ranExist) {
-                    setOpenPopupCodeJournal(true);
-                    return;
-                }
                 setOpenPopupGenerateRan(true);
             } else {
                 if (response?.data?.noExercice) {
@@ -845,6 +847,7 @@ export default function ParamExerciceComponent() {
                     onClose={() => setOpenPopupLettrageDesequilibre(false)}
                     open={openPopupLettrageDesequilibre}
                     data={compteLettrageData}
+                    setOpenPopupGenerateRan={() => setOpenPopupGenerateRan(true)}
                 />
             )}
 
