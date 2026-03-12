@@ -18,7 +18,7 @@ import { init } from '../../../../init';
 import PopupAjustRubriqueEbilanEtatFinancierAnalytique from './popup/popupAjustRubriqueEbilanEtatFinancierAnalytique';
 import axios from '../../../../config/axios';
 
-const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows, noCollapsible, state, setIsRefreshed, type, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut }) => {
+const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows, noCollapsible, state, setIsRefreshed, type, id_axe, id_sections, canModify, canAdd, canDelete, canView, deviseParDefaut, periodeData }) => {
   const initial = init[0];
   const [openRows, setOpenRows] = useState({});
   const [openTableDetail, setOpenTableDetail] = useState(false);
@@ -26,6 +26,8 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
   const [detailColumnHeader, setDetailColumnHeader] = useState();
 
   const [rowInfo, setRowInfo] = useState({});
+  const date_debut_periode = periodeData?.date_debut;
+  const date_fin_periode = periodeData?.date_fin;
 
   const toggleRow = (rowKey, row) => {
     axios.post('/administration/etatFinancierAnalytique/getEtatFinancierAnalytiqueDetail', {
@@ -36,7 +38,9 @@ const VirtualTableEbilanEtatFinaciereAnalytique = ({ refreshTable, columns, rows
       id_rubrique: row.id_rubrique,
       subtable: row.subtable,
       axeId: Number(id_axe),
-      sectionId: id_sections
+      sectionId: id_sections,
+      date_debut_periode,
+      date_fin_periode
     })
       .then((response) => {
         const resData = response?.data;

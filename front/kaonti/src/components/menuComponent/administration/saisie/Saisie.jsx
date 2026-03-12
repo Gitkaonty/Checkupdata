@@ -61,8 +61,6 @@ export default function SaisieComponent() {
     const [selectedRows, setSelectedRows] = useState([]);
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
-    console.log('selectedRows : ', selectedRows);
-
     const gridRef = useRef(null)
     const [scrollbarVisible, setScrollbarVisible] = useState(false);
 
@@ -250,7 +248,7 @@ export default function SaisieComponent() {
             headerClassName: 'HeaderbackColor',
         },
         {
-            field: 'lettrage',
+            field: 'comptegen',
             headerName: 'Let',
             type: 'string',
             sortable: true,

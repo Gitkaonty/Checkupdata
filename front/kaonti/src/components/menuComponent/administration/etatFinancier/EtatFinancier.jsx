@@ -820,8 +820,6 @@ export default function EtatFinancier() {
                                         value={selectedPeriodeId}
                                         label={"valSelect"}
                                         onChange={(e) => {
-                                            // handleChangeDateIntervalle(e.target.value)
-                                            // setSelectedPeriodeId(e.target.value);
                                             handleChangePeriod(e.target.value)
                                         }}
                                         sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
