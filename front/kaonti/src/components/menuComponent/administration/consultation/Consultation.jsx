@@ -1280,7 +1280,7 @@ export default function ConsultationComponent() {
                                     direction={"row"}
                                 >
                                     <span style={{ whiteSpace: 'nowrap' }}>
-                                        Solde : <strong
+                                        Solde global : <strong
                                             style={{
                                                 color: `${soldeLigneStr.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
                                             }}
@@ -1292,6 +1292,40 @@ export default function ConsultationComponent() {
                                                 }).replace(/\u202f/g, ' ')
                                             }
                                         </strong>
+                                        {
+                                            gridSelectedRows.length > 0 && (
+                                                <>
+                                                    {" - Ligne sélectionnée : "}
+                                                    <span>
+                                                        Débit : <strong
+                                                            style={{
+                                                                color: '#FF8A8A'
+                                                            }}
+                                                        >
+                                                            {calculateDebitCredit(gridSelectedRows).debit}
+                                                        </strong>,{" "}
+                                                    </span>
+                                                    <span>
+                                                        Crédit : <strong
+                                                            style={{
+                                                                color: '#FF8A8A'
+                                                            }}
+                                                        >
+                                                            {calculateDebitCredit(gridSelectedRows).credit}
+                                                        </strong>,{" "}
+                                                    </span>
+                                                    <span>
+                                                        Solde : <strong
+                                                            style={{
+                                                                color: `${calculateDebitCredit(gridSelectedRows).solde.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
+                                                            }}
+                                                        >
+                                                            {calculateDebitCredit(gridSelectedRows).solde}
+                                                        </strong>
+                                                    </span>
+                                                </>
+                                            )
+                                        }
                                     </span>
                                 </Stack>
                                 <Stack
@@ -1430,39 +1464,6 @@ export default function ConsultationComponent() {
                                 />
                             </Stack>
                         </Stack>
-                        {
-                            gridSelectedRows.length > 0 && (
-                                <>
-                                    <span>
-                                        Débit : <strong
-                                            style={{
-                                                color: '#FF8A8A'
-                                            }}
-                                        >
-                                            {calculateDebitCredit(gridSelectedRows).debit}
-                                        </strong>,{" "}
-                                    </span>
-                                    <span>
-                                        Crédit : <strong
-                                            style={{
-                                                color: '#FF8A8A'
-                                            }}
-                                        >
-                                            {calculateDebitCredit(gridSelectedRows).credit}
-                                        </strong>,{" "}
-                                    </span>
-                                    <span>
-                                        Solde : <strong
-                                            style={{
-                                                color: `${calculateDebitCredit(gridSelectedRows).solde.includes('-') ? '#FF8A8A' : '#2433a5ff'}`
-                                            }}
-                                        >
-                                            {calculateDebitCredit(gridSelectedRows).solde}
-                                        </strong>
-                                    </span>
-                                </>
-                            )
-                        }
                     </TabPanel>
                 </TabContext >
             </Box >
