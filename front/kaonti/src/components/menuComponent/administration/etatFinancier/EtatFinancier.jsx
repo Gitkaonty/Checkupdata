@@ -863,9 +863,15 @@ export default function EtatFinancier() {
                                 </Box>
                                 {
                                     isLoadingData && (
-                                        <ProgressWithMessage
-                                            text={'Récupération en cours'}
-                                        />
+                                        <Stack
+                                            sx={{
+                                                mt: 1
+                                            }}
+                                        >
+                                            <ProgressWithMessage
+                                                text={'Récupération en cours'}
+                                            />
+                                        </Stack>
                                     )
                                 }
                                 {/* BILAN */}
