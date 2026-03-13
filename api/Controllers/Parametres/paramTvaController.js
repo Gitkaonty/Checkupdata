@@ -102,6 +102,8 @@ const paramTvaAdd = async (req, res) => {
   try {
     const { idCompte, idDossier, idCode, compte, libelle, code } = req.body;
 
+    console.log('req.body : ', req.body);
+
     let resData = {
       state: false,
       msg: 'Une erreur est survenue au moment du traitement.',
@@ -110,6 +112,8 @@ const paramTvaAdd = async (req, res) => {
     const testIfExist = await paramtvas.findAll({
       where: { id: idCode, id_dossier: idDossier }
     });
+
+    // return console.log('testIfExist : ', testIfExist);
 
     if (testIfExist.length === 0) {
       const addCode = await paramtvas.create({
