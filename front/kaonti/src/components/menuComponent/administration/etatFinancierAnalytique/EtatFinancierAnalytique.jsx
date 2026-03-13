@@ -346,7 +346,7 @@ export default function EtatFinancierAnalytique() {
             setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
 
-            getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
+            // getVerouillageEtatFinancierAnalytique(compteId, fileId, selectedExerciceId);
         } else if (choix === 1) {
             GetListeSituation(selectedExerciceId);
         }

@@ -32,6 +32,7 @@ export default function ExportGrandLivre() {
   const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
   const [listeExercice, setListeExercice] = useState([]);
+  const [listePeriode, setListePeriode] = useState([]);
   const [listeSituation, setListeSituation] = useState([]);
 
   const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
@@ -101,6 +102,21 @@ export default function ExportGrandLivre() {
     }
   }
 
+  // Chargement des périodes par exercice
+  const getPeriodes = async () => {
+    const id_exercice = Number(selectedExerciceId);
+
+    axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+      .then((response) => {
+        if (response?.data?.state) {
+          const data = response?.data?.data;
+          setListePeriode(data);
+        } else {
+          toast.error(response?.data?.message);
+        }
+      });
+  };
+
   const GetListeExercice = (id) => {
     axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
       const resData = response.data;
@@ -109,13 +125,13 @@ export default function ExportGrandLivre() {
         const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
         setListeSituation(exerciceNId);
         setSelectedExerciceId(exerciceNId[0].id);
-        setSelectedPeriodeChoiceId(0);
-        setSelectedPeriodeId(exerciceNId[0].id);
+        // setSelectedPeriodeChoiceId(0);
+        // setSelectedPeriodeId(exerciceNId[0].id);
         // Initialiser les dates du filtre avec celles de l'exercice courant
-        const d1 = format(new Date(exerciceNId[0].date_debut), 'yyyy-MM-dd');
-        const d2 = format(new Date(exerciceNId[0].date_fin), 'yyyy-MM-dd');
-        setDateDebut(d1);
-        setDateFin(d2);
+        // const d1 = format(new Date(exerciceNId[0].date_debut), 'yyyy-MM-dd');
+        // const d2 = format(new Date(exerciceNId[0].date_fin), 'yyyy-MM-dd');
+        // setDateDebut(d1);
+        // setDateFin(d2);
       } else {
         setListeExercice([]);
         //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
@@ -123,6 +139,20 @@ export default function ExportGrandLivre() {
       }
     })
   }
+
+  useEffect(() => {
+    const sourceData =
+      listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId)) ||
+      listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+    if (sourceData) {
+      const [dDebut, dFin] = [sourceData.date_debut, sourceData.date_fin].map(date =>
+        format(new Date(date), 'yyyy-MM-dd')
+      );
+      setDateDebut(dDebut);
+      setDateFin(dFin);
+    }
+  }, [selectedExerciceId, selectedPeriodeId]);
 
   const GetListeSituation = (id) => {
     axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
@@ -157,10 +187,14 @@ export default function ExportGrandLivre() {
     setSelectedPeriodeChoiceId(choix);
     if (choix === 0) {
       setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
-      setSelectedPeriodeId(selectedExerciceId);
+      setSelectedPeriodeId(0);
     } else if (choix === 1) {
       GetListeSituation(selectedExerciceId);
     }
+  }
+
+  const handleChangePeriod = (period_id) => {
+    setSelectedPeriodeId(period_id);
   }
 
   const handleChangeDateIntervalle = (id) => {
@@ -289,6 +323,12 @@ export default function ExportGrandLivre() {
     }
   }, [fileId, compteId]);
 
+  useEffect(() => {
+    if (selectedExerciceId) {
+      getPeriodes();
+    }
+  }, [selectedExerciceId]);
+
   return (
     <Box>
       {noFile ? <PopupTestSelectedFile confirmationState={sendToHome} /> : null}
@@ -322,13 +362,17 @@ export default function ExportGrandLivre() {
                 </FormControl>
 
                 <FormControl variant="standard" sx={{ m: 1, minWidth: 150 }}>
-                  <InputLabel>Période</InputLabel>
+                  <InputLabel id="demo-simple-select-standard-label">Période</InputLabel>
                   <Select
-                    disabled
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
                     value={selectedPeriodeChoiceId}
+                    label={"valSelect"}
                     onChange={(e) => handleChangePeriode(e.target.value)}
                     sx={{ width: "150px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                    MenuProps={{ disableScrollLock: true }}
+                    MenuProps={{
+                      disableScrollLock: true
+                    }}
                   >
                     <MenuItem value={0}>Toutes</MenuItem>
                     <MenuItem value={1}>Situations</MenuItem>
@@ -336,16 +380,25 @@ export default function ExportGrandLivre() {
                 </FormControl>
 
                 <FormControl variant="standard" sx={{ m: 1, minWidth: 250 }}>
-                  <InputLabel>Du</InputLabel>
+                  <InputLabel id="demo-simple-select-standard-label">Du</InputLabel>
                   <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    disabled={selectedPeriodeChoiceId === 0}
                     value={selectedPeriodeId}
-                    onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                    label={"valSelect"}
+                    onChange={(e) => {
+                      handleChangePeriod(e.target.value)
+                    }}
                     sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                    MenuProps={{ disableScrollLock: true }}
+                    MenuProps={{
+                      disableScrollLock: true
+                    }}
                   >
-                    {listeSituation?.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
-                    ))}
+                    {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                      <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                    ))
+                    }
                   </Select>
                 </FormControl>
               </Stack>
