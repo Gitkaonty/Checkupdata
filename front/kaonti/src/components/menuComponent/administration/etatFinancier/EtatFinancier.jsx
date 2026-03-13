@@ -40,6 +40,7 @@ import ExportEtatFinancierButtonAll from '../../../componentsTools/EtatFinancier
 import VirtualTableEvcpEtatFinancier from '../../../componentsTools/EtatFinancier/virtualTableEvcpEtatFinancier';
 
 import usePermission from '../../../../hooks/usePermission';
+import ProgressWithMessage from '../../../componentsTools/Progress/ProgressWithMessage';
 
 //colonne bilan
 const BilanActifColumn = [
@@ -290,6 +291,7 @@ export default function EtatFinancier() {
     const [isRefreshed, setIsRefreshed] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     const theme = useTheme();
 
@@ -304,7 +306,7 @@ export default function EtatFinancier() {
     const handleChangeExercice = (exercice_id) => {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
-        setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
+        // setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
         // setSelectedPeriodeId(exercice_id);
 
         getVerouillageEtatFinancier(compteId, fileId, exercice_id);
@@ -330,13 +332,14 @@ export default function EtatFinancier() {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
-            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
+            // setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
 
-            getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
-        } else if (choix === 1) {
-            GetListeSituation(selectedExerciceId);
+            // getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
         }
+        // else if (choix === 1) {
+        //     GetListeSituation(selectedExerciceId);
+        // }
     }
 
     const handleChangeTAB = (event, newValue) => {
@@ -615,11 +618,12 @@ export default function EtatFinancier() {
         })
     }
 
-    const getEtatFinancier = () => {
+    const getEtatFinancier = async () => {
+        setIsLoadingData(true);
         const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
         const date_debut_periode = periodeData?.date_debut;
         const date_fin_periode = periodeData?.date_fin;
-        axios.post(`/administration/etatFinancier/getEtatFinancier`, {
+        await axios.post(`/administration/etatFinancier/getEtatFinancier`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(selectedExerciceId),
@@ -640,6 +644,7 @@ export default function EtatFinancier() {
                     toast.error(resData.message);
                 }
             })
+        setIsLoadingData(false);
     }
 
     // Générer une tableau en PDF ou Excel
@@ -834,6 +839,7 @@ export default function EtatFinancier() {
                                     </Select>
                                 </FormControl>
                             </Stack>
+
                             {
                                 <ExportEtatFinancierButtonAll
                                     exportAllToPdf={() => exportAllFile("PDF")}
@@ -847,15 +853,21 @@ export default function EtatFinancier() {
                             <TabContext value={value}>
                                 <Box sx={{ borderBottom: 1, borderColor: 'transparent' }}>
                                     <TabList onChange={handleChangeTAB} aria-label="lab API tabs example" variant='scrollable'>
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="bilan" value="1" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crn" value="2" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crf" value="3" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tftd" value="4" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tfti" value="5" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="evcp" value="6" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="bilan" value="1" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crn" value="2" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crf" value="3" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tftd" value="4" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tfti" value="5" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="evcp" value="6" />
                                     </TabList>
                                 </Box>
-
+                                {
+                                    isLoadingData && (
+                                        <ProgressWithMessage
+                                            text={'Récupération en cours'}
+                                        />
+                                    )
+                                }
                                 {/* BILAN */}
                                 <TabPanel value="1">
                                     <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
