@@ -3720,6 +3720,262 @@ const ensureCompte = async (compteId, fileId, compteNum, libelle, longeurCompte)
     return row;
 };
 
+// const queryCopyJournalDetaille = `
+//     WITH BASE AS (
+//         SELECT *
+//         FROM JOURNALS
+//         WHERE COMPTEGEN ~ '^[1-5]'
+//         AND ID_COMPTE = :id_compte
+//         AND ID_DOSSIER = :id_dossier
+//         AND ID_EXERCICE = :id_exerciceN1
+//         AND LETTRAGE IS NULL
+//     ),
+
+//     AGG AS (
+//         SELECT
+//             ID_COMPTE,
+//             ID_DOSSIER,
+//             MIN(COMPTEGEN) AS COMPTEGEN,
+//             COMPTEAUX,
+//             MIN(DATESAISIE) AS DATESAISIE,
+//             MIN(DATEECRITURE) AS DATEECRITURE,
+//             MIN(ID_ECRITURE) AS ID_ECRITURE,
+//             MIN(ID_NUMCPT) AS ID_NUMCPT,
+//             MIN(ID_NUMCPTCENTRALISE) AS ID_NUMCPTCENTRALISE,
+//             MIN(PIECE) AS PIECE,
+//             SUM(DEBIT) AS DEBIT,
+//             SUM(CREDIT) AS CREDIT,
+//             MIN(LIBELLECOMPTE) AS LIBELLECOMPTE,
+//             MIN(LIBELLEAUX) AS LIBELLEAUX,
+//             MIN(PIECEDATE) AS PIECEDATE,
+//             MIN(LETTRAGEDATE) AS LETTRAGEDATE,
+//             MIN(TAUX) AS TAUX,
+//             MIN(LETTRAGE) AS LETTRAGE,
+//             MIN(DEVISE) AS DEVISE,
+//             SUM(MONTANT_DEVISE) AS MONTANT_DEVISE,
+//             MIN(NUM_FACTURE) AS NUM_FACTURE,
+//             SUM(DECLISIMOIS) AS DECLISIMOIS,
+//             SUM(DECLISIANNEE) AS DECLISIANNEE,
+//             BOOL_OR(DECLISI) AS DECLISI,
+//             SUM(DECLTVAMOIS) AS DECLTVAMOIS,
+//             SUM(DECLTVAANNEE) AS DECLTVAANNEE,
+//             BOOL_OR(DECLTVA) AS DECLTVA,
+//             BOOL_OR(RAPPROCHER) AS RAPPROCHER,
+//             MIN(DATE_RAPPROCHEMENT) AS DATE_RAPPROCHEMENT,
+//             MIN(ID_IMMOB) AS ID_IMMOB
+//         FROM BASE
+//         GROUP BY
+//             ID_COMPTE,
+//             ID_DOSSIER,
+//             COMPTEAUX,
+//             ID_ECRITURE
+//     ),
+
+//     SPLIT AS (
+//         SELECT
+//             *,
+//             DEBIT AS SPLIT_DEBIT,
+//             0 AS SPLIT_CREDIT
+//         FROM AGG
+//         WHERE DEBIT <> 0
+
+//         UNION ALL
+
+//         SELECT
+//             *,
+//             0 AS SPLIT_DEBIT,
+//             CREDIT AS SPLIT_CREDIT
+//         FROM AGG
+//         WHERE CREDIT <> 0
+//     ),
+
+//     TOTAUX AS (
+//         SELECT
+//             SUM(SPLIT_DEBIT) AS TOTAL_DEBIT,
+//             SUM(SPLIT_CREDIT) AS TOTAL_CREDIT
+//         FROM SPLIT
+//     )
+
+//     INSERT INTO journals (
+//         id_compte, id_dossier, id_exercice, id_ecriture,
+//         datesaisie, dateecriture, id_journal, id_numcpt, id_numcptcentralise,
+//         piece, libelle, debit, credit, devise, lettrage, saisiepar, modifierpar,
+//         piecedate, lettragedate, fichier, id_devise, taux, montant_devise,
+//         num_facture, declisimois, declisiannee, declisi, decltvamois, decltvaannee,
+//         decltva, rapprocher, date_rapprochement, id_immob,
+//         comptegen, compteaux, libelleaux, libellecompte, vraiedate, id_ecriture_n1
+//     )
+
+//     SELECT
+//         ID_COMPTE, ID_DOSSIER, :id_exercice, :id_ecriture,
+//         NOW(), :dateecriture::date, :id_journal,
+//         ID_NUMCPT, ID_NUMCPTCENTRALISE,
+//         PIECE, 'A nouveau ' || LIBELLECOMPTE,
+//         SPLIT_DEBIT,
+//         SPLIT_CREDIT,
+//         :devise, LETTRAGE,
+//         ID_COMPTE, ID_COMPTE,
+//         PIECEDATE, LETTRAGEDATE, NULL,
+//         :id_devise,
+//         TAUX, MONTANT_DEVISE,
+//         NUM_FACTURE, DECLISIMOIS, DECLISIANNEE, DECLISI,
+//         DECLTVAMOIS, DECLTVAANNEE, DECLTVA,
+//         RAPPROCHER, DATE_RAPPROCHEMENT, ID_IMMOB,
+//         COMPTEGEN, COMPTEAUX, LIBELLEAUX, LIBELLECOMPTE,
+//         DATEECRITURE,
+//         ID_ECRITURE
+//     FROM SPLIT
+
+//     UNION ALL
+
+//     SELECT
+//         B.ID_COMPTE, B.ID_DOSSIER, :id_exercice, :id_ecriture,
+//         NOW(), :dateecriture::date, :id_journal,
+//         :id_numcpt, :id_numcpt,
+//         '', :libelleJournal,
+//         CASE WHEN T.TOTAL_DEBIT < T.TOTAL_CREDIT THEN T.TOTAL_CREDIT - T.TOTAL_DEBIT ELSE 0 END,
+//         CASE WHEN T.TOTAL_DEBIT > T.TOTAL_CREDIT THEN T.TOTAL_DEBIT - T.TOTAL_CREDIT ELSE 0 END,
+//         :devise, NULL,
+//         B.ID_COMPTE, B.ID_COMPTE,
+//         B.PIECEDATE, B.LETTRAGEDATE, NULL,
+//         :id_devise, 0, 0,
+//         NULL, 0, 0, FALSE, 0, 0,
+//         FALSE, FALSE, NULL, 0,
+//         :compte, :compte, :libelle, :libelle,
+//         :dateecriture::date, NULL
+//     FROM TOTAUX T
+//     CROSS JOIN (SELECT * FROM BASE LIMIT 1) B
+//     WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT
+// `;
+
+// const queryCopyJournalNonDetaille = `
+//     WITH BASE AS (
+//         SELECT *
+//         FROM JOURNALS
+//         WHERE COMPTEGEN ~ '^[1-5]'
+//         AND ID_COMPTE = :id_compte
+//         AND ID_DOSSIER = :id_dossier
+//         AND ID_EXERCICE = :id_exerciceN1
+//         AND LETTRAGE IS NULL
+//     ),
+
+//     AGG AS (
+//         SELECT
+//             ID_COMPTE,
+//             ID_DOSSIER,
+//             COMPTEGEN,
+//             COMPTEAUX,
+//             MIN(DATESAISIE) AS DATESAISIE,
+//             MIN(ID_ECRITURE) AS ID_ECRITURE,
+//             MIN(DATEECRITURE) AS DATEECRITURE,
+//             MIN(ID_NUMCPT) AS ID_NUMCPT,
+//             MIN(ID_NUMCPTCENTRALISE) AS ID_NUMCPTCENTRALISE,
+//             MIN(PIECE) AS PIECE,
+//             SUM(DEBIT) AS DEBIT,
+//             SUM(CREDIT) AS CREDIT,
+//             MIN(LIBELLECOMPTE) AS LIBELLECOMPTE,
+//             MIN(LIBELLEAUX) AS LIBELLEAUX,
+//             MIN(PIECEDATE) AS PIECEDATE,
+//             MIN(LETTRAGEDATE) AS LETTRAGEDATE,
+//             MIN(TAUX) AS TAUX,
+//             MIN(LETTRAGE) AS LETTRAGE,
+//             MIN(DEVISE) AS DEVISE,
+//             SUM(MONTANT_DEVISE) AS MONTANT_DEVISE,
+//             MIN(NUM_FACTURE) AS NUM_FACTURE,
+//             SUM(DECLISIMOIS) AS DECLISIMOIS,
+//             SUM(DECLISIANNEE) AS DECLISIANNEE,
+//             BOOL_OR(DECLISI) AS DECLISI,
+//             SUM(DECLTVAMOIS) AS DECLTVAMOIS,
+//             SUM(DECLTVAANNEE) AS DECLTVAANNEE,
+//             BOOL_OR(DECLTVA) AS DECLTVA,
+//             BOOL_OR(RAPPROCHER) AS RAPPROCHER,
+//             MIN(DATE_RAPPROCHEMENT) AS DATE_RAPPROCHEMENT,
+//             MIN(ID_IMMOB) AS ID_IMMOB
+//         FROM BASE
+//         GROUP BY
+//             ID_COMPTE,
+//             ID_DOSSIER,
+//             COMPTEGEN,
+//             COMPTEAUX
+//     ),
+
+//     SPLIT AS (
+//         SELECT
+//             *,
+//             DEBIT AS SPLIT_DEBIT,
+//             0 AS SPLIT_CREDIT
+//         FROM AGG
+//         WHERE DEBIT <> 0
+
+//         UNION ALL
+
+//         SELECT
+//             *,
+//             0 AS SPLIT_DEBIT,
+//             CREDIT AS SPLIT_CREDIT
+//         FROM AGG
+//         WHERE CREDIT <> 0
+//     ),
+
+//     TOTAUX AS (
+//         SELECT
+//             SUM(SPLIT_DEBIT) AS TOTAL_DEBIT,
+//             SUM(SPLIT_CREDIT) AS TOTAL_CREDIT
+//         FROM SPLIT
+//     )
+
+//     INSERT INTO journals (
+//         id_compte, id_dossier, id_exercice, id_ecriture,
+//         datesaisie, dateecriture, id_journal, id_numcpt, id_numcptcentralise,
+//         piece, libelle, debit, credit, devise, lettrage, saisiepar, modifierpar,
+//         piecedate, lettragedate, fichier, id_devise, taux, montant_devise,
+//         num_facture, declisimois, declisiannee, declisi, decltvamois, decltvaannee,
+//         decltva, rapprocher, date_rapprochement, id_immob,
+//         comptegen, compteaux, libelleaux, libellecompte, vraiedate, id_ecriture_n1
+//     )
+
+//     SELECT
+//         ID_COMPTE, ID_DOSSIER, :id_exercice, :id_ecriture,
+//         NOW(), :dateecriture::date, :id_journal,
+//         ID_NUMCPT, ID_NUMCPTCENTRALISE,
+//         PIECE, 'A nouveau ' || LIBELLECOMPTE,
+//         SPLIT_DEBIT,
+//         SPLIT_CREDIT,
+//         :devise, LETTRAGE,
+//         ID_COMPTE, ID_COMPTE,
+//         PIECEDATE, LETTRAGEDATE, NULL,
+//         :id_devise,
+//         TAUX, MONTANT_DEVISE,
+//         NUM_FACTURE, DECLISIMOIS, DECLISIANNEE, DECLISI,
+//         DECLTVAMOIS, DECLTVAANNEE, DECLTVA,
+//         RAPPROCHER, DATE_RAPPROCHEMENT, ID_IMMOB,
+//         COMPTEGEN, COMPTEAUX, LIBELLEAUX, LIBELLECOMPTE,
+//         DATEECRITURE,
+//         ID_ECRITURE
+//     FROM SPLIT
+
+//     UNION ALL
+
+//     SELECT
+//         B.ID_COMPTE, B.ID_DOSSIER, :id_exercice, :id_ecriture,
+//         NOW(), :dateecriture::date, :id_journal,
+//         :id_numcpt, :id_numcpt,
+//         '', :libelleJournal,
+//         CASE WHEN T.TOTAL_DEBIT < T.TOTAL_CREDIT THEN T.TOTAL_CREDIT - T.TOTAL_DEBIT ELSE 0 END,
+//         CASE WHEN T.TOTAL_DEBIT > T.TOTAL_CREDIT THEN T.TOTAL_DEBIT - T.TOTAL_CREDIT ELSE 0 END,
+//         :devise, NULL,
+//         B.ID_COMPTE, B.ID_COMPTE,
+//         B.PIECEDATE, B.LETTRAGEDATE, NULL,
+//         :id_devise, 0, 0,
+//         NULL, 0, 0, FALSE, 0, 0,
+//         FALSE, FALSE, NULL, 0,
+//         :compte, :compte, :libelle, :libelle,
+//         :dateecriture::date, NULL
+//     FROM TOTAUX T
+//     CROSS JOIN (SELECT * FROM BASE LIMIT 1) B
+//     WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT
+// `;
+
 const queryCopyJournalDetaille = `
     WITH BASE AS (
         SELECT *
@@ -3731,69 +3987,11 @@ const queryCopyJournalDetaille = `
         AND LETTRAGE IS NULL
     ),
 
-    AGG AS (
-        SELECT
-            ID_COMPTE,
-            ID_DOSSIER,
-            MIN(COMPTEGEN) AS COMPTEGEN,
-            COMPTEAUX,
-            MIN(DATESAISIE) AS DATESAISIE,
-            MIN(DATEECRITURE) AS DATEECRITURE,
-            MIN(ID_ECRITURE) AS ID_ECRITURE,
-            MIN(ID_NUMCPT) AS ID_NUMCPT,
-            MIN(ID_NUMCPTCENTRALISE) AS ID_NUMCPTCENTRALISE,
-            MIN(PIECE) AS PIECE,
-            SUM(DEBIT) AS DEBIT,
-            SUM(CREDIT) AS CREDIT,
-            MIN(LIBELLECOMPTE) AS LIBELLECOMPTE,
-            MIN(LIBELLEAUX) AS LIBELLEAUX,
-            MIN(PIECEDATE) AS PIECEDATE,
-            MIN(LETTRAGEDATE) AS LETTRAGEDATE,
-            MIN(TAUX) AS TAUX,
-            MIN(LETTRAGE) AS LETTRAGE,
-            MIN(DEVISE) AS DEVISE,
-            SUM(MONTANT_DEVISE) AS MONTANT_DEVISE,
-            MIN(NUM_FACTURE) AS NUM_FACTURE,
-            SUM(DECLISIMOIS) AS DECLISIMOIS,
-            SUM(DECLISIANNEE) AS DECLISIANNEE,
-            BOOL_OR(DECLISI) AS DECLISI,
-            SUM(DECLTVAMOIS) AS DECLTVAMOIS,
-            SUM(DECLTVAANNEE) AS DECLTVAANNEE,
-            BOOL_OR(DECLTVA) AS DECLTVA,
-            BOOL_OR(RAPPROCHER) AS RAPPROCHER,
-            MIN(DATE_RAPPROCHEMENT) AS DATE_RAPPROCHEMENT,
-            MIN(ID_IMMOB) AS ID_IMMOB
-        FROM BASE
-        GROUP BY
-            ID_COMPTE,
-            ID_DOSSIER,
-            COMPTEAUX,
-            ID_ECRITURE
-    ),
-
-    SPLIT AS (
-        SELECT
-            *,
-            DEBIT AS SPLIT_DEBIT,
-            0 AS SPLIT_CREDIT
-        FROM AGG
-        WHERE DEBIT <> 0
-
-        UNION ALL
-
-        SELECT
-            *,
-            0 AS SPLIT_DEBIT,
-            CREDIT AS SPLIT_CREDIT
-        FROM AGG
-        WHERE CREDIT <> 0
-    ),
-
     TOTAUX AS (
         SELECT
-            SUM(SPLIT_DEBIT) AS TOTAL_DEBIT,
-            SUM(SPLIT_CREDIT) AS TOTAL_CREDIT
-        FROM SPLIT
+            SUM(DEBIT) AS TOTAL_DEBIT,
+            SUM(CREDIT) AS TOTAL_CREDIT
+        FROM BASE
     )
 
     INSERT INTO journals (
@@ -3807,24 +4005,40 @@ const queryCopyJournalDetaille = `
     )
 
     SELECT
-        ID_COMPTE, ID_DOSSIER, :id_exercice, :id_ecriture,
+        B.ID_COMPTE, B.ID_DOSSIER, :id_exercice, :id_ecriture,
         NOW(), :dateecriture::date, :id_journal,
-        ID_NUMCPT, ID_NUMCPTCENTRALISE,
-        PIECE, 'A nouveau ' || LIBELLECOMPTE,
-        SPLIT_DEBIT,
-        SPLIT_CREDIT,
-        :devise, LETTRAGE,
-        ID_COMPTE, ID_COMPTE,
-        PIECEDATE, LETTRAGEDATE, NULL,
+        B.ID_NUMCPT, B.ID_NUMCPTCENTRALISE,
+        B.PIECE,
+        'A nouveau ' || B.LIBELLEAUX,
+        B.DEBIT,
+        B.CREDIT,
+        :devise,
+        B.LETTRAGE,
+        B.ID_COMPTE,
+        B.ID_COMPTE,
+        B.PIECEDATE,
+        B.LETTRAGEDATE,
+        NULL,
         :id_devise,
-        TAUX, MONTANT_DEVISE,
-        NUM_FACTURE, DECLISIMOIS, DECLISIANNEE, DECLISI,
-        DECLTVAMOIS, DECLTVAANNEE, DECLTVA,
-        RAPPROCHER, DATE_RAPPROCHEMENT, ID_IMMOB,
-        COMPTEGEN, COMPTEAUX, LIBELLEAUX, LIBELLECOMPTE,
-        DATEECRITURE,
-        ID_ECRITURE
-    FROM SPLIT
+        B.TAUX,
+        B.MONTANT_DEVISE,
+        B.NUM_FACTURE,
+        B.DECLISIMOIS,
+        B.DECLISIANNEE,
+        B.DECLISI,
+        B.DECLTVAMOIS,
+        B.DECLTVAANNEE,
+        B.DECLTVA,
+        B.RAPPROCHER,
+        B.DATE_RAPPROCHEMENT,
+        B.ID_IMMOB,
+        B.COMPTEGEN,
+        B.COMPTEAUX,
+        B.LIBELLEAUX,
+        B.LIBELLECOMPTE,
+        B.DATEECRITURE,
+        B.ID_ECRITURE
+    FROM BASE B
 
     UNION ALL
 
@@ -3837,12 +4051,14 @@ const queryCopyJournalDetaille = `
         CASE WHEN T.TOTAL_DEBIT > T.TOTAL_CREDIT THEN T.TOTAL_DEBIT - T.TOTAL_CREDIT ELSE 0 END,
         :devise, NULL,
         B.ID_COMPTE, B.ID_COMPTE,
-        B.PIECEDATE, B.LETTRAGEDATE, NULL,
+        NULL, NULL, NULL,
         :id_devise, 0, 0,
-        NULL, 0, 0, FALSE, 0, 0,
-        FALSE, FALSE, NULL, 0,
+        NULL, 0, 0, FALSE,
+        0, 0, FALSE,
+        FALSE, NULL, 0,
         :compte, :compte, :libelle, :libelle,
-        :dateecriture::date, NULL
+        :dateecriture::date,
+        NULL
     FROM TOTAUX T
     CROSS JOIN (SELECT * FROM BASE LIMIT 1) B
     WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT
@@ -3853,10 +4069,10 @@ const queryCopyJournalNonDetaille = `
         SELECT *
         FROM JOURNALS
         WHERE COMPTEGEN ~ '^[1-5]'
-        AND ID_COMPTE = :id_compte
-        AND ID_DOSSIER = :id_dossier
-        AND ID_EXERCICE = :id_exerciceN1
-        AND LETTRAGE IS NULL
+            AND ID_COMPTE = :id_compte
+            AND ID_DOSSIER = :id_dossier
+            AND ID_EXERCICE = :id_exerciceN1
+            AND LETTRAGE IS NULL
     ),
 
     AGG AS (
@@ -3865,32 +4081,13 @@ const queryCopyJournalNonDetaille = `
             ID_DOSSIER,
             COMPTEGEN,
             COMPTEAUX,
-            MIN(DATESAISIE) AS DATESAISIE,
-            MIN(ID_ECRITURE) AS ID_ECRITURE,
-            MIN(DATEECRITURE) AS DATEECRITURE,
+            MIN(LIBELLEAUX) AS LIBELLEAUX,
+            MIN(LIBELLECOMPTE) AS LIBELLECOMPTE,
             MIN(ID_NUMCPT) AS ID_NUMCPT,
             MIN(ID_NUMCPTCENTRALISE) AS ID_NUMCPTCENTRALISE,
             MIN(PIECE) AS PIECE,
             SUM(DEBIT) AS DEBIT,
-            SUM(CREDIT) AS CREDIT,
-            MIN(LIBELLECOMPTE) AS LIBELLECOMPTE,
-            MIN(LIBELLEAUX) AS LIBELLEAUX,
-            MIN(PIECEDATE) AS PIECEDATE,
-            MIN(LETTRAGEDATE) AS LETTRAGEDATE,
-            MIN(TAUX) AS TAUX,
-            MIN(LETTRAGE) AS LETTRAGE,
-            MIN(DEVISE) AS DEVISE,
-            SUM(MONTANT_DEVISE) AS MONTANT_DEVISE,
-            MIN(NUM_FACTURE) AS NUM_FACTURE,
-            SUM(DECLISIMOIS) AS DECLISIMOIS,
-            SUM(DECLISIANNEE) AS DECLISIANNEE,
-            BOOL_OR(DECLISI) AS DECLISI,
-            SUM(DECLTVAMOIS) AS DECLTVAMOIS,
-            SUM(DECLTVAANNEE) AS DECLTVAANNEE,
-            BOOL_OR(DECLTVA) AS DECLTVA,
-            BOOL_OR(RAPPROCHER) AS RAPPROCHER,
-            MIN(DATE_RAPPROCHEMENT) AS DATE_RAPPROCHEMENT,
-            MIN(ID_IMMOB) AS ID_IMMOB
+            SUM(CREDIT) AS CREDIT
         FROM BASE
         GROUP BY
             ID_COMPTE,
@@ -3899,80 +4096,115 @@ const queryCopyJournalNonDetaille = `
             COMPTEAUX
     ),
 
-    SPLIT AS (
-        SELECT
-            *,
-            DEBIT AS SPLIT_DEBIT,
-            0 AS SPLIT_CREDIT
-        FROM AGG
-        WHERE DEBIT <> 0
-
-        UNION ALL
-
-        SELECT
-            *,
-            0 AS SPLIT_DEBIT,
-            CREDIT AS SPLIT_CREDIT
-        FROM AGG
-        WHERE CREDIT <> 0
-    ),
-
     TOTAUX AS (
         SELECT
-            SUM(SPLIT_DEBIT) AS TOTAL_DEBIT,
-            SUM(SPLIT_CREDIT) AS TOTAL_CREDIT
-        FROM SPLIT
+            SUM(DEBIT) AS TOTAL_DEBIT,
+            SUM(CREDIT) AS TOTAL_CREDIT
+        FROM AGG
     )
 
     INSERT INTO journals (
         id_compte, id_dossier, id_exercice, id_ecriture,
-        datesaisie, dateecriture, id_journal, id_numcpt, id_numcptcentralise,
-        piece, libelle, debit, credit, devise, lettrage, saisiepar, modifierpar,
-        piecedate, lettragedate, fichier, id_devise, taux, montant_devise,
-        num_facture, declisimois, declisiannee, declisi, decltvamois, decltvaannee,
-        decltva, rapprocher, date_rapprochement, id_immob,
-        comptegen, compteaux, libelleaux, libellecompte, vraiedate, id_ecriture_n1
+        datesaisie, dateecriture, id_journal,
+        id_numcpt, id_numcptcentralise,
+        piece, libelle, debit, credit,
+        devise, lettrage, saisiepar, modifierpar,
+        id_devise,
+        comptegen, compteaux, libelleaux, libellecompte,
+        vraiedate
     )
 
     SELECT
-        ID_COMPTE, ID_DOSSIER, :id_exercice, :id_ecriture,
-        NOW(), :dateecriture::date, :id_journal,
-        ID_NUMCPT, ID_NUMCPTCENTRALISE,
-        PIECE, 'A nouveau ' || LIBELLECOMPTE,
-        SPLIT_DEBIT,
-        SPLIT_CREDIT,
-        :devise, LETTRAGE,
-        ID_COMPTE, ID_COMPTE,
-        PIECEDATE, LETTRAGEDATE, NULL,
+        A.ID_COMPTE,
+        A.ID_DOSSIER,
+        :id_exercice,
+        :id_ecriture,
+        NOW(),
+        :dateecriture::date,
+        :id_journal,
+        A.ID_NUMCPT,
+        A.ID_NUMCPTCENTRALISE,
+        A.PIECE,
+        'A nouveau ' || A.LIBELLEAUX,
+        A.DEBIT,
+        0,
+        :devise,
+        NULL,
+        A.ID_COMPTE,
+        A.ID_COMPTE,
         :id_devise,
-        TAUX, MONTANT_DEVISE,
-        NUM_FACTURE, DECLISIMOIS, DECLISIANNEE, DECLISI,
-        DECLTVAMOIS, DECLTVAANNEE, DECLTVA,
-        RAPPROCHER, DATE_RAPPROCHEMENT, ID_IMMOB,
-        COMPTEGEN, COMPTEAUX, LIBELLEAUX, LIBELLECOMPTE,
-        DATEECRITURE,
-        ID_ECRITURE
-    FROM SPLIT
+        A.COMPTEGEN,
+        A.COMPTEAUX,
+        A.LIBELLEAUX,
+        A.LIBELLECOMPTE,
+        :dateecriture::date
+    FROM AGG A
+    WHERE A.DEBIT <> 0
 
     UNION ALL
 
     SELECT
-        B.ID_COMPTE, B.ID_DOSSIER, :id_exercice, :id_ecriture,
-        NOW(), :dateecriture::date, :id_journal,
-        :id_numcpt, :id_numcpt,
-        '', :libelleJournal,
-        CASE WHEN T.TOTAL_DEBIT < T.TOTAL_CREDIT THEN T.TOTAL_CREDIT - T.TOTAL_DEBIT ELSE 0 END,
-        CASE WHEN T.TOTAL_DEBIT > T.TOTAL_CREDIT THEN T.TOTAL_DEBIT - T.TOTAL_CREDIT ELSE 0 END,
-        :devise, NULL,
-        B.ID_COMPTE, B.ID_COMPTE,
-        B.PIECEDATE, B.LETTRAGEDATE, NULL,
-        :id_devise, 0, 0,
-        NULL, 0, 0, FALSE, 0, 0,
-        FALSE, FALSE, NULL, 0,
-        :compte, :compte, :libelle, :libelle,
-        :dateecriture::date, NULL
+        A.ID_COMPTE,
+        A.ID_DOSSIER,
+        :id_exercice,
+        :id_ecriture,
+        NOW(),
+        :dateecriture::date,
+        :id_journal,
+        A.ID_NUMCPT,
+        A.ID_NUMCPTCENTRALISE,
+        A.PIECE,
+        'A nouveau ' || A.LIBELLEAUX,
+        0,
+        A.CREDIT,
+        :devise,
+        NULL,
+        A.ID_COMPTE,
+        A.ID_COMPTE,
+        :id_devise,
+        A.COMPTEGEN,
+        A.COMPTEAUX,
+        A.LIBELLEAUX,
+        A.LIBELLECOMPTE,
+        :dateecriture::date
+    FROM AGG A
+    WHERE A.CREDIT <> 0
+
+    UNION ALL
+
+    SELECT
+        :id_compte,
+        :id_dossier,
+        :id_exercice,
+        :id_ecriture,
+        NOW(),
+        :dateecriture::date,
+        :id_journal,
+        :id_numcpt,
+        :id_numcpt,
+        '',
+        :libelleJournal,
+        CASE 
+            WHEN T.TOTAL_DEBIT < T.TOTAL_CREDIT 
+            THEN T.TOTAL_CREDIT - T.TOTAL_DEBIT 
+            ELSE 0 
+        END,
+        CASE 
+            WHEN T.TOTAL_DEBIT > T.TOTAL_CREDIT 
+            THEN T.TOTAL_DEBIT - T.TOTAL_CREDIT 
+            ELSE 0 
+        END,
+        :devise,
+        NULL,
+        :id_compte,
+        :id_compte,
+        :id_devise,
+        :compte,
+        :compte,
+        :libelle,
+        :libelle,
+        :dateecriture::date
     FROM TOTAUX T
-    CROSS JOIN (SELECT * FROM BASE LIMIT 1) B
     WHERE T.TOTAL_DEBIT <> T.TOTAL_CREDIT
 `;
 
