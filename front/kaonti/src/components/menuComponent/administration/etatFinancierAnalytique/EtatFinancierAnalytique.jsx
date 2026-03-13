@@ -41,6 +41,7 @@ import VirtualTableEbilanEtatFinaciereAnalytique from '../../../componentsTools/
 import VirtualTableEvcpEtatFinancierAnalytique from '../../../componentsTools/EtatFinancierAnalytique/virtualTableEvcpEtatFinancierAnalytique';
 
 import usePermission from '../../../../hooks/usePermission';
+import ProgressWithMessage from '../../../componentsTools/Progress/ProgressWithMessage';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -303,6 +304,17 @@ export default function EtatFinancierAnalytique() {
     const [isRefreshed, setIsRefreshed] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+
+    const clearData = () => {
+        setBilanActifData([]);
+        setBilanPassifData([]);
+        setCrnData([]);
+        setCrfData([]);
+        setTftdData([]);
+        setTftiData([]);
+        setEvcpData([]);
+    }
 
     const theme = useTheme();
 
@@ -626,13 +638,14 @@ export default function EtatFinancierAnalytique() {
         setSelectedPeriodeId(period_id);
     }
 
-    const getEtatFinancierAnalytiqueGlobal = () => {
+    const getEtatFinancierAnalytiqueGlobal = async () => {
+        setIsLoadingData(true);
         const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
         const date_debut_periode = periodeData?.date_debut;
         const date_fin_periode = periodeData?.date_fin;
 
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
-        axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytique`, {
+        await axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytique`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(selectedExerciceId),
@@ -655,6 +668,7 @@ export default function EtatFinancierAnalytique() {
                     toast.error(resData.message);
                 }
             })
+        setIsLoadingData(false);
     }
 
     // Générer une tableau en PDF ou Excel
@@ -773,7 +787,10 @@ export default function EtatFinancierAnalytique() {
     }, []);
 
     useEffect(() => {
-        if (canView && fileId && compteId && selectedExerciceId && selectedAxeId && selectedSectionsId) {
+        if (selectedSectionsId.length === 0) {
+            clearData();
+        }
+        if (canView && fileId && compteId && selectedExerciceId && selectedAxeId && selectedSectionsId.length > 0) {
             getEtatFinancierAnalytiqueGlobal();
             getListeDevises();
         }
@@ -1036,6 +1053,14 @@ export default function EtatFinancierAnalytique() {
                                         <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="evcp" value="6" />
                                     </TabList>
                                 </Box>
+
+                                {
+                                    isLoadingData && (
+                                        <ProgressWithMessage
+                                            text={'Récupération en cours'}
+                                        />
+                                    )
+                                }
 
                                 {/* BILAN */}
                                 <TabPanel value="1">

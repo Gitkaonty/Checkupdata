@@ -33,7 +33,6 @@ export default function ExportGrandLivre() {
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
   const [listeExercice, setListeExercice] = useState([]);
   const [listePeriode, setListePeriode] = useState([]);
-  const [listeSituation, setListeSituation] = useState([]);
 
   const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
   const [journalCodes, setJournalCodes] = useState([]); // multiple codes
@@ -90,7 +89,6 @@ export default function ExportGrandLivre() {
   const handleChangeExercice = (exercice_id) => {
     setSelectedExerciceId(exercice_id);
     setSelectedPeriodeChoiceId("0");
-    setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
   }
 
   // Chargement des périodes par exercice
@@ -114,7 +112,6 @@ export default function ExportGrandLivre() {
       if (resData.state) {
         setListeExercice(resData.list);
         const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-        setListeSituation(exerciceNId);
         setSelectedExerciceId(exerciceNId[0].id);
       } else {
         setListeExercice([]);
@@ -159,26 +156,6 @@ export default function ExportGrandLivre() {
   const handleChangePeriod = (period_id) => {
     setSelectedPeriodeId(period_id);
   }
-
-  const handleChangeDateIntervalle = (id) => {
-    setSelectedPeriodeId(id);
-    // Adapter les dates si une situation est choisie (plage spécifique)
-    const sit = listeSituation?.find((s) => s.id === id);
-    if (sit) {
-      const d1 = format(new Date(sit.date_debut), 'yyyy-MM-dd');
-      const d2 = format(new Date(sit.date_fin), 'yyyy-MM-dd');
-      setDateDebut(d1);
-      setDateFin(d2);
-    }
-  }
-
-  const handleApplyFilter = () => {
-    const hasFilter = (Array.isArray(journalCodes) && journalCodes.length > 0) || (dateDebut && dateDebut !== '') || (dateFin && dateFin !== '');
-    if (!hasFilter) {
-      return toast.error('Veuillez sélectionner au moins un filtre (code journal ou dates).');
-    }
-    toast.success('Filtre appliqué');
-  };
 
   const handleResetFilter = () => {
     setJournalCodes([]);
