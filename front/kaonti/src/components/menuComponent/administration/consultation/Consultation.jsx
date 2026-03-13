@@ -74,6 +74,9 @@ export default function ConsultationComponent() {
     const [openPopupReaffecter, setOpenPopupReaffecter] = useState(false);
     const [idJournal, setIdJournal] = useState(null);
 
+    const [isLoadingCompte, setIsLoadingCompte] = useState(false);
+    const [isLoadingJournal, setIsLoadingJournal] = useState(false);
+
     const [selectedRows, setSelectedRows] = useState([]);
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
@@ -194,6 +197,7 @@ export default function ConsultationComponent() {
 
     // Récupération des listes des comptes à sélectionner
     const getCompteConsultation = async () => {
+        setIsLoadingCompte(true);
         await axios.post('/administration/traitementSaisie/getCompteConsultation', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), filtrageCompte })
             .then((response) => {
                 if (response?.data?.state) {
@@ -202,6 +206,7 @@ export default function ConsultationComponent() {
                     return;
                 }
             })
+        setIsLoadingCompte(false);
     }
 
     useEffect(() => {
@@ -463,11 +468,14 @@ export default function ConsultationComponent() {
             toast.error("Liste plan comptable pas encore chargée");
             return;
         }
+        setIsLoadingJournal(true);
 
         await axios.post('/administration/traitementSaisie/getJournalsConsultation', { id_compte: Number(compteId), id_dossier: Number(fileId), id_exercice: Number(selectedExerciceId), valSelectedCompte: Number(valSelectedCompte) })
             .then((response) => {
                 setFilteredList(response?.data);
             })
+
+        setIsLoadingJournal(false);
     };
 
     const handlePrevious = () => {
@@ -1172,7 +1180,7 @@ export default function ConsultationComponent() {
 
                                         </Stack>
                                         <Stack direction={'row'} spacing={1}>
-                                            <Tooltip title={'Ctrl + <--'}>
+                                            <Tooltip title={isLoadingCompte ? 'Récupération en cours' : 'Ctrl + <--'}>
                                                 <span>
                                                     <Button
                                                         disabled={
@@ -1180,7 +1188,9 @@ export default function ConsultationComponent() {
                                                             !selectedExerciceId ||
                                                             selectedExerciceId === 0 ||
                                                             valSelectedCompte === 'tout' ||
-                                                            currentIndex <= 0
+                                                            currentIndex <= 0 ||
+                                                            isLoadingCompte ||
+                                                            isLoadingJournal
                                                         }
                                                         sx={{
                                                             minWidth: 0,
@@ -1210,13 +1220,15 @@ export default function ConsultationComponent() {
                                                     </Button>
                                                 </span>
                                             </Tooltip>
-                                            <Tooltip title={'Ctrl + -->'}>
+                                            <Tooltip title={isLoadingCompte ? 'Récupération en cours' : 'Ctrl + -->'}>
                                                 <span>
                                                     <Button
                                                         disabled={
                                                             !canView ||
                                                             !selectedExerciceId || selectedExerciceId === 0 ||
-                                                            currentIndex >= listePcSelectionner.length - 1
+                                                            currentIndex >= listePcSelectionner.length - 1 ||
+                                                            isLoadingCompte ||
+                                                            isLoadingJournal
                                                         }
                                                         sx={{
                                                             minWidth: 0,
@@ -1260,10 +1272,56 @@ export default function ConsultationComponent() {
                                     }}
                                     value={filtrageCompte}
                                 >
-                                    <FormControlLabel value="0" control={<Radio disabled={!canView} />} label="Tous" style={{ marginLeft: "5px" }} />
-                                    <FormControlLabel value="1" control={<Radio disabled={!canView} />} label="Comptes mouvementés" style={{ marginLeft: "5px" }} />
-                                    <FormControlLabel value="2" control={<Radio disabled={!canView} />} label="Comptes soldés" style={{ marginLeft: "5px" }} />
-                                    <FormControlLabel value="3" control={<Radio disabled={!canView} />} label="Comptes non soldés" style={{ marginLeft: "5px" }} />
+                                    <FormControlLabel
+                                        value="0"
+                                        control={
+                                            <Radio
+                                                disabled={
+                                                    !canView ||
+                                                    isLoadingCompte ||
+                                                    isLoadingJournal
+                                                }
+                                            />
+                                        } label="Tous"
+                                        style={{ marginLeft: "5px" }}
+                                    />
+                                    <FormControlLabel
+                                        value="1"
+                                        control={
+                                            <Radio
+                                                disabled={!canView ||
+                                                    isLoadingCompte ||
+                                                    isLoadingJournal
+                                                } />
+                                        }
+                                        label="Comptes mouvementés"
+                                        style={{ marginLeft: "5px" }}
+                                    />
+                                    <FormControlLabel
+                                        value="2"
+                                        control={
+                                            <Radio
+                                                disabled={!canView ||
+                                                    isLoadingCompte ||
+                                                    isLoadingJournal
+                                                }
+                                            />
+                                        }
+                                        label="Comptes soldés"
+                                        style={{ marginLeft: "5px" }}
+                                    />
+                                    <FormControlLabel
+                                        value="3"
+                                        control={
+                                            <Radio
+                                                disabled={!canView ||
+                                                    isLoadingCompte ||
+                                                    isLoadingJournal
+                                                }
+                                            />
+                                        } label="Comptes non soldés"
+                                        style={{ marginLeft: "5px" }}
+                                    />
                                 </RadioGroup>
                             </Stack>
 
