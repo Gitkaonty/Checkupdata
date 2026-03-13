@@ -33,7 +33,6 @@ export default function ExportJournal() {
   const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
   const [listeExercice, setListeExercice] = useState([]);
   const [listePeriode, setListePeriode] = useState([]);
-  const [listeSituation, setListeSituation] = useState([]);
 
   const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
   const [journalCodes, setJournalCodes] = useState([]); // multiple codes
@@ -90,16 +89,6 @@ export default function ExportJournal() {
   const handleChangeExercice = (exercice_id) => {
     setSelectedExerciceId(exercice_id);
     setSelectedPeriodeChoiceId("0");
-    setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-    setSelectedPeriodeId(exercice_id);
-    // Fixer les dates du filtre à l'année (intervalle) de l'exercice
-    const ex = listeExercice.find((e) => e.id === exercice_id);
-    if (ex) {
-      const d1 = format(new Date(ex.date_debut), 'yyyy-MM-dd');
-      const d2 = format(new Date(ex.date_fin), 'yyyy-MM-dd');
-      setDateDebut(d1);
-      setDateFin(d2);
-    }
   }
 
   // Chargement des périodes par exercice
@@ -123,41 +112,9 @@ export default function ExportJournal() {
       if (resData.state) {
         setListeExercice(resData.list);
         const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-        setListeSituation(exerciceNId);
         setSelectedExerciceId(exerciceNId[0].id);
       } else {
         setListeExercice([]);
-        return
-      }
-    })
-  }
-
-  useEffect(() => {
-    const sourceData =
-      listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId)) ||
-      listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
-
-    if (sourceData) {
-      const [dDebut, dFin] = [sourceData.date_debut, sourceData.date_fin].map(date =>
-        format(new Date(date), 'yyyy-MM-dd')
-      );
-      setDateDebut(dDebut);
-      setDateFin(dFin);
-    }
-  }, [selectedExerciceId, selectedPeriodeId]);
-
-  const GetListeSituation = (id) => {
-    axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-      const resData = response.data;
-      if (resData.state) {
-        const list = resData.list;
-        setListeSituation(resData.list);
-        if (list.length > 0) {
-          setSelectedPeriodeId(list[0].id);
-        }
-      } else {
-        setListeSituation([]);
-        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
         return
       }
     })
@@ -185,26 +142,6 @@ export default function ExportJournal() {
   const handleChangePeriod = (period_id) => {
     setSelectedPeriodeId(period_id);
   }
-
-  const handleChangeDateIntervalle = (id) => {
-    setSelectedPeriodeId(id);
-    // Adapter les dates si une situation est choisie (plage spécifique)
-    const sit = listeSituation?.find((s) => s.id === id);
-    if (sit) {
-      const d1 = format(new Date(sit.date_debut), 'yyyy-MM-dd');
-      const d2 = format(new Date(sit.date_fin), 'yyyy-MM-dd');
-      setDateDebut(d1);
-      setDateFin(d2);
-    }
-  }
-
-  const handleApplyFilter = () => {
-    const hasFilter = (Array.isArray(journalCodes) && journalCodes.length > 0) || (dateDebut && dateDebut !== '') || (dateFin && dateFin !== '');
-    if (!hasFilter) {
-      return toast.error('Veuillez sélectionner au moins un filtre (code journal ou dates).');
-    }
-    toast.success('Filtre appliqué');
-  };
 
   const handleResetFilter = () => {
     setJournalCodes([]);
@@ -322,6 +259,20 @@ export default function ExportJournal() {
       getPeriodes();
     }
   }, [selectedExerciceId]);
+
+  useEffect(() => {
+    const sourceData =
+      listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId)) ||
+      listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+    if (sourceData) {
+      const [dDebut, dFin] = [sourceData.date_debut, sourceData.date_fin].map(date =>
+        format(new Date(date), 'yyyy-MM-dd')
+      );
+      setDateDebut(dDebut);
+      setDateFin(dFin);
+    }
+  }, [selectedExerciceId, selectedPeriodeId]);
 
   return (
     <Box>
