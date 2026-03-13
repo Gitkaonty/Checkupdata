@@ -137,23 +137,6 @@ export default function ExportGrandLivre() {
     }
   }, [selectedExerciceId, selectedPeriodeId]);
 
-  const GetListeSituation = (id) => {
-    axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-      const resData = response.data;
-      if (resData.state) {
-        const list = resData.list;
-        setListeSituation(resData.list);
-        if (list.length > 0) {
-          setSelectedPeriodeId(list[0].id);
-        }
-      } else {
-        setListeSituation([]);
-        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-        return
-      }
-    })
-  }
-
   const GetListeCodeJournaux = () => {
     axios.get(`/paramCodeJournaux/listeCodeJournaux/${fileId}`).then((response) => {
       const resData = response.data;
