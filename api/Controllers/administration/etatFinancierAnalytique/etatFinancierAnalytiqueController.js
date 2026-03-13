@@ -913,19 +913,27 @@ exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
             date_fin_periode = periode?.date_fin;
         }
 
+        let texteDatePeriode = '';
+
+        if (date_debut_periode && date_fin_periode) {
+            texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+        } else {
+            texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+        }
+
         const workbook = new ExcelJS.Workbook();
         if (id_etat === 'BILAN') {
-            await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+            await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
         } else if (id_etat === 'CRN') {
-            await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+            await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
         } else if (id_etat === 'CRF') {
-            await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+            await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
         } else if (id_etat === 'TFTI') {
-            await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+            await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
         } else if (id_etat === 'TFTD') {
-            await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+            await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
         } else if (id_etat === 'EVCP') {
-            await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+            await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode);
         } else {
             return res.status(200).json({ msg: "Type d'état invalide" });
         }
@@ -950,7 +958,7 @@ exports.exportEtatFinancierAnalytiqueToExcel = async (req, res) => {
 
 exports.exportAllEtatFinancierAnalytiqueToExcel = async (req, res) => {
     try {
-        const { id_dossier, id_compte, id_exercice, id_axe, id_section } = req.params;
+        const { id_dossier, id_compte, id_exercice, id_axe, id_section, id_periode } = req.params;
         const sections = id_section
             ? id_section.split(',').map(id => Number(id))
             : [];
@@ -963,15 +971,30 @@ exports.exportAllEtatFinancierAnalytiqueToExcel = async (req, res) => {
         const dossier = await dossiers.findByPk(id_dossier);
         const exercice = await exercices.findByPk(id_exercice);
         const compte = await userscomptes.findByPk(id_compte);
+        const periode = await periodes.findByPk(id_periode);
+
+        let date_debut_periode, date_fin_periode = null;
+        if (periode) {
+            date_debut_periode = periode?.date_debut;
+            date_fin_periode = periode?.date_fin;
+        }
+
+        let texteDatePeriode = '';
+
+        if (date_debut_periode && date_fin_periode) {
+            texteDatePeriode = `Période du ${formatDate(date_debut_periode)} au ${formatDate(date_fin_periode)}`;
+        } else {
+            texteDatePeriode = `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`
+        }
 
         const workbook = new ExcelJS.Workbook();
 
-        await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
-        await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
-        await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
-        await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
-        await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
-        await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections);
+        await exportBilanAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
+        await exportCrnAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
+        await exportCrfAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
+        await exportTftdAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
+        await exportTftiAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode, date_debut_periode, date_fin_periode);
+        await exportEvcpAnalytiqueToExcel(id_compte, id_dossier, id_exercice, workbook, dossier?.dossier, compte?.nom, formatDate(exercice?.date_debut), formatDate(exercice?.date_fin), id_axe, sections, texteDatePeriode);
 
         workbook.views = [
             { activeTab: 0 }
