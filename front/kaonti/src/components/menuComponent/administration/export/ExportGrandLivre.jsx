@@ -91,15 +91,6 @@ export default function ExportGrandLivre() {
     setSelectedExerciceId(exercice_id);
     setSelectedPeriodeChoiceId("0");
     setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-    setSelectedPeriodeId(exercice_id);
-    // Fixer les dates du filtre à l'année (intervalle) de l'exercice
-    const ex = listeExercice.find((e) => e.id === exercice_id);
-    if (ex) {
-      const d1 = format(new Date(ex.date_debut), 'yyyy-MM-dd');
-      const d2 = format(new Date(ex.date_fin), 'yyyy-MM-dd');
-      setDateDebut(d1);
-      setDateFin(d2);
-    }
   }
 
   // Chargement des périodes par exercice
@@ -125,16 +116,8 @@ export default function ExportGrandLivre() {
         const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
         setListeSituation(exerciceNId);
         setSelectedExerciceId(exerciceNId[0].id);
-        // setSelectedPeriodeChoiceId(0);
-        // setSelectedPeriodeId(exerciceNId[0].id);
-        // Initialiser les dates du filtre avec celles de l'exercice courant
-        // const d1 = format(new Date(exerciceNId[0].date_debut), 'yyyy-MM-dd');
-        // const d2 = format(new Date(exerciceNId[0].date_fin), 'yyyy-MM-dd');
-        // setDateDebut(d1);
-        // setDateFin(d2);
       } else {
         setListeExercice([]);
-        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
         return
       }
     })
@@ -186,10 +169,7 @@ export default function ExportGrandLivre() {
   const handleChangePeriode = (choix) => {
     setSelectedPeriodeChoiceId(choix);
     if (choix === 0) {
-      setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
       setSelectedPeriodeId(0);
-    } else if (choix === 1) {
-      GetListeSituation(selectedExerciceId);
     }
   }
 
@@ -297,6 +277,11 @@ export default function ExportGrandLivre() {
       handleCloseExportMenu();
     }
   };
+
+  const selectedExercice = listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+  const debutExercice = selectedExercice?.date_debut;
+  const finExercice = selectedExercice?.date_fin;
 
   useEffect(() => {
     const navigationEntries = performance.getEntriesByType('navigation');
@@ -412,82 +397,108 @@ export default function ExportGrandLivre() {
               direction={"row"}
               justifyContent={"flex-start"}
               style={{ marginLeft: "0px", marginTop: "20px", backgroundColor: '#F4F9F9', borderRadius: "5px" }}
-              spacing={2}
             >
-              <FormControl variant="standard" sx={{ width: '25%' }}>
-                <InputLabel>Code journal</InputLabel>
-                <Select
-                  multiple
-                  value={journalCodes}
-                  onChange={handleChangeCodes}
-                  renderValue={(selected) => (
-                    Array.isArray(selected) ? (
-                      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                        {selected.filter(val => val !== ALL_OPTION).map((val) => (
-                          <Chip
-                            key={val}
-                            label={val}
-                            size="small"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onDelete={() => setJournalCodes((prev) => prev.filter((c) => c !== val))}
-                          />
-                        ))}
-                      </Stack>
-                    ) : ''
-                  )}
-                  MenuProps={{
-                    disableScrollLock: true,
-                    PaperProps: {
-                      sx: {
-                        "& .MuiMenuItem-root": {
-                          paddingTop: "2px",    // réduit l’espace haut
-                          paddingBottom: "2px", // réduit l’espace bas
-                          minHeight: "auto",    // supprime la hauteur minimale par défaut
+              <Stack
+                direction={'row'}
+                alignItems={"center"}
+                alignContent={"center"}
+                spacing={2}
+                width={'100%'}
+              >
+                <FormControl variant="standard" sx={{ width: '25%' }}>
+                  <InputLabel>Code journal</InputLabel>
+                  <Select
+                    multiple
+                    value={journalCodes}
+                    onChange={handleChangeCodes}
+                    renderValue={(selected) => (
+                      Array.isArray(selected) ? (
+                        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                          {selected.filter(val => val !== ALL_OPTION).map((val) => (
+                            <Chip
+                              key={val}
+                              label={val}
+                              size="small"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onDelete={() => setJournalCodes((prev) => prev.filter((c) => c !== val))}
+                            />
+                          ))}
+                        </Stack>
+                      ) : ''
+                    )}
+                    MenuProps={{
+                      disableScrollLock: true,
+                      PaperProps: {
+                        sx: {
+                          "& .MuiMenuItem-root": {
+                            paddingTop: "2px",    // réduit l’espace haut
+                            paddingBottom: "2px", // réduit l’espace bas
+                            minHeight: "auto",    // supprime la hauteur minimale par défaut
+                          },
                         },
                       },
+                    }}
+                  >
+                    <MenuItem value={ALL_OPTION}>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        <Checkbox size="small" checked={isAllSelected} indeterminate={!isAllSelected && journalCodes.length > 0} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Sélectionner tout"
+                        primaryTypographyProps={{ fontWeight: 'bold', backgroundColor: '#DFDFDF', color: 'black' }}
+                      />
+                    </MenuItem>
+                    {listeCodeJournaux.map((value, index) => (
+                      <MenuItem key={index} value={value.code}>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          <Checkbox size="small" checked={journalCodes.includes(value.code)} />
+                        </ListItemIcon>
+                        <ListItemText primary={`${value.code} - ${value.libelle}`} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  label="Date début"
+                  type="date"
+                  value={dateDebut}
+                  onChange={(e) => setDateDebut(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  variant="standard"
+                  inputProps={{
+                    min: debutExercice,
+                    max: finExercice
+                  }}
+                  sx={{
+                    width: '150px',
+                    '& input::-webkit-calendar-picker-indicator': {
+                      filter: 'brightness(0) saturate(100%) invert(21%) sepia(31%) saturate(684%) hue-rotate(165deg) brightness(93%) contrast(90%)',
+                      cursor: 'pointer',
                     },
                   }}
-                >
-                  <MenuItem value={ALL_OPTION}>
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      <Checkbox size="small" checked={isAllSelected} indeterminate={!isAllSelected && journalCodes.length > 0} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="Sélectionner tout"
-                      primaryTypographyProps={{ fontWeight: 'bold', backgroundColor: '#DFDFDF', color: 'black' }}
-                    />
-                  </MenuItem>
-                  {listeCodeJournaux.map((value, index) => (
-                    <MenuItem key={index} value={value.code}>
-                      <ListItemIcon sx={{ minWidth: 32 }}>
-                        <Checkbox size="small" checked={journalCodes.includes(value.code)} />
-                      </ListItemIcon>
-                      <ListItemText primary={`${value.code} - ${value.libelle}`} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                />
 
-
-              <TextField
-                label="Date début"
-                type="date"
-                value={dateDebut}
-                onChange={(e) => setDateDebut(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                variant="standard"
-                sx={{ width: '20%' }}
-              />
-
-              <TextField
-                label="Date fin"
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                variant="standard"
-                sx={{ width: '20%' }}
-              />
+                <TextField
+                  label="Date fin"
+                  type="date"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  variant="standard"
+                  inputProps={{
+                    min: dateDebut,
+                    max: finExercice
+                  }}
+                  sx={{
+                    width: '150px',
+                    '& input::-webkit-calendar-picker-indicator': {
+                      filter: 'brightness(0) saturate(100%) invert(21%) sepia(31%) saturate(684%) hue-rotate(165deg) brightness(93%) contrast(90%)',
+                      cursor: 'pointer',
+                    },
+                  }}
+                />
+              </Stack>
 
               <Stack direction={'row'} spacing={2} sx={{ ml: 4, alignItems: 'center' }}>
                 <Button
@@ -503,6 +514,7 @@ export default function ExportGrandLivre() {
                   aria-controls={openExportMenu ? 'export-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={openExportMenu ? 'true' : undefined}
+                  style={{ textTransform: 'none', outline: 'none' }}
                 >
                   <CiExport style={{ width: 35, height: 35, color: '#1A5276' }} />
                 </IconButton>
