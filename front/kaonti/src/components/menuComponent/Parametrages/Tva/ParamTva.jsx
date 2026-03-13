@@ -247,7 +247,7 @@ export default function ParamTVAComponent() {
                         <InputLabel><em>Choisir...</em></InputLabel>
                         <Select
                             style={{ backgroundColor: compteValidationColor }}
-                            value={formikNewParamTva.values.compte}
+                            value={formikNewParamTva.values.compte ?? ''}
                             onChange={(e) => handleChangeCompte(e.target.value)}
                             label="Type"
                         >
@@ -321,7 +321,7 @@ export default function ParamTVAComponent() {
                         <InputLabel><em>Choisir...</em></InputLabel>
                         <Select
                             style={{ backgroundColor: codeValidationColor }}
-                            value={formikNewParamTva.values.code}
+                            value={params.value ?? ''}
                             onChange={(e) => handleChangeCodeTva(e.target.value)}
                             label="Type"
                         >
@@ -401,7 +401,7 @@ export default function ParamTVAComponent() {
                                 backgroundColor: 'transparent'
                             }}
                             type="text"
-                            value={formikNewParamTva.values.codedescription}
+                            value={formikNewParamTva.values.libelle || ''}
                             //onChange = {(e) => formikNewParamTva.setFieldValue('libelle', e.target.value)}
                             label="libelle"
                             disableUnderline={true}
@@ -497,6 +497,8 @@ export default function ParamTVAComponent() {
             saveBoolCode = true;
         }
 
+        // return console.log('formikNewParamTva.values : ', formikNewParamTva.values);
+
         if (saveBoolCode && saveBoolCompte) {
             setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
             axiosPrivate.post(`/paramTva/paramTvaAdd`, formikNewParamTva.values).then((response) => {
@@ -530,6 +532,7 @@ export default function ParamTVAComponent() {
                 if (idToDelete < 0) {
                     setOpenDialogDeleteRow(false);
                     setParamTva(paramTva.filter((row) => row.id !== idToDelete));
+                    toast.success('Ligne supprimé avec succès');
                     return;
                 }
                 axiosPrivate.post(`/paramTva/paramTvaDelete`, { fileId, compteId, idToDelete }).then((response) => {
@@ -538,6 +541,7 @@ export default function ParamTVAComponent() {
                         setDisableAddRowBouton(false);
                         setOpenDialogDeleteRow(false);
                         setParamTva(paramTva.filter((row) => row.id !== selectedRowId[0]));
+                        toast.success('Ligne supprimé avec succès');
                     } else {
                         setOpenDialogDeleteRow(false);
                         toast.error(resData.msg);
@@ -631,7 +635,8 @@ export default function ParamTVAComponent() {
             if (isNew) return true;
             const compte = String(row?.['dossierplancomptable.compte'] || '');
             const code = String(row?.['listecodetva.code'] || '');
-            return compte.startsWith('445') && !code.startsWith('1');
+            return compte.startsWith('445')
+            //  && !code.startsWith('1');
         });
     }, [paramTva]);
 
@@ -749,35 +754,39 @@ export default function ParamTVAComponent() {
                             <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
                                 direction={"row"} justifyContent={"right"}>
                                 <Tooltip title="Ajouter une ligne">
-                                    <IconButton
-                                        disabled={!canAdd || disableAddRowBouton}
-                                        variant="contained"
-                                        onClick={handleOpenDialogAddNewAssocie}
-                                        style={{
-                                            width: "35px", height: '35px',
-                                            borderRadius: "2px", borderColor: "transparent",
-                                            backgroundColor: initial.theme,
-                                            textTransform: 'none', outline: 'none'
-                                        }}
-                                    >
-                                        <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                    </IconButton>
+                                    <span>
+                                        <IconButton
+                                            disabled={!canAdd || disableAddRowBouton}
+                                            variant="contained"
+                                            onClick={handleOpenDialogAddNewAssocie}
+                                            style={{
+                                                width: "35px", height: '35px',
+                                                borderRadius: "2px", borderColor: "transparent",
+                                                backgroundColor: initial.theme,
+                                                textTransform: 'none', outline: 'none'
+                                            }}
+                                        >
+                                            <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                        </IconButton>
+                                    </span>
                                 </Tooltip>
 
                                 <Tooltip title="Modifier la ligne sélectionnée">
-                                    <IconButton
-                                        disabled={(!canModify && selectedRowId > 0) || disableModifyBouton}
-                                        variant="contained"
-                                        onClick={handleEditClick(selectedRowId)}
-                                        style={{
-                                            width: "35px", height: '35px',
-                                            borderRadius: "2px", borderColor: "transparent",
-                                            backgroundColor: initial.theme,
-                                            textTransform: 'none', outline: 'none'
-                                        }}
-                                    >
-                                        <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                    </IconButton>
+                                    <span>
+                                        <IconButton
+                                            disabled={(!canModify && selectedRowId > 0) || disableModifyBouton}
+                                            variant="contained"
+                                            onClick={handleEditClick(selectedRowId)}
+                                            style={{
+                                                width: "35px", height: '35px',
+                                                borderRadius: "2px", borderColor: "transparent",
+                                                backgroundColor: initial.theme,
+                                                textTransform: 'none', outline: 'none'
+                                            }}
+                                        >
+                                            <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                        </IconButton>
+                                    </span>
                                 </Tooltip>
 
                                 <Tooltip title="Sauvegarder les modifications">
