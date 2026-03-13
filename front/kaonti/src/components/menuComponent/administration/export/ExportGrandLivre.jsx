@@ -120,20 +120,6 @@ export default function ExportGrandLivre() {
     })
   }
 
-  useEffect(() => {
-    const sourceData =
-      listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId)) ||
-      listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
-
-    if (sourceData) {
-      const [dDebut, dFin] = [sourceData.date_debut, sourceData.date_fin].map(date =>
-        format(new Date(date), 'yyyy-MM-dd')
-      );
-      setDateDebut(dDebut);
-      setDateFin(dFin);
-    }
-  }, [selectedExerciceId, selectedPeriodeId]);
-
   const GetListeCodeJournaux = () => {
     axios.get(`/paramCodeJournaux/listeCodeJournaux/${fileId}`).then((response) => {
       const resData = response.data;
@@ -273,6 +259,20 @@ export default function ExportGrandLivre() {
       getPeriodes();
     }
   }, [selectedExerciceId]);
+
+  useEffect(() => {
+    const sourceData =
+      listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId)) ||
+      listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+    if (sourceData) {
+      const [dDebut, dFin] = [sourceData.date_debut, sourceData.date_fin].map(date =>
+        format(new Date(date), 'yyyy-MM-dd')
+      );
+      setDateDebut(dDebut);
+      setDateFin(dFin);
+    }
+  }, [selectedExerciceId, selectedPeriodeId]);
 
   return (
     <Box>

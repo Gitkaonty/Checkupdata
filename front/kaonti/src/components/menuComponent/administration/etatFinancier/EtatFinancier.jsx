@@ -26,8 +26,6 @@ import { format } from 'date-fns';
 
 import PopupActionConfirm from '../../../componentsTools/popupActionConfirm';
 
-import { useTheme } from '@mui/material/styles';
-
 import axios, { URL } from '../../../../../config/axios';
 import { CiLock } from "react-icons/ci";
 import { CiUnlock } from "react-icons/ci";
@@ -261,7 +259,6 @@ export default function EtatFinancier() {
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
     const [listePeriode, setListePeriode] = useState([]);
-    const [listeSituation, setListeSituation] = useState([]);
 
     const [showBilan, setShowBilan] = useState('actif');
     const [buttonActifVariant, setButtonActifVariant] = useState('contained');
@@ -293,8 +290,6 @@ export default function EtatFinancier() {
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(false);
 
-    const theme = useTheme();
-
     //récupération infos de connexion
     const { auth } = useAuth();
     const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
@@ -305,9 +300,6 @@ export default function EtatFinancier() {
     //Choix exercice
     const handleChangeExercice = (exercice_id) => {
         setSelectedExerciceId(exercice_id);
-        setSelectedPeriodeChoiceId("0");
-        // setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        // setSelectedPeriodeId(exercice_id);
 
         getVerouillageEtatFinancier(compteId, fileId, exercice_id);
     }
@@ -332,14 +324,8 @@ export default function EtatFinancier() {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
-            // setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
-
-            // getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
         }
-        // else if (choix === 1) {
-        //     GetListeSituation(selectedExerciceId);
-        // }
     }
 
     const handleChangeTAB = (event, newValue) => {
@@ -423,12 +409,6 @@ export default function EtatFinancier() {
             setButtonPassifVariant('contained');
         }
     }
-    //refresh table BILAN
-    const refreshBILAN = () => {
-        setTableToRefresh('BILAN');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau du Bilan?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de BILAN
     const lockTableBILAN = () => {
@@ -440,13 +420,6 @@ export default function EtatFinancier() {
     //TABLEAU CRN
     //===========================================================================================
 
-    //refresh table CRN
-    const refreshCRN = () => {
-        setTableToRefresh('CRN');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau CRN?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de CRN
     const lockTableCRN = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'CRN', verrCrn);
@@ -456,13 +429,6 @@ export default function EtatFinancier() {
     //===========================================================================================
     //TABLEAU CRF
     //===========================================================================================
-
-    //refresh table CRF
-    const refreshCRF = () => {
-        setTableToRefresh('CRF');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau CRF?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de CRF
     const lockTableCRF = () => {
@@ -474,13 +440,6 @@ export default function EtatFinancier() {
     //TABLEAU TFTD
     //===========================================================================================
 
-    //refresh table TFTD
-    const refreshTFTD = () => {
-        setTableToRefresh('TFTD');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau TFTD?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de TFTD
     const lockTableTFTD = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'TFTD', verrTftd);
@@ -490,13 +449,6 @@ export default function EtatFinancier() {
     //===========================================================================================
     //TABLEAU TFTI
     //===========================================================================================
-
-    //refresh table TFTI
-    const refreshTFTI = () => {
-        setTableToRefresh('TFTI');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau TFTI?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de TFTI
     const lockTableTFTI = () => {
@@ -519,12 +471,6 @@ export default function EtatFinancier() {
     const lockTableEVCP = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'EVCP', verrEvcp);
         setVerrEvcp(!verrEvcp);
-    }
-
-    const closeDetailAnomalie = (value) => {
-        if (value) {
-            setConfirmShowAnomalie(false);
-        }
     }
 
     const GetInfosIdDossier = (id) => {
@@ -555,11 +501,9 @@ export default function EtatFinancier() {
                 setListeExercice(resData.list);
 
                 const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-                setListeSituation(exerciceNId);
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
-                // setSelectedPeriodeId(exerciceNId[0].id);
 
                 getVerouillageEtatFinancier(compteId, id, exerciceNId[0].id);
             } else {
@@ -598,24 +542,6 @@ export default function EtatFinancier() {
                 toast.error(resData.msg);
             }
         });
-    }
-
-    //Récupérer la liste des exercices
-    const GetListeSituation = (id) => {
-        axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                const list = resData.list;
-                setListeSituation(resData.list);
-                // if (list.length > 0) {
-                //     setSelectedPeriodeId(list[0].id);
-                // }
-            } else {
-                setListeSituation([]);
-                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-                return
-            }
-        })
     }
 
     const getEtatFinancier = async () => {

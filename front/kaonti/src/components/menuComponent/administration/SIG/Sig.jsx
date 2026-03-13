@@ -32,6 +32,7 @@ import VirtualTableEbilanEtatFinacier from '../../../componentsTools/EtatFinanci
 import ExportEtatFinancierButton from '../../../componentsTools/EtatFinancier/ButtonEtatFinancierExport/ExportEtatFinancierButton/ExportEtatFinancierButton';
 
 import usePermission from '../../../../hooks/usePermission';
+import ProgressWithMessage from '../../../componentsTools/Progress/ProgressWithMessage';
 
 const sigColumn = [
     {
@@ -120,6 +121,7 @@ export default function Sig() {
     const [isRefreshed, setIsRefreshed] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     //récupération infos de connexion
     const { auth } = useAuth();
@@ -157,13 +159,14 @@ export default function Sig() {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
-            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
+            // setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
 
-            getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
-        } else if (choix === 1) {
-            GetListeSituation(selectedExerciceId);
+            // getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
         }
+        // else if (choix === 1) {
+        //     GetListeSituation(selectedExerciceId);
+        // }
     }
 
     const handleOpenDialogConfirmRefresh = () => {
@@ -205,13 +208,6 @@ export default function Sig() {
         setIsLoading(false);
     }
 
-    //refresh table SIG
-    const refreshSig = () => {
-        setTableToRefresh('SIG');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau SIG?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de SIG
     const lockTableSig = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'SIG', verrSig);
@@ -250,7 +246,6 @@ export default function Sig() {
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
-                setSelectedPeriodeId(exerciceNId[0].id);
 
                 getVerouillageEtatFinancier(compteId, id, exerciceNId[0].id);
             } else {
@@ -287,29 +282,29 @@ export default function Sig() {
     }
 
     //Récupérer la liste des exercices
-    const GetListeSituation = (id) => {
-        axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                const list = resData.list;
-                setListeSituation(resData.list);
-                if (list.length > 0) {
-                    setSelectedPeriodeId(list[0].id);
-                }
-            } else {
-                setListeSituation([]);
-                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-                return
-            }
-        })
-    }
+    // const GetListeSituation = (id) => {
+    //     axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
+    //         const resData = response.data;
+    //         if (resData.state) {
+    //             const list = resData.list;
+    //             setListeSituation(resData.list);
+    //             if (list.length > 0) {
+    //                 setSelectedPeriodeId(list[0].id);
+    //             }
+    //         } else {
+    //             setListeSituation([]);
+    //             //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
+    //             return
+    //         }
+    //     })
+    // }
 
-    const getEtatFinancierGlobal = () => {
-        console.log('Appelé');
+    const getEtatFinancierGlobal = async () => {
+        setIsLoadingData(true);
         const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
         const date_debut_periode = periodeData?.date_debut;
         const date_fin_periode = periodeData?.date_fin;
-        axios.post(`/administration/etatFinancier/getSig`, {
+        await axios.post(`/administration/etatFinancier/getSig`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(selectedExerciceId),
@@ -324,6 +319,7 @@ export default function Sig() {
                     toast.error(resData.message);
                 }
             })
+        setIsLoadingData(false);
     }
 
     // Générer une tableau en PDF ou Excel
@@ -403,17 +399,6 @@ export default function Sig() {
                     ?
                     <PopupTestSelectedFile
                         confirmationState={sendToHome}
-                    />
-                    :
-                    null
-            }
-            {
-                showTableRefresh
-                    ?
-                    <PopupActionConfirm
-                        msg={msgRefresh}
-                        confirmationState={handleRefreshTable}
-                        isLoading={isLoading}
                     />
                     :
                     null
@@ -506,6 +491,21 @@ export default function Sig() {
                                     </FormControl>
                                 </Stack>
                             </Stack>
+
+                            {
+                                isLoadingData && (
+                                    <Stack
+                                        sx={{
+                                            mt: 1
+                                        }}
+                                        width={'100%'}
+                                    >
+                                        <ProgressWithMessage
+                                            text={'Récupération en cours'}
+                                        />
+                                    </Stack>
+                                )
+                            }
 
                             <Box sx={{ width: '100%', typography: 'body1' }}>
 
