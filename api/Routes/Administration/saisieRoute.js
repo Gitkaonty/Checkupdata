@@ -64,6 +64,9 @@ router.get('/immobilisations/details/degresif/preview', saisieController.preview
 router.post('/immobilisations/details/lineaire/save', saisieController.saveImmoLineaire);
 router.post('/immobilisations/details/degresif/save', saisieController.saveImmoDegressif);
 
+// Récupération du plan d'amortissement
+router.post('/immobilisations/details/getPlanAmort', saisieController.getPlanAmort);
+
 // Immobilisations: génération écritures comptables (journal Imau)
 router.post('/immobilisations/ecritures/generate', saisieController.generateImmoEcritures);
 

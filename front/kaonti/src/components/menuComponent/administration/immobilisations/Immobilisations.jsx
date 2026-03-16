@@ -205,13 +205,13 @@ const Immobilisations = () => {
     }
 
     // Fallback: si vide, charger via selectionLigne et filtrer par compte
-    if (!list.length) {
-      try {
-        const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
-        const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
-        list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
-      } catch { }
-    }
+    // if (!list.length) {
+    //   try {
+    //     const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
+    //     const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
+    //     list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
+    //   } catch { }
+    // }
 
     const filteredList = list.filter(journal => {
       const libre = !journal.id_immob;
@@ -859,6 +859,23 @@ const Immobilisations = () => {
     idExerciceSelectionne = lignesListeImmo?.id_exercice;
   }
 
+  const getPlanAmort = async (id_detail_immo) => {
+    await axios.post('/administration/traitementSaisie/immobilisations/details/getPlanAmort', { id_detail_immo })
+      .then((response) => {
+        const resData = response.data;
+        if (resData.state) {
+          const compLine = Array.isArray(resData.compLine) ? resData.compLine : (resData.compLine ? [resData.compLine] : []);
+          const fiscLine = Array.isArray(resData.compFisc) ? resData.compFisc : (resData.compFisc ? [resData.compFisc] : []);
+          setLigneRowsComp(compLine);
+          setLigneRowsFisc(fiscLine);
+        }
+      })
+      .catch((e) => {
+        console.error('Erreur lors de la récupération du plan d\'amortissement :', e);
+        toast.error('Impossible de récupérer le plan d\'amortissement');
+      });
+  }
+
   useEffect(() => {
     const idFile = Number(id) || 0;
     if (!idFile) {
@@ -917,99 +934,100 @@ const Immobilisations = () => {
         const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
         const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
         if (!fid || !compteId || !exoId || !selectedDetailId) { setLigneRowsComp([]); setLigneRowsFisc([]); return; }
+        getPlanAmort(selectedDetailId);
 
         setLigneLoading(true);
         // Auto-détection du mode à partir de la ligne sélectionnée dans le 2e tableau
-        const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
-        let autoMode = 'comp';
-        const fiscHints = [
-          Number(detailRow?.duree_amort_mois_fisc) || 0,
-          Number(detailRow?.amort_ant_fisc) || 0,
-          Number(detailRow?.dotation_periode_fisc) || 0,
-          Number(detailRow?.amort_exceptionnel_fisc) || 0,
-          Number(detailRow?.derogatoire_fisc) || 0,
-          Number(detailRow?.total_amortissement_fisc) || 0,
-        ];
-        if (detailRow.__amortTab === 'fisc') autoMode = 'fisc';
-        else if (detailRow.__amortTab === 'comp') autoMode = 'comp';
-        else if ((detailRow?.type_amort_fisc && String(detailRow.type_amort_fisc).length > 0)) autoMode = 'fisc';
-        else if (fiscHints.some(v => v > 0)) autoMode = 'fisc';
-        else autoMode = 'comp';
+        // const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
+        // let autoMode = 'comp';
+        // const fiscHints = [
+        //   Number(detailRow?.duree_amort_mois_fisc) || 0,
+        //   Number(detailRow?.amort_ant_fisc) || 0,
+        //   Number(detailRow?.dotation_periode_fisc) || 0,
+        //   Number(detailRow?.amort_exceptionnel_fisc) || 0,
+        //   Number(detailRow?.derogatoire_fisc) || 0,
+        //   Number(detailRow?.total_amortissement_fisc) || 0,
+        // ];
+        // if (detailRow.__amortTab === 'fisc') autoMode = 'fisc';
+        // else if (detailRow.__amortTab === 'comp') autoMode = 'comp';
+        // else if ((detailRow?.type_amort_fisc && String(detailRow.type_amort_fisc).length > 0)) autoMode = 'fisc';
+        // else if (fiscHints.some(v => v > 0)) autoMode = 'fisc';
+        // else autoMode = 'comp';
 
-        // Toujours récupérer les deux prévisualisations (linéaire + dégressif), puis choisir par onglet
-        const isCompDeg = normalizeNoAccent(detailRow?.type_amort).includes('degr');
-        const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
+        // // Toujours récupérer les deux prévisualisations (linéaire + dégressif), puis choisir par onglet
+        // const isCompDeg = normalizeNoAccent(detailRow?.type_amort).includes('degr');
+        // const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
 
-        const [linRes, degRes] = await Promise.all([
-          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
-          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
-        ]);
+        // const [linRes, degRes] = await Promise.all([
+        //   axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
+        //   axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
+        // ]);
 
-        const lin = linRes?.data?.previewLin || {};
-        const deg = degRes?.data?.previewDeg || {};
+        // const lin = linRes?.data?.previewLin || {};
+        // const deg = degRes?.data?.previewDeg || {};
 
-        // Sélectionner la source par onglet (préférer dégressif si disponible)
-        const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
-        const degFisc = Array.isArray(deg.list_fisc) ? deg.list_fisc : [];
-        const linComp = Array.isArray(lin.list_comp) ? lin.list_comp : [];
-        const linFisc = Array.isArray(lin.list_fisc) ? lin.list_fisc : [];
+        // // Sélectionner la source par onglet (préférer dégressif si disponible)
+        // const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
+        // const degFisc = Array.isArray(deg.list_fisc) ? deg.list_fisc : [];
+        // const linComp = Array.isArray(lin.list_comp) ? lin.list_comp : [];
+        // const linFisc = Array.isArray(lin.list_fisc) ? lin.list_fisc : [];
 
-        const compUsesDeg = (isCompDeg && degComp.length > 0);
-        const fiscUsesDeg = (isFiscDeg && degFisc.length > 0);
+        // const compUsesDeg = (isCompDeg && degComp.length > 0);
+        // const fiscUsesDeg = (isFiscDeg && degFisc.length > 0);
 
-        const rawComp = compUsesDeg ? degComp : linComp;
-        const rawFisc = fiscUsesDeg ? degFisc : linFisc;
-        const meta = compUsesDeg ? (deg.meta || lin.meta || {}) : (lin.meta || deg.meta || {});
+        // const rawComp = compUsesDeg ? degComp : linComp;
+        // const rawFisc = fiscUsesDeg ? degFisc : linFisc;
+        // const meta = compUsesDeg ? (deg.meta || lin.meta || {}) : (lin.meta || deg.meta || {});
 
-        const montantHt = Number(meta?.montant_ht) || 0;
-        const repriseComp = meta?.reprise_comp || meta?.reprise;
-        const repriseFisc = meta?.reprise_fisc;
-        const montantImmoHtComp = repriseComp ? Math.max(0, montantHt - (Number(repriseComp?.amort_ant) || 0)) : montantHt;
-        const montantImmoHtFisc = repriseFisc ? Math.max(0, montantHt - (Number(repriseFisc?.amort_ant) || 0)) : montantHt;
+        // const montantHt = Number(meta?.montant_ht) || 0;
+        // const repriseComp = meta?.reprise_comp || meta?.reprise;
+        // const repriseFisc = meta?.reprise_fisc;
+        // const montantImmoHtComp = repriseComp ? Math.max(0, montantHt - (Number(repriseComp?.amort_ant) || 0)) : montantHt;
+        // const montantImmoHtFisc = repriseFisc ? Math.max(0, montantHt - (Number(repriseFisc?.amort_ant) || 0)) : montantHt;
 
-        // Normalize possible backend schemas to frontend fields
-        const normComp = rawComp.map((r) => ({
-          rang: r.rang,
-          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
-          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
-          nb_jours: r.nb_jours ?? r.nbJours ?? null,
-          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
-          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtComp,
-          amort_ant_comp: r.amort_ant_comp ?? r.dot_ant ?? 0,
-          dotation_periode_comp: r.dotation_periode_comp ?? r.dotation_annuelle ?? 0,
-          cumul_amort_comp: r.cumul_amort_comp ?? r.cumul_amort ?? 0,
-          vnc: r.vnc ?? r.vnc_comp ?? null,
-          // keep fiscal zeros for comp view rows
-          amort_ant_fisc: 0,
-          dotation_periode_fisc: 0,
-          cumul_amort_fisc: 0,
-          dot_derogatoire: r.dot_derogatoire ?? 0,
-        }));
+        // // Normalize possible backend schemas to frontend fields
+        // const normComp = rawComp.map((r) => ({
+        //   rang: r.rang,
+        //   date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
+        //   date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
+        //   nb_jours: r.nb_jours ?? r.nbJours ?? null,
+        //   annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
+        //   montant_immo_ht: r.montant_immo_ht ?? montantImmoHtComp,
+        //   amort_ant_comp: r.amort_ant_comp ?? r.dot_ant ?? 0,
+        //   dotation_periode_comp: r.dotation_periode_comp ?? r.dotation_annuelle ?? 0,
+        //   cumul_amort_comp: r.cumul_amort_comp ?? r.cumul_amort ?? 0,
+        //   vnc: r.vnc ?? r.vnc_comp ?? null,
+        //   // keep fiscal zeros for comp view rows
+        //   amort_ant_fisc: 0,
+        //   dotation_periode_fisc: 0,
+        //   cumul_amort_fisc: 0,
+        //   dot_derogatoire: r.dot_derogatoire ?? 0,
+        // }));
 
-        const normFisc = rawFisc.map((r) => ({
-          rang: r.rang,
-          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
-          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
-          nb_jours: r.nb_jours ?? r.nbJours ?? null,
-          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
-          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtFisc,
-          // keep comp zeros for fisc view rows
-          amort_ant_comp: 0,
-          dotation_periode_comp: 0,
-          cumul_amort_comp: 0,
-          vnc: r.vnc ?? Math.max(0, (meta.montant_ht ?? 0) - (r.cumul_amort_fisc ?? r.cumul_amort ?? 0)),
-          amort_ant_fisc: r.amort_ant_fisc ?? r.dot_ant ?? 0,
-          dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
-          cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
-          dot_derogatoire: r.dot_derogatoire ?? 0,
-        }));
+        // const normFisc = rawFisc.map((r) => ({
+        //   rang: r.rang,
+        //   date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
+        //   date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
+        //   nb_jours: r.nb_jours ?? r.nbJours ?? null,
+        //   annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
+        //   montant_immo_ht: r.montant_immo_ht ?? montantImmoHtFisc,
+        //   // keep comp zeros for fisc view rows
+        //   amort_ant_comp: 0,
+        //   dotation_periode_comp: 0,
+        //   cumul_amort_comp: 0,
+        //   vnc: r.vnc ?? Math.max(0, (meta.montant_ht ?? 0) - (r.cumul_amort_fisc ?? r.cumul_amort ?? 0)),
+        //   amort_ant_fisc: r.amort_ant_fisc ?? r.dot_ant ?? 0,
+        //   dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
+        //   cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
+        //   dot_derogatoire: r.dot_derogatoire ?? 0,
+        // }));
 
         // await handleSaveLignes(normComp, normFisc);
 
-        setLigneRowsComp(normComp);
-        setLigneRowsFisc(normFisc);
-        setIsCompDegTab(!!compUsesDeg);
-        setIsFiscDegTab(!!fiscUsesDeg);
+        // setLigneRowsComp(normComp);
+        // setLigneRowsFisc(normFisc);
+        // setIsCompDegTab(!!compUsesDeg);
+        // setIsFiscDegTab(!!fiscUsesDeg);
 
       } catch (e) {
         setLigneRowsComp([]);

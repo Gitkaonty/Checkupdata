@@ -97,6 +97,10 @@ module.exports = {
         type: Sequelize.DECIMAL(18, 2),
         allowNull: true
       },
+      type: {
+        type: Sequelize.STRING(20),
+        allowNull: true
+      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
