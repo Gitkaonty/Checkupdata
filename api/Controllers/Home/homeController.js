@@ -852,6 +852,69 @@ const deleteDossierPasswordAccess = async (req, res) => {
   }
 }
 
+const getInfoCardDossier = async (req, res) => {
+  const { id_compte } = req.params;
+  const queryDossier = `
+    SELECT
+      (
+        SELECT
+          COUNT(*)
+        FROM
+          DOSSIERS
+        WHERE
+          ID_COMPTE = 1
+      ) AS NBR_DOSSIERS,
+      (
+        SELECT
+          COUNT(P.ID)
+        FROM
+          PORTEFEUILLES P
+        WHERE
+          P.ID_COMPTE = 1
+      ) AS NBR_PORTEFEUILLES,
+      (
+        SELECT
+          COUNT(DISTINCT CAC)
+        FROM
+          DOSSIERS
+        WHERE
+          ID_COMPTE = 1
+          AND CAC IS NOT NULL
+          AND CAC <> ''
+      ) AS NBR_CAC,
+      (
+        SELECT
+          COUNT(DISTINCT EXPERTCOMPTABLE)
+        FROM
+          DOSSIERS
+        WHERE
+          ID_COMPTE = 1
+          AND EXPERTCOMPTABLE IS NOT NULL
+          AND EXPERTCOMPTABLE <> ''
+      ) AS NBR_EXPERTCOMPTABLE,
+      (
+        SELECT
+          COUNT(DISTINCT RESPONSABLE)
+        FROM
+          DOSSIERS
+        WHERE
+          ID_COMPTE = 1
+          AND RESPONSABLE IS NOT NULL
+          AND RESPONSABLE <> ''
+      ) AS NBR_RESPONSABLE
+  `;
+  const data = await db.sequelize.query(queryDossier, {
+    replacements: { id_compte },
+    type: db.Sequelize.QueryTypes.SELECT,
+  });
+  return res.json({
+    state: true,
+    msg: '',
+    data: data[0] || {}
+  }
+  );
+}
+
 module.exports = {
   recupListDossier,
   createNewFile,
@@ -862,5 +925,6 @@ module.exports = {
   getAllDossierByCompte,
   getCompteDossier,
   verifyFilePassword,
-  deleteDossierPasswordAccess
+  deleteDossierPasswordAccess,
+  getInfoCardDossier
 };
