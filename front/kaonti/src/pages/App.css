@@ -3,10 +3,10 @@
   margin: -10px;
   padding: 0.5rem;
   text-align: center;
-  background-color:white;
-  width:2000px;
+  /* background-color:white; */
+  background-color: #f1f3f7;
+  width: 2000px;
   height: auto;
   display: flex;
   align-content: stretch;
 }
-
