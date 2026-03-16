@@ -127,9 +127,23 @@ const Immobilisations = () => {
   const journalLinkDataRef = useRef(journalLinkData);
   const [preselectedJournal, setPreselectedJournal] = useState(null);
 
-  useEffect(() => {
-    journalLinkDataRef.current = journalLinkData;
-  }, [journalLinkData]);
+  const [detailsRows, setDetailsRows] = useState([]);
+  const [detailsSelectionModel, setDetailsSelectionModel] = useState([]);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsDialogMode, setDetailsDialogMode] = useState('add');
+  const [detailsForm, setDetailsForm] = useState({});
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [lienDialogOpen, setLienDialogOpen] = useState(false);
+  const [journalRows, setJournalRows] = useState([]);
+  const [journalLoading, setJournalLoading] = useState(false);
+  const [journalSelection, setJournalSelection] = useState([]);
+
+  const [ligneRowsComp, setLigneRowsComp] = useState([]);
+  const [ligneRowsFisc, setLigneRowsFisc] = useState([]);
+  const [ligneLoading, setLigneLoading] = useState(false);
+  const [ligneTab, setLigneTab] = useState('comp');
+  const [isCompDegTab, setIsCompDegTab] = useState(false);
+  const [isFiscDegTab, setIsFiscDegTab] = useState(false);
 
   // Helper to extract a safe message from Axios/unknown errors
   const getErrMsg = (e) => {
@@ -236,150 +250,12 @@ const Immobilisations = () => {
   // helper to get selected PC ids (top grid)
   const selectedPcIds = useMemo(() => (Array.isArray(selectionModel) ? selectionModel : []), [selectionModel]);
 
-  // State for the second (details) grid with its own CRUD
-  const [detailsRows, setDetailsRows] = useState([]);
-  const [detailsSelectionModel, setDetailsSelectionModel] = useState([]);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [detailsDialogMode, setDetailsDialogMode] = useState('add'); // 'add' | 'edit'
-  const [detailsForm, setDetailsForm] = useState({});
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [lienDialogOpen, setLienDialogOpen] = useState(false);
-  const [journalRows, setJournalRows] = useState([]);
-  const [journalLoading, setJournalLoading] = useState(false);
-  const [journalSelection, setJournalSelection] = useState([]);
-
-  const [isRefreshed, setIsRefreshed] = useState(false);
-
-  // Third grid: lignes d'amortissement
-  const [ligneRowsComp, setLigneRowsComp] = useState([]);
-  const [ligneRowsFisc, setLigneRowsFisc] = useState([]);
-  const [ligneLoading, setLigneLoading] = useState(false);
-  const [ligneTab, setLigneTab] = useState('comp'); // 'comp' | 'fisc'
-  const [isCompDegTab, setIsCompDegTab] = useState(false);
-  const [isFiscDegTab, setIsFiscDegTab] = useState(false);
-
   const hasCompData = useMemo(() => {
     return Array.isArray(ligneRowsComp) && ligneRowsComp.length > 0;
   }, [ligneRowsComp]);
   const hasFiscData = useMemo(() => {
     return Array.isArray(ligneRowsFisc) && ligneRowsFisc.length > 0;
   }, [ligneRowsFisc]);
-
-  useEffect(() => {
-    // Ajuster l'onglet par défaut selon les données disponibles
-    if (ligneTab === 'comp' && !hasCompData && hasFiscData) setLigneTab('fisc');
-    else if (ligneTab === 'fisc' && !hasFiscData && hasCompData) setLigneTab('comp');
-  }, [hasCompData, hasFiscData]);
-
-  // Load lines for selected immobilisation detail
-  useEffect(() => {
-    const loadLignes = async () => {
-      try {
-        const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-        const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
-        if (!fid || !compteId || !exoId || !selectedDetailId) { setLigneRowsComp([]); setLigneRowsFisc([]); return; }
-
-        setLigneLoading(true);
-        // Auto-détection du mode à partir de la ligne sélectionnée dans le 2e tableau
-        const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
-        let autoMode = 'comp';
-        const fiscHints = [
-          Number(detailRow?.duree_amort_mois_fisc) || 0,
-          Number(detailRow?.amort_ant_fisc) || 0,
-          Number(detailRow?.dotation_periode_fisc) || 0,
-          Number(detailRow?.amort_exceptionnel_fisc) || 0,
-          Number(detailRow?.derogatoire_fisc) || 0,
-          Number(detailRow?.total_amortissement_fisc) || 0,
-        ];
-        if (detailRow.__amortTab === 'fisc') autoMode = 'fisc';
-        else if (detailRow.__amortTab === 'comp') autoMode = 'comp';
-        else if ((detailRow?.type_amort_fisc && String(detailRow.type_amort_fisc).length > 0)) autoMode = 'fisc';
-        else if (fiscHints.some(v => v > 0)) autoMode = 'fisc';
-        else autoMode = 'comp';
-
-        // Toujours récupérer les deux prévisualisations (linéaire + dégressif), puis choisir par onglet
-        const isCompDeg = normalizeNoAccent(detailRow?.type_amort).includes('degr');
-        const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
-
-        const [linRes, degRes] = await Promise.all([
-          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
-          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
-        ]);
-
-        const lin = linRes?.data?.previewLin || {};
-        const deg = degRes?.data?.previewDeg || {};
-
-        // Sélectionner la source par onglet (préférer dégressif si disponible)
-        const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
-        const degFisc = Array.isArray(deg.list_fisc) ? deg.list_fisc : [];
-        const linComp = Array.isArray(lin.list_comp) ? lin.list_comp : [];
-        const linFisc = Array.isArray(lin.list_fisc) ? lin.list_fisc : [];
-
-        const compUsesDeg = (isCompDeg && degComp.length > 0);
-        const fiscUsesDeg = (isFiscDeg && degFisc.length > 0);
-
-        const rawComp = compUsesDeg ? degComp : linComp;
-        const rawFisc = fiscUsesDeg ? degFisc : linFisc;
-        const meta = compUsesDeg ? (deg.meta || lin.meta || {}) : (lin.meta || deg.meta || {});
-
-        const montantHt = Number(meta?.montant_ht) || 0;
-        const repriseComp = meta?.reprise_comp || meta?.reprise;
-        const repriseFisc = meta?.reprise_fisc;
-        const montantImmoHtComp = repriseComp ? Math.max(0, montantHt - (Number(repriseComp?.amort_ant) || 0)) : montantHt;
-        const montantImmoHtFisc = repriseFisc ? Math.max(0, montantHt - (Number(repriseFisc?.amort_ant) || 0)) : montantHt;
-
-        // Normalize possible backend schemas to frontend fields
-        const normComp = rawComp.map((r) => ({
-          rang: r.rang,
-          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
-          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
-          nb_jours: r.nb_jours ?? r.nbJours ?? null,
-          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
-          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtComp,
-          amort_ant_comp: r.amort_ant_comp ?? r.dot_ant ?? 0,
-          dotation_periode_comp: r.dotation_periode_comp ?? r.dotation_annuelle ?? 0,
-          cumul_amort_comp: r.cumul_amort_comp ?? r.cumul_amort ?? 0,
-          vnc: r.vnc ?? r.vnc_comp ?? null,
-          // keep fiscal zeros for comp view rows
-          amort_ant_fisc: 0,
-          dotation_periode_fisc: 0,
-          cumul_amort_fisc: 0,
-          dot_derogatoire: r.dot_derogatoire ?? 0,
-        }));
-
-        const normFisc = rawFisc.map((r) => ({
-          rang: r.rang,
-          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
-          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
-          nb_jours: r.nb_jours ?? r.nbJours ?? null,
-          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
-          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtFisc,
-          // keep comp zeros for fisc view rows
-          amort_ant_comp: 0,
-          dotation_periode_comp: 0,
-          cumul_amort_comp: 0,
-          vnc: r.vnc ?? Math.max(0, (meta.montant_ht ?? 0) - (r.cumul_amort_fisc ?? r.cumul_amort ?? 0)),
-          amort_ant_fisc: r.amort_ant_fisc ?? r.dot_ant ?? 0,
-          dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
-          cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
-          dot_derogatoire: r.dot_derogatoire ?? 0,
-        }));
-
-        // await handleSaveLignes(normComp, normFisc);
-
-        setLigneRowsComp(normComp);
-        setLigneRowsFisc(normFisc);
-        setIsCompDegTab(!!compUsesDeg);
-        setIsFiscDegTab(!!fiscUsesDeg);
-
-      } catch (e) {
-        setLigneRowsComp([]);
-        setLigneRowsFisc([]);
-        toast.error(`Erreur lors du chargement des lignes d'amortissement: ${getErrMsg(e)}`);
-      } finally { setLigneLoading(false); }
-    };
-    loadLignes();
-  }, [id, compteId, selectedExerciceId, selectedPcIds, detailsSelectionModel, detailsRows]);
 
   // Fetch details_immo from backend and filter by selected PCs
   const fetchDetails = useCallback(async () => {
@@ -489,175 +365,7 @@ const Immobilisations = () => {
     return [...detailsRows, totalRow];
   }, [detailsRows])
 
-  const ETAT_LABELS = {
-    enService: 'En service',
-    horsService: 'Hors service',
-    misEnRebus: 'Mis au rébus',
-    cassee: 'Cassée',
-    miseEnVente: 'Mise en vente',
-  };
 
-  useEffect(() => { fetchDetails(); }, [fetchDetails, isRefreshed]);
-  useEffect(() => { getLienEcriture(); }, [detailsForm, isRefreshed]);
-
-  const handleDetailsAdd = () => {
-    setPreselectedJournal(null);
-    if (!selectedPcIds || selectedPcIds.length !== 1) { toast('Sélectionnez un seul compte immo dans le tableau du haut', { icon: 'ℹ️' }); return; }
-    const pcId = selectedPcIds[0];
-    const pcRow = rows.find(r => r.id === pcId);
-    // Bloquer si le compte d'amortissement n'existe pas côté plan comptable
-    if (!pcRow?.compte_amort) {
-      toast.error("Veuillez créer un compte d'amortissement de l'immobilisation");
-      return;
-    }
-    setDetailsDialogMode('add');
-    setDetailsForm({
-      pc_id: pcId,
-      pc_id_amort: pcRow?.id_amort,
-      code: '',
-      intitule: pcRow?.libelle || '',
-      compte_id: pcRow?.compte || '',
-      fournisseur: '',
-      date_acquisition: '',
-      date_mise_service: '',
-      duree_amort_mois: '',
-      type_amort: '',
-      montant: Number(pcRow?.solde) || 0,
-      taux_tva: '', montant_tva: '', montant_ht: '',
-      amort_avant_reprise: '',
-      // amortissement comptable par défaut: tout à 0
-      amort_ant_comp: 0,
-      dotation_periode_comp: 0,
-      amort_exceptionnel_comp: 0,
-      derogatoire_comp: 0,
-      total_amortissement_comp: 0,
-      // amortissement fiscal initialisé à 0
-      amort_ant_fisc: 0,
-      dotation_periode_fisc: 0,
-      amort_exceptionnel_fisc: 0,
-      derogatoire_fisc: 0,
-      total_amortissement_fisc: 0,
-      // champs fiscaux durée/type
-      duree_amort_mois_fisc: '',
-      type_amort_fisc: '',
-      __amortTab: 'comp',
-      compte_amortissement: deriveCompteAmort(pcRow?.compte),
-      vnc: Number(pcRow?.vnc_immo ?? pcRow?.valeur_nette) || 0,
-      date_sortie: '', prix_vente: '',
-      etat: 'enService'
-    });
-    setDetailsDialogOpen(true);
-  };
-
-  const handleDetailsEdit = () => {
-    setPreselectedJournal(null);
-    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
-    if (!idSel) { toast('Sélectionnez une ligne détail', { icon: 'ℹ️' }); return; }
-    const row = detailsRows.find(r => r.id === idSel);
-    if (!row) return;
-    setDetailsDialogMode('edit');
-    // Compat: si l'enregistrement existant n'a pas encore les suffixes, mapper les anciens champs vers _comp
-    const mapped = { ...row };
-    if (mapped.amort_ant_comp === undefined && mapped.amort_ant !== undefined) mapped.amort_ant_comp = mapped.amort_ant;
-    if (mapped.dotation_periode_comp === undefined && mapped.dotation_periode !== undefined) mapped.dotation_periode_comp = mapped.dotation_periode;
-    if (mapped.amort_exceptionnel_comp === undefined && mapped.amort_exceptionnel !== undefined) mapped.amort_exceptionnel_comp = mapped.amort_exceptionnel;
-    if (mapped.derogatoire_comp === undefined && mapped.derogatoire !== undefined) mapped.derogatoire_comp = mapped.derogatoire;
-    if (mapped.total_amortissement_comp === undefined && mapped.total_amortissement !== undefined) mapped.total_amortissement_comp = mapped.total_amortissement;
-    if (!mapped.__amortTab) mapped.__amortTab = 'comp';
-    setDetailsForm(mapped);
-    setDetailsDialogOpen(true);
-  };
-
-  const handleDetailsDelete = () => {
-    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
-    if (!idSel) { toast('Sélectionnez une ligne détail', { icon: 'ℹ️' }); return; }
-    setOpenConfirmDelete(true);
-  };
-
-  const confirmDetailsDelete = async (confirmed) => {
-    setOpenConfirmDelete(false);
-    if (!confirmed) return;
-
-    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
-    if (!idSel) return;
-
-    try {
-      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-      const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
-      const url = `/administration/traitementSaisie/immobilisations/details/${idSel}`;
-      const params = { fileId: fid, compteId: onePcId ?? compteId, exerciceId: exoId };
-
-      await axios.delete(url, { params });
-
-      toast.success('Détail supprimé');
-      // Vider la sélection pour éviter les erreurs 404 sur les lignes d'amortissement
-      setDetailsSelectionModel([]);
-      await fetchDetails();
-    } catch (e) {
-      console.error('[DELETE] Erreur:', e);
-      toast.error(`Suppression échouée: ${getErrMsg(e)}`);
-    }
-  };
-
-  const submitDetailsForm = async () => {
-    try {
-      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0; if (!fid || !compteId || !exoId) return;
-      setDetailsLoading(true);
-      // Sanitize payload to avoid '' for integer/date columns
-      const numericKeys = [
-        'duree_amort_mois', 'montant', 'taux_tva', 'montant_tva', 'montant_ht',
-        // anciens champs (compat si encore présents)
-        'amort_ant', 'dotation_periode', 'amort_exceptionnel', 'total_amortissement', 'derogatoire',
-        // nouveaux champs suffixés comptables
-        'amort_ant_comp', 'dotation_periode_comp', 'amort_exceptionnel_comp', 'derogatoire_comp', 'total_amortissement_comp',
-        // nouveaux champs suffixés fiscaux
-        'amort_ant_fisc', 'dotation_periode_fisc', 'amort_exceptionnel_fisc', 'derogatoire_fisc', 'total_amortissement_fisc',
-        // durée amort fiscale
-        'duree_amort_mois_fisc',
-        'vnc', 'prix_vente'
-      ];
-
-      const dateKeys = ['date_acquisition', 'date_mise_service', 'date_sortie'];
-      const cleaned = { ...detailsForm };
-      numericKeys.forEach(k => {
-        const v = cleaned[k];
-        if (v === '' || v === undefined || v === null) cleaned[k] = null; else cleaned[k] = Number(v);
-      });
-      dateKeys.forEach(k => { const v = cleaned[k]; if (!v || v === '') cleaned[k] = null; });
-      cleaned.pc_id = Number(cleaned.pc_id || 0);
-      cleaned.pc_id_amort = Number(cleaned.pc_id_amort || 0);
-      cleaned.lien_ecriture_id = cleaned.lien_ecriture_id ? Number(cleaned.lien_ecriture_id) : null;
-
-      const effectiveCompteId = compteId;
-
-      // await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
-
-      if (detailsDialogMode === 'add') {
-        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
-        // return console.log('payload : ', payload);
-        await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
-        toast.success('Détail ajouté');
-        await fetchDetails();
-      } else {
-        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
-        // return console.log('payload : ', payload);
-        await axios.put(`/administration/traitementSaisie/immobilisations/details/${detailsForm.id}`, payload);
-        toast.success('Détail modifié');
-        await fetchDetails();
-      }
-      setDetailsDialogOpen(false);
-      // await fetchDetails();
-    } catch (e) {
-      const status = e?.response?.status;
-      const msg = e?.response?.data?.msg || e?.response?.data?.message || '';
-      if (status === 400 && /amort/i.test(String(msg))) {
-        toast.error("Veuillez ajouter un compte d'amort");
-        // ne pas fermer le dialog, l'utilisateur peut corriger
-      } else {
-        toast.error(`${getErrMsg(e)}`);
-      }
-    } finally { setDetailsLoading(false); }
-  };
 
   const columns = useMemo(() => ([
     { field: 'compte', headerName: 'N° de compte', width: 140, sortComparator: keepTotalBottomComparator },
@@ -906,6 +614,173 @@ const Immobilisations = () => {
     { field: 'lettrage', headerName: 'Lettrage', width: 120, valueGetter: (p) => p?.row?.lettrage ?? '' },
   ]), []);
 
+  const ETAT_LABELS = {
+    enService: 'En service',
+    horsService: 'Hors service',
+    misEnRebus: 'Mis au rébus',
+    cassee: 'Cassée',
+    miseEnVente: 'Mise en vente',
+  };
+
+  const handleDetailsAdd = () => {
+    setPreselectedJournal(null);
+    if (!selectedPcIds || selectedPcIds.length !== 1) { toast('Sélectionnez un seul compte immo dans le tableau du haut', { icon: 'ℹ️' }); return; }
+    const pcId = selectedPcIds[0];
+    const pcRow = rows.find(r => r.id === pcId);
+    // Bloquer si le compte d'amortissement n'existe pas côté plan comptable
+    if (!pcRow?.compte_amort) {
+      toast.error("Veuillez créer un compte d'amortissement de l'immobilisation");
+      return;
+    }
+    setDetailsDialogMode('add');
+    setDetailsForm({
+      pc_id: pcId,
+      pc_id_amort: pcRow?.id_amort,
+      code: '',
+      intitule: pcRow?.libelle || '',
+      compte_id: pcRow?.compte || '',
+      fournisseur: '',
+      date_acquisition: '',
+      date_mise_service: '',
+      duree_amort_mois: '',
+      type_amort: '',
+      montant: Number(pcRow?.solde) || 0,
+      taux_tva: '', montant_tva: '', montant_ht: '',
+      amort_avant_reprise: '',
+      // amortissement comptable par défaut: tout à 0
+      amort_ant_comp: 0,
+      dotation_periode_comp: 0,
+      amort_exceptionnel_comp: 0,
+      derogatoire_comp: 0,
+      total_amortissement_comp: 0,
+      // amortissement fiscal initialisé à 0
+      amort_ant_fisc: 0,
+      dotation_periode_fisc: 0,
+      amort_exceptionnel_fisc: 0,
+      derogatoire_fisc: 0,
+      total_amortissement_fisc: 0,
+      // champs fiscaux durée/type
+      duree_amort_mois_fisc: '',
+      type_amort_fisc: '',
+      __amortTab: 'comp',
+      compte_amortissement: deriveCompteAmort(pcRow?.compte),
+      vnc: Number(pcRow?.vnc_immo ?? pcRow?.valeur_nette) || 0,
+      date_sortie: '', prix_vente: '',
+      etat: 'enService'
+    });
+    setDetailsDialogOpen(true);
+  };
+
+  const handleDetailsEdit = () => {
+    setPreselectedJournal(null);
+    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
+    if (!idSel) { toast('Sélectionnez une ligne détail', { icon: 'ℹ️' }); return; }
+    const row = detailsRows.find(r => r.id === idSel);
+    if (!row) return;
+    setDetailsDialogMode('edit');
+    // Compat: si l'enregistrement existant n'a pas encore les suffixes, mapper les anciens champs vers _comp
+    const mapped = { ...row };
+    if (mapped.amort_ant_comp === undefined && mapped.amort_ant !== undefined) mapped.amort_ant_comp = mapped.amort_ant;
+    if (mapped.dotation_periode_comp === undefined && mapped.dotation_periode !== undefined) mapped.dotation_periode_comp = mapped.dotation_periode;
+    if (mapped.amort_exceptionnel_comp === undefined && mapped.amort_exceptionnel !== undefined) mapped.amort_exceptionnel_comp = mapped.amort_exceptionnel;
+    if (mapped.derogatoire_comp === undefined && mapped.derogatoire !== undefined) mapped.derogatoire_comp = mapped.derogatoire;
+    if (mapped.total_amortissement_comp === undefined && mapped.total_amortissement !== undefined) mapped.total_amortissement_comp = mapped.total_amortissement;
+    if (!mapped.__amortTab) mapped.__amortTab = 'comp';
+    setDetailsForm(mapped);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleDetailsDelete = () => {
+    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
+    if (!idSel) { toast('Sélectionnez une ligne détail', { icon: 'ℹ️' }); return; }
+    setOpenConfirmDelete(true);
+  };
+
+  const confirmDetailsDelete = async (confirmed) => {
+    setOpenConfirmDelete(false);
+    if (!confirmed) return;
+
+    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
+    if (!idSel) return;
+
+    try {
+      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+      const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
+      const url = `/administration/traitementSaisie/immobilisations/details/${idSel}`;
+      const params = { fileId: fid, compteId: onePcId ?? compteId, exerciceId: exoId };
+
+      await axios.delete(url, { params });
+
+      toast.success('Détail supprimé');
+      // Vider la sélection pour éviter les erreurs 404 sur les lignes d'amortissement
+      setDetailsSelectionModel([]);
+      await fetchDetails();
+    } catch (e) {
+      console.error('[DELETE] Erreur:', e);
+      toast.error(`Suppression échouée: ${getErrMsg(e)}`);
+    }
+  };
+
+  const submitDetailsForm = async () => {
+    try {
+      const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0; if (!fid || !compteId || !exoId) return;
+      setDetailsLoading(true);
+      // Sanitize payload to avoid '' for integer/date columns
+      const numericKeys = [
+        'duree_amort_mois', 'montant', 'taux_tva', 'montant_tva', 'montant_ht',
+        // anciens champs (compat si encore présents)
+        'amort_ant', 'dotation_periode', 'amort_exceptionnel', 'total_amortissement', 'derogatoire',
+        // nouveaux champs suffixés comptables
+        'amort_ant_comp', 'dotation_periode_comp', 'amort_exceptionnel_comp', 'derogatoire_comp', 'total_amortissement_comp',
+        // nouveaux champs suffixés fiscaux
+        'amort_ant_fisc', 'dotation_periode_fisc', 'amort_exceptionnel_fisc', 'derogatoire_fisc', 'total_amortissement_fisc',
+        // durée amort fiscale
+        'duree_amort_mois_fisc',
+        'vnc', 'prix_vente'
+      ];
+
+      const dateKeys = ['date_acquisition', 'date_mise_service', 'date_sortie'];
+      const cleaned = { ...detailsForm };
+      numericKeys.forEach(k => {
+        const v = cleaned[k];
+        if (v === '' || v === undefined || v === null) cleaned[k] = null; else cleaned[k] = Number(v);
+      });
+      dateKeys.forEach(k => { const v = cleaned[k]; if (!v || v === '') cleaned[k] = null; });
+      cleaned.pc_id = Number(cleaned.pc_id || 0);
+      cleaned.pc_id_amort = Number(cleaned.pc_id_amort || 0);
+      cleaned.lien_ecriture_id = cleaned.lien_ecriture_id ? Number(cleaned.lien_ecriture_id) : null;
+
+      const effectiveCompteId = compteId;
+
+      // await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
+
+      if (detailsDialogMode === 'add') {
+        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
+        // return console.log('payload : ', payload);
+        await axios.post('/administration/traitementSaisie/immobilisations/details', payload);
+        toast.success('Détail ajouté');
+        await fetchDetails();
+      } else {
+        const payload = { fileId: fid, compteId: effectiveCompteId, exerciceId: exoId, pcId: Number(cleaned.pc_id || 0), ligneTab, isCompDegTab, isFiscDegTab, ...cleaned };
+        // return console.log('payload : ', payload);
+        await axios.put(`/administration/traitementSaisie/immobilisations/details/${detailsForm.id}`, payload);
+        toast.success('Détail modifié');
+        await fetchDetails();
+      }
+      setDetailsDialogOpen(false);
+      // await fetchDetails();
+    } catch (e) {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.msg || e?.response?.data?.message || '';
+      if (status === 400 && /amort/i.test(String(msg))) {
+        toast.error("Veuillez ajouter un compte d'amort");
+        // ne pas fermer le dialog, l'utilisateur peut corriger
+      } else {
+        toast.error(`${getErrMsg(e)}`);
+      }
+    } finally { setDetailsLoading(false); }
+  };
+
   const GetInfosIdDossier = (idDossier) => {
     axios.get(`/home/FileInfos/${idDossier}`).then((response) => {
       const resData = response.data;
@@ -962,6 +837,28 @@ const Immobilisations = () => {
     });
   };
 
+  const handleOpenConfirmGenerateEcritures = () => {
+    if (!selectedExerciceId) {
+      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
+      return;
+    }
+    setOpenConfirmGenerateEcritures(true);
+  };
+
+  const handleOpenConfirmCancelEcritures = () => {
+    if (!selectedExerciceId) {
+      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
+      return;
+    }
+    setOpenConfirmCancelEcritures(true);
+  };
+
+  let idExerciceSelectionne = selectedExerciceId;
+  if (detailsSelectionModel.length !== 0) {
+    const lignesListeImmo = detailRowsWithTotal.find(val => val.id === Number(detailsSelectionModel[0]));
+    idExerciceSelectionne = lignesListeImmo?.id_exercice;
+  }
+
   useEffect(() => {
     const idFile = Number(id) || 0;
     if (!idFile) {
@@ -1007,27 +904,128 @@ const Immobilisations = () => {
     loadImmobilisations();
   }, [id, compteId, selectedExerciceId]);
 
-  const handleOpenConfirmGenerateEcritures = () => {
-    if (!selectedExerciceId) {
-      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
-      return;
-    }
-    setOpenConfirmGenerateEcritures(true);
-  };
+  useEffect(() => {
+    // Ajuster l'onglet par défaut selon les données disponibles
+    if (ligneTab === 'comp' && !hasCompData && hasFiscData) setLigneTab('fisc');
+    else if (ligneTab === 'fisc' && !hasFiscData && hasCompData) setLigneTab('comp');
+  }, [hasCompData, hasFiscData]);
 
-  const handleOpenConfirmCancelEcritures = () => {
-    if (!selectedExerciceId) {
-      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
-      return;
-    }
-    setOpenConfirmCancelEcritures(true);
-  };
+  // Load lines for selected immobilisation detail
+  useEffect(() => {
+    const loadLignes = async () => {
+      try {
+        const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+        const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
+        if (!fid || !compteId || !exoId || !selectedDetailId) { setLigneRowsComp([]); setLigneRowsFisc([]); return; }
 
-  let idExerciceSelectionne = selectedExerciceId;
-  if (detailsSelectionModel.length !== 0) {
-    const lignesListeImmo = detailRowsWithTotal.find(val => val.id === Number(detailsSelectionModel[0]));
-    idExerciceSelectionne = lignesListeImmo?.id_exercice;
-  }
+        setLigneLoading(true);
+        // Auto-détection du mode à partir de la ligne sélectionnée dans le 2e tableau
+        const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
+        let autoMode = 'comp';
+        const fiscHints = [
+          Number(detailRow?.duree_amort_mois_fisc) || 0,
+          Number(detailRow?.amort_ant_fisc) || 0,
+          Number(detailRow?.dotation_periode_fisc) || 0,
+          Number(detailRow?.amort_exceptionnel_fisc) || 0,
+          Number(detailRow?.derogatoire_fisc) || 0,
+          Number(detailRow?.total_amortissement_fisc) || 0,
+        ];
+        if (detailRow.__amortTab === 'fisc') autoMode = 'fisc';
+        else if (detailRow.__amortTab === 'comp') autoMode = 'comp';
+        else if ((detailRow?.type_amort_fisc && String(detailRow.type_amort_fisc).length > 0)) autoMode = 'fisc';
+        else if (fiscHints.some(v => v > 0)) autoMode = 'fisc';
+        else autoMode = 'comp';
+
+        // Toujours récupérer les deux prévisualisations (linéaire + dégressif), puis choisir par onglet
+        const isCompDeg = normalizeNoAccent(detailRow?.type_amort).includes('degr');
+        const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
+
+        const [linRes, degRes] = await Promise.all([
+          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
+          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
+        ]);
+
+        const lin = linRes?.data?.previewLin || {};
+        const deg = degRes?.data?.previewDeg || {};
+
+        // Sélectionner la source par onglet (préférer dégressif si disponible)
+        const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
+        const degFisc = Array.isArray(deg.list_fisc) ? deg.list_fisc : [];
+        const linComp = Array.isArray(lin.list_comp) ? lin.list_comp : [];
+        const linFisc = Array.isArray(lin.list_fisc) ? lin.list_fisc : [];
+
+        const compUsesDeg = (isCompDeg && degComp.length > 0);
+        const fiscUsesDeg = (isFiscDeg && degFisc.length > 0);
+
+        const rawComp = compUsesDeg ? degComp : linComp;
+        const rawFisc = fiscUsesDeg ? degFisc : linFisc;
+        const meta = compUsesDeg ? (deg.meta || lin.meta || {}) : (lin.meta || deg.meta || {});
+
+        const montantHt = Number(meta?.montant_ht) || 0;
+        const repriseComp = meta?.reprise_comp || meta?.reprise;
+        const repriseFisc = meta?.reprise_fisc;
+        const montantImmoHtComp = repriseComp ? Math.max(0, montantHt - (Number(repriseComp?.amort_ant) || 0)) : montantHt;
+        const montantImmoHtFisc = repriseFisc ? Math.max(0, montantHt - (Number(repriseFisc?.amort_ant) || 0)) : montantHt;
+
+        // Normalize possible backend schemas to frontend fields
+        const normComp = rawComp.map((r) => ({
+          rang: r.rang,
+          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
+          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
+          nb_jours: r.nb_jours ?? r.nbJours ?? null,
+          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
+          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtComp,
+          amort_ant_comp: r.amort_ant_comp ?? r.dot_ant ?? 0,
+          dotation_periode_comp: r.dotation_periode_comp ?? r.dotation_annuelle ?? 0,
+          cumul_amort_comp: r.cumul_amort_comp ?? r.cumul_amort ?? 0,
+          vnc: r.vnc ?? r.vnc_comp ?? null,
+          // keep fiscal zeros for comp view rows
+          amort_ant_fisc: 0,
+          dotation_periode_fisc: 0,
+          cumul_amort_fisc: 0,
+          dot_derogatoire: r.dot_derogatoire ?? 0,
+        }));
+
+        const normFisc = rawFisc.map((r) => ({
+          rang: r.rang,
+          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
+          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
+          nb_jours: r.nb_jours ?? r.nbJours ?? null,
+          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
+          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtFisc,
+          // keep comp zeros for fisc view rows
+          amort_ant_comp: 0,
+          dotation_periode_comp: 0,
+          cumul_amort_comp: 0,
+          vnc: r.vnc ?? Math.max(0, (meta.montant_ht ?? 0) - (r.cumul_amort_fisc ?? r.cumul_amort ?? 0)),
+          amort_ant_fisc: r.amort_ant_fisc ?? r.dot_ant ?? 0,
+          dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
+          cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
+          dot_derogatoire: r.dot_derogatoire ?? 0,
+        }));
+
+        // await handleSaveLignes(normComp, normFisc);
+
+        setLigneRowsComp(normComp);
+        setLigneRowsFisc(normFisc);
+        setIsCompDegTab(!!compUsesDeg);
+        setIsFiscDegTab(!!fiscUsesDeg);
+
+      } catch (e) {
+        setLigneRowsComp([]);
+        setLigneRowsFisc([]);
+        toast.error(`Erreur lors du chargement des lignes d'amortissement: ${getErrMsg(e)}`);
+      } finally { setLigneLoading(false); }
+    };
+    loadLignes();
+  }, [id, compteId, selectedExerciceId, selectedPcIds, detailsSelectionModel, detailsRows]);
+
+  useEffect(() => {
+    journalLinkDataRef.current = journalLinkData;
+  }, [journalLinkData]);
+
+  useEffect(() => { fetchDetails(); }, [fetchDetails]);
+  useEffect(() => { getLienEcriture(); }, [detailsForm]);
 
   return (
     <Box>
