@@ -1,7 +1,7 @@
 const db = require("../../Models");
 require('dotenv').config();
 
-exports.saveImmoLineaireMiddleware = async (fileId, compteId, exerciceId, detailImmoId, lignes) => {
+exports.saveImmoLineaireMiddleware = async (fileId, compteId, exerciceId, detailImmoId, lignes, normComp, normFisc) => {
     try {
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return console.log({ state: false, msg: 'Paramètres manquants' });
@@ -12,7 +12,30 @@ exports.saveImmoLineaireMiddleware = async (fileId, compteId, exerciceId, detail
         }
 
         // Préparer les lignes pour l'insertion (utiliser les lignes pré-calculées)
-        const out = lignes.map((ligne) => ({
+        // const out = lignes.map((ligne) => ({
+        //     id_dossier: fileId,
+        //     id_compte: compteId,
+        //     id_exercice: exerciceId,
+        //     id_detail_immo: detailImmoId,
+        //     rang: ligne.rang,
+        //     date_mise_service: ligne.date_mise_service,
+        //     date_fin_exercice: ligne.date_fin_exercice,
+        //     annee_nombre: ligne.annee_nombre,
+        //     montant_immo_ht: ligne.montant_immo_ht,
+        //     vnc: ligne.vnc,
+        //     amort_ant_comp: ligne.amort_ant_comp,
+        //     dotation_periode_comp: ligne.dotation_periode_comp,
+        //     cumul_amort_comp: ligne.cumul_amort_comp,
+        //     amort_ant_fisc: ligne.amort_ant_fisc,
+        //     dotation_periode_fisc: ligne.dotation_periode_fisc,
+        //     cumul_amort_fisc: ligne.cumul_amort_fisc,
+        //     dot_derogatoire: ligne.dot_derogatoire || 0,
+        // }));
+
+        // console.log('normComp : ', normComp);
+        // console.log('normFisc : ', normFisc);
+
+        const outComp = normComp.map((ligne) => ({
             id_dossier: fileId,
             id_compte: compteId,
             id_exercice: exerciceId,
@@ -30,19 +53,46 @@ exports.saveImmoLineaireMiddleware = async (fileId, compteId, exerciceId, detail
             dotation_periode_fisc: ligne.dotation_periode_fisc,
             cumul_amort_fisc: ligne.cumul_amort_fisc,
             dot_derogatoire: ligne.dot_derogatoire || 0,
+            type: ligne.type || 'comp'
+        }));
+
+        const outFisc = normFisc.map((ligne) => ({
+            id_dossier: fileId,
+            id_compte: compteId,
+            id_exercice: exerciceId,
+            id_detail_immo: detailImmoId,
+            rang: ligne.rang,
+            date_mise_service: ligne.date_mise_service,
+            date_fin_exercice: ligne.date_fin_exercice,
+            annee_nombre: ligne.annee_nombre,
+            montant_immo_ht: ligne.montant_immo_ht,
+            vnc: ligne.vnc,
+            amort_ant_comp: ligne.amort_ant_comp,
+            dotation_periode_comp: ligne.dotation_periode_comp,
+            cumul_amort_comp: ligne.cumul_amort_comp,
+            amort_ant_fisc: ligne.amort_ant_fisc,
+            dotation_periode_fisc: ligne.dotation_periode_fisc,
+            cumul_amort_fisc: ligne.cumul_amort_fisc,
+            dot_derogatoire: ligne.dot_derogatoire || 0,
+            type: ligne.type || 'fisc'
         }));
 
         await db.detailsImmoLignes.destroy({
             where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId, id_detail_immo: detailImmoId },
         });
-        if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
+
+        // if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
+        if (outComp.length > 0 && outFisc.length > 0) {
+            await db.detailsImmoLignes.bulkCreate(outComp);
+            await db.detailsImmoLignes.bulkCreate(outFisc);
+        }
     } catch (err) {
         console.error('[IMMO][SAVE][LINEAIRE] error:', err);
         return console.log({ state: false, msg: 'Erreur serveur' });
     }
 };
 
-exports.saveImmoDegressifMiddleware = async (fileId, compteId, exerciceId, detailImmoId, lignes) => {
+exports.saveImmoDegressifMiddleware = async (fileId, compteId, exerciceId, detailImmoId, lignes, normComp, normFisc) => {
     try {
         if (!fileId || !compteId || !exerciceId || !detailImmoId) {
             return console.log({ state: false, msg: 'Paramètres manquants' });
