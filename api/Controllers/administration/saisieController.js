@@ -1223,6 +1223,8 @@ exports.previewImmoLineaire = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
 
+        console.log('req.query : ', req.query);
+
         const previewLin = await previewImmoLineaireMiddleware(fileId, compteId, exerciceId, detailImmoId);
 
         return res.json({
