@@ -1223,8 +1223,6 @@ exports.previewImmoLineaire = async (req, res) => {
         const exerciceId = Number(req.query?.exerciceId);
         const detailImmoId = Number(req.query?.detailId);
 
-        console.log('req.query : ', req.query);
-
         const previewLin = await previewImmoLineaireMiddleware(fileId, compteId, exerciceId, detailImmoId);
 
         return res.json({
@@ -1458,6 +1456,30 @@ exports.saveImmoDegressif = async (req, res) => {
         return res.status(500).json({ state: false, msg: 'Erreur serveur' });
     }
 };
+
+exports.getPlanAmort = async (req, res) => {
+    try {
+        const { id_detail_immo } = req.body;
+
+        if (!id_detail_immo) {
+            return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+        }
+
+        const planAmort = await db.detailsImmoLignes.findAll({
+            where: { id_detail_immo },
+            order: [['id', 'ASC']],
+            raw: true
+        });
+
+        const compLine = planAmort.filter(val => val.type === 'comp');
+        const compFisc = planAmort.filter(val => val.type === 'fisc');
+
+        return res.status(200).json({ state: true, compLine, compFisc });
+
+    } catch (error) {
+        res.status(500).json({ message: "Erreur serveur", error: err });
+    }
+}
 
 exports.getAllDevises = async (req, res) => {
     try {
@@ -2437,6 +2459,7 @@ exports.createDetailsImmo = async (req, res) => {
             dotation_periode_fisc: 0,
             cumul_amort_fisc: 0,
             dot_derogatoire: r.dot_derogatoire ?? 0,
+            type: 'comp'
         }));
 
         const normFisc = rawFisc.map((r) => ({
@@ -2454,6 +2477,7 @@ exports.createDetailsImmo = async (req, res) => {
             dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
             cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
             dot_derogatoire: r.dot_derogatoire ?? 0,
+            type: 'fisc'
         }));
 
         const lignesAEnvoyer = ligneTab === 'fisc'
@@ -2462,7 +2486,7 @@ exports.createDetailsImmo = async (req, res) => {
 
         const useDeg = ligneTab === 'comp' ? isCompDegTab : isFiscDegTab;
 
-        useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer);
+        useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer, normComp, normFisc) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, insertedId, lignesAEnvoyer, normComp, normFisc);
 
         await updateMontantImmo(
             compteId,
@@ -2683,6 +2707,7 @@ exports.updateDetailsImmo = async (req, res) => {
             dotation_periode_fisc: 0,
             cumul_amort_fisc: 0,
             dot_derogatoire: r.dot_derogatoire ?? 0,
+            type: 'comp'
         }));
 
         const normFisc = rawFisc.map((r) => ({
@@ -2700,22 +2725,16 @@ exports.updateDetailsImmo = async (req, res) => {
             dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
             cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
             dot_derogatoire: r.dot_derogatoire ?? 0,
+            type: 'fisc'
         }));
 
         const lignesAEnvoyer = ligneTab === 'fisc'
             ? (normFisc)
             : (normComp);
 
-        // console.log('ligneTab : ', ligneTab);
-        // console.log('isCompDegTab : ', isCompDegTab);
-        // console.log('isFiscDegTab : ', isFiscDegTab);
-
         const useDeg = ligneTab === 'comp' ? isCompDegTab : isFiscDegTab;
-        // console.log('lignesAEnvoyer : ', lignesAEnvoyer);
 
-        // console.log('useDeg : ', useDeg);
-
-        useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer);
+        useDeg ? await saveImmoDegressifMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer, normComp, normFisc) : await saveImmoLineaireMiddleware(fileId, compteId, exerciceId, id, lignesAEnvoyer, normComp, normFisc);
 
         await updateMontantImmo(
             compteId,

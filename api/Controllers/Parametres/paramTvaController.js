@@ -102,8 +102,6 @@ const paramTvaAdd = async (req, res) => {
   try {
     const { idCompte, idDossier, idCode, compte, libelle, code } = req.body;
 
-    console.log('req.body : ', req.body);
-
     let resData = {
       state: false,
       msg: 'Une erreur est survenue au moment du traitement.',
@@ -202,6 +200,8 @@ async function listJournalsByCompte(req, res) {
     if (mois) where.decltvamois = Number(mois);
     if (annee) where.decltvaannee = Number(annee);
     // where.id_immob = { [Op.notIn]: [0, null] };
+
+    console.log('where : ', where);
 
     const rows = await Journals.findAll({
       where,

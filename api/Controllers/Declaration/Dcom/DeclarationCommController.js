@@ -630,7 +630,6 @@ const getIdRubrique = (nature) => {
 exports.generateDCommAuto = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice, nature } = req.body;
-        // console.log('req.body : ', req.body);
         if (!id_exercice || !id_dossier || !id_compte || !nature) {
             return res.status(400).json({
                 state: false,

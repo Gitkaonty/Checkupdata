@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     dotation_periode_fisc: { type: DataTypes.DECIMAL(18, 2) },
     cumul_amort_fisc: { type: DataTypes.DECIMAL(18, 2) },
     dot_derogatoire: { type: DataTypes.DECIMAL(18, 2) },
+    type: { type: DataTypes.STRING(20), allowNull: true }, // 'comp' ou 'fisc'
 
     created_at: { type: DataTypes.DATE },
     updated_at: { type: DataTypes.DATE },
