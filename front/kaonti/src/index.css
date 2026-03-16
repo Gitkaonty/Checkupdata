@@ -1,11 +1,11 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+#root {
+  font-family: ROboto, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
   color: rgba(220, 220, 220, 0.87);
-  background-color: #ffffff;
+  background-color: #f1f3f7;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -26,8 +26,10 @@ body {
   margin: 0;
   display: flex;
   place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  background-color: #f1f3f7;
+  /* background-color: grey; */
+  /* min-width: 320px;
+  min-height: 100vh; */
 }
 
 h1 {

@@ -5,8 +5,8 @@ const initial = init[0];
 export default function QuickFilter() {
   return (
     <GridToolbarContainer>
-      <Stack style={{ backgroundColor: 'transparent' }} width={'100%'} alignItems={'end'}>
-        <GridToolbarQuickFilter placeholder="Recherche..." />
+      <Stack style={{ backgroundColor: 'transparent', marginBottom: '10px' }} width={'100%'} alignItems={'end'}>
+        <GridToolbarQuickFilter  placeholder="Recherche..." />
       </Stack>
 
     </GridToolbarContainer>

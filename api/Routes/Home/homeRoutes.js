@@ -36,4 +36,7 @@ router.post('/verifyFilePassword', homeController.verifyFilePassword);
 // Suppréssion de password access dossier par utilisateur
 router.post('/deleteDossierPasswordAccess', homeController.deleteDossierPasswordAccess);
 
+// Récupération des information de dossier pour le card
+router.get('/getInfoCardDossier/:id', homeController.getInfoCardDossier);
+
 module.exports = router;
