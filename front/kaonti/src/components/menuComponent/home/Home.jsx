@@ -451,7 +451,14 @@ export default function Home() {
             </Toolbar>
           </AppBar>
 
-          <AddNewFile confirmationState={handleCloseAfterNewFileCreation} />
+          <Stack
+            style={{
+              backgroundColor: '#f1f3f7',
+              height: '100%',
+            }}
+          >
+            <AddNewFile confirmationState={handleCloseAfterNewFileCreation} />
+          </Stack>
         </Dialog>
         : null
       }
