@@ -34,6 +34,11 @@ import { IoMdTrash } from 'react-icons/io';
 import { FormControlLabel } from '@mui/material';
 import MontantCapitalField from './Field/MontantCapitalField';
 import useAxiosPrivate from '../../../../config/axiosPrivate';
+import { FcBusinessContact } from 'react-icons/fc';
+import { FaRectangleList } from "react-icons/fa6";
+import { HiMiniDocumentText } from "react-icons/hi2";
+import { MdContacts } from "react-icons/md";
+import { MdOutlineSecurity } from "react-icons/md";
 
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
@@ -41,6 +46,39 @@ import PasswordField from './Field/PasswordField';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
+
+const TextFieldComponent = ({ text, name, handleChange, handleBlur, values, error, helperText, width }) => {
+    return (
+        <Stack spacing={1}>
+            <label htmlFor={name} style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>{text}</label>
+            <TextField
+                required
+                name={name}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                value={values}
+                type='text'
+                placeholder=""
+                style={{
+                    borderTop: 'none',
+                    borderLeft: 'none', borderRight: 'none',
+                    outline: 'none', fontSize: 12, borderWidth: '0.5px',
+                }}
+                sx={{
+                    width: '100%',
+                    '& .MuiFormHelperText-root': {
+                        marginLeft: 0
+                    },
+                    '& .MuiInputBase-root': {
+                        height: 32
+                    }
+                }}
+                error={error}
+                helperText={error ? helperText : ''}
+            />
+        </Stack>
+    )
+}
 
 export default function AddNewFile({ confirmationState }) {
     const apiRef = useGridApiRef();
@@ -1631,7 +1669,8 @@ export default function AddNewFile({ confirmationState }) {
         <Box
             sx={{
                 paddingX: 3,
-                paddingY: 2
+                paddingY: 2,
+                backgroundColor: '#f1f3f7',
             }}
         >
             {/* MODAL POUR LA SUPPRESSION D'UNE LIGNE DU TABLEAU ASSOCIE */}
@@ -1659,7 +1698,7 @@ export default function AddNewFile({ confirmationState }) {
                     handlSubmitNewFile(payload);
                 }}
             >
-                {({ handleChange, handleSubmit, setFieldValue, resetForm, values, isValid, errors, setTouched }) => {
+                {({ handleChange, handleSubmit, setFieldValue, resetForm, values, isValid, errors, setTouched, handleBlur, touched }) => {
 
                     const calculateValeurPart = (capital, nbrPart) => {
                         const numCapital = parseFloat(capital?.toString().replace(/\s/g, '').replace(',', '.')) || 0;
@@ -1727,394 +1766,488 @@ export default function AddNewFile({ confirmationState }) {
                                         <TabPanel value="1">
                                             <Stack width={"100%"} height={"100%"} spacing={1} alignItems={"flex-start"}
                                                 alignContent={"flex-start"} justifyContent={"stretch"} >
-                                                <Accordion elevation={0} style={{ width: "100%", borderBlockColor: "transparent" }}>
+                                                <Accordion
+                                                    elevation={0}
+                                                    style={{
+                                                        width: "100%",
+                                                        borderBlockColor: "transparent",
+                                                        borderRadius: '10px',
+                                                        border: '0px'
+                                                    }}
+                                                    sx={{
+                                                        width: '100%',
+                                                        border: 'none',
+                                                        borderRadius: '10px',
+                                                        boxShadow: 'none',
+                                                        '&:before': {
+                                                            display: 'none',
+                                                        },
+                                                    }}
+                                                >
                                                     <AccordionSummary
-                                                        expandIcon={<MdExpandCircleDown style={{ width: "25px", height: "25px", color: '#44D5F0' }} />}
                                                         aria-controls="panel1-content"
                                                         id="panel1-header"
-                                                        style={{ flexDirection: "row-reverse" }}
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '0 8px',
+                                                        }}
+                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
                                                     >
-                                                        <Typography style={{ fontWeight: 'normal', fontSize: "20px", marginLeft: "10px" }}>Coordonnées</Typography>
+                                                        <Stack direction="row" spacing={1} alignItems="flex-end" alignContent={'baseline'} style={{ marginLeft: '15px' }}>
+                                                            <FaRectangleList size={35} style={{ color: '#37709c' }} />
+                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Coordonnées</Typography>
+                                                        </Stack>
                                                     </AccordionSummary>
 
                                                     <AccordionDetails>
                                                         <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
                                                             alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            marginLeft={"50px"}
+                                                            style={{
+                                                                paddingInline: '25px',
+                                                                paddingBottom: '20px'
+                                                            }}
                                                         >
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="nomdossier" style={{ fontSize: 12, color: '#3FA2F6' }}>Nom du dossier</label>
-                                                                <Field
-                                                                    required
-                                                                    name='nomdossier'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
+                                                            <Stack
+                                                                direction={'row'}
+                                                                alignItems={'flex-start'}
+                                                                width={'100%'}
+                                                                spacing={5}
+                                                            >
+                                                                <Stack
                                                                     style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '400px'
+                                                                        width: '20%'
                                                                     }}
-                                                                />
-                                                                <ErrorMessage name='nomdossier' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Nom du dossier *"
+                                                                        name="nomdossier"
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.nomdossier}
+                                                                        error={Boolean(touched.nomdossier && errors.nomdossier)}
+                                                                        helperText={touched.nomdossier ? errors.nomdossier : ''}
+                                                                    />
+                                                                </Stack>
+
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '30%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Raison sociale *"
+                                                                        name="raisonsociale"
+                                                                        width={"50%"}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.raisonsociale}
+                                                                        error={Boolean(touched.raisonsociale && errors.raisonsociale)}
+                                                                        helperText={touched.raisonsociale ? errors.raisonsociale : ''}
+                                                                    />
+                                                                </Stack>
                                                             </Stack>
 
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="raisonsociale" style={{ fontSize: 12, color: '#3FA2F6' }}>Raison sociale</label>
-                                                                <Field
-                                                                    required
-                                                                    name='raisonsociale'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
+                                                            <Stack
+                                                                direction={'row'}
+                                                                alignItems={'flex-start'}
+                                                                width={'100%'}
+                                                                spacing={5}
+                                                            >
+                                                                <Stack
                                                                     style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '600px'
+                                                                        width: '20%'
                                                                     }}
-                                                                />
-                                                                <ErrorMessage name='raisonsociale' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                >
+
+                                                                    <TextFieldComponent
+                                                                        text="Dénomination"
+                                                                        name="denomination"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.denomination}
+                                                                        error={Boolean(touched.denomination && errors.denomination)}
+                                                                        helperText={touched.denomination ? errors.denomination : ''}
+                                                                    />
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Numéro NIF"
+                                                                        name="nif"
+                                                                        width={200}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.nif}
+                                                                        error={Boolean(touched.nif && errors.nif)}
+                                                                        helperText={touched.nif ? errors.nif : ''}
+                                                                    />
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Numéro Statistique"
+                                                                        name="stat"
+                                                                        width={200}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.stat}
+                                                                        error={Boolean(touched.stat && errors.stat)}
+                                                                        helperText={touched.stat ? errors.stat : ''}
+                                                                    />
+
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Numéro RCS"
+                                                                        name="rcs"
+                                                                        width={200}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.rcs}
+                                                                        error={Boolean(touched.rcs && errors.rcs)}
+                                                                        helperText={touched.rcs ? errors.rcs : ''}
+                                                                    />
+                                                                </Stack>
+                                                            </Stack>
+                                                            <Stack
+                                                                direction={'row'}
+                                                                alignItems={'flex-start'}
+                                                                width={'100%'}
+                                                                spacing={5}
+                                                            >
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Responsable"
+                                                                        name="responsable"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.responsable}
+                                                                        error={Boolean(touched.responsable && errors.responsable)}
+                                                                        helperText={touched.responsable ? errors.responsable : ''}
+                                                                    />
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Expert comptable"
+                                                                        name="expertcomptable"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.expertcomptable}
+                                                                        error={Boolean(touched.expertcomptable && errors.expertcomptable)}
+                                                                        helperText={touched.expertcomptable ? errors.expertcomptable : ''}
+                                                                    />
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Commissaire aux comptes"
+                                                                        name="cac"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.cac}
+                                                                        error={Boolean(touched.cac && errors.cac)}
+                                                                        helperText={touched.cac ? errors.cac : ''}
+                                                                    />
+                                                                </Stack>
                                                             </Stack>
 
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="denomination" style={{ fontSize: 12, color: '#3FA2F6' }}>Dénomination</label>
-                                                                <Field
-                                                                    required
-                                                                    name='denomination'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '600px'
-                                                                    }}
-                                                                />
-                                                                <ErrorMessage name='denomination' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
+                                                        </Stack>
 
-                                                            <Stack width={"100%"} height={"30px"} spacing={20} alignItems={"center"}
-                                                                alignContent={"center"} justifyContent={"stretch"} direction={"row"}
+                                                    </AccordionDetails>
+                                                </Accordion>
+
+                                                <Accordion
+                                                    elevation={0}
+                                                    style={{
+                                                        width: "100%",
+                                                        borderBlockColor: "transparent",
+                                                        borderRadius: '10px',
+                                                        borderColor: 'transparent'
+                                                    }}
+                                                    sx={{
+                                                        width: '100%',
+                                                        border: 'none',
+                                                        borderRadius: '10px',
+                                                        boxShadow: 'none',
+                                                        '&:before': {
+                                                            display: 'none',
+                                                        },
+                                                    }}
+                                                >
+                                                    <AccordionSummary
+                                                        aria-controls="panel1-content"
+                                                        id="panel1-header"
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '0 8px',
+                                                        }}
+                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
+                                                    >
+                                                        <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
+                                                            <HiMiniDocumentText size={35} style={{ color: '#37709c' }} />
+                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Juridique</Typography>
+                                                        </Stack>
+                                                    </AccordionSummary>
+
+                                                    <AccordionDetails>
+                                                        <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
+                                                            alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
+                                                            style={{
+                                                                paddingInline: '25px',
+                                                                paddingBottom: '20px'
+                                                            }}
+                                                        >
+                                                            <Stack
+                                                                direction={'row'}
+                                                                alignItems={'flex-end'}
+                                                                width={'100%'}
+                                                                spacing={5}
                                                             >
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="nif" style={{ fontSize: 12, color: '#3FA2F6' }}>Numéro NIF</label>
+                                                                    <label htmlFor="forme" style={{ fontSize: 13, color: 'black' }}>Forme</label>
                                                                     <Field
+                                                                        as={Select}
                                                                         required
-                                                                        name='nif'
-                                                                        onChange={handleChange}
+                                                                        name='forme'
                                                                         type='text'
                                                                         placeholder=""
-                                                                        style={{
-                                                                            height: 22, borderTop: 'none',
-                                                                            borderLeft: 'none', borderRight: 'none',
-                                                                            outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                            width: '200px'
+                                                                        onChange={handleOnChangeFormeSelect(setFieldValue)}
+                                                                        sx={{
+                                                                            borderRadius: 0,
+                                                                            width: 500,
+                                                                            height: 40,
+                                                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                                                borderTop: 'none', // Supprime le cadre
+                                                                                borderLeft: 'none',
+                                                                                borderRight: 'none',
+                                                                                borderWidth: '0.5px'
+                                                                            },
+                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                                borderTop: 'none', // Supprime le cadre
+                                                                                borderLeft: 'none',
+                                                                                borderRight: 'none',
+                                                                                borderWidth: '0.5px'
+                                                                            },
+                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                                borderTop: 'none', // Supprime le cadre
+                                                                                borderLeft: 'none',
+                                                                                borderRight: 'none',
+                                                                                borderWidth: '0.5px'
+                                                                            },
                                                                         }}
-                                                                    />
-                                                                    <ErrorMessage name='nif' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                    >
+                                                                        {listeFormeJuridique.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
+                                                                            <MenuItem key={item.id} value={item.id}>{item.libelle}</MenuItem>
+                                                                        ))};
+                                                                    </Field>
+                                                                    <ErrorMessage name='forme' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                                 </Stack>
 
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="stat" style={{ fontSize: 12, color: '#3FA2F6' }}>Numéro Statistique</label>
+                                                                    <label htmlFor="activite" style={{ fontSize: 13, color: 'black' }}>Activité</label>
                                                                     <Field
+                                                                        as={Select}
                                                                         required
-                                                                        name='stat'
-                                                                        onChange={handleChange}
+                                                                        name='activite'
                                                                         type='text'
                                                                         placeholder=""
-                                                                        style={{
-                                                                            height: 22, borderTop: 'none',
-                                                                            borderLeft: 'none', borderRight: 'none',
-                                                                            outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                            width: '200px'
+                                                                        onChange={handleOnChangeActiviteSelect(setFieldValue)}
+                                                                        sx={{
+                                                                            borderRadius: 0,
+                                                                            width: 250,
+                                                                            height: 40,
+                                                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                                                borderTop: 'none', // Supprime le cadre
+                                                                                borderLeft: 'none',
+                                                                                borderRight: 'none',
+                                                                                borderWidth: '0.5px'
+                                                                            },
+                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                                borderTop: 'none', // Supprime le cadre
+                                                                                borderLeft: 'none',
+                                                                                borderRight: 'none',
+                                                                                borderWidth: '0.5px'
+                                                                            },
+                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                                borderTop: 'none', // Supprime le cadre
+                                                                                borderLeft: 'none',
+                                                                                borderRight: 'none',
+                                                                                borderWidth: '0.5px'
+                                                                            },
                                                                         }}
-                                                                    />
-                                                                    <ErrorMessage name='stat' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
+                                                                    >
+                                                                        {listeActivite.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
+                                                                            <MenuItem key={item.id} value={item.id}>
+                                                                                <Stack direction={'row'} spacing={2}
+                                                                                    style={{ alignContent: 'center', alignItems: 'center' }}
+                                                                                >
+                                                                                    <Stack direction={'row'}>
+                                                                                        {item.icon}
+                                                                                    </Stack>
 
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="rcs" style={{ fontSize: 12, color: '#3FA2F6' }}>Numéro Rcs</label>
-                                                                    <Field
-                                                                        required
-                                                                        name='rcs'
-                                                                        onChange={handleChange}
-                                                                        type='text'
-                                                                        placeholder=""
-                                                                        style={{
-                                                                            height: 22, borderTop: 'none',
-                                                                            borderLeft: 'none', borderRight: 'none',
-                                                                            outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                            width: '200px'
-                                                                        }}
-                                                                    />
-                                                                    <ErrorMessage name='rcs' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
-
-                                                            </Stack>
-
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="responsable" style={{ fontSize: 12, color: '#3FA2F6' }}>Responsable</label>
-                                                                <Field
-                                                                    required
-                                                                    name='responsable'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '400px'
-                                                                    }}
-                                                                />
-                                                                <ErrorMessage name='responsable' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
-
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="expertcomptable" style={{ fontSize: 12, color: '#3FA2F6' }}>Expert comptable</label>
-                                                                <Field
-                                                                    required
-                                                                    name='expertcomptable'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '400px'
-                                                                    }}
-                                                                />
-                                                                <ErrorMessage name='expertcomptable' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
-
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="cac" style={{ fontSize: 12, color: '#3FA2F6' }}>Commissaire aux comptes</label>
-                                                                <Field
-                                                                    required
-                                                                    name='cac'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '400px'
-                                                                    }}
-                                                                />
-                                                                <ErrorMessage name='cac' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
-
-                                                        </Stack>
-
-                                                    </AccordionDetails>
-                                                </Accordion>
-
-                                                <Accordion elevation={0} style={{ width: "100%", borderBlockColor: "transparent" }}>
-                                                    <AccordionSummary
-                                                        expandIcon={<MdExpandCircleDown style={{ width: "25px", height: "25px", color: '#44D5F0' }} />}
-                                                        aria-controls="panel1-content"
-                                                        id="panel1-header"
-                                                        style={{ flexDirection: "row-reverse" }}
-                                                    >
-                                                        <Typography style={{ fontWeight: 'normal', fontSize: "20px", marginLeft: "10px" }}>Juridique</Typography>
-                                                    </AccordionSummary>
-
-                                                    <AccordionDetails>
-                                                        <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
-                                                            alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            style={{ marginLeft: "50px" }}
-                                                        >
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="forme" style={{ fontSize: 12, color: '#3FA2F6' }}>Forme</label>
-                                                                <Field
-                                                                    as={Select}
-                                                                    required
-                                                                    name='forme'
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    onChange={handleOnChangeFormeSelect(setFieldValue)}
-                                                                    sx={{
-                                                                        borderRadius: 0,
-                                                                        width: 500,
-                                                                        height: 40,
-                                                                        '& .MuiOutlinedInput-notchedOutline': {
-                                                                            borderTop: 'none', // Supprime le cadre
-                                                                            borderLeft: 'none',
-                                                                            borderRight: 'none',
-                                                                            borderWidth: '0.5px'
-                                                                        },
-                                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                            borderTop: 'none', // Supprime le cadre
-                                                                            borderLeft: 'none',
-                                                                            borderRight: 'none',
-                                                                            borderWidth: '0.5px'
-                                                                        },
-                                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                            borderTop: 'none', // Supprime le cadre
-                                                                            borderLeft: 'none',
-                                                                            borderRight: 'none',
-                                                                            borderWidth: '0.5px'
-                                                                        },
-                                                                    }}
-                                                                >
-                                                                    {listeFormeJuridique.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
-                                                                        <MenuItem key={item.id} value={item.id}>{item.libelle}</MenuItem>
-                                                                    ))};
-                                                                </Field>
-                                                                <ErrorMessage name='forme' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
-
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="activite" style={{ fontSize: 12, color: '#3FA2F6' }}>Activité</label>
-                                                                <Field
-                                                                    as={Select}
-                                                                    required
-                                                                    name='activite'
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    onChange={handleOnChangeActiviteSelect(setFieldValue)}
-                                                                    sx={{
-                                                                        borderRadius: 0,
-                                                                        width: 250,
-                                                                        height: 40,
-                                                                        '& .MuiOutlinedInput-notchedOutline': {
-                                                                            borderTop: 'none', // Supprime le cadre
-                                                                            borderLeft: 'none',
-                                                                            borderRight: 'none',
-                                                                            borderWidth: '0.5px'
-                                                                        },
-                                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                            borderTop: 'none', // Supprime le cadre
-                                                                            borderLeft: 'none',
-                                                                            borderRight: 'none',
-                                                                            borderWidth: '0.5px'
-                                                                        },
-                                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                            borderTop: 'none', // Supprime le cadre
-                                                                            borderLeft: 'none',
-                                                                            borderRight: 'none',
-                                                                            borderWidth: '0.5px'
-                                                                        },
-                                                                    }}
-                                                                >
-                                                                    {listeActivite.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
-                                                                        <MenuItem key={item.id} value={item.id}>
-                                                                            <Stack direction={'row'} spacing={2}
-                                                                                style={{ alignContent: 'center', alignItems: 'center' }}
-                                                                            >
-                                                                                <Stack direction={'row'}>
-                                                                                    {item.icon}
+                                                                                    <Stack direction={'row'}>
+                                                                                        {item.libelle}
+                                                                                    </Stack>
                                                                                 </Stack>
 
-                                                                                <Stack direction={'row'}>
-                                                                                    {item.libelle}
-                                                                                </Stack>
-                                                                            </Stack>
+                                                                            </MenuItem>
+                                                                        ))};
+                                                                    </Field>
+                                                                    <ErrorMessage name='activite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                </Stack>
 
-                                                                        </MenuItem>
-                                                                    ))};
-                                                                </Field>
-                                                                <ErrorMessage name='activite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
-
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="detailsactivite" style={{ fontSize: 12, color: '#3FA2F6' }}>Détails activités</label>
-                                                                <Field
-                                                                    required
-                                                                    name='detailsactivite'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
+                                                                <Stack
                                                                     style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '400px'
+                                                                        width: '20%'
                                                                     }}
-                                                                />
-                                                                <ErrorMessage name='detailsactivite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Détails activités"
+                                                                        name="detailsactivite"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.detailsactivite}
+                                                                        error={Boolean(touched.detailsactivite && errors.detailsactivite)}
+                                                                        helperText={touched.detailsactivite ? errors.detailsactivite : ''}
+                                                                    />
+                                                                </Stack>
                                                             </Stack>
                                                         </Stack>
                                                     </AccordionDetails>
                                                 </Accordion>
 
-                                                <Accordion elevation={0} style={{ width: "100%", borderBlockColor: "transparent" }}>
+                                                <Accordion
+                                                    elevation={0}
+                                                    style={{
+                                                        width: "100%",
+                                                        borderBlockColor: "transparent",
+                                                        borderRadius: '10px'
+                                                    }}
+                                                    sx={{
+                                                        width: '100%',
+                                                        border: 'none',
+                                                        borderRadius: '10px',
+                                                        boxShadow: 'none',
+                                                        '&:before': {
+                                                            display: 'none',
+                                                        },
+                                                    }}
+                                                >
                                                     <AccordionSummary
-                                                        expandIcon={<MdExpandCircleDown style={{ width: "25px", height: "25px", color: '#44D5F0' }} />}
                                                         aria-controls="panel1-content"
                                                         id="panel1-header"
-                                                        style={{ flexDirection: "row-reverse" }}
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '0 8px',
+                                                        }}
+                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
                                                     >
-                                                        <Typography style={{ fontWeight: 'normal', fontSize: "20px", marginLeft: "10px" }}>Contact</Typography>
+                                                        <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
+                                                            <MdContacts size={35} style={{ color: '#37709c' }} />
+                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Contact</Typography>
+                                                        </Stack>
                                                     </AccordionSummary>
 
                                                     <AccordionDetails>
                                                         <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
                                                             alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            style={{ marginLeft: "50px" }}
+                                                            style={{
+                                                                paddingInline: '25px',
+                                                                paddingBottom: '20px'
+                                                            }}
                                                         >
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="adresse" style={{ fontSize: 12, color: '#3FA2F6' }}>Adresse</label>
-                                                                <Field
-                                                                    required
-                                                                    name='adresse'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
+                                                            <Stack
+                                                                direction={'row'}
+                                                                alignItems={'flex-start'}
+                                                                width={'100%'}
+                                                                spacing={5}
+                                                            >
+                                                                <Stack
                                                                     style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '600px'
+                                                                        width: '20%'
                                                                     }}
-                                                                />
-                                                                <ErrorMessage name='adresse' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Adresse"
+                                                                        name="adresse"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.adresse}
+                                                                        error={Boolean(touched.adresse && errors.adresse)}
+                                                                        helperText={touched.adresse ? errors.adresse : ''}
+                                                                    />
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
+                                                                    <TextFieldComponent
+                                                                        text="Email"
+                                                                        name="email"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.email}
+                                                                        error={Boolean(touched.email && errors.email)}
+                                                                        helperText={touched.email ? errors.email : ''}
+                                                                    />
+                                                                </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '20%'
+                                                                    }}
+                                                                >
 
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="email" style={{ fontSize: 12, color: '#3FA2F6' }}>Email</label>
-                                                                <Field
-                                                                    required
-                                                                    name='email'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '400px'
-                                                                    }}
-                                                                />
-                                                                <ErrorMessage name='email' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                            </Stack>
-
-                                                            <Stack spacing={1}>
-                                                                <label htmlFor="telephone" style={{ fontSize: 12, color: '#3FA2F6' }}>Téléphone</label>
-                                                                <Field
-                                                                    required
-                                                                    name='telephone'
-                                                                    onChange={handleChange}
-                                                                    type='text'
-                                                                    placeholder=""
-                                                                    style={{
-                                                                        height: 22, borderTop: 'none',
-                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                        width: '200px'
-                                                                    }}
-                                                                />
-                                                                <ErrorMessage name='telephone' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                    <TextFieldComponent
+                                                                        text="Téléphone"
+                                                                        name="telephone"
+                                                                        width={400}
+                                                                        handleChange={handleChange}
+                                                                        handleBlur={handleBlur}
+                                                                        values={values.telephone}
+                                                                        error={Boolean(touched.telephone && errors.telephone)}
+                                                                        helperText={touched.telephone ? errors.telephone : ''}
+                                                                    />
+                                                                </Stack>
                                                             </Stack>
 
                                                             <Stack direction="row" spacing={2}>
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="province" style={{ fontSize: 12, color: '#3FA2F6' }}>Province</label>
+                                                                    <label htmlFor="province" style={{ fontSize: 13, color: 'black' }}>Province</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='province'
@@ -2159,7 +2292,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
 
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="region" style={{ fontSize: 12, color: '#3FA2F6' }}>Région</label>
+                                                                    <label htmlFor="region" style={{ fontSize: 13, color: 'black' }}>Région</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='region'
@@ -2202,11 +2335,8 @@ export default function AddNewFile({ confirmationState }) {
                                                                     </Field>
                                                                     <ErrorMessage name='region' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                                 </Stack>
-                                                            </Stack>
-
-                                                            <Stack direction="row" spacing={2}>
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="district" style={{ fontSize: 12, color: '#3FA2F6' }}>District</label>
+                                                                    <label htmlFor="district" style={{ fontSize: 13, color: 'black' }}>District</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='district'
@@ -2251,7 +2381,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
 
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="commune" style={{ fontSize: 12, color: '#3FA2F6' }}>Commune</label>
+                                                                    <label htmlFor="commune" style={{ fontSize: 13, color: 'black' }}>Commune</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='commune'
@@ -2288,9 +2418,8 @@ export default function AddNewFile({ confirmationState }) {
                                                                     </Field>
                                                                     <ErrorMessage name='commune' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                                 </Stack>
-
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="pays" style={{ fontSize: 12, color: '#3FA2F6' }}>Pays</label>
+                                                                    <label htmlFor="pays" style={{ fontSize: 13, color: 'black' }}>Pays</label>
                                                                     <Autocomplete
                                                                         options={listPays}
                                                                         autoHighlight
@@ -2316,12 +2445,16 @@ export default function AddNewFile({ confirmationState }) {
                                                                                     },
                                                                                     '& .MuiInput-underline:after': {
                                                                                         borderBottomWidth: '0.5px'
-                                                                                    }
+                                                                                    },
+                                                                                    '& .MuiFormHelperText-root': {
+                                                                                        marginLeft: 0
+                                                                                    },
                                                                                 }}
+                                                                                error={Boolean(touched.pays && errors.pays)}
+                                                                                helperText={touched.pays ? errors.pays : ''}
                                                                             />
                                                                         )}
                                                                     />
-                                                                    <ErrorMessage name='pays' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                                 </Stack>
                                                             </Stack>
                                                         </Stack>
@@ -2329,20 +2462,47 @@ export default function AddNewFile({ confirmationState }) {
                                                     </AccordionDetails>
                                                 </Accordion>
 
-                                                <Accordion elevation={0} style={{ width: "100%", borderBlockColor: "transparent" }}>
+                                                <Accordion
+                                                    elevation={0}
+                                                    style={{
+                                                        width: "100%",
+                                                        borderBlockColor: "transparent",
+                                                        borderRadius: '10px'
+                                                    }}
+                                                    sx={{
+                                                        width: '100%',
+                                                        border: 'none',
+                                                        borderRadius: '10px',
+                                                        boxShadow: 'none',
+                                                        '&:before': {
+                                                            display: 'none',
+                                                        },
+                                                    }}
+                                                >
                                                     <AccordionSummary
-                                                        expandIcon={<MdExpandCircleDown style={{ width: "25px", height: "25px", color: '#44D5F0' }} />}
                                                         aria-controls="panel1-content"
                                                         id="panel1-header"
-                                                        style={{ flexDirection: "row-reverse" }}
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '0 8px',
+                                                        }}
+                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
                                                     >
-                                                        <Typography style={{ fontWeight: 'normal', fontSize: "20px", marginLeft: "10px" }}>Sécurité</Typography>
+                                                        <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
+                                                            <MdOutlineSecurity size={35} style={{ color: '#37709c' }} />
+                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Sécurité</Typography>
+                                                        </Stack>
                                                     </AccordionSummary>
 
                                                     <AccordionDetails>
                                                         <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
                                                             alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            style={{ marginLeft: "50px" }}
+                                                            style={{
+                                                                paddingInline: '25px',
+                                                                paddingBottom: '20px'
+                                                            }}
                                                         >
                                                             <PasswordField handleChange={handleChange} values={values} setFieldValue={setFieldValue} type={'ADD'} password={""} />
                                                         </Stack>

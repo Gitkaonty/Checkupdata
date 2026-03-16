@@ -59,7 +59,7 @@ const PasswordField = ({ handleChange, values, setFieldValue, type, password }) 
             </Stack>
 
             <Stack spacing={0.5}>
-                <label style={{ fontSize: 12, color: '#3FA2F6' }}>
+                <label style={{ fontSize: 13, color: 'black' }}>
                     Mot de passe
                 </label>
 
@@ -76,7 +76,10 @@ const PasswordField = ({ handleChange, values, setFieldValue, type, password }) 
                             {...field}
                             disabled={!values.avecMotDePasse}
                             sx={{
-                                width: 350
+                                width: 350,
+                                '& .MuiInputBase-root': {
+                                    height: 32
+                                }
                             }}
                             size="small"
                             type={showPassword ? "text" : "password"}
@@ -109,7 +112,7 @@ const PasswordField = ({ handleChange, values, setFieldValue, type, password }) 
             </Stack>
 
             <Stack spacing={0.5}>
-                <label style={{ fontSize: 12, color: '#3FA2F6' }}>
+                <label style={{ fontSize: 13, color: 'black' }}>
                     Confirmation du mot de passe
                 </label>
 
@@ -119,7 +122,10 @@ const PasswordField = ({ handleChange, values, setFieldValue, type, password }) 
                             {...field}
                             disabled={!values.avecMotDePasse}
                             sx={{
-                                width: 350
+                                width: 350,
+                                '& .MuiInputBase-root': {
+                                    height: 32
+                                }
                             }}
                             size="small"
                             type={showPasswordConfirmation ? "text" : "password"}
