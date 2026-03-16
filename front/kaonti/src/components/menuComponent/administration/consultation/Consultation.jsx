@@ -901,7 +901,7 @@ export default function ConsultationComponent() {
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (canView) {
+            if (canView && !isLoadingCompte && !isLoadingJournal) {
                 if (e.ctrlKey && e.key === "ArrowRight") {
                     // Ctrl + →
                     handleNext();
@@ -914,7 +914,7 @@ export default function ConsultationComponent() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [listePcSelectionner, valSelectedCompte]);
+    }, [listePcSelectionner, valSelectedCompte, isLoadingCompte, isLoadingJournal]);
 
     // Liste des années
     useEffect(() => {
