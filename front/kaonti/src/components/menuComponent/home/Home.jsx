@@ -453,7 +453,8 @@ export default function Home() {
 
           <Stack
             style={{
-              backgroundColor: '#f1f3f7',
+              // backgroundColor: initial.white,
+              backgroundColor: initial.backgroundColor,
               height: '100%',
             }}
           >
@@ -482,7 +483,8 @@ export default function Home() {
               paddingBlock: '15px',
               paddingInline: '20px',
               backgroundColor: 'white',
-              borderRadius: "10px"
+              borderRadius: "10px",
+              backgroundColor: initial.white
             }}
           >
             <Stack>
@@ -517,7 +519,8 @@ export default function Home() {
               paddingInline: '20px',
               backgroundColor: 'white',
               borderRadius: "10px",
-              height: '120px'
+              height: '120px',
+              backgroundColor: initial.white
             }}
             spacing={2}
           >
@@ -557,21 +560,12 @@ export default function Home() {
             backgroundColor={"white"}
             padding={"20px"}
             borderRadius={"10px"}
+            style={{
+              backgroundColor: initial.white
+            }}
           >
-            <Stack width={"100%"} height={"10%"} spacing={1} alignItems={"center"} direction={"row"}>
-              <Stack
-                alignItems={"center"}
-                alignContent={"center"}
-                width={"300px"}
-                justifyContent={"right"}
-                paddingRight={"0px"}
-                direction={"row"}
-                spacing={0.5}
-              >
-              </Stack>
-            </Stack>
 
-            <Stack width={"100%"} height={"500px"} spacing={1} alignItems={"flex-start"} direction={"row"}>
+            <Stack width={"100%"} height={"500px"} spacing={1} alignItems={"flex-start"} direction={"row"} >
               <DataGrid
                 disableRowSelectionOnClick
                 localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
@@ -598,7 +592,7 @@ export default function Home() {
             </Stack>
           </Stack>
         </Stack>
-      </Box>
+      </Box >
     </>
   )
 };
