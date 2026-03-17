@@ -9,6 +9,7 @@ export const init = [
         button_delete_color: "#EE4E4E",
         button_abort_color:'#31511E',
         button_exit_color: "#E21818",
+        white : '#fefdfe'
     }
 ]
 
