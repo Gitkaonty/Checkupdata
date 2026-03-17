@@ -39,15 +39,15 @@ import { FaRectangleList } from "react-icons/fa6";
 import { HiMiniDocumentText } from "react-icons/hi2";
 import { MdContacts } from "react-icons/md";
 import { MdOutlineSecurity } from "react-icons/md";
-
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import PasswordField from './Field/PasswordField';
+import { inputAutoFill } from '../../inputStyle/inputAutoFill';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
-const TextFieldComponent = ({ text, name, handleChange, handleBlur, values, error, helperText, width }) => {
+const TextFieldComponent = ({ text, name, handleChange, handleBlur, values, error, helperText, width, height }) => {
     return (
         <Stack spacing={1}>
             <label htmlFor={name} style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>{text}</label>
@@ -62,7 +62,8 @@ const TextFieldComponent = ({ text, name, handleChange, handleBlur, values, erro
                 style={{
                     borderTop: 'none',
                     borderLeft: 'none', borderRight: 'none',
-                    outline: 'none', fontSize: 12, borderWidth: '0.5px',
+                    outline: 'none', borderWidth: '0.5px'
+
                 }}
                 sx={{
                     width: '100%',
@@ -70,8 +71,12 @@ const TextFieldComponent = ({ text, name, handleChange, handleBlur, values, erro
                         marginLeft: 0
                     },
                     '& .MuiInputBase-root': {
-                        height: 32
-                    }
+                        height: height ?? 32
+                    },
+                    '& .MuiInputBase-input': {
+                        fontSize: '14px'
+                    },
+                    ...inputAutoFill
                 }}
                 error={error}
                 helperText={error ? helperText : ''}
@@ -1782,6 +1787,7 @@ export default function AddNewFile({ confirmationState }) {
                                                         '&:before': {
                                                             display: 'none',
                                                         },
+                                                        backgroundColor: init.white
                                                     }}
                                                 >
                                                     <AccordionSummary
@@ -1795,7 +1801,7 @@ export default function AddNewFile({ confirmationState }) {
                                                         }}
                                                         expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
                                                     >
-                                                        <Stack direction="row" spacing={1} alignItems="flex-end" alignContent={'baseline'} style={{ marginLeft: '15px' }}>
+                                                        <Stack direction="row" spacing={1} alignItems="flex-end" alignContent={'baseline'} style={{ marginLeft: '15px', backgroundColor: '#fefdfe' }}>
                                                             <FaRectangleList size={35} style={{ color: '#37709c' }} />
                                                             <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Coordonnées</Typography>
                                                         </Stack>
@@ -1806,7 +1812,7 @@ export default function AddNewFile({ confirmationState }) {
                                                             alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
                                                             style={{
                                                                 paddingInline: '25px',
-                                                                paddingBottom: '20px'
+                                                                paddingBottom: '20px',
                                                             }}
                                                         >
                                                             <Stack
@@ -1847,6 +1853,59 @@ export default function AddNewFile({ confirmationState }) {
                                                                         helperText={touched.raisonsociale ? errors.raisonsociale : ''}
                                                                     />
                                                                 </Stack>
+                                                                <Stack
+                                                                    style={{
+                                                                        width: '15%'
+                                                                    }}
+                                                                >
+
+                                                                    <Stack >
+                                                                        <label htmlFor="pays" style={{ fontSize: 14, color: 'black', marginBottom: '3px' }}>Pays</label>
+                                                                        <Autocomplete
+                                                                            options={listPays}
+                                                                            autoHighlight
+                                                                            getOptionLabel={(option) => option.nompays || ''}
+                                                                            isOptionEqualToValue={(option, value) =>
+                                                                                option.code === value.code
+                                                                            }
+                                                                            value={
+                                                                                listPays.find(p => p.code === values.pays) || null
+                                                                            }
+                                                                            onChange={(event, newValue) => {
+                                                                                setFieldValue('pays', newValue ? newValue.code : '');
+                                                                            }}
+                                                                            onBlur={handleBlur}
+                                                                            renderInput={(params) => (
+                                                                                <TextField
+                                                                                    {...params}
+                                                                                    name="pays"
+                                                                                    // variant="standard"
+                                                                                    style={{
+                                                                                        borderTop: 'none',
+                                                                                        borderLeft: 'none', borderRight: 'none',
+                                                                                        outline: 'none', borderWidth: '0.5px'
+
+                                                                                    }}
+                                                                                    sx={{
+                                                                                        width: '100%',
+                                                                                        '& .MuiFormHelperText-root': {
+                                                                                            marginLeft: 0
+                                                                                        },
+                                                                                        '& .MuiInputBase-root': {
+                                                                                            height: 32
+                                                                                        },
+                                                                                        '& .MuiInputBase-input': {
+                                                                                            fontSize: '14px'
+                                                                                        },
+                                                                                        ...inputAutoFill
+                                                                                    }}
+                                                                                    error={Boolean(touched.pays && errors.pays)}
+                                                                                    helperText={touched.pays ? errors.pays : ''}
+                                                                                />
+                                                                            )}
+                                                                        />
+                                                                    </Stack>
+                                                                </Stack>
                                                             </Stack>
 
                                                             <Stack
@@ -1874,7 +1933,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
                                                                 <Stack
                                                                     style={{
-                                                                        width: '20%'
+                                                                        width: '9%'
                                                                     }}
                                                                 >
                                                                     <TextFieldComponent
@@ -1890,7 +1949,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
                                                                 <Stack
                                                                     style={{
-                                                                        width: '20%'
+                                                                        width: '9%'
                                                                     }}
                                                                 >
                                                                     <TextFieldComponent
@@ -1907,7 +1966,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
                                                                 <Stack
                                                                     style={{
-                                                                        width: '20%'
+                                                                        width: '9%'
                                                                     }}
                                                                 >
                                                                     <TextFieldComponent
@@ -1978,6 +2037,61 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
                                                             </Stack>
 
+                                                            <Stack spacing={1} style={{ width: "50%" }}>
+                                                                <label htmlFor="portefeuille" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Portefeuille</label>
+                                                                <FormControl
+                                                                    error={Boolean(touched.portefeuille && errors.portefeuille)}
+                                                                    helperText={touched.portefeuille ? errors.portefeuille : ''}
+                                                                >
+                                                                    <Autocomplete
+                                                                        multiple
+                                                                        id="checkboxes-tags-demo"
+                                                                        options={listePortefeuille}
+                                                                        disableCloseOnSelect
+                                                                        getOptionLabel={(option) => option.nom}
+                                                                        onChange={(_event, newValue) => {
+                                                                            setFieldValue("portefeuille", newValue);
+                                                                        }}
+                                                                        onBlur={handleBlur}
+                                                                        value={values.portefeuille || []}
+                                                                        renderOption={(props, option, { selected }) => {
+                                                                            const { key, ...optionProps } = props;
+                                                                            return (
+                                                                                <li
+                                                                                    key={key}
+                                                                                    {...optionProps}
+                                                                                    style={{
+                                                                                        paddingBottom: 2,
+                                                                                        paddingLeft: 4,
+                                                                                        paddingRight: 4,
+                                                                                        fontSize: "0.8rem",
+                                                                                        display: "flex",
+                                                                                        alignItems: "center"
+                                                                                    }}
+                                                                                >
+                                                                                    <Checkbox
+                                                                                        icon={icon}
+                                                                                        checkedIcon={checkedIcon}
+                                                                                        style={{ marginRight: 8 }}
+                                                                                        checked={selected}
+                                                                                    />
+                                                                                    {option.nom}
+                                                                                </li>
+                                                                            );
+                                                                        }}
+                                                                        renderInput={(params) => (
+                                                                            <TextField
+                                                                                {...params}
+                                                                            // variant="standard"
+                                                                            />
+                                                                        )}
+                                                                    />
+                                                                    <FormHelperText sx={{ ml: 0 }}>
+                                                                        {touched.portefeuille && errors.portefeuille}
+                                                                    </FormHelperText>
+                                                                </FormControl>
+                                                            </Stack>
+
                                                         </Stack>
 
                                                     </AccordionDetails>
@@ -1989,7 +2103,7 @@ export default function AddNewFile({ confirmationState }) {
                                                         width: "100%",
                                                         borderBlockColor: "transparent",
                                                         borderRadius: '10px',
-                                                        borderColor: 'transparent'
+                                                        borderColor: 'transparent',
                                                     }}
                                                     sx={{
                                                         width: '100%',
@@ -1999,6 +2113,7 @@ export default function AddNewFile({ confirmationState }) {
                                                         '&:before': {
                                                             display: 'none',
                                                         },
+                                                        backgroundColor: init.white
                                                     }}
                                                 >
                                                     <AccordionSummary
@@ -2020,7 +2135,7 @@ export default function AddNewFile({ confirmationState }) {
 
                                                     <AccordionDetails>
                                                         <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
-                                                            alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
+                                                            alignContent={"flex-start"} direction={"row"}
                                                             style={{
                                                                 paddingInline: '25px',
                                                                 paddingBottom: '20px'
@@ -2028,107 +2143,128 @@ export default function AddNewFile({ confirmationState }) {
                                                         >
                                                             <Stack
                                                                 direction={'row'}
-                                                                alignItems={'flex-end'}
+                                                                alignItems={'flex-start'}
                                                                 width={'100%'}
                                                                 spacing={5}
                                                             >
+
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="forme" style={{ fontSize: 13, color: 'black' }}>Forme</label>
-                                                                    <Field
-                                                                        as={Select}
-                                                                        required
-                                                                        name='forme'
-                                                                        type='text'
-                                                                        placeholder=""
-                                                                        onChange={handleOnChangeFormeSelect(setFieldValue)}
-                                                                        sx={{
-                                                                            borderRadius: 0,
-                                                                            width: 500,
-                                                                            height: 40,
-                                                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none', // Supprime le cadre
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none', // Supprime le cadre
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none', // Supprime le cadre
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                        }}
+                                                                    <label htmlFor="forme" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Forme</label>
+                                                                    <FormControl
+                                                                        error={Boolean(touched.forme && errors.forme)}
+                                                                        helperText={touched.forme ? errors.forme : ''}
                                                                     >
-                                                                        {listeFormeJuridique.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
-                                                                            <MenuItem key={item.id} value={item.id}>{item.libelle}</MenuItem>
-                                                                        ))};
-                                                                    </Field>
-                                                                    <ErrorMessage name='forme' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                        <Field
+                                                                            as={Select}
+                                                                            required
+                                                                            name='forme'
+                                                                            type='text'
+                                                                            placeholder=""
+                                                                            onChange={handleOnChangeFormeSelect(setFieldValue)}
+                                                                            onBlur={handleBlur}
+                                                                            sx={{
+                                                                                width: 500,
+                                                                                height: 40,
+                                                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                                                    // borderTop: 'none', // Supprime le cadre
+                                                                                    // borderLeft: 'none',
+                                                                                    // borderRight: 'none',
+                                                                                    borderWidth: '0.5px'
+                                                                                },
+                                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                                    // borderTop: 'none', // Supprime le cadre
+                                                                                    // borderLeft: 'none',
+                                                                                    // borderRight: 'none',
+                                                                                    borderWidth: '0.5px'
+                                                                                },
+                                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                                    // borderTop: 'none', // Supprime le cadre
+                                                                                    // borderLeft: 'none',
+                                                                                    // borderRight: 'none',
+                                                                                    borderWidth: '0.5px'
+                                                                                },
+                                                                                borderRadius: 0.5,
+                                                                            }}
+                                                                        >
+                                                                            {listeFormeJuridique.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
+                                                                                <MenuItem key={item.id} value={item.id}>{item.libelle}</MenuItem>
+                                                                            ))};
+                                                                        </Field>
+                                                                        {/* <ErrorMessage name='forme' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} /> */}
+                                                                        <FormHelperText sx={{ ml: 0 }}>
+                                                                            {touched.forme && errors.forme}
+                                                                        </FormHelperText>
+                                                                    </FormControl>
                                                                 </Stack>
 
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="activite" style={{ fontSize: 13, color: 'black' }}>Activité</label>
-                                                                    <Field
-                                                                        as={Select}
-                                                                        required
-                                                                        name='activite'
-                                                                        type='text'
-                                                                        placeholder=""
-                                                                        onChange={handleOnChangeActiviteSelect(setFieldValue)}
-                                                                        sx={{
-                                                                            borderRadius: 0,
-                                                                            width: 250,
-                                                                            height: 40,
-                                                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none', // Supprime le cadre
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none', // Supprime le cadre
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none', // Supprime le cadre
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                        }}
+                                                                    <label htmlFor="activite" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Activité</label>
+                                                                    <FormControl
+                                                                        error={Boolean(touched.activite && errors.activite)}
+                                                                        helperText={touched.activite ? errors.activite : ''}
                                                                     >
-                                                                        {listeActivite.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
-                                                                            <MenuItem key={item.id} value={item.id}>
-                                                                                <Stack direction={'row'} spacing={2}
-                                                                                    style={{ alignContent: 'center', alignItems: 'center' }}
-                                                                                >
-                                                                                    <Stack direction={'row'}>
-                                                                                        {item.icon}
+                                                                        <Field
+                                                                            as={Select}
+                                                                            required
+                                                                            name='activite'
+                                                                            type='text'
+                                                                            placeholder=""
+                                                                            onChange={handleOnChangeActiviteSelect(setFieldValue)}
+                                                                            onBlur={handleBlur}
+                                                                            sx={{
+                                                                                width: 250,
+                                                                                height: 40,
+                                                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                                                    // borderTop: 'none', // Supprime le cadre
+                                                                                    // borderLeft: 'none',
+                                                                                    // borderRight: 'none',
+                                                                                    borderWidth: '0.5px'
+                                                                                },
+                                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                                    // borderTop: 'none', // Supprime le cadre
+                                                                                    // borderLeft: 'none',
+                                                                                    // borderRight: 'none',
+                                                                                    borderWidth: '0.5px'
+                                                                                },
+                                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                                    // borderTop: 'none', // Supprime le cadre
+                                                                                    // borderLeft: 'none',
+                                                                                    // borderRight: 'none',
+                                                                                    borderWidth: '0.5px'
+                                                                                },
+                                                                                borderRadius: 0.5,
+                                                                            }}
+                                                                        >
+                                                                            {listeActivite.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
+                                                                                <MenuItem key={item.id} value={item.id}>
+                                                                                    <Stack direction={'row'} spacing={2}
+                                                                                        style={{ alignContent: 'center', alignItems: 'center' }}
+                                                                                    >
+                                                                                        <Stack direction={'row'}>
+                                                                                            {item.icon}
+                                                                                        </Stack>
+
+                                                                                        <Stack direction={'row'}>
+                                                                                            {item.libelle}
+                                                                                        </Stack>
                                                                                     </Stack>
 
-                                                                                    <Stack direction={'row'}>
-                                                                                        {item.libelle}
-                                                                                    </Stack>
-                                                                                </Stack>
-
-                                                                            </MenuItem>
-                                                                        ))};
-                                                                    </Field>
-                                                                    <ErrorMessage name='activite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                                                </MenuItem>
+                                                                            ))};
+                                                                        </Field>
+                                                                        <FormHelperText sx={{ ml: 0 }}>
+                                                                            {touched.activite && errors.activite}
+                                                                        </FormHelperText>
+                                                                        {/* <ErrorMessage name='activite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} /> */}
+                                                                    </FormControl>
                                                                 </Stack>
 
                                                                 <Stack
                                                                     style={{
-                                                                        width: '20%'
+                                                                        width: '20%',
+                                                                        marginTop: '0px'
                                                                     }}
+                                                                    spacing={1}
                                                                 >
                                                                     <TextFieldComponent
                                                                         text="Détails activités"
@@ -2139,6 +2275,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                         values={values.detailsactivite}
                                                                         error={Boolean(touched.detailsactivite && errors.detailsactivite)}
                                                                         helperText={touched.detailsactivite ? errors.detailsactivite : ''}
+                                                                        height={40}
                                                                     />
                                                                 </Stack>
                                                             </Stack>
@@ -2156,11 +2293,11 @@ export default function AddNewFile({ confirmationState }) {
                                                     sx={{
                                                         width: '100%',
                                                         border: 'none',
-                                                        borderRadius: '10px',
                                                         boxShadow: 'none',
                                                         '&:before': {
                                                             display: 'none',
                                                         },
+                                                        backgroundColor: init.white
                                                     }}
                                                 >
                                                     <AccordionSummary
@@ -2247,7 +2384,7 @@ export default function AddNewFile({ confirmationState }) {
 
                                                             <Stack direction="row" spacing={2}>
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="province" style={{ fontSize: 13, color: 'black' }}>Province</label>
+                                                                    <label htmlFor="province" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Province</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='province'
@@ -2259,27 +2396,27 @@ export default function AddNewFile({ confirmationState }) {
                                                                             setFieldValue('commune', '');
                                                                         }}
                                                                         sx={{
-                                                                            borderRadius: 0,
                                                                             width: 200,
-                                                                            height: 30,
+                                                                            height: 35,
                                                                             '& .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
+                                                                            borderRadius: 0.5,
                                                                         }}
                                                                     >
                                                                         {listProvinces.map((item) => (
@@ -2292,7 +2429,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
 
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="region" style={{ fontSize: 13, color: 'black' }}>Région</label>
+                                                                    <label htmlFor="region" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Région</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='region'
@@ -2304,27 +2441,27 @@ export default function AddNewFile({ confirmationState }) {
                                                                             setFieldValue('commune', '');
                                                                         }}
                                                                         sx={{
-                                                                            borderRadius: 0,
                                                                             width: 200,
-                                                                            height: 30,
+                                                                            height: 35,
                                                                             '& .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
+                                                                            borderRadius: 0.5,
                                                                         }}
                                                                     >
                                                                         {listRegions.map((item) => (
@@ -2336,7 +2473,7 @@ export default function AddNewFile({ confirmationState }) {
                                                                     <ErrorMessage name='region' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                                 </Stack>
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="district" style={{ fontSize: 13, color: 'black' }}>District</label>
+                                                                    <label htmlFor="district" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>District</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='district'
@@ -2348,27 +2485,27 @@ export default function AddNewFile({ confirmationState }) {
                                                                             setFieldValue('commune', '');
                                                                         }}
                                                                         sx={{
-                                                                            borderRadius: 0,
                                                                             width: 200,
-                                                                            height: 30,
+                                                                            height: 35,
                                                                             '& .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
+                                                                            borderRadius: 0.5,
                                                                         }}
                                                                     >
                                                                         {listDistricts.map((item) => (
@@ -2381,33 +2518,33 @@ export default function AddNewFile({ confirmationState }) {
                                                                 </Stack>
 
                                                                 <Stack spacing={1}>
-                                                                    <label htmlFor="commune" style={{ fontSize: 13, color: 'black' }}>Commune</label>
+                                                                    <label htmlFor="commune" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Commune</label>
                                                                     <Field
                                                                         as={Select}
                                                                         name='commune'
                                                                         onChange={handleChange}
                                                                         sx={{
-                                                                            borderRadius: 0,
                                                                             width: 200,
-                                                                            height: 30,
+                                                                            height: 35,
                                                                             '& .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
                                                                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                borderTop: 'none',
-                                                                                borderLeft: 'none',
-                                                                                borderRight: 'none',
+                                                                                // borderTop: 'none',
+                                                                                // borderLeft: 'none',
+                                                                                // borderRight: 'none',
                                                                                 borderWidth: '0.5px'
                                                                             },
+                                                                            borderRadius: 0.5,
                                                                         }}
                                                                     >
                                                                         {listCommunes.map((item) => (
@@ -2417,44 +2554,6 @@ export default function AddNewFile({ confirmationState }) {
                                                                         ))}
                                                                     </Field>
                                                                     <ErrorMessage name='commune' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="pays" style={{ fontSize: 13, color: 'black' }}>Pays</label>
-                                                                    <Autocomplete
-                                                                        options={listPays}
-                                                                        autoHighlight
-                                                                        getOptionLabel={(option) => option.nompays || ''}
-                                                                        isOptionEqualToValue={(option, value) =>
-                                                                            option.code === value.code
-                                                                        }
-                                                                        value={
-                                                                            listPays.find(p => p.code === values.pays) || null
-                                                                        }
-                                                                        onChange={(event, newValue) => {
-                                                                            setFieldValue('pays', newValue ? newValue.code : '');
-                                                                        }}
-                                                                        renderInput={(params) => (
-                                                                            <TextField
-                                                                                {...params}
-                                                                                name="pays"
-                                                                                variant="standard"
-                                                                                sx={{
-                                                                                    width: 400,
-                                                                                    '& .MuiInput-underline:before': {
-                                                                                        borderBottomWidth: '0.5px'
-                                                                                    },
-                                                                                    '& .MuiInput-underline:after': {
-                                                                                        borderBottomWidth: '0.5px'
-                                                                                    },
-                                                                                    '& .MuiFormHelperText-root': {
-                                                                                        marginLeft: 0
-                                                                                    },
-                                                                                }}
-                                                                                error={Boolean(touched.pays && errors.pays)}
-                                                                                helperText={touched.pays ? errors.pays : ''}
-                                                                            />
-                                                                        )}
-                                                                    />
                                                                 </Stack>
                                                             </Stack>
                                                         </Stack>
@@ -2472,11 +2571,11 @@ export default function AddNewFile({ confirmationState }) {
                                                     sx={{
                                                         width: '100%',
                                                         border: 'none',
-                                                        borderRadius: '10px',
                                                         boxShadow: 'none',
                                                         '&:before': {
                                                             display: 'none',
                                                         },
+                                                        backgroundColor: init.white
                                                     }}
                                                 >
                                                     <AccordionSummary
@@ -2700,58 +2799,11 @@ export default function AddNewFile({ confirmationState }) {
                                                     <ErrorMessage name='immo_amort_base_jours' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                 </Stack>
 
-                                                <Stack spacing={1} style={{ width: "50%" }}>
-                                                    <label htmlFor="portefeuille" style={{ fontSize: 12, color: '#3FA2F6' }}>Portefeuille</label>
-                                                    <Autocomplete
-                                                        multiple
-                                                        id="checkboxes-tags-demo"
-                                                        options={listePortefeuille}
-                                                        disableCloseOnSelect
-                                                        getOptionLabel={(option) => option.nom}
-                                                        onChange={(_event, newValue) => {
-                                                            setFieldValue("portefeuille", newValue);
-                                                        }}
-                                                        value={values.portefeuille || []}
-                                                        renderOption={(props, option, { selected }) => {
-                                                            const { key, ...optionProps } = props;
-                                                            return (
-                                                                <li
-                                                                    key={key}
-                                                                    {...optionProps}
-                                                                    style={{
-                                                                        paddingBottom: 2,
-                                                                        paddingLeft: 4,
-                                                                        paddingRight: 4,
-                                                                        fontSize: "0.8rem",
-                                                                        display: "flex",
-                                                                        alignItems: "center"
-                                                                    }}
-                                                                >
-                                                                    <Checkbox
-                                                                        icon={icon}
-                                                                        checkedIcon={checkedIcon}
-                                                                        style={{ marginRight: 8 }}
-                                                                        checked={selected}
-                                                                    />
-                                                                    {option.nom}
-                                                                </li>
-                                                            );
-                                                        }}
-                                                        renderInput={(params) => (
-                                                            <TextField
-                                                                {...params}
-                                                                variant="standard"
-                                                            />
-                                                        )}
-                                                    />
-                                                    <ErrorMessage name='portefeuille' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                </Stack>
-
                                                 <Stack spacing={1}>
                                                     <Typography
                                                         style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "5px" }}
                                                     >
-                                                        Type de comptabilité
+                                                        Type de tenue
                                                     </Typography>
 
                                                     <Stack direction="row" spacing={4} alignItems="center">
