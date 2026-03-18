@@ -211,7 +211,7 @@ const Layout = () => {
                         </Avatar>
                         <Box>
                             <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600, lineHeight: 1.2 }}>
-                                Espace Client
+                                Espace Client (test)
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
                                 Instance Production
