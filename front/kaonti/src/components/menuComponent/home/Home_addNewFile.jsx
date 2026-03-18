@@ -45,6 +45,7 @@ import PasswordField from './Field/PasswordField';
 import { inputAutoFill } from '../../inputStyle/inputAutoFill';
 import FormatedInput from '../../componentsTools/FormatedInput';
 import { IoMdAdd } from "react-icons/io";
+import MainDossier from '../../componentsTools/Dossier/MainDossier';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -1327,6 +1328,7 @@ export default function AddNewFile({ confirmationState }) {
         axios.get(`/paramPlanComptable/getRegions/${province}`).then((response) => {
             const regions = response.data.map(name => ({ id: name, name: name }));
             setListRegions(regions);
+            return regions;
         }).catch((error) => {
             console.error('Erreur lors du chargement des régions:', error);
         });
@@ -1340,6 +1342,7 @@ export default function AddNewFile({ confirmationState }) {
         axios.get(`/paramPlanComptable/getDistricts/${province}/${region}`).then((response) => {
             const districts = response.data.map(name => ({ id: name, name: name }));
             setListDistricts(districts);
+            return districts;
         }).catch((error) => {
             console.error('Erreur lors du chargement des districts:', error);
         });
@@ -1353,6 +1356,7 @@ export default function AddNewFile({ confirmationState }) {
         axios.get(`/paramPlanComptable/getCommunes/${province}/${region}/${district}`).then((response) => {
             const communes = response.data.map(name => ({ id: name, name: name }));
             setListCommunes(communes);
+            return communes;
         }).catch((error) => {
             console.error('Erreur lors du chargement des communes:', error);
         });
@@ -1842,947 +1846,486 @@ export default function AddNewFile({ confirmationState }) {
             {/* MODAL POUR LA SUPPRESSION D'UNE LIGNE DU TABLEAU FILIALE */}
             {openDialogDeleteConsolidationRow ? <PopupConfirmDelete msg={"Voulez-vous vraiment supprimer la ligne sélectionnée ?"} confirmationState={deleteConsolidationRow} /> : null}
 
-            <Formik
-                initialValues={InfosNewFileInitialValues}
-                validationSchema={formInfosNewFileValidationSchema}
-                onSubmit={(values) => {
+            <MainDossier listePortefeuille={listePortefeuille} listPays={listPays} listModel={listModel} compteId={Number(compteId)} type={'Ajout'} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} />
+        </Box>
+    )
+}
 
-                    // S'assurer que la valeur centrefisc est bien DGE ou CFISC (pas 'centre fiscale')
-                    const payload = {
-                        ...values,
-                        centrefisc: values.centrefisc === 'CFISC' || values.centrefisc === 'DGE' ? values.centrefisc : (values.centrefisc === 'centre fiscale' ? 'CFISC' : 'DGE')
-                    };
-                    handlSubmitNewFile(payload);
-                }}
-            >
-                {({ handleChange, handleSubmit, setFieldValue, resetForm, values, isValid, errors, setTouched, handleBlur, touched }) => {
+{/* <Formik
+    initialValues={InfosNewFileInitialValues}
+    validationSchema={formInfosNewFileValidationSchema}
+    onSubmit={(values) => {
 
-                    const calculateValeurPart = (capital, nbrPart) => {
-                        const numCapital = parseFloat(capital?.toString().replace(/\s/g, '').replace(',', '.')) || 0;
-                        const numParts = parseFloat(nbrPart) || 0;
-                        if (numParts === 0) return 0;
-                        const valPart = numCapital / numParts;
-                        const valPartFormatted = Number((valPart).toFixed(2));
-                        return valPartFormatted;
-                    };
+        // S'assurer que la valeur centrefisc est bien DGE ou CFISC (pas 'centre fiscale')
+        const payload = {
+            ...values,
+            centrefisc: values.centrefisc === 'CFISC' || values.centrefisc === 'DGE' ? values.centrefisc : (values.centrefisc === 'centre fiscale' ? 'CFISC' : 'DGE')
+        };
+        handlSubmitNewFile(payload);
+    }}
+>
+    {({ handleChange, handleSubmit, setFieldValue, resetForm, values, isValid, errors, setTouched, handleBlur, touched }) => {
 
-                    return (
-                        <Form style={{ width: '100%' }}>
-                            <Stack width={"100%"} height={"85%"} spacing={2} alignItems={"flex-start"} justifyContent={"stretch"}>
-                                <Stack width={"100%"} height={"30px"} spacing={2} alignItems={"center"} alignContent={"center"}
-                                    direction={"row"} justifyContent={"right"}
-                                >
-                                    <Typography variant='h6' sx={{ color: "black", width: 'calc(100% - 120px)' }} align='left'>Paramétrages: CRM</Typography>
-                                    <Button variant="contained"
-                                        onClick={() => {
-                                            if (!isValid) {
-                                                const touchedFields = Object.keys(errors).reduce((acc, field) => {
-                                                    acc[field] = true;
-                                                    return acc;
-                                                }, {});
+        const calculateValeurPart = (capital, nbrPart) => {
+            const numCapital = parseFloat(capital?.toString().replace(/\s/g, '').replace(',', '.')) || 0;
+            const numParts = parseFloat(nbrPart) || 0;
+            if (numParts === 0) return 0;
+            const valPart = numCapital / numParts;
+            const valPartFormatted = Number((valPart).toFixed(2));
+            return valPartFormatted;
+        };
 
-                                                setTouched(touchedFields);
+        return (
+            <Form style={{ width: '100%' }}>
+                <Stack width={"100%"} height={"85%"} spacing={2} alignItems={"flex-start"} justifyContent={"stretch"}>
+                    <Stack width={"100%"} height={"30px"} spacing={2} alignItems={"center"} alignContent={"center"}
+                        direction={"row"} justifyContent={"right"}
+                    >
+                        <Typography variant='h6' sx={{ color: "black", width: 'calc(100% - 120px)' }} align='left'>Paramétrages: CRM</Typography>
+                        <Button variant="contained"
+                            onClick={() => {
+                                if (!isValid) {
+                                    const touchedFields = Object.keys(errors).reduce((acc, field) => {
+                                        acc[field] = true;
+                                        return acc;
+                                    }, {});
 
-                                                const firstErrorField = fieldOrder.find(
-                                                    field => errors[field]
-                                                );
+                                    setTouched(touchedFields);
 
-                                                if (firstErrorField) {
-                                                    toast.error(errors[firstErrorField]);
-                                                }
+                                    const firstErrorField = fieldOrder.find(
+                                        field => errors[field]
+                                    );
 
-                                                return;
-                                            }
+                                    if (firstErrorField) {
+                                        toast.error(errors[firstErrorField]);
+                                    }
 
-                                            handleSubmit();
-                                        }}
+                                    return;
+                                }
+
+                                handleSubmit();
+                            }}
+                            style={{
+                                borderRadius: "0",
+                                height: '43px', marginLeft: "5px", width: '120px',
+                                textTransform: 'none', outline: 'none', border: 'none', backgroundColor: initial.theme
+                            }}
+                        >
+                            Enregistrer
+                        </Button>
+                    </Stack>
+
+                    <Box sx={{ width: '100%', typography: 'body1' }}>
+                        <TabContext value={value}>
+                            <Box>
+                                <TabList onChange={handleChangeTAB} aria-label="lab API tabs example" variant='scrollable'>
+                                    <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Infos société" value="1" />
+                                    <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Comptabilité" value="2" />
+                                    <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Fiscales" value="3" />
+                                    <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Associés" value="4" />
+                                    <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Filiales" value="5" />
+                                    <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Domiciliations bancaires" value="6" />
+                                    {values.consolidation === true ? <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Consolidation" value="7" /> : null}
+                                </TabList>
+                            </Box>
+
+                            <TabPanel value="1">
+                                <Stack width={"100%"} height={"100%"} spacing={1} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"} >
+                                    <Accordion
+                                        elevation={0}
                                         style={{
-                                            borderRadius: "0",
-                                            height: '43px', marginLeft: "5px", width: '120px',
-                                            textTransform: 'none', outline: 'none', border: 'none', backgroundColor: initial.theme
+                                            width: "100%",
+                                            borderBlockColor: "transparent",
+                                            borderRadius: '10px',
+                                            border: '0px'
+                                        }}
+                                        sx={{
+                                            width: '100%',
+                                            border: 'none',
+                                            borderRadius: '10px',
+                                            boxShadow: 'none',
+                                            '&:before': {
+                                                display: 'none',
+                                            },
+                                            backgroundColor: init.white
                                         }}
                                     >
-                                        Enregistrer
-                                    </Button>
-                                </Stack>
-
-                                <Box sx={{ width: '100%', typography: 'body1' }}>
-                                    <TabContext value={value}>
-                                        <Box>
-                                            <TabList onChange={handleChangeTAB} aria-label="lab API tabs example" variant='scrollable'>
-                                                <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Infos société" value="1" />
-                                                <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Comptabilité" value="2" />
-                                                <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Fiscales" value="3" />
-                                                <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Associés" value="4" />
-                                                <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Filiales" value="5" />
-                                                <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Domiciliations bancaires" value="6" />
-                                                {values.consolidation === true ? <Tab style={{ textTransform: 'none', outline: 'none', border: 'none' }} label="Consolidation" value="7" /> : null}
-                                            </TabList>
-                                        </Box>
-
-                                        <TabPanel value="1">
-                                            <Stack width={"100%"} height={"100%"} spacing={1} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"} >
-                                                <Accordion
-                                                    elevation={0}
-                                                    style={{
-                                                        width: "100%",
-                                                        borderBlockColor: "transparent",
-                                                        borderRadius: '10px',
-                                                        border: '0px'
-                                                    }}
-                                                    sx={{
-                                                        width: '100%',
-                                                        border: 'none',
-                                                        borderRadius: '10px',
-                                                        boxShadow: 'none',
-                                                        '&:before': {
-                                                            display: 'none',
-                                                        },
-                                                        backgroundColor: init.white
-                                                    }}
-                                                >
-                                                    <AccordionSummary
-                                                        aria-controls="panel1-content"
-                                                        id="panel1-header"
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '0 8px',
-                                                        }}
-                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
-                                                    >
-                                                        <Stack direction="row" spacing={1} alignItems="flex-end" alignContent={'baseline'} style={{ marginLeft: '15px', backgroundColor: '#fefdfe' }}>
-                                                            <FaRectangleList size={35} style={{ color: '#37709c' }} />
-                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Coordonnées</Typography>
-                                                        </Stack>
-                                                    </AccordionSummary>
-
-                                                    <AccordionDetails>
-                                                        <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
-                                                            alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            style={{
-                                                                paddingInline: '25px',
-                                                                paddingBottom: '20px',
-                                                            }}
-                                                        >
-                                                            <Stack
-                                                                direction={'row'}
-                                                                alignItems={'flex-start'}
-                                                                width={'100%'}
-                                                                spacing={5}
-                                                            >
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Nom du dossier *"
-                                                                        name="nomdossier"
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.nomdossier}
-                                                                        error={Boolean(touched.nomdossier && errors.nomdossier)}
-                                                                        helperText={touched.nomdossier ? errors.nomdossier : ''}
-                                                                    />
-                                                                </Stack>
-
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '30%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Raison sociale *"
-                                                                        name="raisonsociale"
-                                                                        width={"50%"}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.raisonsociale}
-                                                                        error={Boolean(touched.raisonsociale && errors.raisonsociale)}
-                                                                        helperText={touched.raisonsociale ? errors.raisonsociale : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '15%'
-                                                                    }}
-                                                                >
-
-                                                                    <Stack >
-                                                                        <label htmlFor="pays" style={{ fontSize: 14, color: 'black', marginBottom: '3px' }}>Pays</label>
-                                                                        <Autocomplete
-                                                                            options={listPays}
-                                                                            autoHighlight
-                                                                            getOptionLabel={(option) => option.nompays || ''}
-                                                                            isOptionEqualToValue={(option, value) =>
-                                                                                option.code === value.code
-                                                                            }
-                                                                            value={
-                                                                                listPays.find(p => p.code === values.pays) || null
-                                                                            }
-                                                                            onChange={(event, newValue) => {
-                                                                                setFieldValue('pays', newValue ? newValue.code : '');
-                                                                            }}
-                                                                            onBlur={handleBlur}
-                                                                            renderInput={(params) => (
-                                                                                <TextField
-                                                                                    {...params}
-                                                                                    name="pays"
-                                                                                    // variant="standard"
-                                                                                    style={{
-                                                                                        borderTop: 'none',
-                                                                                        borderLeft: 'none', borderRight: 'none',
-                                                                                        outline: 'none', borderWidth: '0.5px'
-
-                                                                                    }}
-                                                                                    sx={{
-                                                                                        width: '100%',
-                                                                                        '& .MuiFormHelperText-root': {
-                                                                                            marginLeft: 0
-                                                                                        },
-                                                                                        '& .MuiInputBase-root': {
-                                                                                            height: 32
-                                                                                        },
-                                                                                        '& .MuiInputBase-input': {
-                                                                                            fontSize: '14px'
-                                                                                        },
-                                                                                        ...inputAutoFill
-                                                                                    }}
-                                                                                    error={Boolean(touched.pays && errors.pays)}
-                                                                                    helperText={touched.pays ? errors.pays : ''}
-                                                                                />
-                                                                            )}
-                                                                        />
-                                                                    </Stack>
-                                                                </Stack>
-                                                            </Stack>
-
-                                                            <Stack
-                                                                direction={'row'}
-                                                                alignItems={'flex-start'}
-                                                                width={'100%'}
-                                                                spacing={5}
-                                                            >
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-
-                                                                    <TextFieldComponent
-                                                                        text="Dénomination"
-                                                                        name="denomination"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.denomination}
-                                                                        error={Boolean(touched.denomination && errors.denomination)}
-                                                                        helperText={touched.denomination ? errors.denomination : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '9%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Numéro NIF"
-                                                                        name="nif"
-                                                                        width={200}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.nif}
-                                                                        error={Boolean(touched.nif && errors.nif)}
-                                                                        helperText={touched.nif ? errors.nif : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '9%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Numéro Statistique"
-                                                                        name="stat"
-                                                                        width={200}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.stat}
-                                                                        error={Boolean(touched.stat && errors.stat)}
-                                                                        helperText={touched.stat ? errors.stat : ''}
-                                                                    />
-
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '9%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Numéro RCS"
-                                                                        name="rcs"
-                                                                        width={200}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.rcs}
-                                                                        error={Boolean(touched.rcs && errors.rcs)}
-                                                                        helperText={touched.rcs ? errors.rcs : ''}
-                                                                    />
-                                                                </Stack>
-                                                            </Stack>
-                                                            <Stack
-                                                                direction={'row'}
-                                                                alignItems={'flex-start'}
-                                                                width={'100%'}
-                                                                spacing={5}
-                                                            >
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Responsable"
-                                                                        name="responsable"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.responsable}
-                                                                        error={Boolean(touched.responsable && errors.responsable)}
-                                                                        helperText={touched.responsable ? errors.responsable : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Expert comptable"
-                                                                        name="expertcomptable"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.expertcomptable}
-                                                                        error={Boolean(touched.expertcomptable && errors.expertcomptable)}
-                                                                        helperText={touched.expertcomptable ? errors.expertcomptable : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Commissaire aux comptes"
-                                                                        name="cac"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.cac}
-                                                                        error={Boolean(touched.cac && errors.cac)}
-                                                                        helperText={touched.cac ? errors.cac : ''}
-                                                                    />
-                                                                </Stack>
-                                                            </Stack>
-
-                                                            <Stack spacing={1} style={{ width: "50%" }}>
-                                                                <label htmlFor="portefeuille" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Portefeuille</label>
-                                                                <FormControl
-                                                                    error={Boolean(touched.portefeuille && errors.portefeuille)}
-                                                                    helperText={touched.portefeuille ? errors.portefeuille : ''}
-                                                                >
-                                                                    <Autocomplete
-                                                                        multiple
-                                                                        id="checkboxes-tags-demo"
-                                                                        options={listePortefeuille}
-                                                                        disableCloseOnSelect
-                                                                        getOptionLabel={(option) => option.nom}
-                                                                        onChange={(_event, newValue) => {
-                                                                            setFieldValue("portefeuille", newValue);
-                                                                        }}
-                                                                        onBlur={handleBlur}
-                                                                        value={values.portefeuille || []}
-                                                                        renderOption={(props, option, { selected }) => {
-                                                                            const { key, ...optionProps } = props;
-                                                                            return (
-                                                                                <li
-                                                                                    key={key}
-                                                                                    {...optionProps}
-                                                                                    style={{
-                                                                                        paddingBottom: 2,
-                                                                                        paddingLeft: 4,
-                                                                                        paddingRight: 4,
-                                                                                        fontSize: "0.8rem",
-                                                                                        display: "flex",
-                                                                                        alignItems: "center"
-                                                                                    }}
-                                                                                >
-                                                                                    <Checkbox
-                                                                                        icon={icon}
-                                                                                        checkedIcon={checkedIcon}
-                                                                                        style={{ marginRight: 8 }}
-                                                                                        checked={selected}
-                                                                                    />
-                                                                                    {option.nom}
-                                                                                </li>
-                                                                            );
-                                                                        }}
-                                                                        renderInput={(params) => (
-                                                                            <TextField
-                                                                                {...params}
-                                                                            // variant="standard"
-                                                                            />
-                                                                        )}
-                                                                    />
-                                                                    <FormHelperText sx={{ ml: 0 }}>
-                                                                        {touched.portefeuille && errors.portefeuille}
-                                                                    </FormHelperText>
-                                                                </FormControl>
-                                                            </Stack>
-
-                                                        </Stack>
-
-                                                    </AccordionDetails>
-                                                </Accordion>
-
-                                                <Accordion
-                                                    elevation={0}
-                                                    style={{
-                                                        width: "100%",
-                                                        borderBlockColor: "transparent",
-                                                        borderRadius: '10px',
-                                                        borderColor: 'transparent',
-                                                    }}
-                                                    sx={{
-                                                        width: '100%',
-                                                        border: 'none',
-                                                        borderRadius: '10px',
-                                                        boxShadow: 'none',
-                                                        '&:before': {
-                                                            display: 'none',
-                                                        },
-                                                        backgroundColor: init.white
-                                                    }}
-                                                >
-                                                    <AccordionSummary
-                                                        aria-controls="panel1-content"
-                                                        id="panel1-header"
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '0 8px',
-                                                        }}
-                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
-                                                    >
-                                                        <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
-                                                            <HiMiniDocumentText size={35} style={{ color: '#37709c' }} />
-                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Juridique</Typography>
-                                                        </Stack>
-                                                    </AccordionSummary>
-
-                                                    <AccordionDetails>
-                                                        <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
-                                                            alignContent={"flex-start"} direction={"row"}
-                                                            style={{
-                                                                paddingInline: '25px',
-                                                                paddingBottom: '20px'
-                                                            }}
-                                                        >
-                                                            <Stack
-                                                                direction={'row'}
-                                                                alignItems={'flex-start'}
-                                                                width={'100%'}
-                                                                spacing={5}
-                                                            >
-
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="forme" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Forme</label>
-                                                                    <FormControl
-                                                                        error={Boolean(touched.forme && errors.forme)}
-                                                                        helperText={touched.forme ? errors.forme : ''}
-                                                                    >
-                                                                        <Field
-                                                                            as={Select}
-                                                                            required
-                                                                            name='forme'
-                                                                            type='text'
-                                                                            placeholder=""
-                                                                            onChange={handleOnChangeFormeSelect(setFieldValue)}
-                                                                            onBlur={handleBlur}
-                                                                            sx={{
-                                                                                width: 500,
-                                                                                height: 40,
-                                                                                '& .MuiOutlinedInput-notchedOutline': {
-                                                                                    // borderTop: 'none', // Supprime le cadre
-                                                                                    // borderLeft: 'none',
-                                                                                    // borderRight: 'none',
-                                                                                    borderWidth: '0.5px'
-                                                                                },
-                                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                    // borderTop: 'none', // Supprime le cadre
-                                                                                    // borderLeft: 'none',
-                                                                                    // borderRight: 'none',
-                                                                                    borderWidth: '0.5px'
-                                                                                },
-                                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                    // borderTop: 'none', // Supprime le cadre
-                                                                                    // borderLeft: 'none',
-                                                                                    // borderRight: 'none',
-                                                                                    borderWidth: '0.5px'
-                                                                                },
-                                                                                borderRadius: 0.5,
-                                                                            }}
-                                                                        >
-                                                                            {listeFormeJuridique.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
-                                                                                <MenuItem key={item.id} value={item.id}>{item.libelle}</MenuItem>
-                                                                            ))};
-                                                                        </Field>
-                                                                        {/* <ErrorMessage name='forme' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} /> */}
-                                                                        <FormHelperText sx={{ ml: 0 }}>
-                                                                            {touched.forme && errors.forme}
-                                                                        </FormHelperText>
-                                                                    </FormControl>
-                                                                </Stack>
-
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="activite" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Activité</label>
-                                                                    <FormControl
-                                                                        error={Boolean(touched.activite && errors.activite)}
-                                                                        helperText={touched.activite ? errors.activite : ''}
-                                                                    >
-                                                                        <Field
-                                                                            as={Select}
-                                                                            required
-                                                                            name='activite'
-                                                                            type='text'
-                                                                            placeholder=""
-                                                                            onChange={handleOnChangeActiviteSelect(setFieldValue)}
-                                                                            onBlur={handleBlur}
-                                                                            sx={{
-                                                                                width: 250,
-                                                                                height: 40,
-                                                                                '& .MuiOutlinedInput-notchedOutline': {
-                                                                                    // borderTop: 'none', // Supprime le cadre
-                                                                                    // borderLeft: 'none',
-                                                                                    // borderRight: 'none',
-                                                                                    borderWidth: '0.5px'
-                                                                                },
-                                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                    // borderTop: 'none', // Supprime le cadre
-                                                                                    // borderLeft: 'none',
-                                                                                    // borderRight: 'none',
-                                                                                    borderWidth: '0.5px'
-                                                                                },
-                                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                    // borderTop: 'none', // Supprime le cadre
-                                                                                    // borderLeft: 'none',
-                                                                                    // borderRight: 'none',
-                                                                                    borderWidth: '0.5px'
-                                                                                },
-                                                                                borderRadius: 0.5,
-                                                                            }}
-                                                                        >
-                                                                            {listeActivite.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
-                                                                                <MenuItem key={item.id} value={item.id}>
-                                                                                    <Stack direction={'row'} spacing={2}
-                                                                                        style={{ alignContent: 'center', alignItems: 'center' }}
-                                                                                    >
-                                                                                        <Stack direction={'row'}>
-                                                                                            {item.icon}
-                                                                                        </Stack>
-
-                                                                                        <Stack direction={'row'}>
-                                                                                            {item.libelle}
-                                                                                        </Stack>
-                                                                                    </Stack>
-
-                                                                                </MenuItem>
-                                                                            ))};
-                                                                        </Field>
-                                                                        <FormHelperText sx={{ ml: 0 }}>
-                                                                            {touched.activite && errors.activite}
-                                                                        </FormHelperText>
-                                                                        {/* <ErrorMessage name='activite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} /> */}
-                                                                    </FormControl>
-                                                                </Stack>
-
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%',
-                                                                        marginTop: '0px'
-                                                                    }}
-                                                                    spacing={1}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Détails activités"
-                                                                        name="detailsactivite"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.detailsactivite}
-                                                                        error={Boolean(touched.detailsactivite && errors.detailsactivite)}
-                                                                        helperText={touched.detailsactivite ? errors.detailsactivite : ''}
-                                                                        height={40}
-                                                                    />
-                                                                </Stack>
-                                                            </Stack>
-                                                        </Stack>
-                                                    </AccordionDetails>
-                                                </Accordion>
-
-                                                <Accordion
-                                                    elevation={0}
-                                                    style={{
-                                                        width: "100%",
-                                                        borderBlockColor: "transparent",
-                                                        borderRadius: '10px'
-                                                    }}
-                                                    sx={{
-                                                        width: '100%',
-                                                        border: 'none',
-                                                        boxShadow: 'none',
-                                                        '&:before': {
-                                                            display: 'none',
-                                                        },
-                                                        backgroundColor: init.white
-                                                    }}
-                                                >
-                                                    <AccordionSummary
-                                                        aria-controls="panel1-content"
-                                                        id="panel1-header"
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '0 8px',
-                                                        }}
-                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
-                                                    >
-                                                        <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
-                                                            <MdContacts size={35} style={{ color: '#37709c' }} />
-                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Contact</Typography>
-                                                        </Stack>
-                                                    </AccordionSummary>
-
-                                                    <AccordionDetails>
-                                                        <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
-                                                            alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            style={{
-                                                                paddingInline: '25px',
-                                                                paddingBottom: '20px'
-                                                            }}
-                                                        >
-                                                            <Stack
-                                                                direction={'row'}
-                                                                alignItems={'flex-start'}
-                                                                width={'100%'}
-                                                                spacing={5}
-                                                            >
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Adresse"
-                                                                        name="adresse"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.adresse}
-                                                                        error={Boolean(touched.adresse && errors.adresse)}
-                                                                        helperText={touched.adresse ? errors.adresse : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-                                                                    <TextFieldComponent
-                                                                        text="Email"
-                                                                        name="email"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.email}
-                                                                        error={Boolean(touched.email && errors.email)}
-                                                                        helperText={touched.email ? errors.email : ''}
-                                                                    />
-                                                                </Stack>
-                                                                <Stack
-                                                                    style={{
-                                                                        width: '20%'
-                                                                    }}
-                                                                >
-
-                                                                    <TextFieldComponent
-                                                                        text="Téléphone"
-                                                                        name="telephone"
-                                                                        width={400}
-                                                                        handleChange={handleChange}
-                                                                        handleBlur={handleBlur}
-                                                                        values={values.telephone}
-                                                                        error={Boolean(touched.telephone && errors.telephone)}
-                                                                        helperText={touched.telephone ? errors.telephone : ''}
-                                                                    />
-                                                                </Stack>
-                                                            </Stack>
-
-                                                            <Stack direction="row" spacing={2}>
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="province" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Province</label>
-                                                                    <Field
-                                                                        as={Select}
-                                                                        name='province'
-                                                                        onChange={(e) => {
-                                                                            handleChange(e);
-                                                                            getListeRegions(e.target.value);
-                                                                            setFieldValue('region', '');
-                                                                            setFieldValue('district', '');
-                                                                            setFieldValue('commune', '');
-                                                                        }}
-                                                                        sx={{
-                                                                            width: 200,
-                                                                            height: 35,
-                                                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            borderRadius: 0.5,
-                                                                        }}
-                                                                    >
-                                                                        {listProvinces.map((item) => (
-                                                                            <MenuItem key={item.id} value={item.name}>
-                                                                                {item.name}
-                                                                            </MenuItem>
-                                                                        ))}
-                                                                    </Field>
-                                                                    <ErrorMessage name='province' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
-
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="region" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Région</label>
-                                                                    <Field
-                                                                        as={Select}
-                                                                        name='region'
-                                                                        onChange={(e) => {
-                                                                            handleChange(e);
-                                                                            const province = values.province;
-                                                                            getListeDistricts(province, e.target.value);
-                                                                            setFieldValue('district', '');
-                                                                            setFieldValue('commune', '');
-                                                                        }}
-                                                                        sx={{
-                                                                            width: 200,
-                                                                            height: 35,
-                                                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            borderRadius: 0.5,
-                                                                        }}
-                                                                    >
-                                                                        {listRegions.map((item) => (
-                                                                            <MenuItem key={item.id} value={item.name}>
-                                                                                {item.name}
-                                                                            </MenuItem>
-                                                                        ))}
-                                                                    </Field>
-                                                                    <ErrorMessage name='region' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="district" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>District</label>
-                                                                    <Field
-                                                                        as={Select}
-                                                                        name='district'
-                                                                        onChange={(e) => {
-                                                                            handleChange(e);
-                                                                            const province = values.province;
-                                                                            const region = values.region;
-                                                                            getListeCommunes(province, region, e.target.value);
-                                                                            setFieldValue('commune', '');
-                                                                        }}
-                                                                        sx={{
-                                                                            width: 200,
-                                                                            height: 35,
-                                                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            borderRadius: 0.5,
-                                                                        }}
-                                                                    >
-                                                                        {listDistricts.map((item) => (
-                                                                            <MenuItem key={item.id} value={item.name}>
-                                                                                {item.name}
-                                                                            </MenuItem>
-                                                                        ))}
-                                                                    </Field>
-                                                                    <ErrorMessage name='district' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
-
-                                                                <Stack spacing={1}>
-                                                                    <label htmlFor="commune" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Commune</label>
-                                                                    <Field
-                                                                        as={Select}
-                                                                        name='commune'
-                                                                        onChange={handleChange}
-                                                                        sx={{
-                                                                            width: 200,
-                                                                            height: 35,
-                                                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                                // borderTop: 'none',
-                                                                                // borderLeft: 'none',
-                                                                                // borderRight: 'none',
-                                                                                borderWidth: '0.5px'
-                                                                            },
-                                                                            borderRadius: 0.5,
-                                                                        }}
-                                                                    >
-                                                                        {listCommunes.map((item) => (
-                                                                            <MenuItem key={item.id} value={item.name}>
-                                                                                {item.name}
-                                                                            </MenuItem>
-                                                                        ))}
-                                                                    </Field>
-                                                                    <ErrorMessage name='commune' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                                </Stack>
-                                                            </Stack>
-                                                        </Stack>
-
-                                                    </AccordionDetails>
-                                                </Accordion>
-
-                                                <Accordion
-                                                    elevation={0}
-                                                    style={{
-                                                        width: "100%",
-                                                        borderBlockColor: "transparent",
-                                                        borderRadius: '10px'
-                                                    }}
-                                                    sx={{
-                                                        width: '100%',
-                                                        border: 'none',
-                                                        boxShadow: 'none',
-                                                        '&:before': {
-                                                            display: 'none',
-                                                        },
-                                                        backgroundColor: init.white
-                                                    }}
-                                                >
-                                                    <AccordionSummary
-                                                        aria-controls="panel1-content"
-                                                        id="panel1-header"
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '0 8px',
-                                                        }}
-                                                        expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
-                                                    >
-                                                        <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
-                                                            <MdOutlineSecurity size={35} style={{ color: '#37709c' }} />
-                                                            <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Sécurité</Typography>
-                                                        </Stack>
-                                                    </AccordionSummary>
-
-                                                    <AccordionDetails>
-                                                        <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
-                                                            alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
-                                                            style={{
-                                                                paddingInline: '25px',
-                                                                paddingBottom: '20px'
-                                                            }}
-                                                        >
-                                                            <PasswordField handleChange={handleChange} values={values} setFieldValue={setFieldValue} type={'ADD'} password={""} />
-                                                        </Stack>
-
-                                                    </AccordionDetails>
-                                                </Accordion>
+                                        <AccordionSummary
+                                            aria-controls="panel1-content"
+                                            id="panel1-header"
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '0 8px',
+                                            }}
+                                            expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
+                                        >
+                                            <Stack direction="row" spacing={1} alignItems="flex-end" alignContent={'baseline'} style={{ marginLeft: '15px', backgroundColor: '#fefdfe' }}>
+                                                <FaRectangleList size={35} style={{ color: '#37709c' }} />
+                                                <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Coordonnées</Typography>
                                             </Stack>
-                                        </TabPanel>
+                                        </AccordionSummary>
 
-                                        <TabPanel value="2">
-                                            <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"}
+                                        <AccordionDetails>
+                                            <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
+                                                alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
+                                                style={{
+                                                    paddingInline: '25px',
+                                                    paddingBottom: '20px',
+                                                }}
                                             >
-                                                <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Général</Typography>
-                                                <Stack spacing={5} direction={'row'} alignItems={'center'} alignContent={'center'} width={'100%'} justifyContent={'flex-start'} style={{ marginTop: "10px" }}>
-                                                    <div>
-                                                        <label htmlFor="plancomptable" style={{ fontSize: 14, color: 'black', marginBottom: '3px', display: 'block' }}>Plan comptable</label>
-                                                        <Stack direction="row" spacing={4} alignItems="center">
+                                                <Stack
+                                                    direction={'row'}
+                                                    alignItems={'flex-start'}
+                                                    width={'100%'}
+                                                    spacing={5}
+                                                >
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Nom du dossier *"
+                                                            name="nomdossier"
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.nomdossier}
+                                                            error={Boolean(touched.nomdossier && errors.nomdossier)}
+                                                            helperText={touched.nomdossier ? errors.nomdossier : ''}
+                                                        />
+                                                    </Stack>
+
+                                                    <Stack
+                                                        style={{
+                                                            width: '30%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Raison sociale *"
+                                                            name="raisonsociale"
+                                                            width={"50%"}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.raisonsociale}
+                                                            error={Boolean(touched.raisonsociale && errors.raisonsociale)}
+                                                            helperText={touched.raisonsociale ? errors.raisonsociale : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '15%'
+                                                        }}
+                                                    >
+
+                                                        <Stack >
+                                                            <label htmlFor="pays" style={{ fontSize: 14, color: 'black', marginBottom: '3px' }}>Pays</label>
+                                                            <Autocomplete
+                                                                options={listPays}
+                                                                autoHighlight
+                                                                getOptionLabel={(option) => option.nompays || ''}
+                                                                isOptionEqualToValue={(option, value) =>
+                                                                    option.code === value.code
+                                                                }
+                                                                value={
+                                                                    listPays.find(p => p.code === values.pays) || null
+                                                                }
+                                                                onChange={(event, newValue) => {
+                                                                    setFieldValue('pays', newValue ? newValue.code : '');
+                                                                }}
+                                                                onBlur={handleBlur}
+                                                                renderInput={(params) => (
+                                                                    <TextField
+                                                                        {...params}
+                                                                        name="pays"
+                                                                        // variant="standard"
+                                                                        style={{
+                                                                            borderTop: 'none',
+                                                                            borderLeft: 'none', borderRight: 'none',
+                                                                            outline: 'none', borderWidth: '0.5px'
+
+                                                                        }}
+                                                                        sx={{
+                                                                            width: '100%',
+                                                                            '& .MuiFormHelperText-root': {
+                                                                                marginLeft: 0
+                                                                            },
+                                                                            '& .MuiInputBase-root': {
+                                                                                height: 32
+                                                                            },
+                                                                            '& .MuiInputBase-input': {
+                                                                                fontSize: '14px'
+                                                                            },
+                                                                            ...inputAutoFill
+                                                                        }}
+                                                                        error={Boolean(touched.pays && errors.pays)}
+                                                                        helperText={touched.pays ? errors.pays : ''}
+                                                                    />
+                                                                )}
+                                                            />
+                                                        </Stack>
+                                                    </Stack>
+                                                </Stack>
+
+                                                <Stack
+                                                    direction={'row'}
+                                                    alignItems={'flex-start'}
+                                                    width={'100%'}
+                                                    spacing={5}
+                                                >
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
+
+                                                        <TextFieldComponent
+                                                            text="Dénomination"
+                                                            name="denomination"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.denomination}
+                                                            error={Boolean(touched.denomination && errors.denomination)}
+                                                            helperText={touched.denomination ? errors.denomination : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '9%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Numéro NIF"
+                                                            name="nif"
+                                                            width={200}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.nif}
+                                                            error={Boolean(touched.nif && errors.nif)}
+                                                            helperText={touched.nif ? errors.nif : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '9%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Numéro Statistique"
+                                                            name="stat"
+                                                            width={200}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.stat}
+                                                            error={Boolean(touched.stat && errors.stat)}
+                                                            helperText={touched.stat ? errors.stat : ''}
+                                                        />
+
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '9%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Numéro RCS"
+                                                            name="rcs"
+                                                            width={200}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.rcs}
+                                                            error={Boolean(touched.rcs && errors.rcs)}
+                                                            helperText={touched.rcs ? errors.rcs : ''}
+                                                        />
+                                                    </Stack>
+                                                </Stack>
+                                                <Stack
+                                                    direction={'row'}
+                                                    alignItems={'flex-start'}
+                                                    width={'100%'}
+                                                    spacing={5}
+                                                >
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Responsable"
+                                                            name="responsable"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.responsable}
+                                                            error={Boolean(touched.responsable && errors.responsable)}
+                                                            helperText={touched.responsable ? errors.responsable : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Expert comptable"
+                                                            name="expertcomptable"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.expertcomptable}
+                                                            error={Boolean(touched.expertcomptable && errors.expertcomptable)}
+                                                            helperText={touched.expertcomptable ? errors.expertcomptable : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Commissaire aux comptes"
+                                                            name="cac"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.cac}
+                                                            error={Boolean(touched.cac && errors.cac)}
+                                                            helperText={touched.cac ? errors.cac : ''}
+                                                        />
+                                                    </Stack>
+                                                </Stack>
+
+                                                <Stack spacing={1} style={{ width: "50%" }}>
+                                                    <label htmlFor="portefeuille" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Portefeuille</label>
+                                                    <FormControl
+                                                        error={Boolean(touched.portefeuille && errors.portefeuille)}
+                                                        helperText={touched.portefeuille ? errors.portefeuille : ''}
+                                                    >
+                                                        <Autocomplete
+                                                            multiple
+                                                            id="checkboxes-tags-demo"
+                                                            options={listePortefeuille}
+                                                            disableCloseOnSelect
+                                                            getOptionLabel={(option) => option.nom}
+                                                            onChange={(_event, newValue) => {
+                                                                setFieldValue("portefeuille", newValue);
+                                                            }}
+                                                            onBlur={handleBlur}
+                                                            value={values.portefeuille || []}
+                                                            renderOption={(props, option, { selected }) => {
+                                                                const { key, ...optionProps } = props;
+                                                                return (
+                                                                    <li
+                                                                        key={key}
+                                                                        {...optionProps}
+                                                                        style={{
+                                                                            paddingBottom: 2,
+                                                                            paddingLeft: 4,
+                                                                            paddingRight: 4,
+                                                                            fontSize: "0.8rem",
+                                                                            display: "flex",
+                                                                            alignItems: "center"
+                                                                        }}
+                                                                    >
+                                                                        <Checkbox
+                                                                            icon={icon}
+                                                                            checkedIcon={checkedIcon}
+                                                                            style={{ marginRight: 8 }}
+                                                                            checked={selected}
+                                                                        />
+                                                                        {option.nom}
+                                                                    </li>
+                                                                );
+                                                            }}
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                // variant="standard"
+                                                                />
+                                                            )}
+                                                        />
+                                                        <FormHelperText sx={{ ml: 0 }}>
+                                                            {touched.portefeuille && errors.portefeuille}
+                                                        </FormHelperText>
+                                                    </FormControl>
+                                                </Stack>
+
+                                            </Stack>
+
+                                        </AccordionDetails>
+                                    </Accordion>
+
+                                    <Accordion
+                                        elevation={0}
+                                        style={{
+                                            width: "100%",
+                                            borderBlockColor: "transparent",
+                                            borderRadius: '10px',
+                                            borderColor: 'transparent',
+                                        }}
+                                        sx={{
+                                            width: '100%',
+                                            border: 'none',
+                                            borderRadius: '10px',
+                                            boxShadow: 'none',
+                                            '&:before': {
+                                                display: 'none',
+                                            },
+                                            backgroundColor: init.white
+                                        }}
+                                    >
+                                        <AccordionSummary
+                                            aria-controls="panel1-content"
+                                            id="panel1-header"
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '0 8px',
+                                            }}
+                                            expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
+                                        >
+                                            <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
+                                                <HiMiniDocumentText size={35} style={{ color: '#37709c' }} />
+                                                <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Juridique</Typography>
+                                            </Stack>
+                                        </AccordionSummary>
+
+                                        <AccordionDetails>
+                                            <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
+                                                alignContent={"flex-start"} direction={"row"}
+                                                style={{
+                                                    paddingInline: '25px',
+                                                    paddingBottom: '20px'
+                                                }}
+                                            >
+                                                <Stack
+                                                    direction={'row'}
+                                                    alignItems={'flex-start'}
+                                                    width={'100%'}
+                                                    spacing={5}
+                                                >
+
+                                                    <Stack spacing={1}>
+                                                        <label htmlFor="forme" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Forme</label>
+                                                        <FormControl
+                                                            error={Boolean(touched.forme && errors.forme)}
+                                                            helperText={touched.forme ? errors.forme : ''}
+                                                        >
                                                             <Field
                                                                 as={Select}
                                                                 required
-                                                                name='plancomptable'
+                                                                name='forme'
                                                                 type='text'
                                                                 placeholder=""
-                                                                onChange={handleOnChangePlanComptableSelect(setFieldValue)}
+                                                                onChange={handleOnChangeFormeSelect(setFieldValue)}
+                                                                onBlur={handleBlur}
                                                                 sx={{
-                                                                    borderRadius: 0.5,
-                                                                    width: 300,
-                                                                    height: 35,
+                                                                    width: 500,
+                                                                    height: 40,
                                                                     '& .MuiOutlinedInput-notchedOutline': {
                                                                         // borderTop: 'none', // Supprime le cadre
                                                                         // borderLeft: 'none',
@@ -2801,1010 +2344,1468 @@ export default function AddNewFile({ confirmationState }) {
                                                                         // borderRight: 'none',
                                                                         borderWidth: '0.5px'
                                                                     },
+                                                                    borderRadius: 0.5,
                                                                 }}
                                                             >
-                                                                <MenuItem key={0} value={0}><em>Aucun</em></MenuItem>
-                                                                {listModel?.map((item) => (
-                                                                    <MenuItem key={item.id} value={item.id}>{item.nom}</MenuItem>
+                                                                {listeFormeJuridique.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
+                                                                    <MenuItem key={item.id} value={item.id}>{item.libelle}</MenuItem>
                                                                 ))};
                                                             </Field>
-                                                            <ErrorMessage name='plancomptable' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                        </Stack>
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="devisepardefaut" style={{ fontSize: 14, color: 'black', marginBottom: '0px', display: 'block' }}>Devise par défaut</label>
-                                                        <Stack direction="row" spacing={4} alignItems="center">
-                                                            <RadioGroup
-                                                                row
-                                                                value={values.devisepardefaut}
-                                                                onChange={(e) => setFieldValue("devisepardefaut", e.target.value)}
-                                                                defaultValue={'MGA'}
-                                                            >
-                                                                <FormControlLabel
-                                                                    value="MGA"
-                                                                    control={<Radio />}
-                                                                    label="MGA"
-                                                                />
-                                                                <FormControlLabel
-                                                                    value="Autres"
-                                                                    control={<Radio />}
-                                                                    label="Autres"
-                                                                />
-                                                            </RadioGroup>
-                                                            <ErrorMessage name='devisepardefaut' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                        </Stack>
-                                                    </div>
-                                                    <div>
-                                                        <Stack spacing={0} direction={'row'}
-                                                            style={{ alignItems: 'center', marginTop: 10 }}
+                                                            <FormHelperText sx={{ ml: 0 }}>
+                                                                {touched.forme && errors.forme}
+                                                            </FormHelperText>
+                                                        </FormControl>
+                                                    </Stack>
+
+                                                    <Stack spacing={1}>
+                                                        <label htmlFor="activite" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Activité</label>
+                                                        <FormControl
+                                                            error={Boolean(touched.activite && errors.activite)}
+                                                            helperText={touched.activite ? errors.activite : ''}
                                                         >
                                                             <Field
+                                                                as={Select}
                                                                 required
-                                                                values={values.consolidation}
-                                                                name='consolidation'
-                                                                type='checkbox'
+                                                                name='activite'
+                                                                type='text'
                                                                 placeholder=""
-                                                                style={{
-                                                                    height: 20, borderTop: 'none',
-                                                                    borderLeft: 'none', borderRight: 'none',
-                                                                    outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                    width: 20, marginRight: 10,
+                                                                onChange={handleOnChangeActiviteSelect(setFieldValue)}
+                                                                onBlur={handleBlur}
+                                                                sx={{
+                                                                    width: 250,
+                                                                    height: 40,
+                                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                                        // borderTop: 'none', // Supprime le cadre
+                                                                        // borderLeft: 'none',
+                                                                        // borderRight: 'none',
+                                                                        borderWidth: '0.5px'
+                                                                    },
+                                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                        // borderTop: 'none', // Supprime le cadre
+                                                                        // borderLeft: 'none',
+                                                                        // borderRight: 'none',
+                                                                        borderWidth: '0.5px'
+                                                                    },
+                                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                        // borderTop: 'none', // Supprime le cadre
+                                                                        // borderLeft: 'none',
+                                                                        // borderRight: 'none',
+                                                                        borderWidth: '0.5px'
+                                                                    },
+                                                                    borderRadius: 0.5,
                                                                 }}
-                                                            />
-                                                            <label htmlFor="consolidation" style={{ fontSize: 15, color: 'black' }}>Consolidation</label>
-                                                        </Stack>
-                                                    </div>
-                                                </Stack>
+                                                            >
+                                                                {listeActivite.sort((a, b) => a.libelle.localeCompare(b.libelle)).map((item) => (
+                                                                    <MenuItem key={item.id} value={item.id}>
+                                                                        <Stack direction={'row'} spacing={2}
+                                                                            style={{ alignContent: 'center', alignItems: 'center' }}
+                                                                        >
+                                                                            <Stack direction={'row'}>
+                                                                                {item.icon}
+                                                                            </Stack>
 
-                                                <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "50px" }}>Paramétrages de longueur des comptes</Typography>
+                                                                            <Stack direction={'row'}>
+                                                                                {item.libelle}
+                                                                            </Stack>
+                                                                        </Stack>
 
-                                                <Stack width={"100%"} height={"30px"} spacing={5} alignItems={"center"}
-                                                    alignContent={"center"} justifyContent={"stretch"} direction={"row"}
-                                                    style={{ marginLeft: "0px", marginTop: "20px" }}
-                                                >
-                                                    <Stack
-                                                        width={'150px'}
-                                                    >
-                                                        <TextFieldComponent
-                                                            text="Compte standard"
-                                                            name="longueurcptstd"
-                                                            handleChange={handleChange}
-                                                            handleBlur={handleBlur}
-                                                            values={values.longueurcptstd}
-                                                            error={Boolean(touched.longueurcptstd && errors.longueurcptstd)}
-                                                            helperText={touched.longueurcptstd ? errors.longueurcptstd : ''}
-                                                            type="number"
-                                                            inputProps={{ min: 2, max: 50 }}
-                                                        />
+                                                                    </MenuItem>
+                                                                ))};
+                                                            </Field>
+                                                            <FormHelperText sx={{ ml: 0 }}>
+                                                                {touched.activite && errors.activite}
+                                                            </FormHelperText>
+                                                        </FormControl>
                                                     </Stack>
 
                                                     <Stack
-                                                        width={'150px'}
-                                                    >
-                                                        <TextFieldComponent
-                                                            text="Compte auxiliaire"
-                                                            name="longueurcptaux"
-                                                            handleChange={handleChange}
-                                                            handleBlur={handleBlur}
-                                                            values={values.longueurcptaux}
-                                                            error={Boolean(touched.longueurcptaux && errors.longueurcptaux)}
-                                                            helperText={touched.longueurcptaux ? errors.longueurcptaux : ''}
-                                                            type="number"
-                                                            inputProps={{ min: 2, max: 50 }}
-                                                        />
-                                                    </Stack>
-
-                                                    <Stack spacing={0} direction={'row'}
-                                                        style={{ alignItems: 'center', marginTop: 25 }}
-                                                    >
-                                                        <Field
-                                                            required
-                                                            name='autocompletion'
-                                                            type='checkbox'
-                                                            placeholder=""
-                                                            style={{
-                                                                height: 20, borderTop: 'none',
-                                                                borderLeft: 'none', borderRight: 'none',
-                                                                outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                                width: 20, marginRight: 10
-                                                            }}
-                                                        />
-                                                        <label htmlFor="autocompletion" style={{ fontSize: 15, color: 'black' }}>Auto-complétion</label>
-                                                        <ErrorMessage name='autocompletion' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                    </Stack>
-                                                </Stack>
-
-                                                <Stack spacing={0} direction={'row'}
-                                                    style={{ alignItems: 'center', marginTop: 40 }}
-                                                >
-                                                    <Field
-                                                        required
-                                                        name='avecanalytique'
-                                                        type='checkbox'
-                                                        placeholder=""
                                                         style={{
-                                                            height: 20, borderTop: 'none',
-                                                            borderLeft: 'none', borderRight: 'none',
-                                                            outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                            width: 20, marginRight: 10,
+                                                            width: '20%',
+                                                            marginTop: '0px'
                                                         }}
-                                                    />
-                                                    <label htmlFor="avecanalytique" style={{ fontSize: 15, color: 'black' }}>Avec analytique</label>
-                                                    <ErrorMessage name='avecanalytique' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                </Stack>
-
-                                                {/* Immobilisation */}
-                                                <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Immobilisation</Typography>
-                                                <Stack spacing={1} sx={{ mt: 0 }}>
-                                                    <Stack direction="row" spacing={4} alignItems="center" style={{ marginTop: "-10px" }}>
-                                                        <Typography style={{ fontSize: "14px", marginLeft: 0 }}>Base de calcul de l'amort (en jours)</Typography>
-                                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <Field type="radio" name="immo_amort_base_jours" value="365" /> 365 jours
-                                                        </label>
-                                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <Field type="radio" name="immo_amort_base_jours" value="360" /> 360 jours
-                                                        </label>
-                                                    </Stack>
-                                                    <ErrorMessage name='immo_amort_base_jours' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                </Stack>
-
-                                                <Stack spacing={1}>
-                                                    <Typography
-                                                        style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "5px" }}
+                                                        spacing={1}
                                                     >
-                                                        Type de tenue
-                                                    </Typography>
-
-                                                    <Stack direction="row" spacing={4} alignItems="center">
-                                                        <RadioGroup
-                                                            row
-                                                            value={values.typecomptabilite}
-                                                            onChange={(e) => setFieldValue("typecomptabilite", e.target.value)}
-                                                            defaultValue={'Français'}
-                                                        >
-                                                            <FormControlLabel
-                                                                value="Français"
-                                                                control={<Radio />}
-                                                                label="Français"
-                                                            />
-                                                            <FormControlLabel
-                                                                value="Autres"
-                                                                control={<Radio />}
-                                                                label="Autres"
-                                                            />
-                                                        </RadioGroup>
-                                                        <ErrorMessage name='typecomptabilite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                        <TextFieldComponent
+                                                            text="Détails activités"
+                                                            name="detailsactivite"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.detailsactivite}
+                                                            error={Boolean(touched.detailsactivite && errors.detailsactivite)}
+                                                            helperText={touched.detailsactivite ? errors.detailsactivite : ''}
+                                                            height={40}
+                                                        />
                                                     </Stack>
                                                 </Stack>
-
                                             </Stack>
-                                        </TabPanel>
+                                        </AccordionDetails>
+                                    </Accordion>
 
-                                        <TabPanel value="3">
-                                            <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"}
+                                    <Accordion
+                                        elevation={0}
+                                        style={{
+                                            width: "100%",
+                                            borderBlockColor: "transparent",
+                                            borderRadius: '10px'
+                                        }}
+                                        sx={{
+                                            width: '100%',
+                                            border: 'none',
+                                            boxShadow: 'none',
+                                            '&:before': {
+                                                display: 'none',
+                                            },
+                                            backgroundColor: init.white
+                                        }}
+                                    >
+                                        <AccordionSummary
+                                            aria-controls="panel1-content"
+                                            id="panel1-header"
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '0 8px',
+                                            }}
+                                            expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
+                                        >
+                                            <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
+                                                <MdContacts size={35} style={{ color: '#37709c' }} />
+                                                <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Contact</Typography>
+                                            </Stack>
+                                        </AccordionSummary>
+
+                                        <AccordionDetails>
+                                            <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
+                                                alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
+                                                style={{
+                                                    paddingInline: '25px',
+                                                    paddingBottom: '20px'
+                                                }}
                                             >
-                                                <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Impôt sur le revenu (IR)</Typography>
-
-                                                {/* Bloc radio DGE / centre fiscale */}
-                                                <Stack direction="column" spacing={1} sx={{ mt: 2, mb: 2 }}>
-                                                    <label htmlFor="devisepardefaut" style={{ fontSize: 14, color: 'black', marginBottom: '0px', display: 'block' }}>Type de centre fiscal</label>
-                                                    {/* <Typography variant="subtitle1" sx={{ fontWeight: 500, color: 'black' }}>Type de centre fiscal</Typography> */}
-                                                    <Stack direction="row" spacing={4} alignItems="center">
-                                                        <FormControlLabel
-                                                            control={<Field type="radio" name="centrefisc" value="DGE" as="input" />}
-                                                            label={<span style={{ fontWeight: values.centrefisc === 'DGE' ? 600 : 400 }}>DGE</span>}
-                                                        />
-                                                        <FormControlLabel
-                                                            control={<Field type="radio" name="centrefisc" value="CFISC" as="input" />}
-                                                            label={<span style={{ fontWeight: values.centrefisc === 'CFISC' ? 600 : 400 }}>Centre fiscale</span>}
-                                                        />
-                                                    </Stack>
-                                                </Stack>
-
                                                 <Stack
-                                                    width={'80px'}
-                                                >
-                                                    <TextFieldComponent
-                                                        text="Taux IR"
-                                                        name="tauxir"
-                                                        handleChange={handleChange}
-                                                        handleBlur={handleBlur}
-                                                        values={values.tauxir}
-                                                        error={Boolean(touched.tauxir && errors.tauxir)}
-                                                        helperText={touched.tauxir ? errors.tauxir : ''}
-                                                        type="number"
-                                                        inputProps={{ min: 1, max: 50 }}
-                                                    />
-                                                </Stack>
-
-                                                <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Paramétrages minimum de perception</Typography>
-
-                                                <Stack width={"100%"} height={"30px"} spacing={5} alignItems={"center"}
-                                                    alignContent={"center"} justifyContent={"stretch"} direction={"row"}
-                                                    style={{ marginLeft: "0px" }}
+                                                    direction={'row'}
+                                                    alignItems={'flex-start'}
+                                                    width={'100%'}
+                                                    spacing={5}
                                                 >
                                                     <Stack
-                                                        width={'150px'}
-                                                    >
-                                                        <TextFieldComponent
-                                                            text="Pourcentage CA"
-                                                            name="pourcentageca"
-                                                            handleChange={handleChange}
-                                                            handleBlur={handleBlur}
-                                                            values={values.pourcentageca}
-                                                            error={Boolean(touched.pourcentageca && errors.pourcentageca)}
-                                                            helperText={touched.pourcentageca ? errors.pourcentageca : ''}
-                                                            type="number"
-                                                            inputProps={{ min: 0, max: 50 }}
-                                                        />
-                                                    </Stack>
-
-                                                    <Stack
-                                                        width={'150px'}
-                                                    >
-                                                        <TextFieldComponent
-                                                            text="Montant min"
-                                                            name="montantmin"
-                                                            handleChange={handleChange}
-                                                            handleBlur={handleBlur}
-                                                            values={values.montantmin}
-                                                            error={Boolean(touched.montantmin && errors.montantmin)}
-                                                            helperText={touched.montantmin ? errors.montantmin : ''}
-                                                            type="number"
-                                                            inputProps={{ min: 0, max: 50 }}
-                                                        />
-                                                    </Stack>
-                                                </Stack>
-
-                                                <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "50px" }}>Taxe sur la valeur ajoutée (TVA)</Typography>
-
-                                                <Stack spacing={0} direction={'row'}
-                                                    style={{ alignItems: 'center', marginTop: 20 }}
-                                                >
-                                                    <Field
-                                                        required
-                                                        name='assujettitva'
-                                                        type='checkbox'
-                                                        placeholder=""
                                                         style={{
-                                                            height: 20, borderTop: 'none',
-                                                            borderLeft: 'none', borderRight: 'none',
-                                                            outline: 'none', fontSize: 14, borderWidth: '0.5px',
-                                                            width: 20, marginRight: 10,
+                                                            width: '20%'
                                                         }}
-                                                    />
-                                                    <label htmlFor="assujettitva" style={{ fontSize: 15, color: 'black' }}>Assujettie à la TVA</label>
-                                                    <ErrorMessage name='assujettitva' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                </Stack>
-                                            </Stack>
-                                        </TabPanel>
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Adresse"
+                                                            name="adresse"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.adresse}
+                                                            error={Boolean(touched.adresse && errors.adresse)}
+                                                            helperText={touched.adresse ? errors.adresse : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
+                                                        <TextFieldComponent
+                                                            text="Email"
+                                                            name="email"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.email}
+                                                            error={Boolean(touched.email && errors.email)}
+                                                            helperText={touched.email ? errors.email : ''}
+                                                        />
+                                                    </Stack>
+                                                    <Stack
+                                                        style={{
+                                                            width: '20%'
+                                                        }}
+                                                    >
 
-                                        <TabPanel value="4">
-                                            <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"}
-                                            >
-                                                <Stack width={"100%"} height={"30px"} spacing={5} alignItems={"center"}
-                                                    alignContent={"center"} justifyContent={"stretch"} direction={"row"}
-                                                    style={{
-                                                        marginTop: '20px'
-                                                    }}
-                                                >
+                                                        <TextFieldComponent
+                                                            text="Téléphone"
+                                                            name="telephone"
+                                                            width={400}
+                                                            handleChange={handleChange}
+                                                            handleBlur={handleBlur}
+                                                            values={values.telephone}
+                                                            error={Boolean(touched.telephone && errors.telephone)}
+                                                            helperText={touched.telephone ? errors.telephone : ''}
+                                                        />
+                                                    </Stack>
+                                                </Stack>
+
+                                                <Stack direction="row" spacing={2}>
                                                     <Stack spacing={1}>
-                                                        <label htmlFor="montantcapital" style={{ fontSize: 14, color: 'black', marginBottom: '-4px' }}>Capitale</label>
-                                                        <MontantCapitalField setFieldValue={setFieldValue} calculateValeurPart={calculateValeurPart} values={values} />
-                                                        <ErrorMessage name='montantcapital' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
-                                                    </Stack>
-
-                                                    <Stack width={'100px'}>
-                                                        <TextFieldComponent
-                                                            text="Nombre parts"
-                                                            name="nbrpart"
-                                                            handleChange={(e) => {
-                                                                // handleChange(e);
-                                                                const nbrPartValue = e.target.value;
-                                                                const nbrPartFormatted = Number(nbrPartValue);
-                                                                setFieldValue('nbrpart', nbrPartFormatted);
-                                                                const newValeurPart = calculateValeurPart(values.montantcapital, nbrPartFormatted);
-                                                                setFieldValue('valeurpart', newValeurPart);
+                                                        <label htmlFor="province" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Province</label>
+                                                        <Field
+                                                            as={Select}
+                                                            name='province'
+                                                            onChange={(e) => {
+                                                                handleChange(e);
+                                                                getListeRegions(e.target.value);
+                                                                setFieldValue('region', '');
+                                                                setFieldValue('district', '');
+                                                                setFieldValue('commune', '');
                                                             }}
-                                                            handleBlur={handleBlur}
-                                                            values={values.nbrpart}
-                                                            error={Boolean(touched.nbrpart && errors.nbrpart)}
-                                                            helperText={touched.nbrpart ? errors.nbrpart : ''}
-                                                            type="number"
-                                                        />
-                                                    </Stack>
-
-                                                    <Stack width={'130px'}>
-                                                        <TextFieldComponent
-                                                            text="Valeur d'une part"
-                                                            name="valeurpart"
-                                                            values={values.valeurpart}
-                                                            error={Boolean(touched.valeurpart && errors.valeurpart)}
-                                                            helperText={touched.valeurpart ? errors.valeurpart : ''}
-                                                            type="text"
-                                                            // disabled={true}
-                                                            InputProps={{
-                                                                readOnly: true,
-                                                                inputComponent: FormatedInput,
-                                                            }}
-                                                        />
-                                                    </Stack>
-
-                                                </Stack>
-
-                                                <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                                                    direction={"row"} justifyContent={"right"}
-                                                >
-                                                    <Button
-                                                        disabled={disableAddRowBouton}
-                                                        onClick={handleOpenDialogAddNewAssocie}
-                                                        variant="contained"
-                                                        style={{
-                                                            textTransform: 'none',
-                                                            outline: 'none',
-                                                            backgroundColor: initial.theme,
-                                                            color: "white",
-                                                            height: "39px",
-                                                        }}
-                                                        startIcon={<IoMdAdd size={20} />}
-                                                    >
-                                                        Ajouter
-                                                    </Button>
-                                                    <Tooltip title="Ajouter une ligne">
-                                                        <span>
-                                                            <IconButton
-                                                                variant="contained"
-                                                                onClick={handleOpenDialogAddNewAssocie}
-                                                                disabled={disableAddRowBouton}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableModifyBouton}
-                                                                variant="contained"
-                                                                onClick={handleEditClick(selectedRowId)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Sauvegarder les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableSaveBouton}
-                                                                variant="contained"
-                                                                onClick={handleSaveClick(selectedRowId)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Annuler les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableCancelBouton}
-                                                                variant="contained"
-                                                                onClick={handleCancelClick(selectedRowId)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Supprimer la ligne sélectionné">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableDeleteBouton}
-                                                                onClick={handleOpenDialogConfirmDeleteAssocieRow}
-                                                                variant="contained"
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                </Stack>
-
-                                                <Stack
-                                                    width={"100%"}
-                                                    spacing={1}
-                                                    backgroundColor={"white"}
-                                                    padding={"20px"}
-                                                    borderRadius={"10px"}
-                                                    style={{
-                                                        backgroundColor: initial.white
-                                                    }}
-                                                >
-                                                    <Stack
-                                                        width={"100%"}
-                                                        height={"500px"}
-                                                    >
-                                                        <DataGrid
-                                                            apiRef={apiRef}
-                                                            disableMultipleSelection={DataGridStyle.disableMultipleSelection}
-                                                            disableColumnSelector={DataGridStyle.disableColumnSelector}
-                                                            disableDensitySelector={DataGridStyle.disableDensitySelector}
-                                                            disableRowSelectionOnClick
-                                                            disableSelectionOnClick={true}
-                                                            localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                                                            slots={{ toolbar: QuickFilter }}
-                                                            sx={DataGridStyle.sx}
-                                                            rowHeight={DataGridStyle.rowHeight}
-                                                            columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                                                            rows={listAssocie}
-                                                            onRowClick={(e) => handleCellEditCommit(e.row)}
-                                                            onRowSelectionModelChange={ids => {
-                                                                setSelectedRowAssocie(ids)
-                                                                saveSelectedRow(ids);
-                                                                deselectRowAssocie(ids);
-                                                            }}
-                                                            editMode='row'
-                                                            rowModesModel={rowModesModel}
-                                                            onRowModesModelChange={handleRowModesModelChange}
-                                                            onRowEditStop={handleRowEditStop}
-                                                            processRowUpdate={processRowUpdate(setFieldValue)}
-
-                                                            columns={AssocieColumnHeader}
-                                                            initialState={{
-                                                                pagination: {
-                                                                    paginationModel: { page: 0, pageSize: 100 },
+                                                            sx={{
+                                                                width: 200,
+                                                                height: 35,
+                                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
                                                                 },
+                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                borderRadius: 0.5,
                                                             }}
-                                                            experimentalFeatures={{ newEditingApi: true }}
-                                                            pageSizeOptions={[50, 100]}
-                                                            pagination={DataGridStyle.pagination}
-                                                            checkboxSelection={DataGridStyle.checkboxSelection}
-                                                            columnVisibilityModel={{
-                                                                id: false,
+                                                        >
+                                                            {listProvinces.map((item) => (
+                                                                <MenuItem key={item.id} value={item.name}>
+                                                                    {item.name}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Field>
+                                                        <ErrorMessage name='province' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                    </Stack>
+
+                                                    <Stack spacing={1}>
+                                                        <label htmlFor="region" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Région</label>
+                                                        <Field
+                                                            as={Select}
+                                                            name='region'
+                                                            onChange={(e) => {
+                                                                handleChange(e);
+                                                                const province = values.province;
+                                                                getListeDistricts(province, e.target.value);
+                                                                setFieldValue('district', '');
+                                                                setFieldValue('commune', '');
                                                             }}
-                                                            rowSelectionModel={selectedRowAssocie}
-                                                            onCellKeyDown={handleCellKeyDown}
-                                                        />
+                                                            sx={{
+                                                                width: 200,
+                                                                height: 35,
+                                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                borderRadius: 0.5,
+                                                            }}
+                                                        >
+                                                            {listRegions.map((item) => (
+                                                                <MenuItem key={item.id} value={item.name}>
+                                                                    {item.name}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Field>
+                                                        <ErrorMessage name='region' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                    </Stack>
+                                                    <Stack spacing={1}>
+                                                        <label htmlFor="district" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>District</label>
+                                                        <Field
+                                                            as={Select}
+                                                            name='district'
+                                                            onChange={(e) => {
+                                                                handleChange(e);
+                                                                const province = values.province;
+                                                                const region = values.region;
+                                                                getListeCommunes(province, region, e.target.value);
+                                                                setFieldValue('commune', '');
+                                                            }}
+                                                            sx={{
+                                                                width: 200,
+                                                                height: 35,
+                                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                borderRadius: 0.5,
+                                                            }}
+                                                        >
+                                                            {listDistricts.map((item) => (
+                                                                <MenuItem key={item.id} value={item.name}>
+                                                                    {item.name}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Field>
+                                                        <ErrorMessage name='district' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                                    </Stack>
+
+                                                    <Stack spacing={1}>
+                                                        <label htmlFor="commune" style={{ fontSize: 14, color: 'black', marginBottom: '-5px' }}>Commune</label>
+                                                        <Field
+                                                            as={Select}
+                                                            name='commune'
+                                                            onChange={handleChange}
+                                                            sx={{
+                                                                width: 200,
+                                                                height: 35,
+                                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                    // borderTop: 'none',
+                                                                    // borderLeft: 'none',
+                                                                    // borderRight: 'none',
+                                                                    borderWidth: '0.5px'
+                                                                },
+                                                                borderRadius: 0.5,
+                                                            }}
+                                                        >
+                                                            {listCommunes.map((item) => (
+                                                                <MenuItem key={item.id} value={item.name}>
+                                                                    {item.name}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Field>
+                                                        <ErrorMessage name='commune' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                                     </Stack>
                                                 </Stack>
                                             </Stack>
-                                        </TabPanel>
 
-                                        <TabPanel value="5">
-                                            <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"}
+                                        </AccordionDetails>
+                                    </Accordion>
+
+                                    <Accordion
+                                        elevation={0}
+                                        style={{
+                                            width: "100%",
+                                            borderBlockColor: "transparent",
+                                            borderRadius: '10px'
+                                        }}
+                                        sx={{
+                                            width: '100%',
+                                            border: 'none',
+                                            boxShadow: 'none',
+                                            '&:before': {
+                                                display: 'none',
+                                            },
+                                            backgroundColor: init.white
+                                        }}
+                                    >
+                                        <AccordionSummary
+                                            aria-controls="panel1-content"
+                                            id="panel1-header"
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '0 8px',
+                                            }}
+                                            expandIcon={<MdExpandCircleDown size={35} style={{ color: '#37709c' }} />}
+                                        >
+                                            <Stack direction="row" spacing={1} alignItems="flex-end" style={{ marginLeft: '15px' }}>
+                                                <MdOutlineSecurity size={35} style={{ color: '#37709c' }} />
+                                                <Typography sx={{ fontWeight: 'normal', fontSize: 20 }}>Sécurité</Typography>
+                                            </Stack>
+                                        </AccordionSummary>
+
+                                        <AccordionDetails>
+                                            <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}
+                                                alignContent={"flex-start"} justifyContent={"stretch"} direction={"column"}
+                                                style={{
+                                                    paddingInline: '25px',
+                                                    paddingBottom: '20px'
+                                                }}
                                             >
-                                                <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                                                    direction={"row"} justifyContent={"right"}
-                                                >
-                                                    <Button
-                                                        disabled={disableAddRowBoutonFiliale}
-                                                        onClick={handleOpenDialogAddNewFiliale}
-                                                        variant="contained"
-                                                        style={{
-                                                            textTransform: 'none',
-                                                            outline: 'none',
-                                                            backgroundColor: initial.theme,
-                                                            color: "white",
-                                                            height: "39px",
-                                                        }}
-                                                        startIcon={<IoMdAdd size={20} />}
-                                                    >
-                                                        Ajouter
-                                                    </Button>
-                                                    <Tooltip title="Ajouter une ligne">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableAddRowBoutonFiliale}
-                                                                variant="contained"
-                                                                onClick={handleOpenDialogAddNewFiliale}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
+                                                <PasswordField handleChange={handleChange} values={values} setFieldValue={setFieldValue} type={'ADD'} password={""} />
+                                            </Stack>
 
-                                                    <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableModifyBoutonFiliale}
-                                                                variant="contained"
-                                                                onClick={handleEditClickFiliale(selectedRowIdFiliale)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
+                                        </AccordionDetails>
+                                    </Accordion>
+                                </Stack>
+                            </TabPanel>
 
-                                                    <Tooltip title="Sauvegarder les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableSaveBoutonFiliale}
-                                                                variant="contained"
-                                                                onClick={handleSaveClickFiliale(setFieldValue)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Annuler les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableCancelBoutonFiliale}
-                                                                variant="contained"
-                                                                onClick={handleCancelClickFiliale(selectedRowIdFiliale)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Supprimer la ligne sélectionné">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableDeleteBoutonFiliale}
-                                                                onClick={handleOpenDialogConfirmDeleteAssocieRowFiliale}
-                                                                variant="contained"
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                </Stack>
-
-                                                <Stack
-                                                    width={"100%"}
-                                                    spacing={1}
-                                                    backgroundColor={"white"}
-                                                    padding={"20px"}
-                                                    borderRadius={"10px"}
-                                                    style={{
-                                                        backgroundColor: initial.white
+                            <TabPanel value="2">
+                                <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"}
+                                >
+                                    <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Général</Typography>
+                                    <Stack spacing={5} direction={'row'} alignItems={'center'} alignContent={'center'} width={'100%'} justifyContent={'flex-start'} style={{ marginTop: "10px" }}>
+                                        <div>
+                                            <label htmlFor="plancomptable" style={{ fontSize: 14, color: 'black', marginBottom: '3px', display: 'block' }}>Plan comptable</label>
+                                            <Stack direction="row" spacing={4} alignItems="center">
+                                                <Field
+                                                    as={Select}
+                                                    required
+                                                    name='plancomptable'
+                                                    type='text'
+                                                    placeholder=""
+                                                    onChange={handleOnChangePlanComptableSelect(setFieldValue)}
+                                                    sx={{
+                                                        borderRadius: 0.5,
+                                                        width: 300,
+                                                        height: 35,
+                                                        '& .MuiOutlinedInput-notchedOutline': {
+                                                            // borderTop: 'none', // Supprime le cadre
+                                                            // borderLeft: 'none',
+                                                            // borderRight: 'none',
+                                                            borderWidth: '0.5px'
+                                                        },
+                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                            // borderTop: 'none', // Supprime le cadre
+                                                            // borderLeft: 'none',
+                                                            // borderRight: 'none',
+                                                            borderWidth: '0.5px'
+                                                        },
+                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                            // borderTop: 'none', // Supprime le cadre
+                                                            // borderLeft: 'none',
+                                                            // borderRight: 'none',
+                                                            borderWidth: '0.5px'
+                                                        },
                                                     }}
                                                 >
-                                                    <Stack
-                                                        width={"100%"}
-                                                        height={"500px"}
-                                                    >
-                                                        <DataGrid
-                                                            apiRef={apiRef}
-                                                            disableMultipleSelection={DataGridStyle.disableMultipleSelection}
-                                                            disableColumnSelector={DataGridStyle.disableColumnSelector}
-                                                            disableDensitySelector={DataGridStyle.disableDensitySelector}
-                                                            disableRowSelectionOnClick
-                                                            disableSelectionOnClick={true}
-                                                            localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                                                            slots={{ toolbar: QuickFilter }}
-                                                            sx={DataGridStyle.sx}
-                                                            rowHeight={DataGridStyle.rowHeight}
-                                                            columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                                                            rows={listFiliales}
-                                                            onRowClick={(e) => handleCellEditCommitFiliale(e.row)}
-                                                            onRowSelectionModelChange={ids => {
-                                                                setSelectedRowFiliales(ids);
-                                                                saveSelectedRowFiliale(ids);
-                                                                deselectRowFiliale(ids);
-                                                            }}
-                                                            editMode='row'
-                                                            rowModesModel={rowModesModelFiliale}
-                                                            onRowModesModelChange={handleRowModesModelChangeFiliale}
-                                                            onRowEditStop={handleRowEditStopFiliale}
-                                                            processRowUpdate={processRowUpdateFiliale(setFieldValue)}
-
-                                                            columns={FilialeColumnHeader}
-                                                            initialState={{
-                                                                pagination: {
-                                                                    paginationModel: { page: 0, pageSize: 100 },
-                                                                },
-                                                            }}
-                                                            experimentalFeatures={{ newEditingApi: true }}
-                                                            pageSizeOptions={[50, 100]}
-                                                            pagination={DataGridStyle.pagination}
-                                                            checkboxSelection={DataGridStyle.checkboxSelection}
-                                                            columnVisibilityModel={{
-                                                                id: false,
-                                                            }}
-                                                            rowSelectionModel={selectedRowFiliales}
-                                                            onCellKeyDown={handleCellKeyDown}
-                                                        />
-                                                    </Stack>
-                                                </Stack>
-
-
+                                                    <MenuItem key={0} value={0}><em>Aucun</em></MenuItem>
+                                                    {listModel?.map((item) => (
+                                                        <MenuItem key={item.id} value={item.id}>{item.nom}</MenuItem>
+                                                    ))};
+                                                </Field>
+                                                <ErrorMessage name='plancomptable' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                             </Stack>
-                                        </TabPanel>
-
-                                        <TabPanel value="6">
-                                            <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"} >
-                                                <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                                                    direction={"row"} justifyContent={"right"}
+                                        </div>
+                                        <div>
+                                            <label htmlFor="devisepardefaut" style={{ fontSize: 14, color: 'black', marginBottom: '0px', display: 'block' }}>Devise par défaut</label>
+                                            <Stack direction="row" spacing={4} alignItems="center">
+                                                <RadioGroup
+                                                    row
+                                                    value={values.devisepardefaut}
+                                                    onChange={(e) => setFieldValue("devisepardefaut", e.target.value)}
+                                                    defaultValue={'MGA'}
                                                 >
-                                                    <Button
-                                                        disabled={disableAddRowBouton}
-                                                        onClick={handleOpenDialogAddNewDomBank}
-                                                        variant="contained"
-                                                        style={{
-                                                            textTransform: 'none',
-                                                            outline: 'none',
-                                                            backgroundColor: initial.theme,
-                                                            color: "white",
-                                                            height: "39px",
-                                                        }}
-                                                        startIcon={<IoMdAdd size={20} />}
-                                                    >
-                                                        Ajouter
-                                                    </Button>
-                                                    <Tooltip title="Ajouter une ligne">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableAddRowBouton}
-                                                                variant="contained"
-                                                                onClick={handleOpenDialogAddNewDomBank}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableModifyBouton}
-                                                                variant="contained"
-                                                                onClick={handleEditClickDomBank(selectedRowIdDomBank)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Sauvegarder les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableSaveBouton}
-                                                                variant="contained"
-                                                                onClick={handleSaveClickDomBank(selectedRowIdDomBank)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Annuler les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableCancelBouton}
-                                                                variant="contained"
-                                                                onClick={handleCancelClickDomBank(selectedRowIdDomBank)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Supprimer la ligne sélectionné">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableDeleteBouton}
-                                                                onClick={handleOpenDialogConfirmDeleteAssocieRowDomBank}
-                                                                variant="contained"
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                </Stack>
-
-                                                <Stack
-                                                    width={"100%"}
-                                                    spacing={1}
-                                                    backgroundColor={"white"}
-                                                    padding={"20px"}
-                                                    borderRadius={"10px"}
-                                                    style={{
-                                                        backgroundColor: initial.white
-                                                    }}
-                                                >
-                                                    <Stack width={"100%"} height={'60vh'}>
-                                                        <DataGrid
-                                                            apiRef={apiRef}
-                                                            disableMultipleSelection={DataGridStyle.disableMultipleSelection}
-                                                            disableColumnSelector={DataGridStyle.disableColumnSelector}
-                                                            disableDensitySelector={DataGridStyle.disableDensitySelector}
-                                                            disableRowSelectionOnClick
-                                                            disableSelectionOnClick={true}
-                                                            localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                                                            slots={{ toolbar: QuickFilter }}
-                                                            sx={DataGridStyle.sx}
-                                                            rowHeight={DataGridStyle.rowHeight}
-                                                            columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                                                            rows={Array.isArray(listDomBank) ? listDomBank : []}
-                                                            onRowClick={(e) => handleCellEditCommitDomBank(e.row)}
-                                                            onRowSelectionModelChange={ids => {
-                                                                setSelectedRowDomBank(ids);
-                                                                saveSelectedRowDomBank(ids);
-                                                                deselectRowBanc(ids);
-                                                            }}
-                                                            rowSelectionModel={selectedRowDomBank}
-
-                                                            editMode='row'
-                                                            selectionModel={selectedRowIdDomBank}
-                                                            rowModesModel={rowModesModelDomBank}
-                                                            onRowModesModelChange={handleRowModesModelChangeDomBank}
-                                                            onRowEditStop={handleRowEditStopDomBank}
-                                                            processRowUpdate={processRowUpdateDomBank(setFieldValue)}
-
-                                                            columns={DomBankColumnHeader}
-                                                            initialState={{
-                                                                pagination: {
-                                                                    paginationModel: { page: 0, pageSize: 100 },
-                                                                },
-                                                            }}
-                                                            experimentalFeatures={{ newEditingApi: true }}
-                                                            pageSizeOptions={[50, 100]}
-                                                            pagination={DataGridStyle.pagination}
-                                                            checkboxSelection={DataGridStyle.checkboxSelection}
-                                                            columnVisibilityModel={{
-                                                                id: false,
-                                                            }}
-                                                            onCellKeyDown={handleCellKeyDown}
-                                                        />
-                                                    </Stack>
-                                                </Stack>
-
-                                            </Stack>
-                                        </TabPanel>
-
-                                        <TabPanel value="7">
-                                            <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
-                                                alignContent={"flex-start"} justifyContent={"stretch"}
-                                            >
-                                                <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                                                    direction={"row"} justifyContent={"right"}
-                                                >
-                                                    <Tooltip title="Ajouter une ligne">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableAddRowBoutonConsolidation || availableDossier.length === 0}
-                                                                variant="contained"
-                                                                onClick={handleOpenDialogAddNewConsolidation}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Modifier la ligne sélectionnée">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableModifyBoutonConsolidation}
-                                                                variant="contained"
-                                                                onClick={handleEditClickConsolidation(selectedRowIdConsolidation)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Sauvegarder les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableSaveBoutonConsolidation}
-                                                                variant="contained"
-                                                                onClick={handleSaveClickConsolidation(setFieldValue)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.theme,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Annuler les modifications">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableCancelBoutonConsolidation}
-                                                                variant="contained"
-                                                                onClick={handleCancelClickConsolidation(selectedRowIdConsolidation)}
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Supprimer la ligne sélectionné">
-                                                        <span>
-                                                            <IconButton
-                                                                disabled={disableDeleteBoutonConsolidation}
-                                                                onClick={handleOpenDialogConfirmDeleteConsolidationRow}
-                                                                variant="contained"
-                                                                style={{
-                                                                    width: "35px", height: '35px',
-                                                                    borderRadius: "2px", borderColor: "transparent",
-                                                                    backgroundColor: initial.button_delete_color,
-                                                                    textTransform: 'none', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                </Stack>
-
-                                                <Stack
-                                                    width={"100%"}
-                                                    height={"500px"}
-                                                >
-                                                    <DataGrid
-                                                        apiRef={apiRef}
-                                                        disableMultipleSelection={DataGridStyle.disableMultipleSelection}
-                                                        disableColumnSelector={DataGridStyle.disableColumnSelector}
-                                                        disableDensitySelector={DataGridStyle.disableDensitySelector}
-                                                        disableRowSelectionOnClick
-                                                        disableSelectionOnClick={true}
-                                                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                                                        slots={{ toolbar: QuickFilter }}
-                                                        sx={DataGridStyle.sx}
-                                                        rowHeight={DataGridStyle.rowHeight}
-                                                        columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                                                        rows={listConsolidation}
-                                                        onRowClick={(e) => handleCellEditCommitConsolidation(e.row)}
-                                                        onRowSelectionModelChange={ids => {
-                                                            setSelectedRowConsolidations(ids);
-                                                            saveSelectedRowConsolidation(ids);
-                                                            deselectRowConsolidation(ids);
-                                                        }}
-                                                        editMode='row'
-                                                        rowModesModel={rowModesModelConsolidation}
-                                                        onRowModesModelChange={handleRowModesModelChangeConsolidation}
-                                                        onRowEditStop={handleRowEditStopConsolidation}
-                                                        processRowUpdate={processRowUpdateConsolidation(setFieldValue)}
-
-                                                        columns={ConsolidationColumnHeader}
-                                                        initialState={{
-                                                            pagination: {
-                                                                paginationModel: { page: 0, pageSize: 100 },
-                                                            },
-                                                        }}
-                                                        experimentalFeatures={{ newEditingApi: true }}
-                                                        pageSizeOptions={[50, 100]}
-                                                        pagination={DataGridStyle.pagination}
-                                                        checkboxSelection={DataGridStyle.checkboxSelection}
-                                                        columnVisibilityModel={{
-                                                            id: false,
-                                                        }}
-                                                        rowSelectionModel={selectedRowConsolidations}
-                                                        onCellKeyDown={handleCellKeyDown}
+                                                    <FormControlLabel
+                                                        value="MGA"
+                                                        control={<Radio />}
+                                                        label="MGA"
                                                     />
-                                                </Stack>
-
+                                                    <FormControlLabel
+                                                        value="Autres"
+                                                        control={<Radio />}
+                                                        label="Autres"
+                                                    />
+                                                </RadioGroup>
+                                                <ErrorMessage name='devisepardefaut' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
                                             </Stack>
-                                        </TabPanel>
+                                        </div>
+                                        <div>
+                                            <Stack spacing={0} direction={'row'}
+                                                style={{ alignItems: 'center', marginTop: 10 }}
+                                            >
+                                                <Field
+                                                    required
+                                                    values={values.consolidation}
+                                                    name='consolidation'
+                                                    type='checkbox'
+                                                    placeholder=""
+                                                    style={{
+                                                        height: 20, borderTop: 'none',
+                                                        borderLeft: 'none', borderRight: 'none',
+                                                        outline: 'none', fontSize: 14, borderWidth: '0.5px',
+                                                        width: 20, marginRight: 10,
+                                                    }}
+                                                />
+                                                <label htmlFor="consolidation" style={{ fontSize: 15, color: 'black' }}>Consolidation</label>
+                                            </Stack>
+                                        </div>
+                                    </Stack>
 
-                                    </TabContext>
-                                </Box>
-                            </Stack>
-                        </Form>
-                    );
-                }}
-            </Formik>
-        </Box>
-    )
-}
+                                    <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "50px" }}>Paramétrages de longueur des comptes</Typography>
+
+                                    <Stack width={"100%"} height={"30px"} spacing={5} alignItems={"center"}
+                                        alignContent={"center"} justifyContent={"stretch"} direction={"row"}
+                                        style={{ marginLeft: "0px", marginTop: "20px" }}
+                                    >
+                                        <Stack
+                                            width={'150px'}
+                                        >
+                                            <TextFieldComponent
+                                                text="Compte standard"
+                                                name="longueurcptstd"
+                                                handleChange={handleChange}
+                                                handleBlur={handleBlur}
+                                                values={values.longueurcptstd}
+                                                error={Boolean(touched.longueurcptstd && errors.longueurcptstd)}
+                                                helperText={touched.longueurcptstd ? errors.longueurcptstd : ''}
+                                                type="number"
+                                                inputProps={{ min: 2, max: 50 }}
+                                            />
+                                        </Stack>
+
+                                        <Stack
+                                            width={'150px'}
+                                        >
+                                            <TextFieldComponent
+                                                text="Compte auxiliaire"
+                                                name="longueurcptaux"
+                                                handleChange={handleChange}
+                                                handleBlur={handleBlur}
+                                                values={values.longueurcptaux}
+                                                error={Boolean(touched.longueurcptaux && errors.longueurcptaux)}
+                                                helperText={touched.longueurcptaux ? errors.longueurcptaux : ''}
+                                                type="number"
+                                                inputProps={{ min: 2, max: 50 }}
+                                            />
+                                        </Stack>
+
+                                        <Stack spacing={0} direction={'row'}
+                                            style={{ alignItems: 'center', marginTop: 25 }}
+                                        >
+                                            <Field
+                                                required
+                                                name='autocompletion'
+                                                type='checkbox'
+                                                placeholder=""
+                                                style={{
+                                                    height: 20, borderTop: 'none',
+                                                    borderLeft: 'none', borderRight: 'none',
+                                                    outline: 'none', fontSize: 14, borderWidth: '0.5px',
+                                                    width: 20, marginRight: 10
+                                                }}
+                                            />
+                                            <label htmlFor="autocompletion" style={{ fontSize: 15, color: 'black' }}>Auto-complétion</label>
+                                            <ErrorMessage name='autocompletion' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                        </Stack>
+                                    </Stack>
+
+                                    <Stack spacing={0} direction={'row'}
+                                        style={{ alignItems: 'center', marginTop: 40 }}
+                                    >
+                                        <Field
+                                            required
+                                            name='avecanalytique'
+                                            type='checkbox'
+                                            placeholder=""
+                                            style={{
+                                                height: 20, borderTop: 'none',
+                                                borderLeft: 'none', borderRight: 'none',
+                                                outline: 'none', fontSize: 14, borderWidth: '0.5px',
+                                                width: 20, marginRight: 10,
+                                            }}
+                                        />
+                                        <label htmlFor="avecanalytique" style={{ fontSize: 15, color: 'black' }}>Avec analytique</label>
+                                        <ErrorMessage name='avecanalytique' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                    </Stack>
+
+                                    <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Immobilisation</Typography>
+                                    <Stack spacing={1} sx={{ mt: 0 }}>
+                                        <Stack direction="row" spacing={4} alignItems="center" style={{ marginTop: "-10px" }}>
+                                            <Typography style={{ fontSize: "14px", marginLeft: 0 }}>Base de calcul de l'amort (en jours)</Typography>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <Field type="radio" name="immo_amort_base_jours" value="365" /> 365 jours
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <Field type="radio" name="immo_amort_base_jours" value="360" /> 360 jours
+                                            </label>
+                                        </Stack>
+                                        <ErrorMessage name='immo_amort_base_jours' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                    </Stack>
+
+                                    <Stack spacing={1}>
+                                        <Typography
+                                            style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "5px" }}
+                                        >
+                                            Type de tenue
+                                        </Typography>
+
+                                        <Stack direction="row" spacing={4} alignItems="center">
+                                            <RadioGroup
+                                                row
+                                                value={values.typecomptabilite}
+                                                onChange={(e) => setFieldValue("typecomptabilite", e.target.value)}
+                                                defaultValue={'Français'}
+                                            >
+                                                <FormControlLabel
+                                                    value="Français"
+                                                    control={<Radio />}
+                                                    label="Français"
+                                                />
+                                                <FormControlLabel
+                                                    value="Autres"
+                                                    control={<Radio />}
+                                                    label="Autres"
+                                                />
+                                            </RadioGroup>
+                                            <ErrorMessage name='typecomptabilite' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                        </Stack>
+                                    </Stack>
+
+                                </Stack>
+                            </TabPanel>
+
+                            <TabPanel value="3">
+                                <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"}
+                                >
+                                    <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Impôt sur le revenu (IR)</Typography>
+
+                                    <Stack direction="column" spacing={1} sx={{ mt: 2, mb: 2 }}>
+                                        <label htmlFor="devisepardefaut" style={{ fontSize: 14, color: 'black', marginBottom: '0px', display: 'block' }}>Type de centre fiscal</label>
+                                        <Stack direction="row" spacing={4} alignItems="center">
+                                            <FormControlLabel
+                                                control={<Field type="radio" name="centrefisc" value="DGE" as="input" />}
+                                                label={<span style={{ fontWeight: values.centrefisc === 'DGE' ? 600 : 400 }}>DGE</span>}
+                                            />
+                                            <FormControlLabel
+                                                control={<Field type="radio" name="centrefisc" value="CFISC" as="input" />}
+                                                label={<span style={{ fontWeight: values.centrefisc === 'CFISC' ? 600 : 400 }}>Centre fiscale</span>}
+                                            />
+                                        </Stack>
+                                    </Stack>
+
+                                    <Stack
+                                        width={'80px'}
+                                    >
+                                        <TextFieldComponent
+                                            text="Taux IR"
+                                            name="tauxir"
+                                            handleChange={handleChange}
+                                            handleBlur={handleBlur}
+                                            values={values.tauxir}
+                                            error={Boolean(touched.tauxir && errors.tauxir)}
+                                            helperText={touched.tauxir ? errors.tauxir : ''}
+                                            type="number"
+                                            inputProps={{ min: 1, max: 50 }}
+                                        />
+                                    </Stack>
+
+                                    <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px" }}>Paramétrages minimum de perception</Typography>
+
+                                    <Stack width={"100%"} height={"30px"} spacing={5} alignItems={"center"}
+                                        alignContent={"center"} justifyContent={"stretch"} direction={"row"}
+                                        style={{ marginLeft: "0px" }}
+                                    >
+                                        <Stack
+                                            width={'150px'}
+                                        >
+                                            <TextFieldComponent
+                                                text="Pourcentage CA"
+                                                name="pourcentageca"
+                                                handleChange={handleChange}
+                                                handleBlur={handleBlur}
+                                                values={values.pourcentageca}
+                                                error={Boolean(touched.pourcentageca && errors.pourcentageca)}
+                                                helperText={touched.pourcentageca ? errors.pourcentageca : ''}
+                                                type="number"
+                                                inputProps={{ min: 0, max: 50 }}
+                                            />
+                                        </Stack>
+
+                                        <Stack
+                                            width={'150px'}
+                                        >
+                                            <TextFieldComponent
+                                                text="Montant min"
+                                                name="montantmin"
+                                                handleChange={handleChange}
+                                                handleBlur={handleBlur}
+                                                values={values.montantmin}
+                                                error={Boolean(touched.montantmin && errors.montantmin)}
+                                                helperText={touched.montantmin ? errors.montantmin : ''}
+                                                type="number"
+                                                inputProps={{ min: 0, max: 50 }}
+                                            />
+                                        </Stack>
+                                    </Stack>
+
+                                    <Typography style={{ fontWeight: 'bold', fontSize: "18px", marginLeft: "0px", marginTop: "50px" }}>Taxe sur la valeur ajoutée (TVA)</Typography>
+
+                                    <Stack spacing={0} direction={'row'}
+                                        style={{ alignItems: 'center', marginTop: 20 }}
+                                    >
+                                        <Field
+                                            required
+                                            name='assujettitva'
+                                            type='checkbox'
+                                            placeholder=""
+                                            style={{
+                                                height: 20, borderTop: 'none',
+                                                borderLeft: 'none', borderRight: 'none',
+                                                outline: 'none', fontSize: 14, borderWidth: '0.5px',
+                                                width: 20, marginRight: 10,
+                                            }}
+                                        />
+                                        <label htmlFor="assujettitva" style={{ fontSize: 15, color: 'black' }}>Assujettie à la TVA</label>
+                                        <ErrorMessage name='assujettitva' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                    </Stack>
+                                </Stack>
+                            </TabPanel>
+
+                            <TabPanel value="4">
+                                <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"}
+                                >
+                                    <Stack width={"100%"} height={"30px"} spacing={5} alignItems={"center"}
+                                        alignContent={"center"} justifyContent={"stretch"} direction={"row"}
+                                        style={{
+                                            marginTop: '20px'
+                                        }}
+                                    >
+                                        <Stack spacing={1}>
+                                            <label htmlFor="montantcapital" style={{ fontSize: 14, color: 'black', marginBottom: '-4px' }}>Capitale</label>
+                                            <MontantCapitalField setFieldValue={setFieldValue} calculateValeurPart={calculateValeurPart} values={values} />
+                                            <ErrorMessage name='montantcapital' component="div" style={{ color: 'red', fontSize: 12, marginTop: -2 }} />
+                                        </Stack>
+
+                                        <Stack width={'100px'}>
+                                            <TextFieldComponent
+                                                text="Nombre parts"
+                                                name="nbrpart"
+                                                handleChange={(e) => {
+                                                    // handleChange(e);
+                                                    const nbrPartValue = e.target.value;
+                                                    const nbrPartFormatted = Number(nbrPartValue);
+                                                    setFieldValue('nbrpart', nbrPartFormatted);
+                                                    const newValeurPart = calculateValeurPart(values.montantcapital, nbrPartFormatted);
+                                                    setFieldValue('valeurpart', newValeurPart);
+                                                }}
+                                                handleBlur={handleBlur}
+                                                values={values.nbrpart}
+                                                error={Boolean(touched.nbrpart && errors.nbrpart)}
+                                                helperText={touched.nbrpart ? errors.nbrpart : ''}
+                                                type="number"
+                                            />
+                                        </Stack>
+
+                                        <Stack width={'130px'}>
+                                            <TextFieldComponent
+                                                text="Valeur d'une part"
+                                                name="valeurpart"
+                                                values={values.valeurpart}
+                                                error={Boolean(touched.valeurpart && errors.valeurpart)}
+                                                helperText={touched.valeurpart ? errors.valeurpart : ''}
+                                                type="text"
+                                                // disabled={true}
+                                                InputProps={{
+                                                    readOnly: true,
+                                                    inputComponent: FormatedInput,
+                                                }}
+                                            />
+                                        </Stack>
+
+                                    </Stack>
+
+                                    <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
+                                        direction={"row"} justifyContent={"right"}
+                                    >
+                                        <Button
+                                            disabled={disableAddRowBouton}
+                                            onClick={handleOpenDialogAddNewAssocie}
+                                            variant="contained"
+                                            style={{
+                                                textTransform: 'none',
+                                                outline: 'none',
+                                                backgroundColor: initial.theme,
+                                                color: "white",
+                                                height: "39px",
+                                            }}
+                                            startIcon={<IoMdAdd size={20} />}
+                                        >
+                                            Ajouter
+                                        </Button>
+                                        <Tooltip title="Ajouter une ligne">
+                                            <span>
+                                                <IconButton
+                                                    variant="contained"
+                                                    onClick={handleOpenDialogAddNewAssocie}
+                                                    disabled={disableAddRowBouton}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Modifier la ligne sélectionnée">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableModifyBouton}
+                                                    variant="contained"
+                                                    onClick={handleEditClick(selectedRowId)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Sauvegarder les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableSaveBouton}
+                                                    variant="contained"
+                                                    onClick={handleSaveClick(selectedRowId)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Annuler les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableCancelBouton}
+                                                    variant="contained"
+                                                    onClick={handleCancelClick(selectedRowId)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Supprimer la ligne sélectionné">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableDeleteBouton}
+                                                    onClick={handleOpenDialogConfirmDeleteAssocieRow}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </Stack>
+
+                                    <Stack
+                                        width={"100%"}
+                                        spacing={1}
+                                        backgroundColor={"white"}
+                                        padding={"20px"}
+                                        borderRadius={"10px"}
+                                        style={{
+                                            backgroundColor: initial.white
+                                        }}
+                                    >
+                                        <Stack
+                                            width={"100%"}
+                                            height={"500px"}
+                                        >
+                                            <DataGrid
+                                                apiRef={apiRef}
+                                                disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                                                disableColumnSelector={DataGridStyle.disableColumnSelector}
+                                                disableDensitySelector={DataGridStyle.disableDensitySelector}
+                                                disableRowSelectionOnClick
+                                                disableSelectionOnClick={true}
+                                                localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                                                slots={{ toolbar: QuickFilter }}
+                                                sx={DataGridStyle.sx}
+                                                rowHeight={DataGridStyle.rowHeight}
+                                                columnHeaderHeight={DataGridStyle.columnHeaderHeight}
+                                                rows={listAssocie}
+                                                onRowClick={(e) => handleCellEditCommit(e.row)}
+                                                onRowSelectionModelChange={ids => {
+                                                    setSelectedRowAssocie(ids)
+                                                    saveSelectedRow(ids);
+                                                    deselectRowAssocie(ids);
+                                                }}
+                                                editMode='row'
+                                                rowModesModel={rowModesModel}
+                                                onRowModesModelChange={handleRowModesModelChange}
+                                                onRowEditStop={handleRowEditStop}
+                                                processRowUpdate={processRowUpdate(setFieldValue)}
+
+                                                columns={AssocieColumnHeader}
+                                                initialState={{
+                                                    pagination: {
+                                                        paginationModel: { page: 0, pageSize: 100 },
+                                                    },
+                                                }}
+                                                experimentalFeatures={{ newEditingApi: true }}
+                                                pageSizeOptions={[50, 100]}
+                                                pagination={DataGridStyle.pagination}
+                                                checkboxSelection={DataGridStyle.checkboxSelection}
+                                                columnVisibilityModel={{
+                                                    id: false,
+                                                }}
+                                                rowSelectionModel={selectedRowAssocie}
+                                                onCellKeyDown={handleCellKeyDown}
+                                            />
+                                        </Stack>
+                                    </Stack>
+                                </Stack>
+                            </TabPanel>
+
+                            <TabPanel value="5">
+                                <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"}
+                                >
+                                    <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
+                                        direction={"row"} justifyContent={"right"}
+                                    >
+                                        <Button
+                                            disabled={disableAddRowBoutonFiliale}
+                                            onClick={handleOpenDialogAddNewFiliale}
+                                            variant="contained"
+                                            style={{
+                                                textTransform: 'none',
+                                                outline: 'none',
+                                                backgroundColor: initial.theme,
+                                                color: "white",
+                                                height: "39px",
+                                            }}
+                                            startIcon={<IoMdAdd size={20} />}
+                                        >
+                                            Ajouter
+                                        </Button>
+                                        <Tooltip title="Ajouter une ligne">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableAddRowBoutonFiliale}
+                                                    variant="contained"
+                                                    onClick={handleOpenDialogAddNewFiliale}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Modifier la ligne sélectionnée">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableModifyBoutonFiliale}
+                                                    variant="contained"
+                                                    onClick={handleEditClickFiliale(selectedRowIdFiliale)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Sauvegarder les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableSaveBoutonFiliale}
+                                                    variant="contained"
+                                                    onClick={handleSaveClickFiliale(setFieldValue)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Annuler les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableCancelBoutonFiliale}
+                                                    variant="contained"
+                                                    onClick={handleCancelClickFiliale(selectedRowIdFiliale)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Supprimer la ligne sélectionné">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableDeleteBoutonFiliale}
+                                                    onClick={handleOpenDialogConfirmDeleteAssocieRowFiliale}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </Stack>
+
+                                    <Stack
+                                        width={"100%"}
+                                        spacing={1}
+                                        backgroundColor={"white"}
+                                        padding={"20px"}
+                                        borderRadius={"10px"}
+                                        style={{
+                                            backgroundColor: initial.white
+                                        }}
+                                    >
+                                        <Stack
+                                            width={"100%"}
+                                            height={"500px"}
+                                        >
+                                            <DataGrid
+                                                apiRef={apiRef}
+                                                disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                                                disableColumnSelector={DataGridStyle.disableColumnSelector}
+                                                disableDensitySelector={DataGridStyle.disableDensitySelector}
+                                                disableRowSelectionOnClick
+                                                disableSelectionOnClick={true}
+                                                localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                                                slots={{ toolbar: QuickFilter }}
+                                                sx={DataGridStyle.sx}
+                                                rowHeight={DataGridStyle.rowHeight}
+                                                columnHeaderHeight={DataGridStyle.columnHeaderHeight}
+                                                rows={listFiliales}
+                                                onRowClick={(e) => handleCellEditCommitFiliale(e.row)}
+                                                onRowSelectionModelChange={ids => {
+                                                    setSelectedRowFiliales(ids);
+                                                    saveSelectedRowFiliale(ids);
+                                                    deselectRowFiliale(ids);
+                                                }}
+                                                editMode='row'
+                                                rowModesModel={rowModesModelFiliale}
+                                                onRowModesModelChange={handleRowModesModelChangeFiliale}
+                                                onRowEditStop={handleRowEditStopFiliale}
+                                                processRowUpdate={processRowUpdateFiliale(setFieldValue)}
+
+                                                columns={FilialeColumnHeader}
+                                                initialState={{
+                                                    pagination: {
+                                                        paginationModel: { page: 0, pageSize: 100 },
+                                                    },
+                                                }}
+                                                experimentalFeatures={{ newEditingApi: true }}
+                                                pageSizeOptions={[50, 100]}
+                                                pagination={DataGridStyle.pagination}
+                                                checkboxSelection={DataGridStyle.checkboxSelection}
+                                                columnVisibilityModel={{
+                                                    id: false,
+                                                }}
+                                                rowSelectionModel={selectedRowFiliales}
+                                                onCellKeyDown={handleCellKeyDown}
+                                            />
+                                        </Stack>
+                                    </Stack>
+
+
+                                </Stack>
+                            </TabPanel>
+
+                            <TabPanel value="6">
+                                <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"} >
+                                    <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
+                                        direction={"row"} justifyContent={"right"}
+                                    >
+                                        <Button
+                                            disabled={disableAddRowBouton}
+                                            onClick={handleOpenDialogAddNewDomBank}
+                                            variant="contained"
+                                            style={{
+                                                textTransform: 'none',
+                                                outline: 'none',
+                                                backgroundColor: initial.theme,
+                                                color: "white",
+                                                height: "39px",
+                                            }}
+                                            startIcon={<IoMdAdd size={20} />}
+                                        >
+                                            Ajouter
+                                        </Button>
+                                        <Tooltip title="Ajouter une ligne">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableAddRowBouton}
+                                                    variant="contained"
+                                                    onClick={handleOpenDialogAddNewDomBank}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Modifier la ligne sélectionnée">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableModifyBouton}
+                                                    variant="contained"
+                                                    onClick={handleEditClickDomBank(selectedRowIdDomBank)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Sauvegarder les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableSaveBouton}
+                                                    variant="contained"
+                                                    onClick={handleSaveClickDomBank(selectedRowIdDomBank)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Annuler les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableCancelBouton}
+                                                    variant="contained"
+                                                    onClick={handleCancelClickDomBank(selectedRowIdDomBank)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Supprimer la ligne sélectionné">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableDeleteBouton}
+                                                    onClick={handleOpenDialogConfirmDeleteAssocieRowDomBank}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </Stack>
+
+                                    <Stack
+                                        width={"100%"}
+                                        spacing={1}
+                                        backgroundColor={"white"}
+                                        padding={"20px"}
+                                        borderRadius={"10px"}
+                                        style={{
+                                            backgroundColor: initial.white
+                                        }}
+                                    >
+                                        <Stack width={"100%"} height={'60vh'}>
+                                            <DataGrid
+                                                apiRef={apiRef}
+                                                disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                                                disableColumnSelector={DataGridStyle.disableColumnSelector}
+                                                disableDensitySelector={DataGridStyle.disableDensitySelector}
+                                                disableRowSelectionOnClick
+                                                disableSelectionOnClick={true}
+                                                localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                                                slots={{ toolbar: QuickFilter }}
+                                                sx={DataGridStyle.sx}
+                                                rowHeight={DataGridStyle.rowHeight}
+                                                columnHeaderHeight={DataGridStyle.columnHeaderHeight}
+                                                rows={Array.isArray(listDomBank) ? listDomBank : []}
+                                                onRowClick={(e) => handleCellEditCommitDomBank(e.row)}
+                                                onRowSelectionModelChange={ids => {
+                                                    setSelectedRowDomBank(ids);
+                                                    saveSelectedRowDomBank(ids);
+                                                    deselectRowBanc(ids);
+                                                }}
+                                                rowSelectionModel={selectedRowDomBank}
+
+                                                editMode='row'
+                                                selectionModel={selectedRowIdDomBank}
+                                                rowModesModel={rowModesModelDomBank}
+                                                onRowModesModelChange={handleRowModesModelChangeDomBank}
+                                                onRowEditStop={handleRowEditStopDomBank}
+                                                processRowUpdate={processRowUpdateDomBank(setFieldValue)}
+
+                                                columns={DomBankColumnHeader}
+                                                initialState={{
+                                                    pagination: {
+                                                        paginationModel: { page: 0, pageSize: 100 },
+                                                    },
+                                                }}
+                                                experimentalFeatures={{ newEditingApi: true }}
+                                                pageSizeOptions={[50, 100]}
+                                                pagination={DataGridStyle.pagination}
+                                                checkboxSelection={DataGridStyle.checkboxSelection}
+                                                columnVisibilityModel={{
+                                                    id: false,
+                                                }}
+                                                onCellKeyDown={handleCellKeyDown}
+                                            />
+                                        </Stack>
+                                    </Stack>
+
+                                </Stack>
+                            </TabPanel>
+
+                            <TabPanel value="7">
+                                <Stack width={"100%"} height={"100%"} spacing={3} alignItems={"flex-start"}
+                                    alignContent={"flex-start"} justifyContent={"stretch"}
+                                >
+                                    <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
+                                        direction={"row"} justifyContent={"right"}
+                                    >
+                                        <Tooltip title="Ajouter une ligne">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableAddRowBoutonConsolidation || availableDossier.length === 0}
+                                                    variant="contained"
+                                                    onClick={handleOpenDialogAddNewConsolidation}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Modifier la ligne sélectionnée">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableModifyBoutonConsolidation}
+                                                    variant="contained"
+                                                    onClick={handleEditClickConsolidation(selectedRowIdConsolidation)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Sauvegarder les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableSaveBoutonConsolidation}
+                                                    variant="contained"
+                                                    onClick={handleSaveClickConsolidation(setFieldValue)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.theme,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <TfiSave style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Annuler les modifications">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableCancelBoutonConsolidation}
+                                                    variant="contained"
+                                                    onClick={handleCancelClickConsolidation(selectedRowIdConsolidation)}
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <VscClose style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+
+                                        <Tooltip title="Supprimer la ligne sélectionné">
+                                            <span>
+                                                <IconButton
+                                                    disabled={disableDeleteBoutonConsolidation}
+                                                    onClick={handleOpenDialogConfirmDeleteConsolidationRow}
+                                                    variant="contained"
+                                                    style={{
+                                                        width: "35px", height: '35px',
+                                                        borderRadius: "2px", borderColor: "transparent",
+                                                        backgroundColor: initial.button_delete_color,
+                                                        textTransform: 'none', outline: 'none'
+                                                    }}
+                                                >
+                                                    <IoMdTrash style={{ width: '50px', height: '50px', color: 'white' }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </Stack>
+
+                                    <Stack
+                                        width={"100%"}
+                                        height={"500px"}
+                                    >
+                                        <DataGrid
+                                            apiRef={apiRef}
+                                            disableMultipleSelection={DataGridStyle.disableMultipleSelection}
+                                            disableColumnSelector={DataGridStyle.disableColumnSelector}
+                                            disableDensitySelector={DataGridStyle.disableDensitySelector}
+                                            disableRowSelectionOnClick
+                                            disableSelectionOnClick={true}
+                                            localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                                            slots={{ toolbar: QuickFilter }}
+                                            sx={DataGridStyle.sx}
+                                            rowHeight={DataGridStyle.rowHeight}
+                                            columnHeaderHeight={DataGridStyle.columnHeaderHeight}
+                                            rows={listConsolidation}
+                                            onRowClick={(e) => handleCellEditCommitConsolidation(e.row)}
+                                            onRowSelectionModelChange={ids => {
+                                                setSelectedRowConsolidations(ids);
+                                                saveSelectedRowConsolidation(ids);
+                                                deselectRowConsolidation(ids);
+                                            }}
+                                            editMode='row'
+                                            rowModesModel={rowModesModelConsolidation}
+                                            onRowModesModelChange={handleRowModesModelChangeConsolidation}
+                                            onRowEditStop={handleRowEditStopConsolidation}
+                                            processRowUpdate={processRowUpdateConsolidation(setFieldValue)}
+
+                                            columns={ConsolidationColumnHeader}
+                                            initialState={{
+                                                pagination: {
+                                                    paginationModel: { page: 0, pageSize: 100 },
+                                                },
+                                            }}
+                                            experimentalFeatures={{ newEditingApi: true }}
+                                            pageSizeOptions={[50, 100]}
+                                            pagination={DataGridStyle.pagination}
+                                            checkboxSelection={DataGridStyle.checkboxSelection}
+                                            columnVisibilityModel={{
+                                                id: false,
+                                            }}
+                                            rowSelectionModel={selectedRowConsolidations}
+                                            onCellKeyDown={handleCellKeyDown}
+                                        />
+                                    </Stack>
+
+                                </Stack>
+                            </TabPanel>
+
+                        </TabContext>
+                    </Box>
+                </Stack>
+            </Form>
+        );
+    }}
+</Formik> */}
