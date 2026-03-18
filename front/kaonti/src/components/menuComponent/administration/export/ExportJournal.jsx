@@ -17,7 +17,7 @@ import axios from '../../../../../config/axios';
 import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
 import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { format, min } from 'date-fns';
 import useAuth from '../../../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 
@@ -32,7 +32,7 @@ export default function ExportJournal() {
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
   const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
   const [listeExercice, setListeExercice] = useState([]);
-  const [listeSituation, setListeSituation] = useState([]);
+  const [listePeriode, setListePeriode] = useState([]);
 
   const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
   const [journalCodes, setJournalCodes] = useState([]); // multiple codes
@@ -89,17 +89,22 @@ export default function ExportJournal() {
   const handleChangeExercice = (exercice_id) => {
     setSelectedExerciceId(exercice_id);
     setSelectedPeriodeChoiceId("0");
-    setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-    setSelectedPeriodeId(exercice_id);
-    // Fixer les dates du filtre à l'année (intervalle) de l'exercice
-    const ex = listeExercice.find((e) => e.id === exercice_id);
-    if (ex) {
-      const d1 = format(new Date(ex.date_debut), 'yyyy-MM-dd');
-      const d2 = format(new Date(ex.date_fin), 'yyyy-MM-dd');
-      setDateDebut(d1);
-      setDateFin(d2);
-    }
   }
+
+  // Chargement des périodes par exercice
+  const getPeriodes = async () => {
+    const id_exercice = Number(selectedExerciceId);
+
+    axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+      .then((response) => {
+        if (response?.data?.state) {
+          const data = response?.data?.data;
+          setListePeriode(data);
+        } else {
+          toast.error(response?.data?.message);
+        }
+      });
+  };
 
   const GetListeExercice = (id) => {
     axios.get(`/paramExercice/listeExercice/${id}/${compteId}`).then((response) => {
@@ -107,35 +112,9 @@ export default function ExportJournal() {
       if (resData.state) {
         setListeExercice(resData.list);
         const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-        setListeSituation(exerciceNId);
         setSelectedExerciceId(exerciceNId[0].id);
-        setSelectedPeriodeChoiceId(0);
-        setSelectedPeriodeId(exerciceNId[0].id);
-        // Initialiser les dates du filtre avec celles de l'exercice courant
-        const d1 = format(new Date(exerciceNId[0].date_debut), 'yyyy-MM-dd');
-        const d2 = format(new Date(exerciceNId[0].date_fin), 'yyyy-MM-dd');
-        setDateDebut(d1);
-        setDateFin(d2);
       } else {
         setListeExercice([]);
-        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-        return
-      }
-    })
-  }
-
-  const GetListeSituation = (id) => {
-    axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-      const resData = response.data;
-      if (resData.state) {
-        const list = resData.list;
-        setListeSituation(resData.list);
-        if (list.length > 0) {
-          setSelectedPeriodeId(list[0].id);
-        }
-      } else {
-        setListeSituation([]);
-        //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
         return
       }
     })
@@ -156,32 +135,13 @@ export default function ExportJournal() {
   const handleChangePeriode = (choix) => {
     setSelectedPeriodeChoiceId(choix);
     if (choix === 0) {
-      setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
-      setSelectedPeriodeId(selectedExerciceId);
-    } else if (choix === 1) {
-      GetListeSituation(selectedExerciceId);
+      setSelectedPeriodeId(0);
     }
   }
 
-  const handleChangeDateIntervalle = (id) => {
-    setSelectedPeriodeId(id);
-    // Adapter les dates si une situation est choisie (plage spécifique)
-    const sit = listeSituation?.find((s) => s.id === id);
-    if (sit) {
-      const d1 = format(new Date(sit.date_debut), 'yyyy-MM-dd');
-      const d2 = format(new Date(sit.date_fin), 'yyyy-MM-dd');
-      setDateDebut(d1);
-      setDateFin(d2);
-    }
+  const handleChangePeriod = (period_id) => {
+    setSelectedPeriodeId(period_id);
   }
-
-  const handleApplyFilter = () => {
-    const hasFilter = (Array.isArray(journalCodes) && journalCodes.length > 0) || (dateDebut && dateDebut !== '') || (dateFin && dateFin !== '');
-    if (!hasFilter) {
-      return toast.error('Veuillez sélectionner au moins un filtre (code journal ou dates).');
-    }
-    toast.success('Filtre appliqué');
-  };
 
   const handleResetFilter = () => {
     setJournalCodes([]);
@@ -264,6 +224,11 @@ export default function ExportJournal() {
     }
   };
 
+  const selectedExercice = listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+  const debutExercice = selectedExercice?.date_debut;
+  const finExercice = selectedExercice?.date_fin;
+
   useEffect(() => {
     const navigationEntries = performance.getEntriesByType('navigation');
     let idFile = 0;
@@ -288,6 +253,26 @@ export default function ExportJournal() {
       GetListeCodeJournaux();
     }
   }, [fileId, compteId]);
+
+  useEffect(() => {
+    if (selectedExerciceId) {
+      getPeriodes();
+    }
+  }, [selectedExerciceId]);
+
+  useEffect(() => {
+    const sourceData =
+      listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId)) ||
+      listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+    if (sourceData) {
+      const [dDebut, dFin] = [sourceData.date_debut, sourceData.date_fin].map(date =>
+        format(new Date(date), 'yyyy-MM-dd')
+      );
+      setDateDebut(dDebut);
+      setDateFin(dFin);
+    }
+  }, [selectedExerciceId, selectedPeriodeId]);
 
   return (
     <Box>
@@ -322,13 +307,17 @@ export default function ExportJournal() {
                 </FormControl>
 
                 <FormControl variant="standard" sx={{ m: 1, minWidth: 150 }}>
-                  <InputLabel>Période</InputLabel>
+                  <InputLabel id="demo-simple-select-standard-label">Période</InputLabel>
                   <Select
-                    disabled
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
                     value={selectedPeriodeChoiceId}
+                    label={"valSelect"}
                     onChange={(e) => handleChangePeriode(e.target.value)}
                     sx={{ width: "150px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                    MenuProps={{ disableScrollLock: true }}
+                    MenuProps={{
+                      disableScrollLock: true
+                    }}
                   >
                     <MenuItem value={0}>Toutes</MenuItem>
                     <MenuItem value={1}>Situations</MenuItem>
@@ -336,18 +325,28 @@ export default function ExportJournal() {
                 </FormControl>
 
                 <FormControl variant="standard" sx={{ m: 1, minWidth: 250 }}>
-                  <InputLabel>Du</InputLabel>
+                  <InputLabel id="demo-simple-select-standard-label">Du</InputLabel>
                   <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    disabled={selectedPeriodeChoiceId === 0}
                     value={selectedPeriodeId}
-                    onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                    label={"valSelect"}
+                    onChange={(e) => {
+                      handleChangePeriod(e.target.value)
+                    }}
                     sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                    MenuProps={{ disableScrollLock: true }}
+                    MenuProps={{
+                      disableScrollLock: true
+                    }}
                   >
-                    {listeSituation?.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
-                    ))}
+                    {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                      <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                    ))
+                    }
                   </Select>
                 </FormControl>
+
               </Stack>
             </Stack>
 
@@ -359,82 +358,109 @@ export default function ExportJournal() {
               direction={"row"}
               justifyContent={"flex-start"}
               style={{ marginLeft: "0px", marginTop: "20px", backgroundColor: '#F4F9F9', borderRadius: "5px" }}
-              spacing={0.5}
             >
-              <FormControl variant="standard" sx={{ width: '25%' }}>
-                <InputLabel>Code journal</InputLabel>
-                <Select
-                  multiple
-                  value={journalCodes}
-                  onChange={handleChangeCodes}
-                  renderValue={(selected) => (
-                    Array.isArray(selected) ? (
-                      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                        {selected.filter(val => val !== ALL_OPTION).map((val) => (
-                          <Chip
-                            key={val}
-                            label={val}
-                            size="small"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onDelete={() => setJournalCodes((prev) => prev.filter((c) => c !== val))}
-                          />
-                        ))}
-                      </Stack>
-                    ) : ''
-                  )}
-                  MenuProps={{
-                    disableScrollLock: true,
-                    PaperProps: {
-                      sx: {
-                        "& .MuiMenuItem-root": {
-                          paddingTop: "2px",    // réduit l’espace haut
-                          paddingBottom: "2px", // réduit l’espace bas
-                          minHeight: "auto",    // supprime la hauteur minimale par défaut
+              <Stack
+                direction={'row'}
+                alignItems={"center"}
+                alignContent={"center"}
+                spacing={2}
+                width={'100%'}
+              >
+                <FormControl variant="standard" sx={{ width: '25%' }}>
+                  <InputLabel>Code journal</InputLabel>
+                  <Select
+                    multiple
+                    value={journalCodes}
+                    onChange={handleChangeCodes}
+                    renderValue={(selected) => (
+                      Array.isArray(selected) ? (
+                        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                          {selected.filter(val => val !== ALL_OPTION).map((val) => (
+                            <Chip
+                              key={val}
+                              label={val}
+                              size="small"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onDelete={() => setJournalCodes((prev) => prev.filter((c) => c !== val))}
+                            />
+                          ))}
+                        </Stack>
+                      ) : ''
+                    )}
+                    MenuProps={{
+                      disableScrollLock: true,
+                      PaperProps: {
+                        sx: {
+                          "& .MuiMenuItem-root": {
+                            paddingTop: "2px",    // réduit l’espace haut
+                            paddingBottom: "2px", // réduit l’espace bas
+                            minHeight: "auto",    // supprime la hauteur minimale par défaut
+                          },
                         },
                       },
+                    }}
+                  >
+                    <MenuItem value={ALL_OPTION}>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        <Checkbox size="small" checked={isAllSelected} indeterminate={!isAllSelected && journalCodes.length > 0} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Sélectionner tout"
+                        primaryTypographyProps={{ fontWeight: 'bold', backgroundColor: '#DFDFDF', color: 'black' }}
+                      />
+                    </MenuItem>
+                    {listeCodeJournaux.map((value, index) => (
+                      <MenuItem key={index} value={value.code}>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          <Checkbox size="small" checked={journalCodes.includes(value.code)} />
+                        </ListItemIcon>
+                        <ListItemText primary={`${value.code} - ${value.libelle}`} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+
+                <TextField
+                  label="Date début"
+                  type="date"
+                  value={dateDebut}
+                  onChange={(e) => setDateDebut(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  variant="standard"
+                  inputProps={{
+                    min: debutExercice,
+                    max: finExercice
+                  }}
+                  sx={{
+                    width: '150px',
+                    '& input::-webkit-calendar-picker-indicator': {
+                      filter: 'brightness(0) saturate(100%) invert(21%) sepia(31%) saturate(684%) hue-rotate(165deg) brightness(93%) contrast(90%)',
+                      cursor: 'pointer',
                     },
                   }}
-                >
-                  <MenuItem value={ALL_OPTION}>
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      <Checkbox size="small" checked={isAllSelected} indeterminate={!isAllSelected && journalCodes.length > 0} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="Sélectionner tout"
-                      primaryTypographyProps={{ fontWeight: 'bold', backgroundColor: '#DFDFDF', color: 'black' }}
-                    />
-                  </MenuItem>
-                  {listeCodeJournaux.map((value, index) => (
-                    <MenuItem key={index} value={value.code}>
-                      <ListItemIcon sx={{ minWidth: 32 }}>
-                        <Checkbox size="small" checked={journalCodes.includes(value.code)} />
-                      </ListItemIcon>
-                      <ListItemText primary={`${value.code} - ${value.libelle}`} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                />
 
-
-              <TextField
-                label="Date début"
-                type="date"
-                value={dateDebut}
-                onChange={(e) => setDateDebut(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                variant="standard"
-                sx={{ width: '20%' }}
-              />
-
-              <TextField
-                label="Date fin"
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                variant="standard"
-                sx={{ width: '20%' }}
-              />
+                <TextField
+                  label="Date fin"
+                  type="date"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  variant="standard"
+                  inputProps={{
+                    min: dateDebut,
+                    max: finExercice
+                  }}
+                  sx={{
+                    width: '150px',
+                    '& input::-webkit-calendar-picker-indicator': {
+                      filter: 'brightness(0) saturate(100%) invert(21%) sepia(31%) saturate(684%) hue-rotate(165deg) brightness(93%) contrast(90%)',
+                      cursor: 'pointer',
+                    },
+                  }}
+                />
+              </Stack>
 
               <Stack direction={'row'} spacing={2} sx={{ ml: 4, alignItems: 'center' }}>
                 <Button
@@ -450,6 +476,7 @@ export default function ExportJournal() {
                   aria-controls={openExportMenu ? 'export-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={openExportMenu ? 'true' : undefined}
+                  style={{ textTransform: 'none', outline: 'none' }}
                 >
                   <CiExport style={{ width: 35, height: 35, color: '#1A5276' }} />
                 </IconButton>

@@ -26,8 +26,6 @@ import { format } from 'date-fns';
 
 import PopupActionConfirm from '../../../componentsTools/popupActionConfirm';
 
-import { useTheme } from '@mui/material/styles';
-
 import axios, { URL } from '../../../../../config/axios';
 import { CiLock } from "react-icons/ci";
 import { CiUnlock } from "react-icons/ci";
@@ -40,6 +38,7 @@ import ExportEtatFinancierButtonAll from '../../../componentsTools/EtatFinancier
 import VirtualTableEvcpEtatFinancier from '../../../componentsTools/EtatFinancier/virtualTableEvcpEtatFinancier';
 
 import usePermission from '../../../../hooks/usePermission';
+import ProgressWithMessage from '../../../componentsTools/Progress/ProgressWithMessage';
 
 //colonne bilan
 const BilanActifColumn = [
@@ -260,7 +259,6 @@ export default function EtatFinancier() {
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
     const [listePeriode, setListePeriode] = useState([]);
-    const [listeSituation, setListeSituation] = useState([]);
 
     const [showBilan, setShowBilan] = useState('actif');
     const [buttonActifVariant, setButtonActifVariant] = useState('contained');
@@ -290,8 +288,7 @@ export default function EtatFinancier() {
     const [isRefreshed, setIsRefreshed] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
-
-    const theme = useTheme();
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     //récupération infos de connexion
     const { auth } = useAuth();
@@ -303,9 +300,6 @@ export default function EtatFinancier() {
     //Choix exercice
     const handleChangeExercice = (exercice_id) => {
         setSelectedExerciceId(exercice_id);
-        setSelectedPeriodeChoiceId("0");
-        setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        // setSelectedPeriodeId(exercice_id);
 
         getVerouillageEtatFinancier(compteId, fileId, exercice_id);
     }
@@ -330,12 +324,7 @@ export default function EtatFinancier() {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
-            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
-
-            getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
-        } else if (choix === 1) {
-            GetListeSituation(selectedExerciceId);
         }
     }
 
@@ -420,12 +409,6 @@ export default function EtatFinancier() {
             setButtonPassifVariant('contained');
         }
     }
-    //refresh table BILAN
-    const refreshBILAN = () => {
-        setTableToRefresh('BILAN');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau du Bilan?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de BILAN
     const lockTableBILAN = () => {
@@ -437,13 +420,6 @@ export default function EtatFinancier() {
     //TABLEAU CRN
     //===========================================================================================
 
-    //refresh table CRN
-    const refreshCRN = () => {
-        setTableToRefresh('CRN');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau CRN?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de CRN
     const lockTableCRN = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'CRN', verrCrn);
@@ -453,13 +429,6 @@ export default function EtatFinancier() {
     //===========================================================================================
     //TABLEAU CRF
     //===========================================================================================
-
-    //refresh table CRF
-    const refreshCRF = () => {
-        setTableToRefresh('CRF');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau CRF?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de CRF
     const lockTableCRF = () => {
@@ -471,13 +440,6 @@ export default function EtatFinancier() {
     //TABLEAU TFTD
     //===========================================================================================
 
-    //refresh table TFTD
-    const refreshTFTD = () => {
-        setTableToRefresh('TFTD');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau TFTD?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de TFTD
     const lockTableTFTD = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'TFTD', verrTftd);
@@ -487,13 +449,6 @@ export default function EtatFinancier() {
     //===========================================================================================
     //TABLEAU TFTI
     //===========================================================================================
-
-    //refresh table TFTI
-    const refreshTFTI = () => {
-        setTableToRefresh('TFTI');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau TFTI?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de TFTI
     const lockTableTFTI = () => {
@@ -516,12 +471,6 @@ export default function EtatFinancier() {
     const lockTableEVCP = () => {
         lockEtatFinancier(compteId, fileId, selectedPeriodeId, 'EVCP', verrEvcp);
         setVerrEvcp(!verrEvcp);
-    }
-
-    const closeDetailAnomalie = (value) => {
-        if (value) {
-            setConfirmShowAnomalie(false);
-        }
     }
 
     const GetInfosIdDossier = (id) => {
@@ -552,11 +501,9 @@ export default function EtatFinancier() {
                 setListeExercice(resData.list);
 
                 const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-                setListeSituation(exerciceNId);
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
-                // setSelectedPeriodeId(exerciceNId[0].id);
 
                 getVerouillageEtatFinancier(compteId, id, exerciceNId[0].id);
             } else {
@@ -597,29 +544,12 @@ export default function EtatFinancier() {
         });
     }
 
-    //Récupérer la liste des exercices
-    const GetListeSituation = (id) => {
-        axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                const list = resData.list;
-                setListeSituation(resData.list);
-                // if (list.length > 0) {
-                //     setSelectedPeriodeId(list[0].id);
-                // }
-            } else {
-                setListeSituation([]);
-                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-                return
-            }
-        })
-    }
-
-    const getEtatFinancier = () => {
+    const getEtatFinancier = async () => {
+        setIsLoadingData(true);
         const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
         const date_debut_periode = periodeData?.date_debut;
         const date_fin_periode = periodeData?.date_fin;
-        axios.post(`/administration/etatFinancier/getEtatFinancier`, {
+        await axios.post(`/administration/etatFinancier/getEtatFinancier`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(selectedExerciceId),
@@ -640,6 +570,7 @@ export default function EtatFinancier() {
                     toast.error(resData.message);
                 }
             })
+        setIsLoadingData(false);
     }
 
     // Générer une tableau en PDF ou Excel
@@ -834,6 +765,7 @@ export default function EtatFinancier() {
                                     </Select>
                                 </FormControl>
                             </Stack>
+
                             {
                                 <ExportEtatFinancierButtonAll
                                     exportAllToPdf={() => exportAllFile("PDF")}
@@ -847,15 +779,27 @@ export default function EtatFinancier() {
                             <TabContext value={value}>
                                 <Box sx={{ borderBottom: 1, borderColor: 'transparent' }}>
                                     <TabList onChange={handleChangeTAB} aria-label="lab API tabs example" variant='scrollable'>
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="bilan" value="1" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crn" value="2" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crf" value="3" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tftd" value="4" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tfti" value="5" />
-                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="evcp" value="6" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="bilan" value="1" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crn" value="2" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="crf" value="3" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tftd" value="4" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="tfti" value="5" />
+                                        <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0 || isLoadingData} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="evcp" value="6" />
                                     </TabList>
                                 </Box>
-
+                                {
+                                    isLoadingData && (
+                                        <Stack
+                                            sx={{
+                                                mt: 1
+                                            }}
+                                        >
+                                            <ProgressWithMessage
+                                                text={'Récupération en cours'}
+                                            />
+                                        </Stack>
+                                    )
+                                }
                                 {/* BILAN */}
                                 <TabPanel value="1">
                                     <Stack width={"100%"} height={"100%"} spacing={2} alignItems={"flex-start"}

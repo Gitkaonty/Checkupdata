@@ -77,6 +77,7 @@ export default function SaisieComponent() {
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
+    const [listePeriode, setListePeriode] = useState([]);
     const [listeSituation, setListeSituation] = useState([]);
 
     const [openSaisiePopup, setOpenSaisiePopup] = useState(false);
@@ -121,8 +122,22 @@ export default function SaisieComponent() {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
         setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        setSelectedPeriodeId(exercice_id);
     }
+
+    // Chargement des périodes par exercice
+    const getPeriodes = async () => {
+        const id_exercice = Number(selectedExerciceId);
+
+        axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+            .then((response) => {
+                if (response?.data?.state) {
+                    const data = response?.data?.data;
+                    setListePeriode(data);
+                } else {
+                    toast.error(response?.data?.message);
+                }
+            });
+    };
 
     //Récupérer la liste des exercices
     const GetListeExercice = (id) => {
@@ -130,17 +145,11 @@ export default function SaisieComponent() {
             const resData = response.data;
             if (resData.state) {
                 setListeExercice(resData.list);
-
                 const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
                 setListeSituation(exerciceNId);
-
                 setSelectedExerciceId(exerciceNId[0].id);
-                setSelectedPeriodeChoiceId(0);
-                setSelectedPeriodeId(exerciceNId[0].id);
-
             } else {
                 setListeExercice([]);
-                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
                 return
             }
         })
@@ -211,6 +220,10 @@ export default function SaisieComponent() {
         }
     }
 
+    const handleChangePeriod = (period_id) => {
+        setSelectedPeriodeId(period_id);
+    }
+
     //Liste saisie
     const getListeSaisie = () => {
         axios.get(`/administration/traitementSaisie/getJournal/${compteId}/${id}/${selectedExerciceId}`).then((response) => {
@@ -247,16 +260,16 @@ export default function SaisieComponent() {
             align: 'left',
             headerClassName: 'HeaderbackColor',
         },
-        // {
-        //     field: 'comptegen',
-        //     headerName: 'Let',
-        //     type: 'string',
-        //     sortable: true,
-        //     flex: 0.6,
-        //     headerAlign: 'left',
-        //     align: 'left',
-        //     headerClassName: 'HeaderbackColor',
-        // },
+        {
+            field: 'comptegen',
+            headerName: 'Let',
+            type: 'string',
+            sortable: true,
+            flex: 0.6,
+            headerAlign: 'left',
+            align: 'left',
+            headerClassName: 'HeaderbackColor',
+        },
         {
             field: 'dateecriture',
             headerName: 'Date',
@@ -617,6 +630,11 @@ export default function SaisieComponent() {
         })
     }
 
+    const selectedExercice = listeExercice.find(val => Number(val.id) === Number(selectedExerciceId));
+
+    const debutExercice = selectedExercice?.date_debut;
+    const finExercice = selectedExercice?.date_fin;
+
     useEffect(() => {
         let idFile = fileId || 0;
         const navigationEntries = performance.getEntriesByType('navigation');
@@ -691,6 +709,22 @@ export default function SaisieComponent() {
             mutationObserver.disconnect();
         };
     }, [filteredList?.length, listSaisie?.length]);
+
+    useEffect(() => {
+        if (selectedPeriodeId) {
+            const periodeData = listePeriode.find(val => Number(val.id) === Number(selectedPeriodeId));
+            const debut = periodeData?.date_debut ?? '';
+            const fin = periodeData?.date_fin ?? '';
+            formSaisieRecherche.setFieldValue('debut', debut);
+            formSaisieRecherche.setFieldValue('fin', fin);
+        }
+    }, [selectedPeriodeId]);
+
+    useEffect(() => {
+        if (selectedExerciceId) {
+            getPeriodes();
+        }
+    }, [selectedExerciceId]);
 
     return (
         <>
@@ -790,7 +824,6 @@ export default function SaisieComponent() {
                                     <FormControl variant="standard" sx={{ m: 1, minWidth: 150 }}>
                                         <InputLabel id="demo-simple-select-standard-label">Période</InputLabel>
                                         <Select
-                                            disabled
                                             labelId="demo-simple-select-standard-label"
                                             id="demo-simple-select-standard"
                                             value={selectedPeriodeChoiceId}
@@ -811,16 +844,19 @@ export default function SaisieComponent() {
                                         <Select
                                             labelId="demo-simple-select-standard-label"
                                             id="demo-simple-select-standard"
+                                            disabled={selectedPeriodeChoiceId === 0}
                                             value={selectedPeriodeId}
                                             label={"valSelect"}
-                                            onChange={(e) => handleChangeDateIntervalle(e.target.value)}
+                                            onChange={(e) => {
+                                                handleChangePeriod(e.target.value)
+                                            }}
                                             sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
                                             MenuProps={{
                                                 disableScrollLock: true
                                             }}
                                         >
-                                            {listeSituation?.map((option) => (
-                                                <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                                            {selectedPeriodeChoiceId === 0 ? [] : listePeriode?.map((option) => (
+                                                <MenuItem key={option.id} value={option.id}>{format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
                                             ))
                                             }
                                         </Select>
@@ -1018,6 +1054,10 @@ export default function SaisieComponent() {
                                                     cursor: 'pointer',
                                                 },
                                             }}
+                                            inputProps={{
+                                                min: debutExercice,
+                                                max: finExercice
+                                            }}
                                         />
                                     </FormControl>
 
@@ -1032,14 +1072,15 @@ export default function SaisieComponent() {
                                             InputLabelProps={{
                                                 shrink: true,
                                             }}
-                                            inputProps={{
-                                                min: formSaisieRecherche.values.debut,
-                                            }}
                                             sx={{
                                                 '& input::-webkit-calendar-picker-indicator': {
                                                     filter: 'brightness(0) saturate(100%) invert(21%) sepia(31%) saturate(684%) hue-rotate(165deg) brightness(93%) contrast(90%)',
                                                     cursor: 'pointer',
                                                 },
+                                            }}
+                                            inputProps={{
+                                                min: formSaisieRecherche.values.debut,
+                                                max: finExercice
                                             }}
                                         />
                                     </FormControl>

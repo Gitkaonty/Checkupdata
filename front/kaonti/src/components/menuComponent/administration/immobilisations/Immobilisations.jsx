@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography, Stack, FormControl, InputLabel, Select, MenuItem, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, RadioGroup, FormControlLabel, Radio, tooltipClasses } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { GoAlert } from "react-icons/go";
@@ -25,6 +25,7 @@ import PopupConfirmDelete from '../../../componentsTools/popupConfirmDelete';
 import PopupImportImmobilisations from '../import/PopupImportImmobilisations';
 import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
 import { styled } from "@mui/material/styles";
+import CancelIcon from '@mui/icons-material/Cancel';
 
 const WhiteTooltip = styled(({ className, ...props }) => (
   <Tooltip {...props} arrow classes={{ popper: className }} />
@@ -41,6 +42,20 @@ const WhiteTooltip = styled(({ className, ...props }) => (
     color: "#fff",
   },
 }));
+
+function formatDate(dateValue) {
+  if (!dateValue) return '';
+
+  const date = new Date(dateValue);
+
+  if (isNaN(date)) return '';
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+}
 
 const keepTotalBottomComparator = (v1, v2, cellParams1, cellParams2) => {
   const r1 = cellParams1?.row;
@@ -65,6 +80,11 @@ const deriveCompteAmort = (compte) => {
   return s[0] + '8' + s.substring(1, s.length - 1);
 };
 
+const normalizeNoAccent = (s) => String(s || '')
+  .normalize('NFD')
+  .replace(/\p{Diacritic}/gu, '')
+  .toLowerCase();
+
 const formatMoneyFr = (n) => {
   const num = Number(n);
   if (!isFinite(num)) return n ?? '';
@@ -73,39 +93,6 @@ const formatMoneyFr = (n) => {
   } catch {
     return String(num.toFixed?.(2) ?? num);
   }
-};
-
-const minusOneDay = (d) => {
-  if (!d) return null;
-  const nd = new Date(d);
-  if (isNaN(nd.getTime())) return null;
-  nd.setDate(nd.getDate() - 1);
-  return nd;
-};
-
-const nbJoursBetween = (start, end, baseJours = 360) => {
-  if (!start || !end) return 0;
-  const d1 = new Date(start);
-  const d2 = new Date(end);
-  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
-  if (baseJours === 360) {
-    const ds = Math.min(d1.getDate(), 30);
-    const de = Math.min(d2.getDate(), 30);
-    const monthsDiff = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-    if (monthsDiff === 0) return Math.max(1, de - ds + 1);
-    return (30 - ds + 1) + Math.max(0, monthsDiff - 1) * 30 + de;
-  }
-  return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
-};
-
-const formatDateFrShort = (d) => {
-  if (!d) return '';
-  const nd = new Date(d);
-  if (isNaN(nd.getTime())) return '';
-  const dd = String(nd.getDate()).padStart(2, '0');
-  const mm = String(nd.getMonth() + 1).padStart(2, '0');
-  const yy = String(nd.getFullYear()).slice(-2);
-  return `${dd}/${mm}/${yy}`;
 };
 
 const Immobilisations = () => {
@@ -137,7 +124,26 @@ const Immobilisations = () => {
   const [selectionModel, setSelectionModel] = useState([]);
   const [loading, setLoading] = useState(false);
   const [journalLinkData, setJournalLinkData] = useState({});
+  const journalLinkDataRef = useRef(journalLinkData);
   const [preselectedJournal, setPreselectedJournal] = useState(null);
+
+  const [detailsRows, setDetailsRows] = useState([]);
+  const [detailsSelectionModel, setDetailsSelectionModel] = useState([]);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsDialogMode, setDetailsDialogMode] = useState('add');
+  const [detailsForm, setDetailsForm] = useState({});
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [lienDialogOpen, setLienDialogOpen] = useState(false);
+  const [journalRows, setJournalRows] = useState([]);
+  const [journalLoading, setJournalLoading] = useState(false);
+  const [journalSelection, setJournalSelection] = useState([]);
+
+  const [ligneRowsComp, setLigneRowsComp] = useState([]);
+  const [ligneRowsFisc, setLigneRowsFisc] = useState([]);
+  const [ligneLoading, setLigneLoading] = useState(false);
+  const [ligneTab, setLigneTab] = useState('comp');
+  const [isCompDegTab, setIsCompDegTab] = useState(false);
+  const [isFiscDegTab, setIsFiscDegTab] = useState(false);
 
   // Helper to extract a safe message from Axios/unknown errors
   const getErrMsg = (e) => {
@@ -153,8 +159,8 @@ const Immobilisations = () => {
     }
   };
 
-  const fetchJournalLink = async (id) => {
-    if (journalLinkData[id]) return;
+  const fetchJournalLink = useCallback(async (id) => {
+    if (journalLinkDataRef.current[id]) return;
 
     try {
       const res = await axios.post('/administration/traitementSaisie/getJournalsAvecImmo', { id });
@@ -167,7 +173,7 @@ const Immobilisations = () => {
     } catch (e) {
       console.error("Erreur chargement lien écriture", e);
     }
-  };
+  }, []);
 
   const getLienEcriture = async () => {
     setJournalRows([]);
@@ -201,13 +207,13 @@ const Immobilisations = () => {
     }
 
     // Fallback: si vide, charger via selectionLigne et filtrer par compte
-    if (!list.length) {
-      try {
-        const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
-        const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
-        list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
-      } catch { }
-    }
+    // if (!list.length) {
+    //   try {
+    //     const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
+    //     const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
+    //     list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
+    //   } catch { }
+    // }
 
     const filteredList = list.filter(journal => {
       const libre = !Number(journal.id_immob);
@@ -223,52 +229,6 @@ const Immobilisations = () => {
   const handleOpenLienEcriture = async () => {
     try {
       setJournalLoading(true);
-      // setJournalRows([]);
-      // // Preselect previously linked entry if any
-      // const preSel = detailsForm?.lien_ecriture_id ? [detailsForm.lien_ecriture_id] : [];
-      // setJournalSelection(preSel);
-
-      // const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-      // const selectedPcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? selectedPcIds[0] : null;
-      // // Backend attend id_numcpt = id de dossierplancomptables (FK), pas le numéro de compte
-      // const idNumcpt = Number(detailsForm?.pc_id ?? selectedPcId ?? 0);
-      // if (!idNumcpt) {
-      //   toast("Aucun PC sélectionné (id_numcpt manquant)", { icon: 'ℹ️' });
-      //   setJournalLoading(false);
-      //   setLienDialogOpen(true);
-      //   return;
-      // }
-
-      // const { data } = await axios.get('/paramTva/journals/byCompte', {
-      //   params: { id_numcpt: idNumcpt, id_dossier: fid, id_exercice: exoId }, timeout: 60000,
-      // });
-
-      // let list = Array.isArray(data?.list) ? data.list : [];
-
-      // if (detailsForm?.lien_ecriture_id) {
-      //   const journalAlready = list.find(j => j.id === detailsForm.lien_ecriture_id);
-      //   if (journalAlready) setPreselectedJournal(journalAlready);
-      // }
-
-      // // Fallback: si vide, charger via selectionLigne et filtrer par compte
-      // if (!list.length) {
-      //   try {
-      //     const sel = await axios.get(`/declaration/tva/selectionLigne/${compteId}/${fid}/${exoId}`, { timeout: 60000 });
-      //     const allRows = Array.isArray(sel?.data?.list) ? sel.data.list : [];
-      //     list = allRows.filter(r => Number(r?.id_numcpt || 0) === idNumcpt);
-      //   } catch { }
-      // }
-
-      // const filteredList = list.filter(journal => {
-      //   const libre = !journal.id_immob;
-      //   const dejaSelectionne = Number(journal.id) === Number(detailsForm?.lien_ecriture_id);
-      //   const preselected = Number(preselectedJournal?.id) === Number(journal.id);
-      //   return libre || dejaSelectionne || preselected;
-      // });
-
-      // setJournalRows(filteredList);
-
-      // keep selection to show which one was already selected
       if (detailsForm?.lien_ecriture_id) {
         setJournalSelection([detailsForm.lien_ecriture_id]);
       }
@@ -292,275 +252,12 @@ const Immobilisations = () => {
   // helper to get selected PC ids (top grid)
   const selectedPcIds = useMemo(() => (Array.isArray(selectionModel) ? selectionModel : []), [selectionModel]);
 
-  // State for the second (details) grid with its own CRUD
-  const [detailsRows, setDetailsRows] = useState([]);
-  const [detailsSelectionModel, setDetailsSelectionModel] = useState([]);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [detailsDialogMode, setDetailsDialogMode] = useState('add'); // 'add' | 'edit'
-  const [detailsForm, setDetailsForm] = useState({});
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [lienDialogOpen, setLienDialogOpen] = useState(false);
-  const [journalRows, setJournalRows] = useState([]);
-  const [journalLoading, setJournalLoading] = useState(false);
-  const [journalSelection, setJournalSelection] = useState([]);
-
-  const [isRefreshed, setIsRefreshed] = useState(false);
-
-  // Third grid: lignes d'amortissement
-  const [ligneRowsComp, setLigneRowsComp] = useState([]);
-  const [ligneRowsFisc, setLigneRowsFisc] = useState([]);
-  const [ligneLoading, setLigneLoading] = useState(false);
-  const [ligneTab, setLigneTab] = useState('comp'); // 'comp' | 'fisc'
-  const [savingLignes, setSavingLignes] = useState(false);
-  const [isCompDegTab, setIsCompDegTab] = useState(false);
-  const [isFiscDegTab, setIsFiscDegTab] = useState(false);
-  const [ligneMeta, setLigneMeta] = useState(null);
-
   const hasCompData = useMemo(() => {
     return Array.isArray(ligneRowsComp) && ligneRowsComp.length > 0;
   }, [ligneRowsComp]);
   const hasFiscData = useMemo(() => {
     return Array.isArray(ligneRowsFisc) && ligneRowsFisc.length > 0;
   }, [ligneRowsFisc]);
-
-  useEffect(() => {
-    // Ajuster l'onglet par défaut selon les données disponibles
-    if (ligneTab === 'comp' && !hasCompData && hasFiscData) setLigneTab('fisc');
-    else if (ligneTab === 'fisc' && !hasFiscData && hasCompData) setLigneTab('comp');
-  }, [hasCompData, hasFiscData]);
-
-  // Load lines for selected immobilisation detail
-  useEffect(() => {
-    const loadLignes = async () => {
-      try {
-        const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
-        const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
-        const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
-        if (!fid || !compteId || !exoId || !selectedDetailId) { setLigneRowsComp([]); setLigneRowsFisc([]); setLigneMeta(null); return; }
-
-        setLigneLoading(true);
-        // Auto-détection du mode à partir de la ligne sélectionnée dans le 2e tableau
-        const detailRow = detailsRows.find(r => Number(r.id) === Number(selectedDetailId)) || {};
-        let autoMode = 'comp';
-        const fiscHints = [
-          Number(detailRow?.duree_amort_mois_fisc) || 0,
-          Number(detailRow?.amort_ant_fisc) || 0,
-          Number(detailRow?.dotation_periode_fisc) || 0,
-          Number(detailRow?.amort_exceptionnel_fisc) || 0,
-          Number(detailRow?.derogatoire_fisc) || 0,
-          Number(detailRow?.total_amortissement_fisc) || 0,
-        ];
-        if (detailRow.__amortTab === 'fisc') autoMode = 'fisc';
-        else if (detailRow.__amortTab === 'comp') autoMode = 'comp';
-        else if ((detailRow?.type_amort_fisc && String(detailRow.type_amort_fisc).length > 0)) autoMode = 'fisc';
-        else if (fiscHints.some(v => v > 0)) autoMode = 'fisc';
-        else autoMode = 'comp';
-
-        // Toujours récupérer les deux prévisualisations (linéaire + dégressif), puis choisir par onglet
-        const normalizeNoAccent = (s) => String(s || '')
-          .normalize('NFD')
-          .replace(/\p{Diacritic}/gu, '')
-          .toLowerCase();
-        const isCompDeg = normalizeNoAccent(detailRow?.type_amort).includes('degr');
-        const isFiscDeg = normalizeNoAccent(detailRow?.type_amort_fisc).includes('degr');
-
-        const [linRes, degRes] = await Promise.all([
-          axios.get('/administration/traitementSaisie/immobilisations/details/lineaire/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
-          axios.get('/administration/traitementSaisie/immobilisations/details/degresif/preview', { params: { fileId: fid, compteId: compteId, exerciceId: exoId, detailId: selectedDetailId, mode: autoMode, view: 'both', ligneTab }, timeout: 60000 }),
-        ]);
-
-        const lin = linRes?.data?.previewLin || {};
-        const deg = degRes?.data?.previewDeg || {};
-
-        // Sélectionner la source par onglet (préférer dégressif si disponible)
-        const degComp = Array.isArray(deg.list_comp) ? deg.list_comp : [];
-        const degFisc = Array.isArray(deg.list_fisc) ? deg.list_fisc : [];
-        const linComp = Array.isArray(lin.list_comp) ? lin.list_comp : [];
-        const linFisc = Array.isArray(lin.list_fisc) ? lin.list_fisc : [];
-
-        const compUsesDeg = (isCompDeg && degComp.length > 0);
-        const fiscUsesDeg = (isFiscDeg && degFisc.length > 0);
-
-        const rawComp = compUsesDeg ? degComp : linComp;
-        const rawFisc = fiscUsesDeg ? degFisc : linFisc;
-        const meta = compUsesDeg ? (deg.meta || lin.meta || {}) : (lin.meta || deg.meta || {});
-
-        const montantHt = Number(meta?.montant_ht) || 0;
-        const repriseComp = meta?.reprise_comp || meta?.reprise;
-        const repriseFisc = meta?.reprise_fisc;
-        const montantImmoHtComp = repriseComp ? Math.max(0, montantHt - (Number(repriseComp?.amort_ant) || 0)) : montantHt;
-        const montantImmoHtFisc = repriseFisc ? Math.max(0, montantHt - (Number(repriseFisc?.amort_ant) || 0)) : montantHt;
-
-        // Normalize possible backend schemas to frontend fields
-        const normComp = rawComp.map((r) => ({
-          rang: r.rang,
-          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
-          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
-          nb_jours: r.nb_jours ?? r.nbJours ?? null,
-          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
-          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtComp,
-          amort_ant_comp: r.amort_ant_comp ?? r.dot_ant ?? 0,
-          dotation_periode_comp: r.dotation_periode_comp ?? r.dotation_annuelle ?? 0,
-          cumul_amort_comp: r.cumul_amort_comp ?? r.cumul_amort ?? 0,
-          vnc: r.vnc ?? r.vnc_comp ?? null,
-          // keep fiscal zeros for comp view rows
-          amort_ant_fisc: 0,
-          dotation_periode_fisc: 0,
-          cumul_amort_fisc: 0,
-          dot_derogatoire: r.dot_derogatoire ?? 0,
-        }));
-
-        const normFisc = rawFisc.map((r) => ({
-          rang: r.rang,
-          date_mise_service: r.date_mise_service ?? r.date_debut ?? r.debut ?? null,
-          date_fin_exercice: r.date_fin_exercice ?? r.date_fin ?? r.fin ?? null,
-          nb_jours: r.nb_jours ?? r.nbJours ?? null,
-          annee_nombre: r.annee_nombre ?? r.anneeNombre ?? null,
-          montant_immo_ht: r.montant_immo_ht ?? montantImmoHtFisc,
-          // keep comp zeros for fisc view rows
-          amort_ant_comp: 0,
-          dotation_periode_comp: 0,
-          cumul_amort_comp: 0,
-          vnc: r.vnc ?? Math.max(0, (meta.montant_ht ?? 0) - (r.cumul_amort_fisc ?? r.cumul_amort ?? 0)),
-          amort_ant_fisc: r.amort_ant_fisc ?? r.dot_ant ?? 0,
-          dotation_periode_fisc: r.dotation_periode_fisc ?? r.dotation_annuelle ?? 0,
-          cumul_amort_fisc: r.cumul_amort_fisc ?? r.cumul_amort ?? 0,
-          dot_derogatoire: r.dot_derogatoire ?? 0,
-        }));
-
-        // await handleSaveLignes(normComp, normFisc);
-
-        setLigneRowsComp(normComp);
-        setLigneRowsFisc(normFisc);
-        setIsCompDegTab(!!compUsesDeg);
-        setIsFiscDegTab(!!fiscUsesDeg);
-        setLigneMeta(meta || null);
-
-      } catch (e) {
-        setLigneRowsComp([]);
-        setLigneRowsFisc([]);
-        setLigneMeta(null);
-        toast.error(`Erreur lors du chargement des lignes d'amortissement: ${getErrMsg(e)}`);
-      } finally { setLigneLoading(false); }
-    };
-    loadLignes();
-  }, [id, compteId, selectedExerciceId, selectedPcIds, detailsSelectionModel, detailsRows]);
-
-  const selectedDetailRow = useMemo(() => {
-    const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0
-      ? Number(detailsSelectionModel[detailsSelectionModel.length - 1])
-      : 0;
-    if (!idSel) return null;
-    return detailsRows.find(r => Number(r.id) === Number(idSel)) || null;
-  }, [detailsRows, detailsSelectionModel]);
-
-  const resumeAvantRepriseComp = useMemo(() => {
-    const repriseActive = !!(selectedDetailRow?.reprise_immobilisation_comp ?? selectedDetailRow?.reprise_immobilisation);
-    const reprise = ligneMeta?.reprise_comp || ligneMeta?.reprise;
-    if (!repriseActive || !reprise?.date_reprise) return { has: false };
-
-    const baseJours = Number(ligneMeta?.base_jours) || 360;
-    const start = ligneMeta?.date_mise_service ? new Date(String(ligneMeta.date_mise_service).substring(0, 10)) : null;
-    const repriseDate = new Date(String(reprise.date_reprise).substring(0, 10));
-    let end = minusOneDay(repriseDate);
-    if (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime()) && end < start) end = start;
-
-    const montantHt = Number(ligneMeta?.montant_ht) || 0;
-    const amortAvant = Number(reprise?.amort_ant) || 0;
-    const montantImmoHt = Math.max(0, montantHt - amortAvant);
-    const nbJours = nbJoursBetween(start, end, baseJours);
-    const anneeNombre = baseJours ? (nbJours / baseJours) : 0;
-    const vnc = Math.max(0, montantHt - amortAvant);
-    return {
-      has: !!(start && end && !isNaN(start?.getTime?.()) && !isNaN(end?.getTime?.())),
-      dateDebut: start,
-      dateFin: end,
-      dateReprise: repriseDate,
-      anneeNombre,
-      montantImmoHt,
-      amortAvant,
-      vnc,
-      dotDerogatoire: 0,
-    };
-  }, [ligneMeta, selectedDetailRow]);
-
-  const resumeAvantRepriseFisc = useMemo(() => {
-    const repriseActive = !!(selectedDetailRow?.reprise_immobilisation_fisc ?? selectedDetailRow?.reprise_immobilisation);
-    const reprise = ligneMeta?.reprise_fisc;
-    if (!repriseActive || !reprise?.date_reprise) return { has: false };
-
-    const baseJours = Number(ligneMeta?.base_jours) || 360;
-    const start = ligneMeta?.date_mise_service ? new Date(String(ligneMeta.date_mise_service).substring(0, 10)) : null;
-    const repriseDate = new Date(String(reprise.date_reprise).substring(0, 10));
-    let end = minusOneDay(repriseDate);
-    if (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime()) && end < start) end = start;
-
-    const montantHt = Number(ligneMeta?.montant_ht) || 0;
-    const amortAvant = Number(reprise?.amort_ant) || 0;
-    const montantImmoHt = Math.max(0, montantHt - amortAvant);
-    const nbJours = nbJoursBetween(start, end, baseJours);
-    const anneeNombre = baseJours ? (nbJours / baseJours) : 0;
-    const vnc = Math.max(0, montantHt - amortAvant);
-    return {
-      has: !!(start && end && !isNaN(start?.getTime?.()) && !isNaN(end?.getTime?.())),
-      dateDebut: start,
-      dateFin: end,
-      dateReprise: repriseDate,
-      anneeNombre,
-      montantImmoHt,
-      amortAvant,
-      vnc,
-      dotDerogatoire: 0,
-    };
-  }, [ligneMeta, selectedDetailRow]);
-
-  const handleSaveLignes = async (lignesComp = null, lignesFisc = null) => {
-    try {
-      const fid = Number(id) || 0;
-      const exoId = Number(selectedExerciceId) || 0;
-      const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0
-        ? Number(detailsSelectionModel[detailsSelectionModel.length - 1])
-        : 0;
-
-      if (!fid || !compteId || !exoId || !selectedDetailId) {
-        toast('Sélectionnez une immobilisation dans le tableau du milieu', { icon: 'ℹ️' });
-        return;
-      }
-
-      const lignesAEnvoyer = ligneTab === 'fisc'
-        ? (lignesFisc || ligneRowsFisc)
-        : (lignesComp || ligneRowsComp);
-
-      if (!lignesAEnvoyer || lignesAEnvoyer.length === 0) {
-        toast.error("Aucune ligne d'amortissement à enregistrer.");
-        return;
-      }
-
-      const autoMode = ligneTab === 'fisc' ? 'fisc' : 'comp';
-      setSavingLignes(true);
-
-      const useDeg = ligneTab === 'comp' ? isCompDegTab : isFiscDegTab;
-      const url = useDeg
-        ? '/administration/traitementSaisie/immobilisations/details/degresif/save'
-        : '/administration/traitementSaisie/immobilisations/details/lineaire/save';
-
-      await axios.post(url, {
-        fileId: fid,
-        compteId,
-        exerciceId: exoId,
-        detailId: selectedDetailId,
-        mode: autoMode,
-        lignes: lignesAEnvoyer
-      }, { timeout: 60000 });
-
-      setIsRefreshed(prev => !prev);
-
-    } catch (e) {
-      toast.error(`Enregistrement des lignes échoué: ${getErrMsg(e)}`);
-    } finally {
-      setSavingLignes(false);
-    }
-  };
 
   // Fetch details_immo from backend and filter by selected PCs
   const fetchDetails = useCallback(async () => {
@@ -643,6 +340,7 @@ const Immobilisations = () => {
       id: 'total-row',
       isTotal: true,
       code: 'Total',
+      reprise_immobilisation_comp: '',
       intitule: '',
       lien_ecriture_id: '',
       fournisseur: '',
@@ -669,6 +367,255 @@ const Immobilisations = () => {
     return [...detailsRows, totalRow];
   }, [detailsRows])
 
+
+
+  const columns = useMemo(() => ([
+    { field: 'compte', headerName: 'N° de compte', width: 140, sortComparator: keepTotalBottomComparator },
+    { field: 'libelle', headerName: 'Libellé', flex: 1, sortComparator: keepTotalBottomComparator },
+    {
+      field: 'compte_amort',
+      headerName: 'Compte amort',
+      width: 160,
+      sortComparator: keepTotalBottomComparator,
+      headerAlign: 'right',
+      align: 'right',
+      renderCell: (params) => {
+        // Ne pas afficher d’icône dans la ligne Total
+        if (params.row?.isTotal) {
+          return (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+              <Typography variant="body2">{params.value || ''}</Typography>
+            </Box>
+          );
+        }
+
+        const hasCompte = !!params.value;
+
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%', gap: 0.5 }}>
+            <Typography variant="body2">{params.value || ''}</Typography>
+
+            {hasCompte ? (
+              <CheckCircleIcon sx={{ color: 'green', fontSize: 16 }} />
+            ) : (
+              <GoAlert style={{ color: 'red', fontSize: 16 }} />
+            )}
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'solde', headerName: 'Solde', width: 120, type: 'number', headerAlign: 'right', align: 'right',
+      renderCell: (p) => formatMoneyFr(p.value),
+      sortComparator: keepTotalBottomComparator,
+    },
+    {
+      field: 'amort_ant', headerName: 'Amort Ant', width: 120, type: 'number', headerAlign: 'right', align: 'right',
+      renderCell: (p) => formatMoneyFr(p.value),
+      sortComparator: keepTotalBottomComparator,
+    },
+    {
+      field: 'dotation', headerName: 'Dotation', width: 120, type: 'number', headerAlign: 'right', align: 'right',
+      renderCell: (p) => formatMoneyFr(p.value),
+      sortComparator: keepTotalBottomComparator,
+    },
+    {
+      field: 'valeur_nette', headerName: 'Valeur nette', width: 140, type: 'number', headerAlign: 'right', align: 'right',
+      renderCell: (p) => formatMoneyFr(p.value),
+      sortComparator: keepTotalBottomComparator,
+    },
+    {
+      field: 'vnc_immo', headerName: 'VNC immo', width: 140, type: 'number', headerAlign: 'right', align: 'right',
+      renderCell: (p) => formatMoneyFr(p.value),
+      sortComparator: keepTotalBottomComparator,
+    },
+  ]), []);
+
+  const detailColumns = useMemo(() => ([
+    { field: 'code', headerName: 'Code', width: 140 },
+    { field: 'intitule', headerName: 'Intitulé', width: 220 },
+    { field: 'compte_amortissement', headerName: 'Compte amort', width: 140 },
+    {
+      field: 'reprise_immobilisation_comp', headerName: 'Sans reprise', width: 100, align: 'center',
+      renderCell: (p) => {
+        const dateReprise = p.row.date_reprise_comp;
+        if (p.row.isTotal) {
+          return null;
+        }
+
+        const avecReprise = p.value;
+
+        return avecReprise
+          ? (
+            <Tooltip
+              title={`Date reprise : ${formatDate(dateReprise)}`}
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    backgroundColor: "#fff",
+                    color: "#000",
+                    fontSize: 14,
+                    boxShadow: "0px 6px 24px rgba(0,0,0,0.15)",
+                    borderRadius: 2,
+                    maxWidth: "none"
+                  }
+                }
+              }}
+            >
+              <CancelIcon sx={{ color: '#D6A57A' }} />
+            </Tooltip>
+          )
+          : <CheckCircleIcon sx={{ color: 'green' }} />;
+      }
+    },
+    {
+      field: 'lien_ecriture_id',
+      headerName: 'Lien écriture',
+      width: 100,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      renderCell: (p) => {
+        const id = p.row.lien_ecriture_id;
+        if (!id) return null;
+
+        const data = journalLinkDataRef.current[id];
+
+        return (
+          <WhiteTooltip
+            placement="top"
+            onOpen={() => fetchJournalLink(id)}
+            title={
+              data ? (
+                <div style={{ minWidth: 400 }}>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span>
+                      <strong>Date :</strong> {
+                        data.dateecriture
+                          ? new Date(data.dateecriture).toLocaleDateString('fr-FR')
+                          : ''
+                      }
+                    </span>
+                    <span><strong>Journal :</strong> {data.code}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span><strong>Compte :</strong> {data.compteaux}</span>
+                    <span><strong>Pièce :</strong> {data.piece}</span>
+                  </div>
+
+                  <div style={{
+                    display: "flex",
+                    gap: 6,
+                    marginBottom: 8
+                  }}>
+                    <strong>Libellé :</strong>
+                    <span style={{ opacity: 0.85 }}>{data.libelle}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span><strong>Débit :</strong> {formatMoneyFr(data.debit)}</span>
+                    <span><strong>Crédit :</strong> {formatMoneyFr(data.credit)}</span>
+                  </div>
+
+                </div>
+              ) : "Chargement..."
+            }
+          >
+            <span>
+              <GoLink color={initial.theme} size={22} />
+            </span>
+          </WhiteTooltip>
+        );
+      }
+    },
+    { field: 'fournisseur', headerName: 'Fournisseur', width: 160 },
+    {
+      field: 'date_acquisition', headerName: "Date d'acquisition", align: 'left', width: 150, valueGetter: (p) => {
+        const s = p?.row?.date_acquisition;
+        return s ? formatDate(s) : '';
+      }
+    },
+    {
+      field: 'date_mise_service', headerName: 'Date mise en service', align: 'left', width: 160, valueGetter: (p) => {
+        const s = p?.row?.date_mise_service;
+        return s ? formatDate(s) : '';
+      }
+    },
+    {
+      field: 'etat', headerName: 'Etat', align: 'left', width: 120,
+      valueGetter: (params) => {
+        const value = params?.row?.etat;
+        return ETAT_LABELS[value] || value;
+      }
+    },
+    {
+      field: 'type_amort', headerName: "Type d'amortissement", width: 170,
+      valueGetter: (p) => {
+        return p?.value.toUpperCase();
+      }
+    },
+    { field: 'duree_amort_mois', headerName: 'Durée amort (mois)', align: 'right', width: 140, renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'montant', headerName: 'Montant TTC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'taux_tva', headerName: 'Taux TVA', width: 110, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'montant_tva', headerName: 'Montant TVA', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'amort_avant_reprise', headerName: 'Amort avant rep.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'montant_ht', headerName: 'Montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'amort_ant_comp', headerName: 'Amort ant', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'dotation_periode_comp', headerName: 'Dotation période', width: 150, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'amort_exceptionnel_comp', headerName: 'Amort exceptionnel', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'derogatoire_comp', headerName: 'Dérogatoire', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'total_amortissement_comp', headerName: 'Total amortissement', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'prix_vente', headerName: 'Prix de vente', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    {
+      field: 'date_sortie', headerName: 'Date de sortie', align: 'center', width: 140, valueGetter: (p) => {
+        const s = p?.row?.date_sortie;
+        return s ? formatDate(s) : '';
+      }
+    },
+  ]), [fetchJournalLink, initial.theme]);
+
+  const ligneCompColumns = useMemo(() => ([
+    { field: 'date_mise_service', headerName: 'Date mise en service', width: 170, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
+    { field: 'date_fin_exercice', headerName: "Date fin de l'exercice", width: 180, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_fin_exercice ? String(p.row.date_fin_exercice).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
+    { field: 'annee_nombre', headerName: 'Année Nombre', width: 130, type: 'number', headerAlign: 'right', align: 'right' },
+    { field: 'montant_immo_ht', headerName: 'Montant HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'amort_ant_comp', headerName: 'Amort Ant', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'dotation_periode_comp', headerName: 'Dotation compta.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'cumul_amort_comp', headerName: 'Cumul amort', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+  ]), []);
+
+  const ligneFiscColumns = useMemo(() => ([
+    { field: 'date_mise_service', headerName: 'Date mise en service', width: 170, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
+    { field: 'date_fin_exercice', headerName: "Date fin de l'exercice", width: 180, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_fin_exercice ? String(p.row.date_fin_exercice).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
+    { field: 'annee_nombre', headerName: 'Année Nombre', width: 130, type: 'number', headerAlign: 'right', align: 'right' },
+    { field: 'montant_immo_ht', headerName: 'Montant HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'amort_ant_fisc', headerName: 'Amort Ant', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'dotation_periode_fisc', headerName: 'Dotation fiscale', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'cumul_amort_fisc', headerName: 'Cumul amort', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+  ]), []);
+
+  const journalColumns = useMemo(() => ([
+    {
+      field: 'dateecriture', headerName: 'Date écriture', width: 120, valueGetter: (p) => {
+        const s = p?.row?.dateecriture ? String(p.row.dateecriture).substring(0, 10) : '';
+        return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
+      }
+    },
+    { field: 'journal', headerName: 'Jnl', width: 50, valueGetter: (p) => p?.row?.journal ?? p?.row?.id_journal ?? '' },
+    { field: 'piece', headerName: 'Pièce', width: 150 },
+    { field: 'libelle', headerName: 'Libellé', width: 160 },
+    { field: 'debit', headerName: 'Débit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'credit', headerName: 'Crédit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
+    { field: 'lettrage', headerName: 'Lettrage', width: 120, valueGetter: (p) => p?.row?.lettrage ?? '' },
+  ]), []);
+
   const ETAT_LABELS = {
     enService: 'En service',
     horsService: 'Hors service',
@@ -676,9 +623,6 @@ const Immobilisations = () => {
     cassee: 'Cassée',
     miseEnVente: 'Mise en vente',
   };
-
-  useEffect(() => { fetchDetails(); }, [fetchDetails, isRefreshed]);
-  useEffect(() => { getLienEcriture(); }, [detailsForm, isRefreshed]);
 
   const handleDetailsAdd = () => {
     setPreselectedJournal(null);
@@ -748,8 +692,6 @@ const Immobilisations = () => {
     setDetailsDialogOpen(true);
   };
 
-  const handleDetailsCancel = () => { setDetailsDialogOpen(false); };
-
   const handleDetailsDelete = () => {
     const idSel = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? detailsSelectionModel[detailsSelectionModel.length - 1] : null;
     if (!idSel) { toast('Sélectionnez une ligne détail', { icon: 'ℹ️' }); return; }
@@ -810,7 +752,6 @@ const Immobilisations = () => {
       cleaned.pc_id_amort = Number(cleaned.pc_id_amort || 0);
       cleaned.lien_ecriture_id = cleaned.lien_ecriture_id ? Number(cleaned.lien_ecriture_id) : null;
 
-      const onePcId = Array.isArray(selectedPcIds) && selectedPcIds.length > 0 ? Number(selectedPcIds[0]) : null;
       const effectiveCompteId = compteId;
 
       // await handleSaveLignes(ligneRowsComp, ligneRowsFisc);
@@ -841,68 +782,6 @@ const Immobilisations = () => {
       }
     } finally { setDetailsLoading(false); }
   };
-
-  const columns = useMemo(() => ([
-    { field: 'compte', headerName: 'N° de compte', width: 140, sortComparator: keepTotalBottomComparator },
-    { field: 'libelle', headerName: 'Libellé', flex: 1, sortComparator: keepTotalBottomComparator },
-    {
-      field: 'compte_amort',
-      headerName: 'Compte amort',
-      width: 160,
-      sortComparator: keepTotalBottomComparator,
-      headerAlign: 'right',
-      align: 'right',
-      renderCell: (params) => {
-        // Ne pas afficher d’icône dans la ligne Total
-        if (params.row?.isTotal) {
-          return (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-              <Typography variant="body2">{params.value || ''}</Typography>
-            </Box>
-          );
-        }
-
-        const hasCompte = !!params.value;
-
-        return (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%', gap: 0.5 }}>
-            <Typography variant="body2">{params.value || ''}</Typography>
-
-            {hasCompte ? (
-              <CheckCircleIcon sx={{ color: 'green', fontSize: 16 }} />
-            ) : (
-              <GoAlert style={{ color: 'red', fontSize: 16 }} />
-            )}
-          </Box>
-        );
-      },
-    },
-    {
-      field: 'solde', headerName: 'Solde', width: 120, type: 'number', headerAlign: 'right', align: 'right',
-      renderCell: (p) => formatMoneyFr(p.value),
-      sortComparator: keepTotalBottomComparator,
-    },
-    {
-      field: 'amort_ant', headerName: 'Amort Ant', width: 120, type: 'number', headerAlign: 'right', align: 'right',
-      renderCell: (p) => formatMoneyFr(p.value),
-      sortComparator: keepTotalBottomComparator,
-    },
-    {
-      field: 'dotation', headerName: 'Dotation', width: 120, type: 'number', headerAlign: 'right', align: 'right',
-      renderCell: (p) => formatMoneyFr(p.value),
-      sortComparator: keepTotalBottomComparator,
-    },
-    {
-      field: 'valeur_nette', headerName: 'Valeur nette', width: 140, type: 'number', headerAlign: 'right', align: 'right',
-      renderCell: (p) => formatMoneyFr(p.value),
-      sortComparator: keepTotalBottomComparator,
-    },
-    {
-      field: 'vnc_immo', headerName: 'VNC immo', width: 140, type: 'number', headerAlign: 'right', align: 'right',
-      renderCell: (p) => formatMoneyFr(p.value),
-      sortComparator: keepTotalBottomComparator,
-    },
-  ]), []);
 
   const GetInfosIdDossier = (idDossier) => {
     axios.get(`/home/FileInfos/${idDossier}`).then((response) => {
@@ -960,6 +839,45 @@ const Immobilisations = () => {
     });
   };
 
+  const handleOpenConfirmGenerateEcritures = () => {
+    if (!selectedExerciceId) {
+      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
+      return;
+    }
+    setOpenConfirmGenerateEcritures(true);
+  };
+
+  const handleOpenConfirmCancelEcritures = () => {
+    if (!selectedExerciceId) {
+      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
+      return;
+    }
+    setOpenConfirmCancelEcritures(true);
+  };
+
+  let idExerciceSelectionne = selectedExerciceId;
+  if (detailsSelectionModel.length !== 0) {
+    const lignesListeImmo = detailRowsWithTotal.find(val => val.id === Number(detailsSelectionModel[0]));
+    idExerciceSelectionne = lignesListeImmo?.id_exercice;
+  }
+
+  const getPlanAmort = async (id_detail_immo) => {
+    await axios.post('/administration/traitementSaisie/immobilisations/details/getPlanAmort', { id_detail_immo })
+      .then((response) => {
+        const resData = response.data;
+        if (resData.state) {
+          const compLine = Array.isArray(resData.compLine) ? resData.compLine : (resData.compLine ? [resData.compLine] : []);
+          const fiscLine = Array.isArray(resData.compFisc) ? resData.compFisc : (resData.compFisc ? [resData.compFisc] : []);
+          setLigneRowsComp(compLine);
+          setLigneRowsFisc(fiscLine);
+        }
+      })
+      .catch((e) => {
+        console.error('Erreur lors de la récupération du plan d\'amortissement :', e);
+        toast.error('Impossible de récupérer le plan d\'amortissement');
+      });
+  }
+
   useEffect(() => {
     const idFile = Number(id) || 0;
     if (!idFile) {
@@ -1005,27 +923,36 @@ const Immobilisations = () => {
     loadImmobilisations();
   }, [id, compteId, selectedExerciceId]);
 
-  const handleOpenConfirmGenerateEcritures = () => {
-    if (!selectedExerciceId) {
-      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
-      return;
-    }
-    setOpenConfirmGenerateEcritures(true);
-  };
+  useEffect(() => {
+    // Ajuster l'onglet par défaut selon les données disponibles
+    if (ligneTab === 'comp' && !hasCompData && hasFiscData) setLigneTab('fisc');
+    else if (ligneTab === 'fisc' && !hasFiscData && hasCompData) setLigneTab('comp');
+  }, [hasCompData, hasFiscData]);
 
-  const handleOpenConfirmCancelEcritures = () => {
-    if (!selectedExerciceId) {
-      toast('Sélectionnez un exercice', { icon: 'ℹ️' });
-      return;
-    }
-    setOpenConfirmCancelEcritures(true);
-  };
+  // Load lines for selected immobilisation detail
+  useEffect(() => {
+    const loadLignes = async () => {
+      try {
+        const fid = Number(id) || 0; const exoId = Number(selectedExerciceId) || 0;
+        const selectedDetailId = Array.isArray(detailsSelectionModel) && detailsSelectionModel.length > 0 ? Number(detailsSelectionModel[detailsSelectionModel.length - 1]) : 0;
+        if (!fid || !compteId || !exoId || !selectedDetailId) { setLigneRowsComp([]); setLigneRowsFisc([]); return; }
+        setLigneLoading(true);
+        getPlanAmort(selectedDetailId);
+      } catch (e) {
+        setLigneRowsComp([]);
+        setLigneRowsFisc([]);
+        toast.error(`Erreur lors du chargement des lignes d'amortissement: ${getErrMsg(e)}`);
+      } finally { setLigneLoading(false); }
+    };
+    loadLignes();
+  }, [id, compteId, selectedExerciceId, selectedPcIds, detailsSelectionModel, detailsRows]);
 
-  let idExerciceSelectionne = selectedExerciceId;
-  if (detailsSelectionModel.length !== 0) {
-    const lignesListeImmo = detailRowsWithTotal.find(val => val.id === Number(detailsSelectionModel[0]));
-    idExerciceSelectionne = lignesListeImmo?.id_exercice;
-  }
+  useEffect(() => {
+    journalLinkDataRef.current = journalLinkData;
+  }, [journalLinkData]);
+
+  useEffect(() => { fetchDetails(); }, [fetchDetails]);
+  useEffect(() => { getLienEcriture(); }, [detailsForm]);
 
   return (
     <Box>
@@ -1403,122 +1330,7 @@ const Immobilisations = () => {
                     disableRowSelectionOnClick
                     disableSelectionOnClick={true}
                     rows={detailRowsWithTotal}
-                    // isRowSelectable={(params) =>
-                    //   params.row.id_exercice === selectedExerciceId
-                    // }
-                    columns={[
-                      { field: 'code', headerName: 'Code', width: 140 },
-                      { field: 'intitule', headerName: 'Intitulé', width: 220 },
-                      { field: 'compte_amortissement', headerName: 'Compte amort', width: 140 },
-                      {
-                        field: 'lien_ecriture_id',
-                        headerName: 'Lien écriture',
-                        width: 100,
-                        align: 'center',
-                        headerAlign: 'center',
-                        sortable: false,
-                        renderCell: (p) => {
-                          const id = p.row.lien_ecriture_id;
-                          if (!id) return null;
-
-                          const data = journalLinkData[id];
-
-                          return (
-                            <WhiteTooltip
-                              placement="top"
-                              onOpen={() => fetchJournalLink(id)}
-                              title={
-                                data ? (
-                                  <div style={{ minWidth: 400 }}>
-
-                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                                      <span>
-                                        <strong>Date :</strong> {
-                                          data.dateecriture
-                                            ? new Date(data.dateecriture).toLocaleDateString('fr-FR')
-                                            : ''
-                                        }
-                                      </span>
-                                      <span><strong>Journal :</strong> {data.code}</span>
-                                    </div>
-
-                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                                      <span><strong>Compte :</strong> {data.compteaux}</span>
-                                      <span><strong>Pièce :</strong> {data.piece}</span>
-                                    </div>
-
-                                    <div style={{
-                                      display: "flex",
-                                      gap: 6,
-                                      marginBottom: 8
-                                    }}>
-                                      <strong>Libellé :</strong>
-                                      <span style={{ opacity: 0.85 }}>{data.libelle}</span>
-                                    </div>
-
-                                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                      <span><strong>Débit :</strong> {formatMoneyFr(data.debit)}</span>
-                                      <span><strong>Crédit :</strong> {formatMoneyFr(data.credit)}</span>
-                                    </div>
-
-                                  </div>
-                                ) : "Chargement..."
-                              }
-                            >
-                              <span>
-                                <GoLink color={initial.theme} size={22} />
-                              </span>
-                            </WhiteTooltip>
-                          );
-                        }
-                      },
-                      // { field: 'pc_id', headerName: 'Compte ID', width: 120 },
-                      { field: 'fournisseur', headerName: 'Fournisseur', width: 160 },
-                      {
-                        field: 'date_acquisition', headerName: "Date d'acquisition", align: 'left', width: 150, valueGetter: (p) => {
-                          const s = p?.row?.date_acquisition ? String(p.row.date_acquisition).substring(0, 10) : '';
-                          return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
-                        }
-                      },
-                      {
-                        field: 'date_mise_service', headerName: 'Date mise en service', align: 'left', width: 160, valueGetter: (p) => {
-                          const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : '';
-                          return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
-                        }
-                      },
-                      {
-                        field: 'etat', headerName: 'Etat', align: 'left', width: 120,
-                        valueGetter: (params) => {
-                          const value = params?.row?.etat;
-                          return ETAT_LABELS[value] || value;
-                        }
-                      },
-                      {
-                        field: 'type_amort', headerName: "Type d'amortissement", width: 170,
-                        valueGetter: (p) => {
-                          return p?.value.toUpperCase();
-                        }
-                      },
-                      { field: 'duree_amort_mois', headerName: 'Durée amort (mois)', align: 'right', width: 140, renderCell: (p) => formatMoneyFr(p.value) }, ,
-                      { field: 'montant', headerName: 'Montant TTC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'taux_tva', headerName: 'Taux TVA', width: 110, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'montant_tva', headerName: 'Montant TVA', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'amort_avant_reprise', headerName: 'Amort avant rep.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'montant_ht', headerName: 'Montant HT', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'amort_ant_comp', headerName: 'Amort ant', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'dotation_periode_comp', headerName: 'Dotation période', width: 150, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'amort_exceptionnel_comp', headerName: 'Amort exceptionnel', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'derogatoire_comp', headerName: 'Dérogatoire', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'total_amortissement_comp', headerName: 'Total amortissement', width: 170, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      { field: 'prix_vente', headerName: 'Prix de vente', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                      {
-                        field: 'date_sortie', headerName: 'Date de sortie', align: 'center', width: 140, valueGetter: (p) => {
-                          const s = p?.row?.date_sortie ? String(p.row.date_sortie).substring(0, 10) : '';
-                          return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
-                        }
-                      },
-                    ]}
+                    columns={detailColumns}
                     getRowId={(r) => r.id}
                     // disableColumnMenu
                     // disableRowSelectionOnClick={false}
@@ -1589,139 +1401,10 @@ const Immobilisations = () => {
                         </Box>
 
                         <TabPanel value="comp" sx={{ px: 0 }}>
-                          {resumeAvantRepriseComp?.has ? (
-                            <Box sx={{ mb: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                Reprise (comptable)
-                              </Typography>
-                              <DataGrid
-                                rows={[
-                                  {
-                                    id: 'resume-comp',
-                                    date_mise_service: resumeAvantRepriseComp.dateDebut,
-                                    date_fin_avant_reprise: resumeAvantRepriseComp.dateFin,
-                                    annee_nombre: resumeAvantRepriseComp.anneeNombre,
-                                    montant_immo_ht: resumeAvantRepriseComp.montantImmoHt,
-                                    amort_ant: resumeAvantRepriseComp.amortAvant,
-                                    dotation_periode: 0,
-                                    cumul_amort: resumeAvantRepriseComp.amortAvant,
-                                    vnc: resumeAvantRepriseComp.vnc,
-                                    dot_derogatoire: resumeAvantRepriseComp.dotDerogatoire ?? 0,
-                                  },
-                                ]}
-                                columns={[
-                                  {
-                                    field: 'date_mise_service',
-                                    headerName: 'Date mise en service',
-                                    width: 170,
-                                    align: 'center',
-                                    headerAlign: 'center',
-                                    valueGetter: (p) => formatDateFrShort(p?.row?.date_mise_service),
-                                  },
-                                  {
-                                    field: 'date_fin_avant_reprise',
-                                    headerName: 'Date fin (veille reprise)',
-                                    width: 190,
-                                    align: 'center',
-                                    headerAlign: 'center',
-                                    valueGetter: (p) => formatDateFrShort(p?.row?.date_fin_avant_reprise),
-                                  },
-                                  {
-                                    field: 'annee_nombre',
-                                    headerName: 'Année Nombre',
-                                    width: 130,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'montant_immo_ht',
-                                    headerName: 'Montant immo HT',
-                                    width: 160,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'amort_ant',
-                                    headerName: 'Amort ant',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'dot_derogatoire',
-                                    headerName: 'Dot dérogatoire',
-                                    width: 160,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'dotation_periode',
-                                    headerName: 'Dot période',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'cumul_amort',
-                                    headerName: 'Cumul amort',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'vnc',
-                                    headerName: 'VNC',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                ]}
-                                loading={ligneLoading}
-                                disableColumnMenu
-                                disableRowSelectionOnClick
-                                hideFooter
-                                density="compact"
-                                sx={{
-                                  height: 98,
-                                  backgroundColor: '#eeeeee',
-                                  borderRadius: 1,
-                                  '& .MuiDataGrid-columnHeaders': {
-                                    backgroundColor: initial.theme,
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                  },
-                                }}
-                              />
-                            </Box>
-                          ) : null}
                           <DataGrid
                             rows={Array.isArray(ligneRowsComp) ? ligneRowsComp : []}
                             getRowId={(r) => r.rang || r.id}
-                            columns={[
-                              { field: 'date_mise_service', headerName: 'Date mise en service', width: 170, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
-                              { field: 'date_fin_exercice', headerName: "Date fin de l'exercice", width: 180, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_fin_exercice ? String(p.row.date_fin_exercice).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
-                              { field: 'annee_nombre', headerName: 'Année Nombre', width: 130, type: 'number', headerAlign: 'right', align: 'right' },
-                              { field: 'montant_immo_ht', headerName: 'Montant HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'amort_ant_comp', headerName: 'Amort Ant', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dotation_periode_comp', headerName: 'Dotation compta.', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'cumul_amort_comp', headerName: 'Cumul amort', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                            ]}
+                            columns={ligneCompColumns}
                             loading={ligneLoading}
                             disableColumnMenu
                             disableRowSelectionOnClick
@@ -1751,139 +1434,10 @@ const Immobilisations = () => {
                         </TabPanel>
 
                         <TabPanel value="fisc" sx={{ px: 0 }}>
-                          {resumeAvantRepriseFisc?.has ? (
-                            <Box sx={{ mb: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                Reprise (fiscal)
-                              </Typography>
-                              <DataGrid
-                                rows={[
-                                  {
-                                    id: 'resume-fisc',
-                                    date_mise_service: resumeAvantRepriseFisc.dateDebut,
-                                    date_fin_avant_reprise: resumeAvantRepriseFisc.dateFin,
-                                    annee_nombre: resumeAvantRepriseFisc.anneeNombre,
-                                    montant_immo_ht: resumeAvantRepriseFisc.montantImmoHt,
-                                    amort_ant: resumeAvantRepriseFisc.amortAvant,
-                                    dotation_periode: 0,
-                                    cumul_amort: resumeAvantRepriseFisc.amortAvant,
-                                    vnc: resumeAvantRepriseFisc.vnc,
-                                    dot_derogatoire: resumeAvantRepriseFisc.dotDerogatoire ?? 0,
-                                  },
-                                ]}
-                                columns={[
-                                  {
-                                    field: 'date_mise_service',
-                                    headerName: 'Date mise en service',
-                                    width: 170,
-                                    align: 'center',
-                                    headerAlign: 'center',
-                                    valueGetter: (p) => formatDateFrShort(p?.row?.date_mise_service),
-                                  },
-                                  {
-                                    field: 'date_fin_avant_reprise',
-                                    headerName: 'Date fin (veille reprise)',
-                                    width: 190,
-                                    align: 'center',
-                                    headerAlign: 'center',
-                                    valueGetter: (p) => formatDateFrShort(p?.row?.date_fin_avant_reprise),
-                                  },
-                                  {
-                                    field: 'annee_nombre',
-                                    headerName: 'Année Nombre',
-                                    width: 130,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'montant_immo_ht',
-                                    headerName: 'Montant immo HT',
-                                    width: 160,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'amort_ant',
-                                    headerName: 'Amort ant',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'dotation_periode',
-                                    headerName: 'Dot période',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'cumul_amort',
-                                    headerName: 'Cumul amort',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'vnc',
-                                    headerName: 'VNC',
-                                    width: 140,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                  {
-                                    field: 'dot_derogatoire',
-                                    headerName: 'Dot dérogatoire',
-                                    width: 160,
-                                    type: 'number',
-                                    headerAlign: 'right',
-                                    align: 'right',
-                                    renderCell: (p) => formatMoneyFr(p.value),
-                                  },
-                                ]}
-                                loading={ligneLoading}
-                                disableColumnMenu
-                                disableRowSelectionOnClick
-                                hideFooter
-                                density="compact"
-                                sx={{
-                                  height: 98,
-                                  backgroundColor: '#eeeeee',
-                                  borderRadius: 1,
-                                  '& .MuiDataGrid-columnHeaders': {
-                                    backgroundColor: initial.theme,
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                  },
-                                }}
-                              />
-                            </Box>
-                          ) : null}
                           <DataGrid
                             rows={Array.isArray(ligneRowsFisc) ? ligneRowsFisc : []}
                             getRowId={(r) => r.rang || r.id}
-                            columns={[
-                              { field: 'date_mise_service', headerName: 'Date mise en service', width: 170, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_mise_service ? String(p.row.date_mise_service).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
-                              { field: 'date_fin_exercice', headerName: "Date fin de l'exercice", width: 180, align: 'center', headerAlign: 'center', valueGetter: (p) => { const s = p?.row?.date_fin_exercice ? String(p.row.date_fin_exercice).substring(0, 10) : ''; return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : ''; } },
-                              { field: 'annee_nombre', headerName: 'Année Nombre', width: 130, type: 'number', headerAlign: 'right', align: 'right' },
-                              { field: 'montant_immo_ht', headerName: 'Montant HT', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'amort_ant_fisc', headerName: 'Amort Ant', width: 130, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dot_derogatoire', headerName: 'Dot dérogatoire', width: 160, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'dotation_periode_fisc', headerName: 'Dotation fiscale', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'cumul_amort_fisc', headerName: 'Cumul amort', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                              { field: 'vnc', headerName: 'VNC', width: 140, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                            ]}
+                            columns={ligneFiscColumns}
                             loading={ligneLoading}
                             disableColumnMenu
                             disableRowSelectionOnClick
@@ -1935,20 +1489,7 @@ const Immobilisations = () => {
                       <DataGrid
                         rows={journalRows}
                         getRowId={(r) => r.id}
-                        columns={[
-                          {
-                            field: 'dateecriture', headerName: 'Date écriture', width: 120, valueGetter: (p) => {
-                              const s = p?.row?.dateecriture ? String(p.row.dateecriture).substring(0, 10) : '';
-                              return s ? `${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}` : '';
-                            }
-                          },
-                          { field: 'journal', headerName: 'Jnl', width: 50, valueGetter: (p) => p?.row?.journal ?? p?.row?.id_journal ?? '' },
-                          { field: 'piece', headerName: 'Pièce', width: 150 },
-                          { field: 'libelle', headerName: 'Libellé', width: 160 },
-                          { field: 'debit', headerName: 'Débit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                          { field: 'credit', headerName: 'Crédit', width: 120, type: 'number', headerAlign: 'right', align: 'right', renderCell: (p) => formatMoneyFr(p.value) },
-                          { field: 'lettrage', headerName: 'Lettrage', width: 120, valueGetter: (p) => p?.row?.lettrage ?? '' },
-                        ]}
+                        columns={journalColumns}
                         loading={journalLoading}
                         checkboxSelection
                         disableColumnMenu

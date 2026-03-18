@@ -10,7 +10,7 @@ const rubriqueExternesEvcpAnalytiques = db.rubriqueExternesEvcpAnalytiques;
 
 const logoPath = path.join(__dirname, `../../public/logo/${process.env.LOGO_EXPORT}`);
 
-const generateTitleAnalytique = (sheetName, label, dossier, compte, date_debut, date_fin, cellEnd) => {
+const generateTitleAnalytique = (sheetName, label, dossier, compte, date_debut, date_fin, cellEnd, texteDatePeriode) => {
     sheetName.insertRow(1, [label]);
     sheetName.mergeCells(`A1:${cellEnd}1`);
 
@@ -35,7 +35,7 @@ const generateTitleAnalytique = (sheetName, label, dossier, compte, date_debut, 
     };
     sousTitre.height = 25;
 
-    sheetName.insertRow(3, [`Période du : ${date_debut || ''} au ${date_fin || ''}`]);
+    sheetName.insertRow(3, [texteDatePeriode]);
     sheetName.mergeCells(`A3:${cellEnd}3`);
 
     const periodeRow = sheetName.getRow(4);
@@ -59,8 +59,8 @@ const getRubriqueExterneAnalytiqueData = async (id_compte, id_dossier, id_exerci
     })
 }
 
-const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
-    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section, texteDatePeriode, date_debut_periode, date_fin_periode) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section, date_debut_periode, date_fin_periode);
     const bilanActifData = data.filter(val => val.id_etat === 'BILAN_ACTIF');
     const bilanPassifData = data.filter(val => val.id_etat === 'BILAN_PASSIF');
 
@@ -78,7 +78,7 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
         { header: 'Montant net N-1', width: 20 }
     ];
 
-    generateTitleAnalytique(sheetActif, 'Liste des Bilan actif', dossier, compte, date_debut, date_fin, 'E');
+    generateTitleAnalytique(sheetActif, 'Liste des Bilan actif', dossier, compte, date_debut, date_fin, 'E', texteDatePeriode);
 
     sheetActif.addImage(logoId, {
         tl: { x: 10, y: 5 },
@@ -140,7 +140,7 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
         { header: 'Montant N-1', width: 20 }
     ];
 
-    generateTitleAnalytique(sheetPassif, 'Liste des Bilan passif', dossier, compte, date_debut, date_fin, 'C');
+    generateTitleAnalytique(sheetPassif, 'Liste des Bilan passif', dossier, compte, date_debut, date_fin, 'C', texteDatePeriode);
 
     sheetPassif.addImage(logoId, {
         tl: { x: 10, y: 5 },
@@ -194,8 +194,8 @@ const exportBilanAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, 
     });
 }
 
-const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
-    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section, texteDatePeriode, date_debut_periode, date_fin_periode) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section, date_debut_periode, date_fin_periode);
     const crnData = data.filter(val => val.id_etat === 'CRN');
     const sheetCrn = workbook.addWorksheet('Compte de résultats par nature');
 
@@ -210,7 +210,7 @@ const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
         { header: 'Montant net N-1', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } }
     ];
 
-    generateTitleAnalytique(sheetCrn, 'Liste des compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'C');
+    generateTitleAnalytique(sheetCrn, 'Liste des compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'C', texteDatePeriode);
 
     sheetCrn.addImage(logoId, {
         tl: { x: 10, y: 5 },
@@ -259,8 +259,8 @@ const exportCrnAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     }
 }
 
-const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
-    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section, texteDatePeriode, date_debut_periode, date_fin_periode) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section, date_debut_periode, date_fin_periode);
     const crfData = data.filter(val => val.id_etat === 'CRF');
     const sheetCrf = workbook.addWorksheet('Compte de résultats par fonction');
 
@@ -275,7 +275,7 @@ const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
         { header: 'Montant net N-1', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } }
     ];
 
-    generateTitleAnalytique(sheetCrf, 'Liste des compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'C');
+    generateTitleAnalytique(sheetCrf, 'Liste des compte de résultats par fonction', dossier, compte, date_debut, date_fin, 'C', texteDatePeriode);
 
     sheetCrf.addImage(logoId, {
         tl: { x: 10, y: 5 },
@@ -324,8 +324,8 @@ const exportCrfAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, wo
     }
 }
 
-const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
-    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section, texteDatePeriode, date_debut_periode, date_fin_periode) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section, date_debut_periode, date_fin_periode);
     const tftiData = data.filter(val => val.id_etat === 'TFTI');
     const sheetTfti = workbook.addWorksheet('TFTI Méth. Indirecte');
 
@@ -340,7 +340,7 @@ const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
         { header: 'Montant net N-1', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } }
     ];
 
-    generateTitleAnalytique(sheetTfti, 'Liste des Tableau de flux de trésoreries méthode indirecte', dossier, compte, date_debut, date_fin, 'C');
+    generateTitleAnalytique(sheetTfti, 'Liste des Tableau de flux de trésoreries méthode indirecte', dossier, compte, date_debut, date_fin, 'C', texteDatePeriode);
 
     sheetTfti.addImage(logoId, {
         tl: { x: 10, y: 5 },
@@ -385,8 +385,8 @@ const exportTftiAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     sheetTfti.getColumn(2).numFmt = '#,##0.00';
 }
 
-const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section) => {
-    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section);
+const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, id_axe, id_section, texteDatePeriode, date_debut_periode, date_fin_periode) => {
+    const data = await getEtatFinancierAnalytiqueComplet(id_compte, id_dossier, id_exercice, '', id_axe, id_section, date_debut_periode, date_fin_periode);
     const tftdData = data.filter(val => val.id_etat === 'TFTD');
     const sheetTftd = workbook.addWorksheet('TFTD Méth. Directe');
 
@@ -401,7 +401,7 @@ const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
         { header: 'Montant net N-1', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } }
     ];
 
-    generateTitleAnalytique(sheetTftd, 'Liste des Tableau de flux de trésoreries méthode directe', dossier, compte, date_debut, date_fin, 'D');
+    generateTitleAnalytique(sheetTftd, 'Liste des Tableau de flux de trésoreries méthode directe', dossier, compte, date_debut, date_fin, 'D', texteDatePeriode);
 
     sheetTftd.addImage(logoId, {
         tl: { x: 10, y: 5 },
@@ -446,7 +446,7 @@ const exportTftdAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
     sheetTftd.getColumn(2).numFmt = '#,##0.00';
 }
 
-const exportEvcpAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin) => {
+const exportEvcpAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, workbook, dossier, compte, date_debut, date_fin, texteDatePeriode) => {
     const evcpData = await rubriqueExternesEvcpAnalytiques.findAll({
         where: {
             id_compte,
@@ -472,7 +472,7 @@ const exportEvcpAnalytiqueToExcel = async (id_compte, id_dossier, id_exercice, w
         { header: 'Total', width: 20, style: { alignment: { horizontal: 'right', vertical: 'middle' } } }
     ];
 
-    generateTitleAnalytique(sheetEvcp, 'Liste des Etat de variation des capitaux propres', dossier, compte, date_debut, date_fin, 'H');
+    generateTitleAnalytique(sheetEvcp, 'Liste des Etat de variation des capitaux propres', dossier, compte, date_debut, date_fin, 'H', texteDatePeriode);
 
     sheetEvcp.addImage(logoId, {
         tl: { x: 10, y: 5 },

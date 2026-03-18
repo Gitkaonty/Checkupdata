@@ -22,21 +22,23 @@ const ExportEtatFinancierButtonAll = ({ exportAllToPdf, exportAllToExcel }) => {
                 }}
             >
                 <Tooltip title={`Exporter tout`}>
-                    <IconButton
-                        onClick={handleOpen}
-                        variant="contained"
-                        style={{
-                            width: "45px",
-                            height: "45px",
-                            borderRadius: "2px",
-                            border: "2px solid #D32F2F",
-                            backgroundColor: "transparent",
-                            textTransform: "none",
-                            outline: "none",
-                        }}
-                    >
-                        <CiExport style={{ width: 25, height: 25, color: "#D32F2F" }} />
-                    </IconButton>
+                    <span>
+                        <IconButton
+                            onClick={handleOpen}
+                            variant="contained"
+                            style={{
+                                width: "45px",
+                                height: "45px",
+                                borderRadius: "2px",
+                                border: "2px solid #D32F2F",
+                                backgroundColor: "transparent",
+                                textTransform: "none",
+                                outline: "none",
+                            }}
+                        >
+                            <CiExport style={{ width: 25, height: 25, color: "#D32F2F" }} />
+                        </IconButton>
+                    </span>
                 </Tooltip>
                 <Menu
                     anchorEl={anchorEl}

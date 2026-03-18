@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, Box, Tab, IconButton, Button, Switch, Checkbox, Autocomplete, TextField, Tooltip, InputAdornment } from '@mui/material';
+import { Typography, Stack, Box, Tab, IconButton, Switch, Checkbox, Autocomplete, TextField, InputAdornment } from '@mui/material';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -23,7 +23,6 @@ import VirtualTableModifiableExport from '../../../componentsTools/DeclarationEb
 import { ListItemIcon, ListItemText } from '@mui/material';
 import { FaFilePdf, FaFileExcel } from 'react-icons/fa';
 import { CiExport } from "react-icons/ci";
-import { IoMdRefreshCircle } from "react-icons/io";
 import { FiSearch } from "react-icons/fi";
 
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
@@ -109,7 +108,6 @@ export default function ExportBalance() {
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
     const [listePeriode, setListePeriode] = useState([]);
-    const [listeSituation, setListeSituation] = useState([]);
 
     const [axesData, setAxesData] = useState([]);
     const [sectionsData, setSectionsData] = useState([]);
@@ -265,7 +263,6 @@ export default function ExportBalance() {
                 setListeExercice(resData.list);
 
                 const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-                setListeSituation(exerciceNId);
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
@@ -277,30 +274,10 @@ export default function ExportBalance() {
         })
     }
 
-    //Récupérer la liste des exercices
-    const GetListeSituation = (id) => {
-        axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                const list = resData.list;
-                setListeSituation(resData.list);
-                // if (list.length > 0) {
-                //     setSelectedPeriodeId(list[0].id);
-                // }
-            } else {
-                setListeSituation([]);
-                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-                return
-            }
-        })
-    }
-
     //Choix exercice
     const handleChangeExercice = (exercice_id) => {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
-        setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        // Laisser useEffect déclencher le chargement (évite double appels)
     }
 
     const handleChangePeriod = (period_id) => {
@@ -312,11 +289,7 @@ export default function ExportBalance() {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
-            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
-            // Laisser useEffect déclencher le chargement (évite double appels)
-        } else if (choix === 1) {
-            GetListeSituation(selectedExerciceId);
         }
     }
 
@@ -354,31 +327,6 @@ export default function ExportBalance() {
             });
         }
     }
-
-    // const actualizeBalance = async () => {
-    //     try {
-    //         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
-
-    //         const response = await axios.post('/administration/exportBalance/actualizeBalance', {
-    //             id_compte: Number(compteId),
-    //             id_exercice: Number(selectedExerciceId),
-    //             id_dossier: Number(fileId),
-    //             type,
-    //             id_axe: Number(selectedAxeId),
-    //             id_sections: id_sectionMapped
-    //         });
-
-    //         if (response?.data?.state) {
-    //             toast.success(response?.data?.message);
-    //             setIsRefreshed(prev => !prev);
-    //         } else {
-    //             toast.error(response?.data?.message || response?.data?.msg);
-    //         }
-    //     } catch (err) {
-    //         toast.error("Erreur lors de l'actualisation");
-    //         console.error(err);
-    //     }
-    // };
 
     useEffect(() => {
         if (!compteId || !fileId || !selectedExerciceId) return;
@@ -565,8 +513,6 @@ export default function ExportBalance() {
                                         disabled={selectedPeriodeChoiceId === 0}
                                         label={"valSelect"}
                                         onChange={(e) => {
-                                            // handleChangeDateIntervalle(e.target.value)
-                                            // setSelectedPeriodeId(e.target.value);
                                             handleChangePeriod(e.target.value)
                                         }}
                                         sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}

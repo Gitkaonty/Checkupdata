@@ -1,12 +1,7 @@
-#root {
-  max-width: 2280px;
-  margin: -10px;
-  padding: 0.5rem;
-  text-align: center;
-  background-color:white;
-  width:2000px;
-  height: auto;
-  display: flex;
-  align-content: stretch;
-}
-
+/* #root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: block;
+} */

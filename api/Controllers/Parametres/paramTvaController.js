@@ -111,6 +111,8 @@ const paramTvaAdd = async (req, res) => {
       where: { id: idCode, id_dossier: idDossier }
     });
 
+    // return console.log('testIfExist : ', testIfExist);
+
     if (testIfExist.length === 0) {
       const addCode = await paramtvas.create({
         id_compte: idCompte,
@@ -198,6 +200,8 @@ async function listJournalsByCompte(req, res) {
     if (mois) where.decltvamois = Number(mois);
     if (annee) where.decltvaannee = Number(annee);
     // where.id_immob = { [Op.notIn]: [0, null] };
+
+    console.log('where : ', where);
 
     const rows = await Journals.findAll({
       where,

@@ -41,6 +41,7 @@ import VirtualTableEbilanEtatFinaciereAnalytique from '../../../componentsTools/
 import VirtualTableEvcpEtatFinancierAnalytique from '../../../componentsTools/EtatFinancierAnalytique/virtualTableEvcpEtatFinancierAnalytique';
 
 import usePermission from '../../../../hooks/usePermission';
+import ProgressWithMessage from '../../../componentsTools/Progress/ProgressWithMessage';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -273,7 +274,6 @@ export default function EtatFinancierAnalytique() {
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
     const [selectedPeriodeChoiceId, setSelectedPeriodeChoiceId] = useState(0);
     const [listeExercice, setListeExercice] = useState([]);
-    const [listeSituation, setListeSituation] = useState([]);
     const [listePeriode, setListePeriode] = useState([]);
     const [deviseParDefaut, setDeviseParDefaut] = useState('MGA');
 
@@ -303,6 +303,17 @@ export default function EtatFinancierAnalytique() {
     const [isRefreshed, setIsRefreshed] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+
+    const clearData = () => {
+        setBilanActifData([]);
+        setBilanPassifData([]);
+        setCrnData([]);
+        setCrfData([]);
+        setTftdData([]);
+        setTftiData([]);
+        setEvcpData([]);
+    }
 
     const theme = useTheme();
 
@@ -317,8 +328,6 @@ export default function EtatFinancierAnalytique() {
     const handleChangeExercice = (exercice_id) => {
         setSelectedExerciceId(exercice_id);
         setSelectedPeriodeChoiceId("0");
-        setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
-        setSelectedPeriodeId(exercice_id);
 
         getVerouillageEtatFinancierAnalytique(compteId, fileId, exercice_id);
     }
@@ -343,12 +352,7 @@ export default function EtatFinancierAnalytique() {
         setSelectedPeriodeChoiceId(choix);
 
         if (choix === 0) {
-            setListeSituation(listeExercice?.filter((item) => item.id === selectedExerciceId));
             setSelectedPeriodeId(0);
-
-            getVerouillageEtatFinancier(compteId, fileId, selectedExerciceId);
-        } else if (choix === 1) {
-            GetListeSituation(selectedExerciceId);
         }
     }
 
@@ -432,12 +436,6 @@ export default function EtatFinancierAnalytique() {
             setButtonPassifVariant('contained');
         }
     }
-    //refresh table BILAN
-    const refreshBILAN = () => {
-        setTableToRefresh('BILAN');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau du Bilan?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de BILAN
     const lockTableBILAN = () => {
@@ -449,13 +447,6 @@ export default function EtatFinancierAnalytique() {
     //TABLEAU CRN
     //===========================================================================================
 
-    //refresh table CRN
-    const refreshCRN = () => {
-        setTableToRefresh('CRN');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau CRN?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de CRN
     const lockTableCRN = () => {
         lockEtatFinancierAnalytique(compteId, fileId, selectedPeriodeId, 'CRN', verrCrn);
@@ -465,13 +456,6 @@ export default function EtatFinancierAnalytique() {
     //===========================================================================================
     //TABLEAU CRF
     //===========================================================================================
-
-    //refresh table CRF
-    const refreshCRF = () => {
-        setTableToRefresh('CRF');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau CRF?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de CRF
     const lockTableCRF = () => {
@@ -483,13 +467,6 @@ export default function EtatFinancierAnalytique() {
     //TABLEAU TFTD
     //===========================================================================================
 
-    //refresh table TFTD
-    const refreshTFTD = () => {
-        setTableToRefresh('TFTD');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau TFTD?`);
-        handleOpenDialogConfirmRefresh();
-    }
-
     //verouiller ou non le tableau de TFTD
     const lockTableTFTD = () => {
         lockEtatFinancierAnalytique(compteId, fileId, selectedPeriodeId, 'TFTD', verrTftd);
@@ -499,13 +476,6 @@ export default function EtatFinancierAnalytique() {
     //===========================================================================================
     //TABLEAU TFTI
     //===========================================================================================
-
-    //refresh table TFTI
-    const refreshTFTI = () => {
-        setTableToRefresh('TFTI');
-        setMsgRefresh(`Voulez-vous vraiment actualiser les calculs pour le tableau TFTI?`);
-        handleOpenDialogConfirmRefresh();
-    }
 
     //verouiller ou non le tableau de TFTI
     const lockTableTFTI = () => {
@@ -559,11 +529,9 @@ export default function EtatFinancierAnalytique() {
                 setListeExercice(resData.list);
 
                 const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-                setListeSituation(exerciceNId);
 
                 setSelectedExerciceId(exerciceNId[0].id);
                 setSelectedPeriodeChoiceId(0);
-                setSelectedPeriodeId(exerciceNId[0].id);
 
                 getVerouillageEtatFinancierAnalytique(compteId, id, exerciceNId[0].id);
             } else {
@@ -604,35 +572,18 @@ export default function EtatFinancierAnalytique() {
         });
     }
 
-    //Récupérer la liste des exercices
-    const GetListeSituation = (id) => {
-        axios.get(`/paramExercice/listeSituation/${id}`).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                const list = resData.list;
-                setListeSituation(resData.list);
-                if (list.length > 0) {
-                    setSelectedPeriodeId(list[0].id);
-                }
-            } else {
-                setListeSituation([]);
-                //toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
-                return
-            }
-        })
-    }
-
     const handleChangePeriod = (period_id) => {
         setSelectedPeriodeId(period_id);
     }
 
-    const getEtatFinancierAnalytiqueGlobal = () => {
+    const getEtatFinancierAnalytiqueGlobal = async () => {
+        setIsLoadingData(true);
         const periodeData = listePeriode.find(val => Number(val.id) === selectedPeriodeId);
         const date_debut_periode = periodeData?.date_debut;
         const date_fin_periode = periodeData?.date_fin;
 
         const id_sectionMapped = selectedSectionsId.map(val => Number(val.id));
-        axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytique`, {
+        await axios.post(`/administration/etatFinancierAnalytique/getEtatFinancierAnalytique`, {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(selectedExerciceId),
@@ -655,6 +606,7 @@ export default function EtatFinancierAnalytique() {
                     toast.error(resData.message);
                 }
             })
+        setIsLoadingData(false);
     }
 
     // Générer une tableau en PDF ou Excel
@@ -773,7 +725,10 @@ export default function EtatFinancierAnalytique() {
     }, []);
 
     useEffect(() => {
-        if (canView && fileId && compteId && selectedExerciceId && selectedAxeId && selectedSectionsId) {
+        if (selectedSectionsId.length === 0) {
+            clearData();
+        }
+        if (canView && fileId && compteId && selectedExerciceId && selectedAxeId && selectedSectionsId.length > 0) {
             getEtatFinancierAnalytiqueGlobal();
             getListeDevises();
         }
@@ -1036,6 +991,20 @@ export default function EtatFinancierAnalytique() {
                                         <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="evcp" value="6" />
                                     </TabList>
                                 </Box>
+
+                                {
+                                    isLoadingData && (
+                                        <Stack
+                                            sx={{
+                                                mt: 1
+                                            }}
+                                        >
+                                            <ProgressWithMessage
+                                                text={'Récupération en cours'}
+                                            />
+                                        </Stack>
+                                    )
+                                }
 
                                 {/* BILAN */}
                                 <TabPanel value="1">

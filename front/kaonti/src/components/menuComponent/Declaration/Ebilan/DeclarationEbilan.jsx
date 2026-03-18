@@ -70,6 +70,7 @@ import ImportEbilanButton from '../../../componentsTools/DeclarationEbilan/Butto
 import usePermission from '../../../../hooks/usePermission';
 
 import useAxiosPrivate from '../../../../../config/axiosPrivate';
+import ProgressWithMessage from '../../../componentsTools/Progress/ProgressWithMessage';
 
 const associeColumn = [
     {
@@ -1258,6 +1259,7 @@ export default function DeclarationEbilan() {
     const [nbrAnomalieSE, setNbrAnomalieSE] = useState(0);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     const [openDialogGenerateAuto, setOpenDialogGenerateAuto] = useState(false);
     const [showPopupImportCsv, setShowPopupImportCsv] = useState(false);
@@ -2235,8 +2237,9 @@ export default function DeclarationEbilan() {
         }
     }
 
-    const recupRubriqueGlobal = (compteId, fileId, exerciceId) => {
-        axios.post('/declaration/ebilan/getEbilan', {
+    const recupRubriqueGlobal = async (compteId, fileId, exerciceId) => {
+        setIsLoadingData(true);
+        await axios.post('/declaration/ebilan/getEbilan', {
             id_compte: Number(compteId),
             id_dossier: Number(fileId),
             id_exercice: Number(exerciceId)
@@ -2293,10 +2296,9 @@ export default function DeclarationEbilan() {
                     setNbrAnomalieSAD(resData.etatglobal.find((item) => item.code === 'SAD')?.nbranomalie);
                     setNbrAnomalieSDR(resData.etatglobal.find((item) => item.code === 'SDR')?.nbranomalie);
                     setNbrAnomalieSE(resData.etatglobal.find((item) => item.code === 'SE')?.nbranomalie);
-
-                    toast.success('Données récupérées avec succès');
                 }
             });
+        setIsLoadingData(false);
     }
 
     //Actualisation d'un tableau
@@ -2826,7 +2828,7 @@ export default function DeclarationEbilan() {
                         <Stack width={"100%"} height={"100%"} spacing={1} alignItems={"flex-start"} alignContent={"flex-start"} justifyContent={"stretch"}>
                             <Typography variant='h6' sx={{ color: "black" }} align='left'>Déclaration - Ebilan</Typography>
 
-                            <Stack width={"100%"} height={"80px"} spacing={4} alignItems={"left"} alignContent={"center"} direction={"row"} style={{ marginLeft: "0px", marginTop: "20px" }}>
+                            <Stack width={"100%"} height={"80px"} spacing={4} alignItems={"left"} alignContent={"center"} justifyContent={"space-between"} direction={"row"} style={{ marginLeft: "0px", marginTop: "20px" }}>
                                 <Stack
                                     direction={'row'}
                                 >
@@ -2838,7 +2840,7 @@ export default function DeclarationEbilan() {
                                             value={selectedExerciceId}
                                             label={"valSelect"}
                                             onChange={(e) => handleChangeExercice(e.target.value)}
-                                            sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
+                                            sx={{ display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
                                             MenuProps={{
                                                 disableScrollLock: true
                                             }}
@@ -2849,53 +2851,13 @@ export default function DeclarationEbilan() {
                                             }
                                         </Select>
                                     </FormControl>
-
-                                    <FormControl variant="standard" sx={{ m: 1, minWidth: 150 }}>
-                                        <InputLabel id="demo-simple-select-standard-label">Période</InputLabel>
-                                        <Select
-                                            labelId="demo-simple-select-standard-label"
-                                            id="demo-simple-select-standard"
-                                            value={selectedPeriodeChoiceId}
-                                            label={"valSelect"}
-                                            onChange={(e) => handleChangePeriode(e.target.value)}
-                                            sx={{ width: "150px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                                            MenuProps={{
-                                                disableScrollLock: true
-                                            }}
-                                        >
-                                            <MenuItem value={0}>Toutes</MenuItem>
-                                            <MenuItem value={1}>Situations</MenuItem>
-                                        </Select>
-                                    </FormControl>
-
-                                    <FormControl variant="standard" sx={{ m: 1, minWidth: 250 }}>
-                                        <InputLabel id="demo-simple-select-standard-label">Du</InputLabel>
-                                        <Select
-                                            labelId="demo-simple-select-standard-label"
-                                            id="demo-simple-select-standard"
-                                            value={selectedPeriodeId}
-                                            label={"valSelect"}
-                                            onChange={(e) => handleChangeDateIntervalle(e.target.value)}
-                                            sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                                            MenuProps={{
-                                                disableScrollLock: true
-                                            }}
-                                        >
-                                            {listeSituation?.map((option) => (
-                                                <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
-                                            ))
-                                            }
-                                        </Select>
-                                    </FormControl>
                                 </Stack>
                                 {
-                                    !["1", "2", "3"].includes(value) && listeExercice && listeExercice.length > 0 && selectedExerciceId && selectedExerciceId !== 0 && (
-                                        <ExportEbilanButtonAll
-                                            exportAllToPdf={() => exportAllFile("PDF")}
-                                            exportAllToExcel={() => exportAllFile("EXCEL")}
-                                            exportAllToXML={() => exportAllFile("XML")}
-                                        />
-                                    )
+                                    <ExportEbilanButtonAll
+                                        exportAllToPdf={() => exportAllFile("PDF")}
+                                        exportAllToExcel={() => exportAllFile("EXCEL")}
+                                        exportAllToXML={() => exportAllFile("XML")}
+                                    />
                                 }
 
                             </Stack>
@@ -2925,6 +2887,20 @@ export default function DeclarationEbilan() {
                                             <Tab disabled={!listeExercice || listeExercice.length === 0 || !selectedExerciceId || selectedExerciceId === 0} style={{ textTransform: 'none', outline: 'none', border: 'none', }} label="note" value="19" />
                                         </TabList>
                                     </Box>
+
+                                    {
+                                        isLoadingData && (
+                                            <Stack
+                                                sx={{
+                                                    mt: 1
+                                                }}
+                                            >
+                                                <ProgressWithMessage
+                                                    text={'Récupération en cours'}
+                                                />
+                                            </Stack>
+                                        )
+                                    }
 
                                     <TabPanel value="1">
                                         <Stack
