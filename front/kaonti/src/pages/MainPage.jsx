@@ -25,10 +25,10 @@ import useLogout from '../hooks/useLogout';
 import { BsEscape } from "react-icons/bs";
 import { TbPasswordUser } from "react-icons/tb";
 import humburgerMenu from '../components/humburgerMenu/menuContent';
-import Administration from '../components/humburgerMenu/subMenu/Administration';
-import Declaration from '../components/humburgerMenu/subMenu/Declaration';
-import Parametrages from '../components/humburgerMenu/subMenu/Parametrages';
-import Revisions from '../components/humburgerMenu/subMenu/Revisions';
+// import Administration from '../components/humburgerMenu/subMenu/Administration';
+// import Declaration from '../components/humburgerMenu/subMenu/Declaration';
+// import Parametrages from '../components/humburgerMenu/subMenu/Parametrages';
+// import Revisions from '../components/humburgerMenu/subMenu/Revisions';
 import useAuth from '../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import { useLocation } from "react-router-dom";
@@ -38,7 +38,7 @@ import { RiAccountBoxLine } from "react-icons/ri";
 import PopupDisconnectCompte from '../components/menuComponent/Compte/PopupDisconnectCompte';
 import PopupPasswordChange from '../components/menuComponent/Compte/PopupPasswordChange';
 import axios from '../../config/axios';
-
+import Layout from '../components/componentsTools/Home/Layout';
 const drawerWidth = 240;
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -369,15 +369,15 @@ export default function HomePage() {
 
       <Box
         sx={{
-          display: "flex",
-          width: open ? "100vw" : "97.8vw",
+          // display: "block",
+          width: "100%",
           height: "100vh",
           overflowX: open ? "hidden" : "",
           overflowY: open ? "hidden" : ""
         }}
       >
         <CssBaseline />
-        <AppBar position="fixed" open={open} style={{ height: "30px" }}>
+        {/* <AppBar position="fixed" open={open} style={{ height: "30px" }}>
           <Toolbar style={{ backgroundColor: "#010122", alignContent: 'flex-start', alignItems: "center" }} variant="dense">
 
             <IconButton
@@ -508,9 +508,11 @@ export default function HomePage() {
             </Stack>
 
           </Toolbar>
-        </AppBar>
+        </AppBar> */}
 
-        <Drawer
+        <Layout />
+
+        {/* <Drawer
           variant="permanent"
           open={open}
           style={{
@@ -577,10 +579,10 @@ export default function HomePage() {
               </ListItem>
             ))}
           </List>
-        </Drawer>
+        </Drawer> */}
 
         {/* SOUS MENU */}
-        <Box
+        {/* <Box
           component="main"
           sx={{
             flexGrow: 1,
@@ -658,7 +660,15 @@ export default function HomePage() {
               </Box>
             </Box>
           </div>
-        </Box>
+        </Box> */}
+        {/* <Box
+          sx={{
+            position: 'relative',
+            zIndex: 0,
+            width: "100%",
+          }}>
+          <Outlet />
+        </Box> */}
       </Box>
     </>
   );
