@@ -137,7 +137,7 @@ export default function AddNewFile({ confirmationState }) {
                 backgroundColor: '#F8FAFC',
             }}
         >
-            <MainDossier listePortefeuille={listePortefeuille} listPays={listPays} listModel={listModel} compteId={Number(compteId)} type={'Ajout'} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} listeDossier={listeDossier} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} />
+            <MainDossier listePortefeuille={listePortefeuille} listPays={listPays} listModel={listModel} compteId={Number(compteId)} type={'ajout'} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} listeDossier={listeDossier} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} />
         </Box>
     )
 }
