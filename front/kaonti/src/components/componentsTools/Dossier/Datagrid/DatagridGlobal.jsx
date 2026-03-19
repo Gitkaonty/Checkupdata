@@ -9,17 +9,24 @@ import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import SaveIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelIcon from '@mui/icons-material/HighlightOff';
 
-const DatagridGlobal = ({ setFieldValue, setList, list, columnHeader, setEditableRow, name, newRow }) => {
+const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHeader, setEditableRow, name, newRow, onSaveRow, onDeleteRow }) => {
     const apiRef = useGridApiRef();
     const [selectedRow, setSelectedRow] = useState([]);
     const [selectedRowId, setSelectedRowId] = useState([]);
     const [rowModesModel, setRowModesModel] = useState({});
     const [openDialogDelete, setOpenDialogDelete] = useState(false);
 
-    const handleSaveClick = (id) => () => {
-        setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
-        toast.success("Informations sauvegardées");
-        setEditableRow(false);
+    const handleSaveClick = (id) => async () => {
+        const rowToSave = list.find(r => r.id === id);
+        if (onSaveRow) {
+            await onSaveRow(rowToSave);
+            setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
+            setEditableRow(false);
+        } else {
+            setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
+            toast.success("Informations sauvegardées");
+            setEditableRow(false);
+        }
     };
 
     const handleEditClick = (id) => () => {
@@ -32,11 +39,17 @@ const DatagridGlobal = ({ setFieldValue, setList, list, columnHeader, setEditabl
         setOpenDialogDelete(true);
     }
 
-    const deleteAssocieRow = (value) => {
+    const deleteAssocieRow = async (value) => {
         if (value === true) {
-            setList(list.filter((row) => row.id !== selectedRowId[0]));
-            setOpenDialogDelete(false);
-            toast.success('Ligne supprimée avec succès');
+            if (onDeleteRow) {
+                await onDeleteRow(selectedRowId[0]);
+                setList(list.filter((row) => row.id !== selectedRowId[0]));
+                setOpenDialogDelete(false);
+            } else {
+                setList(list.filter((row) => row.id !== selectedRowId[0]));
+                setOpenDialogDelete(false);
+                toast.success('Ligne supprimée avec succès');
+            }
         } else {
             setOpenDialogDelete(false);
         }
@@ -217,7 +230,7 @@ const DatagridGlobal = ({ setFieldValue, setList, list, columnHeader, setEditabl
             <Box sx={{ bgcolor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', p: 2 }}>
                 <Stack
                     width={"100%"}
-                    height={"500px"}
+                    height={datagridHeight}
                 >
                     <DataGrid
                         apiRef={apiRef}
