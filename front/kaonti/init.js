@@ -10,7 +10,8 @@ export const init = [
         button_abort_color: '#31511E',
         button_exit_color: "#E21818",
         white: '#fefdfe',
-        backgroundColor: '#f1f3f7'
+        backgroundColor: '#F8FAFC',
+        datagridHeaderColor: '#0A192F'
     }
 ]
 

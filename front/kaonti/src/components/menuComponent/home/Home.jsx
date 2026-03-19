@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import { init } from '../../../../init';
 import toast from 'react-hot-toast';
 import { DataGrid, frFR } from '@mui/x-data-grid';
@@ -31,7 +31,7 @@ import { FaEye } from "react-icons/fa";
 import { FaLock, FaLockOpen } from "react-icons/fa";
 
 const Transition = React.forwardRef(function Transition(props, ref) {
-  return <Slide direction="right" ref={ref} {...props} />;
+  return <Slide direction="up" ref={ref} {...props} />;
 });
 
 export default function Home() {
@@ -71,29 +71,6 @@ export default function Home() {
       setListeDossier(resData.fileList);
       canView ? setFinalListeDossier(resData.fileList) : setFinalListeDossier([]);
     })
-  }
-
-  //Filtrer la liste des dossiers
-  const HandleFindClick = () => {
-    if (findText.trim() === '') {
-      setFinalListeDossier(listeDossier);
-    } else {
-      const filterValue = findText.toLowerCase();
-
-      const filtered = listeDossier.filter(dossier =>
-        dossier.dossier.toLowerCase().includes(filterValue)
-      );
-
-      setFinalListeDossier(filtered);
-    }
-  };
-
-  //Restaurer la liste des dossiers si le champ de filtre est vide
-  const handleChangeFindText = (e) => {
-    setFindText(e.target.value)
-    if (e.target.value === '') {
-      setFinalListeDossier(listeDossier);
-    }
   }
 
   //Gestion fenetre modale de création d'un nouveau dossier
@@ -422,9 +399,22 @@ export default function Home() {
           open={true}
           onClose={handleDialogClose}
           TransitionComponent={Transition}
+          PaperProps={{
+            sx: {
+              backgroundColor: 'transparent',
+              overflow: 'hidden'
+            }
+          }}
         >
-          <AppBar sx={{ position: 'relative' }} style={{ backgroundColor: initial.theme }}>
-            <Toolbar style={{ backgroundColor: initial.theme }}>
+          <AppBar sx={{ position: 'fixed' }}
+          // style={{ backgroundColor: initial.theme }}
+          >
+            <Toolbar style={{
+              transition: 'all 0.3s ease',
+              background: 'rgba(11, 17, 32, 0.8)',
+              backdropFilter: 'blur(5px)',
+              boxShadow: 'none',
+            }}>
               <Stack
                 sx={{ width: "100%" }}
                 direction={'row'}
@@ -441,7 +431,7 @@ export default function Home() {
                   onClick={handleDialogClose}
                   aria-label="close"
                   style={{
-                    backgroundColor: 'red',
+                    // backgroundColor: 'red',
                     outline: 'none'
                   }}
                 >
@@ -452,13 +442,20 @@ export default function Home() {
           </AppBar>
 
           <Stack
-            style={{
-              // backgroundColor: initial.white,
-              backgroundColor: initial.backgroundColor,
+            sx={{
               height: '100%',
+              pt: '64px',
+              overflow: 'hidden'
             }}
           >
-            <AddNewFile confirmationState={handleCloseAfterNewFileCreation} />
+            <Box
+              sx={{
+                flex: 1,
+                overflowY: 'auto',
+              }}
+            >
+              <AddNewFile confirmationState={handleCloseAfterNewFileCreation} />
+            </Box>
           </Stack>
         </Dialog>
         : null
@@ -482,7 +479,6 @@ export default function Home() {
             style={{
               paddingBlock: '15px',
               paddingInline: '20px',
-              backgroundColor: 'white',
               borderRadius: "10px",
               backgroundColor: initial.white
             }}
@@ -517,7 +513,6 @@ export default function Home() {
             style={{
               paddingBlock: '30px',
               paddingInline: '20px',
-              backgroundColor: 'white',
               borderRadius: "10px",
               height: '120px',
               backgroundColor: initial.white
@@ -557,7 +552,7 @@ export default function Home() {
           <Stack
             width={"100%"}
             spacing={1}
-            backgroundColor={"white"}
+            // backgroundColor={"white"}
             padding={"20px"}
             borderRadius={"10px"}
             style={{
