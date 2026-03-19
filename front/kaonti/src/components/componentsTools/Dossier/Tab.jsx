@@ -191,7 +191,7 @@ const InfoSocieteTabContent = ({ values, setFieldValue, listePortefeuille, listP
     </Stack>
 );
 
-const ComptabiliteTabContent = ({ listModel, values, setFieldValue, }) => (
+const ComptabiliteTabContent = ({ listModel, values, setFieldValue, type }) => (
     <Box sx={{ bgcolor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', p: 4 }}>
         <Grid container spacing={1.5}>
             <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 2 }}>Général</Typography></Grid>
@@ -218,17 +218,43 @@ const ComptabiliteTabContent = ({ listModel, values, setFieldValue, }) => (
             <FormikTextField type='number' name='longueurcptstd' label="Compte standard" width="140px" inputProps={{ min: 1, max: 50 }} />
             <FormikTextField type='number' name='longueurcptaux' label="Compte auxiliaire" width="140px" inputProps={{ min: 1, max: 50 }} />
 
+            {
+                type === 'modification' && (
+                    <>
+                        <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4, mt: -5 }} /></Grid>
+                        <FormikAutocomplete
+                            name='plancomptable'
+                            label="Devise par défaut"
+                            type="select"
+                            width="250px"
+                            options={listModel.map(item => ({
+                                value: item.id,
+                                label: item.nom
+                            }))}
+                            values={values}
+                            setFieldValue={setFieldValue}
+                        />
+                    </>
+                )
+            }
+
             <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4, mt: -5 }} /></Grid>
             <Grid item >
-                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', mb: 0.5, textTransform: 'uppercase' }}>Dévise par défaut</Typography>
-                <FormikRadioGroup
-                    name="devisepardefaut"
-                    row
-                    options={[
-                        { value: 'MGA', label: 'MGA' },
-                        { value: 'Autres', label: 'Autres' }
-                    ]}
-                />
+                {
+                    type === 'ajout' && (
+                        <>
+                            <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', mb: 0.5, textTransform: 'uppercase' }}>Dévise par défaut</Typography>
+                            <FormikRadioGroup
+                                name="devisepardefaut"
+                                row
+                                options={[
+                                    { value: 'MGA', label: 'MGA' },
+                                    { value: 'Autres', label: 'Autres' }
+                                ]}
+                            />
+                        </>
+                    )
+                }
             </Grid>
             <Grid item >
                 <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', mb: 0.5, textTransform: 'uppercase' }}>Système de tenue</Typography>
@@ -241,7 +267,17 @@ const ComptabiliteTabContent = ({ listModel, values, setFieldValue, }) => (
                     ]}
                 />
             </Grid>
-
+            <Grid item >
+                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', mb: 0.5, textTransform: 'uppercase' }}>Base de calcul de l'amort</Typography>
+                <FormikRadioGroup
+                    name="immo_amort_base_jours"
+                    row
+                    options={[
+                        { value: '365', label: '365' },
+                        { value: '360', label: '360' }
+                    ]}
+                />
+            </Grid>
         </Grid>
     </Box>
 );
@@ -263,11 +299,13 @@ const FiscalTabContent = () => (
             </Grid>
             <FormikTextField name='tauxir' type='number' inputProps={{ min: 1, max: 50 }} label="Taux IR" width="120px" />
             <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4 }} /></Grid>
-            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 1 }}>Paramétrages minimum de perception</Typography></Grid>
+            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 0, mt: -3 }}>Paramétrages minimum de perception</Typography></Grid>
             <FormikTextField name='pourcentageca' type='number' inputProps={{ min: 0, max: 50 }} label="Pourcentage CA" width="150px" />
             <FormikTextField name='montantmin' label="Montant min" type='number' inputProps={{ min: 0, max: 50 }} width="150px" />
-            <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4 }} /></Grid>
-            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 1 }}>Taxe sur la valeur ajoutée (TVA)</Typography></Grid>
+            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 0, mt: 1 }}>Impôt synthétique intermittent (ISI)</Typography></Grid>
+            <FormikTextField name='compteisi' inputProps={{ min: 0, max: 50 }} label="Compte ISI" width="120px" />
+            <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4, mb: 0, mt: -2 }} /></Grid>
+            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 1, mb: -1, mt: -0 }}>Taxe sur la valeur ajoutée (TVA)</Typography></Grid>
             <Grid item xs={12}>
                 <FormikCheckbox name="assujettitva" label="Assujettie à la TVA" />
             </Grid>

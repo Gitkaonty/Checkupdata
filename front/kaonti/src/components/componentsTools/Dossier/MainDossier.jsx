@@ -134,7 +134,8 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
         pays: row?.pays || '',
         avecMotDePasse: row?.avecMotDePasse ?? false,
         motDePasse: row?.motDePasse || '',
-        motDePasseConfirmation: row?.motDePasseConfirmation || ''
+        motDePasseConfirmation: row?.motDePasseConfirmation || '',
+        compteisi: row?.compteisi || '',
     };
 
     return (
@@ -209,7 +210,7 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
 
                                 <Box>
                                     {activeTab === 'Infos société' && <InfoSocieteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listePortefeuille={listePortefeuille} listPays={listPays} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} />}
-                                    {activeTab === 'Comptabilité' && <ComptabiliteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listModel={listModel} />}
+                                    {activeTab === 'Comptabilité' && <ComptabiliteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listModel={listModel} type={type} />}
                                     {activeTab === 'Fiscales' && <FiscalTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} />}
                                     {activeTab === 'Associés' && <AssociatesTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listAssocie={listAssocie} setListAssocie={setListAssocie} />}
                                     {activeTab === 'Filiales' && <FilialeTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listFiliale={listFiliale} setListFiliale={setListFiliale} />}
@@ -576,6 +577,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                 setEditableRow={setEditableRowAssocie}
                 name={'listeAssocies'}
                 newRow={createNewRow}
+                datagridHeight={'500px'}
             />
         </Stack>
     )
@@ -832,6 +834,7 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
             setEditableRow={setEditableRowFiliale}
             name={'listeFiliales'}
             newRow={createNewRow}
+            datagridHeight={'500px'}
         />
     )
 };
@@ -1028,6 +1031,14 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
         }
     ];
 
+    const saveRow = (value) => {
+        console.log('value : ', value);
+    }
+
+    const deleteRow = (id) => {
+        console.log('id : ', id);
+    }
+
     const createNewRow = () => ({
         id: null,
         banque: '',
@@ -1046,6 +1057,9 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             setEditableRow={setEditableDomB}
             name={'listeDomBank'}
             newRow={createNewRow}
+            datagridHeight={'500px'}
+        // onSaveRow={saveRow}
+        // onDeleteRow={deleteRow}
         />
     )
 };
@@ -1127,6 +1141,7 @@ const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, set
             setEditableRow={setEditableConsolidation}
             name={'listeConsolidation'}
             newRow={createNewRow}
+            datagridHeight={'500px'}
         />
     )
 };
