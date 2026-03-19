@@ -282,11 +282,11 @@ const FormikAutocompleteMultiple = ({ name, label, width, options, values, setFi
                                     borderColor: '#3B82F6',
                                 },
                             }}
-                        // placeholder="Sélectionner..."
                         />
                     )}
                 />
             </Box>
+            <ErrorMessage name={name} component="div" style={{ color: 'red', fontSize: '10px', marginTop: 2 }} />
         </Grid>
     );
 };
