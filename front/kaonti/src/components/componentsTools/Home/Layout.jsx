@@ -178,7 +178,8 @@ const Layout = () => {
                 width: '100%',
                 height: '100%',
                 bgcolor: initial.backgroundColor,
-                overflowX: 'hidden'
+                overflowX: 'hidden',
+                overflow: 'hidden'
             }}
         >
 
@@ -434,12 +435,16 @@ const Layout = () => {
 
             <Box
                 sx={{
-                    position: 'relative',
-                    zIndex: 200,
-                    width: `calc(100% - ${collapsedWidth}px)`,
-                    marginLeft: '90px',
-                    marginTop: '60px',
-                }}>
+                    position: 'absolute',
+                    top: '64px',
+                    left: isCollapsed ? collapsedWidth : drawerWidth,
+                    right: 0,
+                    bottom: 0,
+                    overflowY: 'auto',
+                    px: 0,
+                    py: 0,
+                }}
+            >
                 <Outlet />
             </Box>
 
