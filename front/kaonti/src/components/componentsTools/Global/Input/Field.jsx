@@ -252,9 +252,9 @@ const FormikAutocompleteMultiple = ({ name, label, width, options, values, setFi
                     options={options}
                     getOptionLabel={(option) => option.nom}
                     disableCloseOnSelect
-                    value={options.filter(opt => values[name]?.includes(opt.id))}
+                    value={values[name] || []}
                     onChange={(e, newValue) => {
-                        setFieldValue(name, newValue.map(item => item.id));
+                        setFieldValue(name, newValue);
                     }}
                     renderTags={(value, getTagProps) =>
                         value.map((option, index) => (
@@ -266,6 +266,7 @@ const FormikAutocompleteMultiple = ({ name, label, width, options, values, setFi
                             />
                         ))
                     }
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
                     sx={{
                         width: 'auto',
                     }}
@@ -340,6 +341,5 @@ const FormikPaveItem = ({ name, label, unit, disabled = false, isCurrency = fals
         </Box>
     );
 };
-
 
 export { FormikTextField, FormikSelect, FormikAutocomplete, FormikRadioGroup, FormikCheckbox, FormikAutocompleteMultiple, FormikPaveItem }
