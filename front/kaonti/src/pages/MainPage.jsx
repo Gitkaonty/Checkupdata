@@ -158,6 +158,7 @@ export default function HomePage() {
   const [listeDossier, setListeDossier] = useState([]);
   const [listeRoles, setListeRoles] = useState([]);
   const [consolidation, setConsolidation] = useState([]);
+
   let idDossier = null;
   if (typeof window !== 'undefined') {
     idDossier = sessionStorage.getItem("fileId");

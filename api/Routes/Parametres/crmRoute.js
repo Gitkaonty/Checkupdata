@@ -7,7 +7,7 @@ const verifyPermission = require('../../Middlewares/verifyPermission');
 const router = express.Router();
 
 //récupérer la liste de dossiers associé l'user et à son compte
-router.get('/infoscrm/:id', paramCRMController.getInfosCRM);
+router.get('/infoscrm/:id/:compteId', paramCRMController.getInfosCRM);
 
 //Sauvegarde des mofifications
 router.post('/modifying', verifyJWT, verifyPermission('EDIT'), paramCRMController.modifyingInfos);

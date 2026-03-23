@@ -51,11 +51,12 @@ const getListePays = async (req, res) => {
 
 const getInfosCRM = async (req, res) => {
   try {
-    const fileId = req.params.id;
+    const fileId = Number(req.params.id);
+    const compteId = Number(req.params.compteId);
 
     let resData = {
       state: false,
-      msg: 'une erreur est survenue lors du traitement.',
+      msg: 'Une erreur est survenue lors du traitement.',
       list: []
     }
 
@@ -70,7 +71,7 @@ const getInfosCRM = async (req, res) => {
       resData.list = list;
     } else {
       resData.state = false;
-      resData.msg = 'une erreur est survenue lors du traitement.';
+      resData.msg = 'Une erreur est survenue lors du traitement.';
     }
 
     return res.json(resData);
@@ -128,8 +129,15 @@ const modifyingInfos = async (req, res) => {
       consolidation,
       pays,
       avecMotDePasse,
-      motDePasse
+      motDePasse,
+      province,
+      region,
+      district,
+      commune,
+      centrefisc
     } = req.body;
+
+    // return console.log('req.body : ', req.body);
 
     const modify = await dossiers.update(
       {
@@ -168,7 +176,12 @@ const modifyingInfos = async (req, res) => {
         consolidation,
         pays,
         motdepasse: motDePasse,
-        avecmotdepasse: avecMotDePasse
+        avecmotdepasse: avecMotDePasse,
+        province,
+        region,
+        district,
+        commune,
+        centrefisc
       },
       {
         where: { id: idDossier }
@@ -302,7 +315,8 @@ const associe = async (req, res) => {
       adresse,
       dateentree,
       datesortie,
-      nombreparts,
+      nbrpart
+      ,
       enactivite
     } = req.body;
 
@@ -319,7 +333,8 @@ const associe = async (req, res) => {
         adresse: adresse,
         dateentree: dateentree,
         datesortie: datesortie,
-        nbrpart: nombreparts,
+        nbrpart: nbrpart
+        ,
         enactivite: enactivite
       });
 
@@ -339,7 +354,8 @@ const associe = async (req, res) => {
         adresse: adresse,
         dateentree: dateentree,
         datesortie: datesortie,
-        nbrpart: nombreparts,
+        nbrpart: nbrpart
+        ,
         enactivite: enactivite
       },
         {
@@ -376,7 +392,7 @@ const filiale = async (req, res) => {
       nom,
       dateentree,
       datesortie,
-      nombreparts,
+      nbrpart,
       enactivite
     } = req.body;
 
@@ -391,7 +407,7 @@ const filiale = async (req, res) => {
         nom: nom,
         dateentree: dateentree,
         datesortie: datesortie,
-        nbrpart: nombreparts,
+        nbrpart: nbrpart,
         enactivite: enactivite
       });
 
@@ -409,7 +425,7 @@ const filiale = async (req, res) => {
         nom: nom,
         dateentree: dateentree,
         datesortie: datesortie,
-        nbrpart: nombreparts,
+        nbrpart: nbrpart,
         enactivite: enactivite
       },
         {
@@ -515,8 +531,8 @@ const deleteAssocie = async (req, res) => {
     const deldAssocie = await dossierassocies.destroy({
       where: {
         id: idToDelete,
-        id_dossier: fileId,
-        id_compte: compteId
+        // id_dossier: fileId,
+        // id_compte: compteId
       }
     });
 
@@ -547,8 +563,8 @@ const deleteFiliale = async (req, res) => {
     const deldFiliale = await dossierfiliales.destroy({
       where: {
         id: idToDelete,
-        id_dossier: fileId,
-        id_compte: compteId
+        // id_dossier: fileId,
+        // id_compte: compteId
       }
     });
 
@@ -579,8 +595,8 @@ const deleteDomBank = async (req, res) => {
     const deldDomBank = await dossierDomBank.destroy({
       where: {
         id: idToDelete,
-        id_dossier: fileId,
-        id_compte: compteId
+        // id_dossier: fileId,
+        // id_compte: compteId
       }
     });
 
