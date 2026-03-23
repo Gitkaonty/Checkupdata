@@ -1,5 +1,5 @@
 import { Box, IconButton, Stack, Tooltip } from "@mui/material";
-import { DataGrid, frFR, GridRowModes, useGridApiRef } from '@mui/x-data-grid';
+import { DataGrid, frFR, GridRowEditStopReasons, GridRowModes, useGridApiRef } from '@mui/x-data-grid';
 import { useState } from "react";
 import toast from "react-hot-toast";
 import QuickFilter, { DataGridStyle } from "../../DatagridToolsStyle";
@@ -9,28 +9,21 @@ import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import SaveIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelIcon from '@mui/icons-material/HighlightOff';
 
-const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHeader, setEditableRow, name, newRow, onSaveRow, onDeleteRow }) => {
+const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHeader, setEditableRow, name, newRow, onSaveRow, onDeleteRow, validateRow, setRowErrors, withColumnActions, withAddButton }) => {
     const apiRef = useGridApiRef();
     const [selectedRow, setSelectedRow] = useState([]);
     const [selectedRowId, setSelectedRowId] = useState([]);
     const [rowModesModel, setRowModesModel] = useState({});
     const [openDialogDelete, setOpenDialogDelete] = useState(false);
 
-    const handleSaveClick = (id) => async () => {
-        const rowToSave = list.find(r => r.id === id);
-        if (onSaveRow) {
-            await onSaveRow(rowToSave);
-            setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
-            setEditableRow(false);
-        } else {
-            setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
-            toast.success("Informations sauvegardées");
-            setEditableRow(false);
-        }
+    const handleSaveClick = (id) => () => {
+        apiRef.current.stopRowEditMode({ id });
+        setSelectedRow([]);
+        setSelectedRowId([]);
     };
 
     const handleEditClick = (id) => () => {
-        setEditableRow(true);
+        setEditableRow ? setEditableRow(true) : null;
         setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
     };
 
@@ -42,9 +35,15 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
     const deleteAssocieRow = async (value) => {
         if (value === true) {
             if (onDeleteRow) {
-                await onDeleteRow(selectedRowId[0]);
-                setList(list.filter((row) => row.id !== selectedRowId[0]));
-                setOpenDialogDelete(false);
+                if (selectedRowId[0] > 0) {
+                    await onDeleteRow(selectedRowId[0]);
+                    setList(list.filter((row) => row.id !== selectedRowId[0]));
+                    setOpenDialogDelete(false);
+                } else {
+                    setList(list.filter((row) => row.id !== selectedRowId[0]));
+                    setOpenDialogDelete(false);
+                    toast.success('Ligne supprimée avec succès');
+                }
             } else {
                 setList(list.filter((row) => row.id !== selectedRowId[0]));
                 setOpenDialogDelete(false);
@@ -60,10 +59,13 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
             ...rowModesModel,
             [id]: { mode: GridRowModes.View, ignoreModifications: true },
         });
+        setSelectedRow([]);
+        setSelectedRowId([]);
+        toast.success('Modification annulée avec succès');
     };
 
     const handleCellEditCommit = () => {
-        setEditableRow(false);
+        setEditableRow ? setEditableRow(false) : null;
     };
 
     const handleOpenDialogAddNew = () => {
@@ -85,10 +87,49 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         setRowModesModel(newRowModesModel);
     };
 
-    const processRowUpdate = (setFieldValue) => (newRow) => {
+    const processRowUpdate = (setFieldValue) => async (newRow) => {
+
+        if (validateRow) {
+            const errors = validateRow(newRow);
+
+            if (Object.keys(errors).length > 0) {
+
+                if (setRowErrors) {
+                    setRowErrors(prev => ({
+                        ...prev,
+                        [newRow.id]: errors
+                    }));
+                }
+
+                toast.error("Veuillez remplir les champs obligatoires");
+
+                throw new Error("Validation error");
+            }
+
+            if (setRowErrors) {
+                setRowErrors(prev => {
+                    const copy = { ...prev };
+                    delete copy[newRow.id];
+                    return copy;
+                });
+            }
+        }
+
         const updatedRow = { ...newRow, isNew: false };
-        setList(list.map((row) => (row.id === newRow.id ? updatedRow : row)));
-        setFieldValue(name, list.map((row) => (row.id === newRow.id ? updatedRow : row)));
+
+        const updatedList = list.map((row) =>
+            row.id === newRow.id ? updatedRow : row
+        );
+
+        setList(updatedList);
+        setFieldValue(name, updatedList);
+
+        if (onSaveRow) {
+            await onSaveRow(updatedRow);
+        } else {
+            toast.success('Ligne sauvegardés avec succès');
+        }
+
         return updatedRow;
     };
 
@@ -147,7 +188,13 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         }, 50);
     };
 
-    const QuickFilterWithButton = (props) => <QuickFilter withAddButton={true} addAction={handleOpenDialogAddNew} {...props} />;
+    const QuickFilterWithButton = (props) => <QuickFilter withAddButton={withAddButton} addAction={handleOpenDialogAddNew} {...props} />;
+
+    const handleRowEditStop = (params, event) => {
+        if (params.reason === GridRowEditStopReasons.rowFocusOut) {
+            event.defaultMuiPrevented = true;
+        }
+    }
 
     const actionsColumn = {
         field: 'actions',
@@ -219,15 +266,14 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         }
     }
 
-    const columns = [
-        ...columnHeader,
-        actionsColumn
-    ];
+    const columns = withColumnActions
+        ? [...columnHeader, actionsColumn]
+        : [...columnHeader];
 
     return (
         <>
             {openDialogDelete ? <PopupConfirmDelete msg={"Voulez-vous vraiment supprimer la ligne sélectionnée ?"} confirmationState={deleteAssocieRow} /> : null}
-            <Box sx={{ bgcolor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', p: 2 }}>
+            <Box sx={{ bgcolor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', p: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                 <Stack
                     width={"100%"}
                     height={datagridHeight}
@@ -250,6 +296,7 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
                         experimentalFeatures={{ newEditingApi: true }}
                         rowModesModel={rowModesModel}
                         onRowModesModelChange={handleRowModesModelChange}
+                        onRowEditStop={handleRowEditStop}
                         processRowUpdate={processRowUpdate(setFieldValue)}
                         columns={columns}
                         initialState={{
@@ -265,6 +312,8 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
                         }}
                         rowSelectionModel={selectedRow}
                         onCellKeyDown={handleCellKeyDown}
+                        hideFooterSelectedRowCount
+                        onProcessRowUpdateError={() => { }}
                     />
                 </Stack>
             </Box>

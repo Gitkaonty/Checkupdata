@@ -193,6 +193,8 @@ const createNewFile = async (req, res) => {
       motDePasse
     } = req.body;
 
+    console.log('req.body : ', req.body);
+
     if (action === 'new') {
       const newFile = await dossier.create({
         id_compte: idCompte,

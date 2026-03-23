@@ -15,9 +15,11 @@ import { ComptabiliteTabContent, FiscalTabContent, InfoSocieteTabContent } from 
 import DatagridGlobal from './Datagrid/DatagridGlobal';
 
 import SaveIcon from '@mui/icons-material/CheckCircleOutline';
+import useAxiosPrivate from '../../../../config/axiosPrivate';
+
+const dataGridHeight = '500px';
 
 const NAV_DARK = '#0B1120';
-
 const fieldOrder = [
     'nomdossier',
     'raisonsociale',
@@ -39,7 +41,7 @@ const formInfosNewFileValidationSchema = Yup.object({
     activite: Yup.string().required("Veuillez renseigner l'activité de votre société"),
     longueurcptstd: Yup.number().moreThan(0, 'Taper une longueur de compte supérieur à 1'),
     longueurcptaux: Yup.number().moreThan(0, 'Taper une longueur de compte supérieur à 1'),
-    tauxir: Yup.number().moreThan(0, 'Taper votre taux IR'),
+    // tauxir: Yup.number().moreThan(0, 'Taper votre taux IR'),
     portefeuille: Yup.array().min(1, "Sélectionnez au moins un portefeuille"),
     pays: Yup.string().required("Sélectionnez une pays"),
 
@@ -67,27 +69,117 @@ const formInfosNewFileValidationSchema = Yup.object({
     }),
 });
 
-const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listProvinces, listRegions, listDistricts, listCommunes, listeDossier, getListeRegions, getListeDistricts, getListeCommunes, row, type }) => {
-    const [activeTab, setActiveTab] = useState('Infos société');
+const MainDossier = ({
+    compteId,
+    confirmationState,
+    refresh,
+    listePortefeuille,
+    listPays,
+    listModel,
+    listProvinces,
+    listeDevise,
+    listRegions,
+    listDistricts,
+    listCommunes,
+    listeDossier,
 
-    const handleSubmitForm = (values) => {
-        console.log('Form submitted:', values);
+    listeAssocie,
+    listeFiliale,
+    listeDomBank,
+    listeConsolidation,
+
+    setListeAssocie,
+    setListeFiliale,
+    setListeDomBank,
+    setListeConsolidation,
+
+    getListeRegions,
+    getListeDistricts,
+    getListeCommunes,
+    row,
+    type
+}) => {
+    const [activeTab, setActiveTab] = useState('Infos société');
+    const axiosPrivate = useAxiosPrivate();
+
+    const updateAccountsLengthInJournals = async (newLongueurStd, newLongueurAux, autoCompletion) => {
+        const payload = {
+            fileId: Number(fileId),
+            compteId: Number(compteId),
+            newLongueurStd: newLongueurStd,
+            newLongueurAux: newLongueurAux,
+            autoCompletion: autoCompletion
+        }
+        const response = await axios.post('/paramCrm/updateAccountsLengthInJournals', payload);
+        if (response?.data?.state) {
+        } else {
+            toast.error("Erreur lors de la modification de longueur de compte dans le journal")
+        }
+    }
+
+    const updateAccountsLengthInPlanComptable = async (newLongueurStd, newLongueurAux, autoCompletion) => {
+        const payload = {
+            fileId: Number(fileId),
+            compteId: Number(compteId),
+            newLongueurStd: newLongueurStd,
+            newLongueurAux: newLongueurAux,
+            autoCompletion: autoCompletion
+        }
+        const response = await axios.post('/paramCrm/updateAccountsLengthInPlanComptable', payload);
+        if (response?.data?.state) {
+
+        } else {
+            toast.error('Erreur lors de la modification de la longueur de compte dans le journal');
+        }
+    }
+
+    const handleSubmitForm = async (values) => {
+        const portefeuilleIds = values.portefeuille.map(val => Number(val.id));
+        const payload = {
+            ...values,
+            idCompte: compteId,
+            idDossier: values.itemId,
+            portefeuille: portefeuilleIds
+        };
+
+        if (type === 'modification') {
+            const oldLongueurStd = row?.longcomptestd || 6;
+            const oldLongueurAux = row?.longcompteaux || 6;
+            const oldAutoCompletion = row?.autocompletion;
+
+            const newLongueurStd = parseInt(values.longueurcptstd);
+            const newLongueurAux = parseInt(values.longueurcptaux);
+            const newAutoCompletion = values.autocompletion;
+
+            const response = await axiosPrivate.post(`/paramCrm/modifying`, payload);
+            const resData = response.data;
+
+            if (resData.state) {
+                toast.success(resData.msg);
+                if (oldLongueurStd !== newLongueurStd || oldLongueurAux !== newLongueurAux || oldAutoCompletion !== newAutoCompletion) {
+                    await updateAccountsLengthInJournals(newLongueurStd, newLongueurAux, values.autocompletion);
+                    await updateAccountsLengthInPlanComptable(newLongueurStd, newLongueurAux, values.autocompletion);
+                }
+            } else {
+                toast.error(resData.msg);
+            }
+
+        } else {
+            await axiosPrivate.post(`/home/newFile`, payload).then((response) => {
+                const resData = response.data;
+                if (resData.state) {
+                    toast.success(resData.msg);
+                    confirmationState(false);
+                    refresh();
+                } else {
+                    toast.error(resData.msg);
+                }
+            })
+        }
     };
 
-    const [listAssocie, setListAssocie] = useState(row?.listeAssocies || []);
-    const [listFiliale, setListFiliale] = useState(row?.listeFiliales || []);
-    const [listDomB, setListDomB] = useState(row?.listeDomBank || []);
-    const [listConsolidation, setListConsolidation] = useState(row?.listeConsolidation || []);
-
-    const selectedDossierIds = listConsolidation
-        .map(val => Number(val.idDossier))
-        .filter(Boolean);
-
-    const availableDossier = listeDossier.filter(d =>
-        !selectedDossierIds.includes(d.id)
-    );
-
     const InfosNewFileInitialValues = {
+        action: type === 'ajout' ? 'new' : 'edit',
         centrefisc: row?.centrefisc || 'DGE',
         itemId: row?.itemId || 0,
         idCompte: row?.idCompte || 0,
@@ -122,10 +214,10 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
         montantcapital: row?.montantcapital || 0,
         nbrpart: row?.nbrpart || 0,
         valeurpart: row?.valeurpart || 0,
-        listeAssocies: row?.listeAssocies || [],
-        listeFiliales: row?.listeFiliales || [],
-        listeDomBank: row?.listeDomBank || [],
-        listeConsolidation: row?.listeConsolidation || [],
+        listeAssocies: [],
+        listeFiliales: [],
+        listeDomBank: [],
+        listeConsolidation: [],
         immo_amort_base_jours: row?.immo_amort_base_jours || '365',
         portefeuille: row?.portefeuille || [],
         typecomptabilite: row?.typecomptabilite || 'Français',
@@ -141,10 +233,12 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
     return (
         <Formik
             initialValues={InfosNewFileInitialValues}
+            enableReinitialize={true}
             validationSchema={formInfosNewFileValidationSchema}
             onSubmit={handleSubmitForm}
+            validateOnMount={true}
         >
-            {({ values, handleChange, handleSubmit, handleBlur, setFieldValue, isValid, setTouched, errors }) => {
+            {({ values, handleChange, handleSubmit, handleBlur, setFieldValue, isValid, setTouched, errors, resetForm }) => {
                 const consolidation = values.consolidation;
                 const tabs = [
                     'Infos société',
@@ -156,8 +250,8 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
                     ...(consolidation ? ['Consolidation'] : []),
                 ];
                 return (
-                    <Form>
-                        <Box sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', width: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Form >
+                        <Stack sx={{ bgcolor: '#F8FAFC', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', marginBottom: type === 'modification' ? 0 : 5 }}>
                             <GlobalStyles styles={{ body: { margin: 0, padding: 0, overflowX: 'hidden', fontFamily: '"Inter", sans-serif' } }} />
                             <Box sx={{ paddingLeft: 4, paddingRight: 4, width: '100%', boxSizing: 'border-box' }}>
                                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
@@ -167,6 +261,7 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
                                     <Button
                                         // type='submit'
                                         onClick={() => {
+                                            console.log('isValid : ', isValid);
                                             if (!isValid) {
                                                 const touchedFields = Object.keys(errors).reduce((acc, field) => {
                                                     acc[field] = true;
@@ -178,6 +273,8 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
                                                 const firstErrorField = fieldOrder.find(
                                                     field => errors[field]
                                                 );
+
+                                                console.log('firstErrorField : ', firstErrorField);
 
                                                 if (firstErrorField) {
                                                     toast.error(errors[firstErrorField]);
@@ -209,16 +306,16 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
                                 </Stack>
 
                                 <Box>
-                                    {activeTab === 'Infos société' && <InfoSocieteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listePortefeuille={listePortefeuille} listPays={listPays} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} />}
-                                    {activeTab === 'Comptabilité' && <ComptabiliteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listModel={listModel} type={type} />}
+                                    {activeTab === 'Infos société' && <InfoSocieteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listePortefeuille={listePortefeuille} listPays={listPays} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} type={type} />}
+                                    {activeTab === 'Comptabilité' && <ComptabiliteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listModel={listModel} type={type} listeDevise={listeDevise} />}
                                     {activeTab === 'Fiscales' && <FiscalTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} />}
-                                    {activeTab === 'Associés' && <AssociatesTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listAssocie={listAssocie} setListAssocie={setListAssocie} />}
-                                    {activeTab === 'Filiales' && <FilialeTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listFiliale={listFiliale} setListFiliale={setListFiliale} />}
-                                    {activeTab === 'Domiciliations bancaires' && <DomBankTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listDomB={listDomB} setListDomB={setListDomB} listPays={listPays} />}
-                                    {activeTab === 'Consolidation' && consolidation && <ConsolidationTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listConsolidation={listConsolidation} setListConsolidation={setListConsolidation} availableDossier={availableDossier} listeDossier={listeDossier} />}
+                                    {activeTab === 'Associés' && <AssociatesTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listAssocie={listeAssocie} setListAssocie={setListeAssocie} axiosPrivate={axiosPrivate} type={type} />}
+                                    {activeTab === 'Filiales' && <FilialeTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listFiliale={listeFiliale} setListFiliale={setListeFiliale} axiosPrivate={axiosPrivate} type={type} />}
+                                    {activeTab === 'Domiciliations bancaires' && <DomBankTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listDomB={listeDomBank} setListDomB={setListeDomBank} listPays={listPays} axiosPrivate={axiosPrivate} type={type} />}
+                                    {activeTab === 'Consolidation' && consolidation && <ConsolidationTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listConsolidation={listeConsolidation} setListConsolidation={setListeConsolidation} listeDossier={listeDossier} axiosPrivate={axiosPrivate} type={type} />}
                                 </Box>
                             </Box>
-                        </Box>
+                        </Stack>
                     </Form>
                 )
             }}
@@ -226,8 +323,35 @@ const MainDossier = ({ compteId, listePortefeuille, listPays, listModel, listPro
     );
 };
 
-const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssocie }) => {
+const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssocie, axiosPrivate, type }) => {
     const [editableRowAssocie, setEditableRowAssocie] = useState(false);
+    const [rowErrors, setRowErrors] = useState({});
+
+    const validateRow = (row) => {
+        const errors = {};
+
+        if (!row.type || row.type.trim() === '') {
+            errors.type = 'Type obligatoire';
+        }
+
+        if (!row.nom || row.nom.trim() === '') {
+            errors.nom = 'Nom obligatoire';
+        }
+
+        if (!row.adresse || row.adresse.trim() === '') {
+            errors.adresse = 'Adresse obligatoire';
+        }
+
+        if (!row.dateentree) {
+            errors.dateentree = 'Date d\'entrée obligatoire';
+        }
+
+        if (!row.datesortie) {
+            errors.datesortie = 'Date de sortie obligatoire';
+        }
+
+        return errors;
+    };
 
     const TypesOptions = [
         { value: 'PP', label: 'Personne physique' },
@@ -284,6 +408,9 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                     ))}
                 </Select>
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.type ? 'cell-error' : '';
+            },
         },
         {
             field: 'nom',
@@ -326,6 +453,9 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.nom ? 'cell-error' : '';
+            },
         },
         {
             field: 'adresse',
@@ -364,6 +494,9 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.adresse ? 'cell-error' : '';
+            },
         },
         {
             field: 'dateentree',
@@ -430,6 +563,9 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                     />
                 );
             },
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.dateentree ? 'cell-error' : '';
+            },
         },
         {
             field: 'datesortie',
@@ -495,6 +631,9 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                         }}
                     />
                 );
+            },
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.datesortie ? 'cell-error' : '';
             },
         },
         {
@@ -562,6 +701,30 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
         enactivite: false,
     });
 
+    const saveRowAssocie = (value) => {
+        const payload = { ...value, idAssocie: value.id, idCompte: values.idCompte, idDossier: values.itemId };
+        axiosPrivate.post(`/paramCrm/associe`, payload).then((response) => {
+            const resData = response.data;
+            if (resData.state) {
+                toast.success(resData.msg);
+            } else {
+                toast.error(resData.msg);
+            }
+        });
+    }
+
+    const deleteRowAssocie = (id) => {
+        axiosPrivate.post(`/paramCrm/associeDelete`, { idToDelete: Number(id) }).then((response) => {
+            const resData = response.data;
+            if (resData.state) {
+                toast.success(resData.msg);
+            } else {
+                setOpenDialogDeleteAssocieRow(false);
+                toast.error(resData.msg);
+            }
+        });
+    }
+
     return (
         <Stack spacing={2}>
             <Stack direction="row" spacing={2}>
@@ -577,15 +740,40 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                 setEditableRow={setEditableRowAssocie}
                 name={'listeAssocies'}
                 newRow={createNewRow}
-                datagridHeight={'500px'}
+                datagridHeight={dataGridHeight}
+                onSaveRow={type === 'modification' ? saveRowAssocie : undefined}
+                onDeleteRow={type === 'modification' ? deleteRowAssocie : undefined}
+                validateRow={validateRow}
+                setRowErrors={setRowErrors}
+                rowErrors={rowErrors}
+                withColumnActions={true}
+                withAddButton={true}
             />
         </Stack>
     )
 };
 
-const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale }) => {
+const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale, axiosPrivate, type }) => {
     const [editableFiliale, setEditableRowFiliale] = useState(false);
+    const [rowErrors, setRowErrors] = useState({});
 
+    const validateRow = (row) => {
+        const errors = {};
+
+        if (!row.nom || row.nom.trim() === '') {
+            errors.nom = 'Nom obligatoire';
+        }
+
+        if (!row.datesortie) {
+            errors.datesortie = 'Date de sortie obligatoire';
+        }
+
+        if (!row.dateentree) {
+            errors.dateentree = 'Date d\'entrée obligatoire';
+        }
+
+        return errors;
+    };
 
     const filialeColumnHeader = [
         {
@@ -629,6 +817,9 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.nom ? 'cell-error' : '';
+            },
         },
         {
             field: 'dateentree',
@@ -694,6 +885,9 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
                         }}
                     />
                 );
+            },
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.dateentree ? 'cell-error' : '';
             },
         },
         {
@@ -761,6 +955,9 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
                     />
                 );
             },
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.datesortie ? 'cell-error' : '';
+            },
         },
         {
             field: 'nbrpart',
@@ -803,6 +1000,9 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.nbrpart ? 'cell-error' : '';
+            },
         },
         {
             field: 'enactivite',
@@ -825,6 +1025,31 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
         enactivite: false,
     });
 
+    const saveRowFiliale = (value) => {
+        const payload = {
+            ...value,
+            idFiliale: value.id,
+            idCompte: values.idCompte,
+            idDossier: values.itemId
+        };
+
+        axiosPrivate.post(`/paramCrm/filiale`, payload).then((response) => {
+            const resData = response.data;
+            resData.state ? toast.success(resData.msg) : toast.error(resData.msg);
+        });
+    };
+
+    const deleteRowFiliale = (id) => {
+        axiosPrivate.post(`/paramCrm/filialeDelete`, { idToDelete: id }).then((response) => {
+            const resData = response.data;
+            if (resData.state) {
+                toast.success(resData.msg);
+            } else {
+                toast.error(resData.msg);
+            }
+        });
+    }
+
     return (
         <DatagridGlobal
             setFieldValue={setFieldValue}
@@ -834,13 +1059,42 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale 
             setEditableRow={setEditableRowFiliale}
             name={'listeFiliales'}
             newRow={createNewRow}
-            datagridHeight={'500px'}
+            datagridHeight={dataGridHeight}
+            onSaveRow={type === 'modification' ? saveRowFiliale : undefined}
+            onDeleteRow={type === 'modification' ? deleteRowFiliale : undefined}
+            validateRow={validateRow}
+            setRowErrors={setRowErrors}
+            withColumnActions={true}
+            withAddButton={true}
         />
     )
 };
 
-const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listPays }) => {
+const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listPays, axiosPrivate, type }) => {
     const [editableDomB, setEditableDomB] = useState(false);
+    const [rowErrors, setRowErrors] = useState({});
+
+    const validateRow = (row) => {
+        const errors = {};
+
+        if (!row.banque || row.banque.trim() === '') {
+            errors.banque = 'La banque est obligatoire';
+        }
+
+        if (!row.numcompte || row.numcompte.trim() === '') {
+            errors.numcompte = 'Le numéro de compte est obligatoire';
+        }
+
+        if (!row.devise || row.devise.trim() === '') {
+            errors.devise = 'La devise est obligatoire';
+        }
+
+        if (!row.pays) {
+            errors.pays = 'Le pays est obligatoire';
+        }
+
+        return errors;
+    };
 
     const domBColumnHeader = [
         {
@@ -884,9 +1138,12 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.banque ? 'cell-error' : '';
+            },
         },
         {
-            field: 'numcpmpte',
+            field: 'numcompte',
             headerName: 'N° COMPTE',
             type: 'text',
             sortable: true,
@@ -926,6 +1183,9 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.numcompte ? 'cell-error' : '';
+            },
         },
         {
             field: 'devise',
@@ -968,6 +1228,9 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
                     }}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.devise ? 'cell-error' : '';
+            },
         },
         {
             field: 'pays',
@@ -1018,6 +1281,9 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
                     )}
                 />
             ),
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.pays ? 'cell-error' : '';
+            },
         },
         {
             field: 'enactivite',
@@ -1031,12 +1297,27 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
         }
     ];
 
-    const saveRow = (value) => {
-        console.log('value : ', value);
+    const saveRowDomBank = (value) => {
+        const payload = { ...value, idDomBank: value.id, idCompte: values.idCompte, idDossier: values.itemId };
+        axiosPrivate.post(`/paramCrm/DomBank`, payload).then((response) => {
+            const resData = response.data;
+            if (resData.state) {
+                toast.success(resData.msg);
+            } else {
+                toast.error(resData.msg);
+            }
+        });
     }
 
-    const deleteRow = (id) => {
-        console.log('id : ', id);
+    const deleteRowDomBank = (id) => {
+        axiosPrivate.post(`/paramCrm/DomBankDelete`, { idToDelete: Number(id) }).then((response) => {
+            const resData = response.data;
+            if (resData.state) {
+                toast.success(resData.msg);
+            } else {
+                toast.error(resData.msg);
+            }
+        });
     }
 
     const createNewRow = () => ({
@@ -1057,66 +1338,95 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             setEditableRow={setEditableDomB}
             name={'listeDomBank'}
             newRow={createNewRow}
-            datagridHeight={'500px'}
-        // onSaveRow={saveRow}
-        // onDeleteRow={deleteRow}
+            datagridHeight={dataGridHeight}
+            onSaveRow={type === 'modification' ? saveRowDomBank : undefined}
+            onDeleteRow={type === 'modification' ? deleteRowDomBank : undefined}
+            validateRow={validateRow}
+            setRowErrors={setRowErrors}
+            withColumnActions={true}
+            withAddButton={true}
         />
     )
 };
 
-const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, setListConsolidation, availableDossier, listeDossier }) => {
+const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, setListConsolidation, listeDossier, axiosPrivate, type }) => {
     const [editableConsolidation, setEditableConsolidation] = useState(false);
+    const [rowErrors, setRowErrors] = useState({});
+
+    const validateRow = (row) => {
+        const errors = {};
+
+        if (!row.id_dossier_autre) {
+            errors.id_dossier_autre = 'Le dossier est obligatoire';
+        }
+
+        return errors;
+    };
+
+    const selectedDossierIds = listConsolidation
+        .map(val => Number(val.id_dossier_autre))
+        .filter(Boolean);
+
+    const getAvailableDossier = (currentId) => {
+        return listeDossier.filter(d =>
+            !selectedDossierIds.includes(d.id) || d.id === currentId
+        );
+    };
 
     const consolidationColumnHeader = [
         {
-            field: 'idDossier',
+            field: 'id_dossier_autre',
             headerName: 'Dossier',
             type: 'singleSelect',
-            valueOptions: availableDossier.map((dossier) => dossier.id),
+            valueOptions: listeDossier.map((dossier) => dossier.id),
             sortable: true,
             flex: 1,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
             editable: editableConsolidation,
             valueFormatter: (params) => {
-                const selectedType = availableDossier.find((option) => option.id === params.value);
+                const selectedType = listeDossier.find((option) => option.id === params.value);
                 return selectedType ? selectedType.dossier : params.value;
             },
-            renderEditCell: (params) => (
-                <Autocomplete
-                    fullWidth
-                    options={availableDossier}
-                    getOptionLabel={(option) => option.dossier}
-                    value={
-                        availableDossier.find((option) => option.id === params.value) || null
-                    }
-                    onChange={(event, newValue) => {
-                        params.api.setEditCellValue({
-                            id: params.id,
-                            field: params.field,
-                            value: newValue ? newValue.id : "",
-                        });
-                    }}
-                    noOptionsText="Aucun pays trouvé"
-                    renderInput={(paramsInput) => (
-                        <TextField
-                            {...paramsInput}
-                            variant="standard"
-                            sx={{
-                                '& .MuiInputBase-input': {
-                                    padding: '4px 8px',
-                                    fontSize: '13px',
-                                    color: '#94A3B8',
-                                    paddingLeft: '10px'
-                                },
-                                "& .MuiInputBase-root": {
-                                    height: 50,
-                                },
-                            }}
-                        />
-                    )}
-                />
-            ),
+            renderEditCell: (params) => {
+                const options = getAvailableDossier(params.value);
+                return (
+                    <Autocomplete
+                        fullWidth
+                        options={options}
+                        getOptionLabel={(option) => option.dossier}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
+                        value={
+                            options.find((option) => option.id === params.value) || null
+                        }
+                        onChange={(event, newValue) => {
+                            params.api.setEditCellValue({
+                                id: params.id,
+                                field: params.field,
+                                value: newValue ? newValue.id : "",
+                            });
+                        }}
+                        noOptionsText="Aucun pays trouvé"
+                        renderInput={(paramsInput) => (
+                            <TextField
+                                {...paramsInput}
+                                variant="standard"
+                                sx={{
+                                    '& .MuiInputBase-input': {
+                                        padding: '4px 8px',
+                                        fontSize: '13px',
+                                        color: '#94A3B8',
+                                        paddingLeft: '10px'
+                                    },
+                                    "& .MuiInputBase-root": {
+                                        height: 50,
+                                    },
+                                }}
+                            />
+                        )}
+                    />
+                )
+            },
             renderCell: (params) => {
                 const dossier = listeDossier.find(
                     val => val.id === Number(params.value)
@@ -1124,13 +1434,41 @@ const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, set
 
                 return <div>{dossier?.dossier || ''}</div>;
             },
+            cellClassName: (params) => {
+                return rowErrors[params.id]?.id_dossier_autre ? 'cell-error' : '';
+            },
         },
     ];
 
     const createNewRow = () => ({
         id: null,
-        idDossier: null
+        idDossier: null,
+        id_dossier_autre: null
     });
+
+    const saveRowConsolidation = (value) => {
+        const payload = { ...value, idConsolidation: value.id, idCompte: values.idCompte, idDossier: values.itemId, idDossierAutre: value.id_dossier_autre };
+        axiosPrivate.post('/param/consolidation/addOrUpdateConsolidationDossier', payload)
+            .then((response) => {
+                if (response?.data?.state) {
+                    toast.success(response?.data?.msg);
+                } else {
+                    toast.error(response?.data?.msg);
+                }
+            })
+    }
+
+    const deleteRowConsolidation = (id) => {
+        axiosPrivate.delete(`/param/consolidation/deleteConsolidation/${Number(id)}`)
+            .then((response) => {
+                const resData = response?.data;
+                if (resData?.state) {
+                    toast.success(resData?.message);
+                } else {
+                    toast.error(resData.msg);
+                }
+            })
+    }
 
     return (
         <DatagridGlobal
@@ -1141,7 +1479,13 @@ const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, set
             setEditableRow={setEditableConsolidation}
             name={'listeConsolidation'}
             newRow={createNewRow}
-            datagridHeight={'500px'}
+            datagridHeight={dataGridHeight}
+            onSaveRow={type === 'modification' ? saveRowConsolidation : undefined}
+            onDeleteRow={type === 'modification' ? deleteRowConsolidation : undefined}
+            validateRow={validateRow}
+            setRowErrors={setRowErrors}
+            withColumnActions={true}
+            withAddButton={true}
         />
     )
 };

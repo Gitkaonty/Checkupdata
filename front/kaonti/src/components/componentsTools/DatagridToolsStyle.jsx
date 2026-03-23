@@ -160,7 +160,11 @@ export const DataGridStyle = {
     },
     '& .MuiDataGrid-columnHeaderTitle': {
       textTransform: 'uppercase',
-    }
+    },
+    '& .cell-error': {
+      backgroundColor: '#fef3f3',
+      border: '1px solid #EF4444',
+    },
   },
   checkboxSelection: true,
   pagination: true
