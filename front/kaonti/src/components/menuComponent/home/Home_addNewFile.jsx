@@ -5,8 +5,9 @@ import useAuth from '../../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import axios from '../../../../config/axios';
 import MainDossier from '../../componentsTools/Dossier/MainDossier';
+import { Stack } from '@mui/material';
 
-export default function AddNewFile({ confirmationState }) {
+export default function AddNewFile({ confirmationState, refresh }) {
     const [listModel, setListModel] = useState([]);
     const [listPays, setListPays] = useState([]);
     const [listProvinces, setListProvinces] = useState([]);
@@ -15,6 +16,11 @@ export default function AddNewFile({ confirmationState }) {
     const [listCommunes, setListCommunes] = useState([]);
     const [listeDossier, setListeDossier] = useState([]);
     const [listePortefeuille, setListePortefeuille] = useState([]);
+
+    const [listAssocie, setListAssocie] = useState([]);
+    const [listFiliales, setListFiliales] = useState([]);
+    const [listDomBank, setListDomBank] = useState([]);
+    const [listConsolidation, setListConsolidation] = useState([]);
 
     //récupération infos compte
     const { auth } = useAuth();
@@ -130,14 +136,42 @@ export default function AddNewFile({ confirmationState }) {
     }, [compteId]);
 
     return (
-        <Box
+        <Stack
             sx={{
                 paddingX: 3,
                 paddingY: 2,
-                backgroundColor: '#F8FAFC',
+                height: '100%'
             }}
         >
-            <MainDossier listePortefeuille={listePortefeuille} listPays={listPays} listModel={listModel} compteId={Number(compteId)} type={'ajout'} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} listeDossier={listeDossier} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} />
-        </Box>
+            <MainDossier
+                confirmationState={confirmationState}
+                refresh={refresh}
+                listePortefeuille={listePortefeuille}
+                listPays={listPays}
+                listModel={listModel}
+                compteId={Number(compteId)}
+                type={'ajout'}
+                listProvinces={listProvinces}
+                listRegions={listRegions}
+                listDistricts={listDistricts}
+                listCommunes={listCommunes}
+                listeDossier={listeDossier}
+                getListeRegions={getListeRegions}
+                getListeDistricts={getListeDistricts}
+                getListeCommunes={getListeCommunes}
+
+                listeAssocie={listAssocie}
+                listeFiliale={listFiliales}
+                listeDomBank={listDomBank}
+                listeConsolidation={listConsolidation}
+
+                setListeAssocie={setListAssocie}
+                setListeFiliale={setListFiliales}
+                setListeDomBank={setListDomBank}
+                setListeConsolidation={setListConsolidation}
+
+                row={[]}
+            />
+        </Stack>
     )
 }

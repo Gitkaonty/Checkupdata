@@ -12,6 +12,7 @@ import { FaHotel } from "react-icons/fa6";
 import { MdOutlineTravelExplore } from "react-icons/md";
 import { FaTruck } from "react-icons/fa6";
 import { VscLinkExternal } from "react-icons/vsc"
+import { useEffect } from "react";
 
 const listeFormeJuridique = [
     { id: 'SAPP', libelle: 'SAPP - Société anonyme à participation publique' },
@@ -34,164 +35,184 @@ const listeActivite = [
     { id: 'AUT', libelle: 'Autres', icon: <VscLinkExternal style={{ color: 'green' }} /> },
 ];
 
+const InfoSocieteTabContent = ({ values, setFieldValue, listePortefeuille, listPays, listProvinces, listRegions, listDistricts, listCommunes, getListeRegions, getListeDistricts, getListeCommunes, type }) => {
 
-const InfoSocieteTabContent = ({ values, setFieldValue, listePortefeuille, listPays, listProvinces, listRegions, listDistricts, listCommunes, getListeRegions, getListeDistricts, getListeCommunes }) => (
-    <Stack spacing={1.5}>
-        <CompactAccordion
-            icon={<BadgeIcon />}
-            title="Coordonnées générales"
-        >
-            <Grid container spacing={1.5}>
-                <FormikTextField name="nomdossier" label="Nom du dossier *" width="350px" />
-                <FormikTextField name='raisonsociale' label="Raison sociale *" width="450px" />
-                <FormikAutocomplete
-                    name='pays'
-                    label="Pays"
-                    type="select"
-                    width="350px"
-                    options={listPays.map(item => ({
-                        value: item.code,
-                        label: item.nompays
-                    }))}
-                    values={values}
-                    setFieldValue={setFieldValue}
-                />
-                {/* <FormikTextField name='pays' label="Pays" type="select" width="180px" /> */}
-            </Grid>
-            <Grid container spacing={1.5} sx={{ mt: 1 }}>
-                <FormikTextField name='denomination' label="Dénomination" width="350px" />
-                <FormikTextField name='nif' label="Numéro NIF" width="180px" />
-                <FormikTextField name='stat' label="Numéro Statistique" width="180px" />
-                <FormikTextField name='rcs' label="Numéro RCS" width="180px" />
-            </Grid>
-            <Grid container spacing={1.5} sx={{ mt: 1 }}>
-                <FormikTextField name='responsable' label="Résponsable" width="350px" />
-                <FormikTextField name='expertcomptable' label="Expert comptable" width="350px" />
-                <FormikTextField name='cac' label="Commissaires aux comptes" width="350px" />
-            </Grid>
-            <Grid container spacing={1.5} sx={{ mt: 1 }}>
-                <FormikAutocompleteMultiple name='portefeuille' label="Portefeuille" type='select' width="600px" values={values} setFieldValue={setFieldValue} options={listePortefeuille} />
-            </Grid>
-        </CompactAccordion>
+    useEffect(() => {
+        if (type === 'modification' && values.province) {
+            getListeRegions(values.province);
+        }
+    }, [type, values.province]);
 
-        <CompactAccordion icon={<GavelIcon />} title="Juridique" >
-            <Grid container spacing={1.5}>
-                <FormikAutocomplete
-                    name='forme'
-                    label="Forme"
-                    type="select"
-                    width="440px"
-                    options={listeFormeJuridique.map(item => ({
-                        value: item.id,
-                        label: item.libelle
-                    }))}
-                    values={values}
-                    setFieldValue={setFieldValue}
-                />
-                <FormikAutocomplete
-                    name='activite'
-                    label="Activité"
-                    type="select"
-                    width="250px"
-                    options={listeActivite.map(item => ({
-                        value: item.id,
-                        label: item.libelle,
-                        icon: item.icon
-                    }))}
-                    values={values}
-                    setFieldValue={setFieldValue}
-                />
-                <FormikTextField name='detailsactivite' label="Détails activité" width="380px" />
-            </Grid>
-        </CompactAccordion>
-        <CompactAccordion icon={<ContactMailIcon />} title="Contact" >
-            <Grid container spacing={1.5}>
-                <FormikTextField name='adresse' label="Adresse" width="250px" />
-                <FormikTextField name='email' label="Email" width="350px" />
-                <FormikTextField name='telephone' label="Téléphone" width="180px" />
-            </Grid>
-            <Grid container spacing={1.5} sx={{ mt: 1 }}>
-                <FormikAutocomplete
-                    name='province'
-                    label="Province"
-                    type="select"
-                    width="300px"
-                    options={listProvinces.map(item => ({
-                        value: item.name,
-                        label: item.name
-                    }))}
-                    values={values}
-                    setFieldValue={(name, value) => {
-                        setFieldValue(name, value);
-                        setFieldValue('region', '');
-                        setFieldValue('district', '');
-                        setFieldValue('commune', '');
-                        getListeRegions(value);
-                    }}
-                />
-                <FormikAutocomplete
-                    name='region'
-                    label="Region"
-                    type="select"
-                    width="300px"
-                    options={listRegions.map(item => ({
-                        value: item.name,
-                        label: item.name
-                    }))}
-                    values={values}
-                    setFieldValue={(name, value) => {
-                        const province = values.province;
-                        setFieldValue(name, value);
-                        setFieldValue('district', '');
-                        setFieldValue('commune', '');
-                        getListeDistricts(province, value);
-                    }}
-                />
-                <FormikAutocomplete
-                    name='district'
-                    label="District"
-                    type="select"
-                    width="300px"
-                    options={listDistricts.map(item => ({
-                        value: item.name,
-                        label: item.name
-                    }))}
-                    values={values}
-                    setFieldValue={(name, value) => {
-                        const province = values.province;
-                        const region = values.region;
-                        setFieldValue(name, value);
-                        setFieldValue('commune', '');
-                        getListeCommunes(province, region, value);
-                    }}
-                />
-                <FormikAutocomplete
-                    name='commune'
-                    label="Commune"
-                    type="select"
-                    width="300px"
-                    options={listCommunes.map(item => ({
-                        value: item.name,
-                        label: item.name
-                    }))}
-                    values={values}
-                    setFieldValue={setFieldValue}
-                />
-            </Grid>
-        </CompactAccordion>
-        <CompactAccordion icon={<ContactMailIcon />} title="Sécurité" >
-            <Grid item sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
-                <FormikCheckbox name="avecMotDePasse" label="Avec mot de passe" />
-            </Grid>
-            <Grid container spacing={1.5}>
-                <FormikTextField name='motDePasse' label="Mot de passe *" width="250px" disabled={!values.avecMotDePasse} />
-                <FormikTextField name='motDePasseConfirmation' label="Confirmation du mot de passe *" width="250px" disabled={!values.avecMotDePasse} />
-            </Grid>
-        </CompactAccordion>
-    </Stack>
-);
+    useEffect(() => {
+        if (type === 'modification' && values.province && values.region) {
+            getListeDistricts(values.province, values.region);
+        }
+    }, [type, values.province, values.region]);
 
-const ComptabiliteTabContent = ({ listModel, values, setFieldValue, type }) => (
+    useEffect(() => {
+        if (type === 'modification' && values.province && values.region && values.district) {
+            getListeCommunes(values.province, values.region, values.district);
+        }
+    }, [type, values.province, values.region, values.district]);
+
+    return (
+        <Stack spacing={1.5}>
+            <CompactAccordion
+                icon={<BadgeIcon />}
+                title="Coordonnées générales"
+            >
+                <Grid container spacing={1.5}>
+                    <FormikTextField name="nomdossier" label="Nom du dossier *" width="350px" />
+                    <FormikTextField name='raisonsociale' label="Raison sociale *" width="450px" />
+                    <FormikAutocomplete
+                        name='pays'
+                        label="Pays *"
+                        type="select"
+                        width="350px"
+                        options={listPays.map(item => ({
+                            value: item.code,
+                            label: item.nompays
+                        }))}
+                        values={values}
+                        setFieldValue={setFieldValue}
+                    />
+                    {/* <FormikTextField name='pays' label="Pays" type="select" width="180px" /> */}
+                </Grid>
+                <Grid container spacing={1.5} sx={{ mt: 1 }}>
+                    <FormikTextField name='denomination' label="Dénomination" width="350px" />
+                    <FormikTextField name='nif' label="Numéro NIF" width="180px" />
+                    <FormikTextField name='stat' label="Numéro Statistique" width="180px" />
+                    <FormikTextField name='rcs' label="Numéro RCS" width="180px" />
+                </Grid>
+                <Grid container spacing={1.5} sx={{ mt: 1 }}>
+                    <FormikTextField name='responsable' label="Résponsable" width="350px" />
+                    <FormikTextField name='expertcomptable' label="Expert comptable" width="350px" />
+                    <FormikTextField name='cac' label="Commissaires aux comptes" width="350px" />
+                </Grid>
+                <Grid container spacing={1.5} sx={{ mt: 1 }}>
+                    <FormikAutocompleteMultiple name='portefeuille' label="Portefeuille *" type='select' width="600px" values={values} setFieldValue={setFieldValue} options={listePortefeuille} />
+                </Grid>
+            </CompactAccordion>
+
+            <CompactAccordion icon={<GavelIcon />} title="Juridique" >
+                <Grid container spacing={1.5}>
+                    <FormikAutocomplete
+                        name='forme'
+                        label="Forme *"
+                        type="select"
+                        width="440px"
+                        options={listeFormeJuridique.map(item => ({
+                            value: item.id,
+                            label: item.libelle
+                        }))}
+                        values={values}
+                        setFieldValue={setFieldValue}
+                    />
+                    <FormikAutocomplete
+                        name='activite'
+                        label="Activité *"
+                        type="select"
+                        width="250px"
+                        options={listeActivite.map(item => ({
+                            value: item.id,
+                            label: item.libelle,
+                            icon: item.icon
+                        }))}
+                        values={values}
+                        setFieldValue={setFieldValue}
+                    />
+                    <FormikTextField name='detailsactivite' label="Détails activité" width="380px" />
+                </Grid>
+            </CompactAccordion>
+            <CompactAccordion icon={<ContactMailIcon />} title="Contact" >
+                <Grid container spacing={1.5}>
+                    <FormikTextField name='adresse' label="Adresse" width="250px" />
+                    <FormikTextField name='email' label="Email" width="350px" />
+                    <FormikTextField name='telephone' label="Téléphone" width="180px" />
+                </Grid>
+                <Grid container spacing={1.5} sx={{ mt: 1 }}>
+                    <FormikAutocomplete
+                        name='province'
+                        label="Province"
+                        type="select"
+                        width="300px"
+                        options={listProvinces.map(item => ({
+                            value: item.name,
+                            label: item.name
+                        }))}
+                        values={values}
+                        setFieldValue={(name, value) => {
+                            setFieldValue(name, value);
+                            setFieldValue('region', '');
+                            setFieldValue('district', '');
+                            setFieldValue('commune', '');
+                            getListeRegions(value);
+                        }}
+                    />
+                    <FormikAutocomplete
+                        name='region'
+                        label="Region"
+                        type="select"
+                        width="300px"
+                        options={listRegions.length > 0 ? listRegions.map(item => ({
+                            value: item.name,
+                            label: item.name
+                        })) : []}
+                        values={values}
+                        setFieldValue={(name, value) => {
+                            const province = values.province;
+                            setFieldValue(name, value);
+                            setFieldValue('district', '');
+                            setFieldValue('commune', '');
+                            getListeDistricts(province, value);
+                        }}
+                    />
+                    <FormikAutocomplete
+                        name='district'
+                        label="District"
+                        type="select"
+                        width="300px"
+                        options={listDistricts.map(item => ({
+                            value: item.name,
+                            label: item.name
+                        }))}
+                        values={values}
+                        setFieldValue={(name, value) => {
+                            const province = values.province;
+                            const region = values.region;
+                            setFieldValue(name, value);
+                            setFieldValue('commune', '');
+                            getListeCommunes(province, region, value);
+                        }}
+                    />
+                    <FormikAutocomplete
+                        name='commune'
+                        label="Commune"
+                        type="select"
+                        width="300px"
+                        options={listCommunes.map(item => ({
+                            value: item.name,
+                            label: item.name
+                        }))}
+                        values={values}
+                        setFieldValue={setFieldValue}
+                    />
+                </Grid>
+            </CompactAccordion>
+            <CompactAccordion icon={<ContactMailIcon />} title="Sécurité" >
+                <Grid item sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
+                    <FormikCheckbox name="avecMotDePasse" label="Avec mot de passe" />
+                </Grid>
+                <Grid container spacing={1.5}>
+                    <FormikTextField name='motDePasse' label="Mot de passe *" width="250px" disabled={!values.avecMotDePasse} />
+                    <FormikTextField name='motDePasseConfirmation' label="Confirmation du mot de passe *" width="250px" disabled={!values.avecMotDePasse} />
+                </Grid>
+            </CompactAccordion>
+        </Stack>
+    )
+};
+
+const ComptabiliteTabContent = ({ listModel, values, setFieldValue, type, listeDevise }) => (
     <Box sx={{ bgcolor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', p: 4 }}>
         <Grid container spacing={1.5}>
             <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 2 }}>Général</Typography></Grid>
@@ -223,13 +244,13 @@ const ComptabiliteTabContent = ({ listModel, values, setFieldValue, type }) => (
                     <>
                         <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4, mt: -5 }} /></Grid>
                         <FormikAutocomplete
-                            name='plancomptable'
+                            name='devisepardefaut'
                             label="Devise par défaut"
                             type="select"
-                            width="250px"
-                            options={listModel.map(item => ({
+                            width="150px"
+                            options={listeDevise.map(item => ({
                                 value: item.id,
-                                label: item.nom
+                                label: item.code
                             }))}
                             values={values}
                             setFieldValue={setFieldValue}
