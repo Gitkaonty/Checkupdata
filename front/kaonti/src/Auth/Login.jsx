@@ -1,34 +1,49 @@
-import { useEffect, useRef, useState } from 'react';
-import { Stack, Box, TextField, Button, Typography, Checkbox, InputLabel, Input } from "@mui/material";
-import axios from '../../config/axios';
-import { init } from '../../init';
-import InputAdornment from '@mui/material/InputAdornment';
-import FormControl from '@mui/material/FormControl';
-import IconButton from '@mui/material/IconButton';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import React, { useState } from 'react';
+import {
+  Box, TextField, Button, Typography, Checkbox,
+  FormControlLabel, InputAdornment, IconButton,
+  Grid, createTheme, ThemeProvider, CssBaseline, alpha, Divider
+} from '@mui/material';
+import {
+  Visibility, VisibilityOff, MailOutlineRounded,
+  LockOutlined, VerifiedUserRounded, ArrowForwardRounded,
+  SettingsSuggestRounded, RuleRounded, AccountBalanceWalletRounded
+} from '@mui/icons-material';
+
 import useAuth from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { useTheme, useMediaQuery } from "@mui/material";
 import toast from 'react-hot-toast';
+import axios from '../../config/axios';
 
-const Login = () => {
-  let initial = init[0];
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: { main: '#00E5FF' },
+    background: { default: '#FFFFFF' },
+  },
+  typography: {
+    fontFamily: '"Inter", sans-serif',
+    h3: { fontWeight: 900, letterSpacing: '-2px' }
+  },
+});
 
-  const navigate = useNavigate();
-  const userRef = useRef();
-
+export default function KaontyProSplit() {
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
   const { setAuth } = useAuth();
+  const navigate = useNavigate();
 
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const textFieldStyle = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '4px',
+      backgroundColor: '#FCFCFC',
+      '& fieldset': { borderColor: '#E2E8F0' },
+      '&:hover fieldset': { borderColor: '#CBD5E1' },
+      '&.Mui-focused fieldset': { borderColor: '#00E5FF', borderWidth: '1px' },
+    },
+    '& input': { fontSize: '0.9rem', py: 1.5 }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -57,191 +72,128 @@ const Login = () => {
     }
   }
 
-  useEffect(() => {
-    userRef.current.focus();
-  }, []);
-
   return (
-    <Stack
-      alignItems="center"
-      justifyContent="center"
-      style={{
-        backgroundColor: initial.theme,
-        width: '100vw',
-        height: '100vh',
-      }}
-    >
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Grid container sx={{ minHeight: '100vh' }}>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit();
-        }}
-      >
-        <Stack
-          alignItems="center"
-          justifyContent="center"
-          width={isMobile ? '80%' : '400px'}
-          maxWidth="90vw"
-          bgcolor="white"
-          borderRadius={2}
-          boxShadow={3}
-          py={4}
-          px={3}
-          mt={2}
-        >
-          <Box width="100%">
-            <Stack
-              direction="column"
-              spacing={3}
-              alignItems="center"
-              justifyContent="center"
-            >
-              <img
-                src="/Logo Kaonty_2.png"
-                alt="Logo Kaonty"
-                style={{
-                  border: '1px solid #FFF',
-                  borderRadius: '8px',
-                  width: '40px',
-                  height: '40px',
-                  marginTop: '10px'
-                }}
-              />
+        {/* --- CÔTÉ GAUCHE : FORMULAIRE CHIRURGICAL --- */}
+        <Grid item xs={12} md={5} lg={4} sx={{
+          display: 'flex', flexDirection: 'column', p: { xs: 4, md: 8 }, bgcolor: '#FFFFFF'
+        }}>
+          <Box sx={{ mb: 'auto' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 8 }}>
+              <Box sx={{ width: 35, height: 35, bgcolor: '#010810', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="h6" sx={{ color: '#00E5FF', fontWeight: 900, fontSize: '1rem' }}>K</Typography>
+              </Box>
+              <Typography variant="h6" fontWeight={900} color="#010810" sx={{ letterSpacing: '-1px' }}>KAONTY</Typography>
+            </Box>
 
-              <Typography
-                variant="h4"
-                fontFamily="Bahnschrift Condensed"
-                fontWeight="light"
-                color="rgba(112, 112, 112, 0.96)"
-                mt={-1}
-              >
-                Kaonty
-              </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 900, color: '#010810', mb: 1 }}>Connexion Expert</Typography>
+            <Typography variant="body2" sx={{ color: '#64748B', mb: 5 }}>Accédez à votre terminal de gestion comptable Malagasy.</Typography>
 
-              <Typography
-                variant="body1"
-                fontFamily="Bahnschrift"
-                fontWeight="light"
-                fontSize="16px"
-                color="rgba(33, 33, 33, 0.9)"
-                mt={-2}
-              >
-                Connectez-vous à votre compte
-              </Typography>
-
+            <Box component="form">
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#010810', display: 'block', mb: 1 }}>EMAIL PROFESSIONNEL</Typography>
               <TextField
-                ref={userRef}
-                type='email'
+                fullWidth placeholder="nom@cabinet.mg"
                 onChange={e => setEmail(e.target.value)}
-                id="standard-basic01"
-                label="Adresse mail"
-                name='email'
-                variant="standard"
-                fullWidth
-                size='small'
-                required
-                sx={{
-                  '& .MuiInputBase-input': {
-                    fontSize: 15.3,
-                    py: 1,
-                    pl: 0.5,
-                  },
-                  '& .MuiInputBase-input:-webkit-autofill': {
-                    fontSize: '15.3px !important',
-                    WebkitTextFillColor: '#000',
-                    WebkitBoxShadow: '0 0 0 1000px #fff inset',
-                    transition: 'background-color 9999s ease-in-out 0s',
-                    caretColor: '#000',
-                  },
-                  '& .MuiInputBase-root': {
-                    fontSize: 15.3,
-                  },
+                sx={{ ...textFieldStyle, mb: 3 }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><MailOutlineRounded sx={{ fontSize: 20, color: '#94A3B8' }} /></InputAdornment>,
                 }}
               />
 
-              <FormControl variant="standard" fullWidth>
-                <InputLabel htmlFor="standard-adornment-password" >Mot de passe *</InputLabel>
-                <Input
-                  onChange={e => setPassword(e.target.value)}
-                  id="standard-adornment-password"
-                  type={showPassword ? 'text' : 'password'}
-                  name='password'
-                  sx={{
-                    '& .MuiInputBase-input': {
-                      fontSize: 15.3,
-                      py: 1,
-                      pl: 0.5,
-                    },
-                    '& .MuiInputBase-input:-webkit-autofill': {
-                      fontSize: '15.3px !important',
-                      WebkitTextFillColor: '#000',
-                      WebkitBoxShadow: '0 0 0 1000px #fff inset',
-                      transition: 'background-color 9999s ease-in-out 0s',
-                      caretColor: '#000',
-                    },
-                    '& .MuiInputBase-root': {
-                      fontSize: 15.3,
-                    },
-                  }}
-                  required
-                  endAdornment={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#010810' }}>MOT DE PASSE</Typography>
+                <Typography variant="caption" sx={{ color: '#00E5FF', fontWeight: 700, cursor: 'pointer' }}>Oublié ?</Typography>
+              </Box>
+              <TextField
+                fullWidth type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+                onChange={e => setPassword(e.target.value)}
+                sx={{ ...textFieldStyle, mb: 4 }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><LockOutlined sx={{ fontSize: 20, color: '#94A3B8' }} /></InputAdornment>,
+                  endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton
-                        disableRipple
-                        sx={{
-                          backgroundColor: 'transparent',
-                          '&:hover': { backgroundColor: 'transparent' },
-                          '&:active': { backgroundColor: 'transparent' }
-                        }}
-                        aria-label="toggle password visibility"
-                        onClick={handleClickShowPassword}
-                        style={{
-                          textTransform: 'none',
-                          outline: 'none',
-                        }}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
+                      <IconButton onClick={() => setShowPassword(!showPassword)} size="small"><Visibility fontSize="small" /></IconButton>
                     </InputAdornment>
-                  }
-                />
-              </FormControl>
+                  ),
+                }}
+              />
 
               <Button
-                type="submit"
+                fullWidth variant="contained"
+                type='submit'
                 onClick={handleSubmit}
-                variant="contained"
-                fullWidth
-                sx={{ mt: 1 }}
-                style={{
-                  textTransform: 'none',
-                  outline: 'none',
+                endIcon={<ArrowForwardRounded />}
+                sx={{
+                  py: 1.8, borderRadius: '4px', fontWeight: 800,
+                  bgcolor: '#010810', color: '#FFFFFF', textTransform: 'none',
+                  '&:hover': { bgcolor: '#00E5FF', color: '#010810', boxShadow: 'none' }
                 }}
               >
-                Se connecter
+                Accéder au terminal
               </Button>
-            </Stack>
 
-            <Stack direction="row" alignItems="center" justifyContent="flex-start" mt={2}>
-              <Checkbox defaultChecked />
-              <Typography
-                variant="body2"
-                fontSize="14px"
-                color="rgba(0, 0, 0, 0.96)"
-              >
-                J'ai lu et j'accepte les conditions générales d'utilisation
-              </Typography>
-            </Stack>
+              <FormControlLabel
+                control={<Checkbox size="small" defaultChecked />}
+                label={<Typography variant="caption" sx={{ color: '#64748B', fontWeight: 500 }}>Maintenir la session active</Typography>}
+                sx={{ mt: 3 }}
+              />
+            </Box>
           </Box>
-        </Stack>
-      </form>
 
-      <Typography variant="caption" color="white" mt={2}>
-        © Kaonty v1.0.0.0
-      </Typography>
-    </Stack>
+          <Typography variant="caption" sx={{ color: '#CBD5E1', mt: 4 }}>
+            © 2026 Kaonty • Standard PCG 2005 conforme
+          </Typography>
+        </Grid>
+
+        <Grid item xs={12} md={7} lg={8} sx={{
+          display: { xs: 'none', md: 'flex' },
+          flexDirection: 'column', justifyContent: 'center',
+          p: 12,
+          background: 'radial-gradient(circle at 20% 30%, #0A192F 0%, #010810 100%)',
+          position: 'relative'
+        }}>
+          <Box sx={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundImage: 'radial-gradient(#ffffff05 1px, transparent 1px)',
+            backgroundSize: '30px 30px', opacity: 0.5
+          }} />
+
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2, py: 0.5, borderRadius: '4px', bgcolor: alpha('#00E5FF', 0.1), border: '1px solid', borderColor: alpha('#00E5FF', 0.2), mb: 4 }}>
+              <VerifiedUserRounded sx={{ fontSize: 14, color: '#00E5FF' }} />
+              <Typography variant="caption" sx={{ color: '#00E5FF', fontWeight: 900, letterSpacing: '1px' }}>SYSTÈME AU NORME MG</Typography>
+            </Box>
+
+            <Typography variant="h3" sx={{ color: '#FFFFFF', fontWeight: 900, mb: 0, maxWidth: 600 }}>
+              Le pilotage financier <br />
+            </Typography>
+
+            <Typography variant="h4" sx={{ color: '#FFFFFF', fontWeight: 900, mb: 4, maxWidth: 600 }}>
+              <span style={{ color: '#00E5FF' }}>sans compromis.</span>
+            </Typography>
+
+            <Grid container spacing={4} sx={{ mt: 4 }}>
+              {[
+                { icon: <SettingsSuggestRounded />, title: "Révision Automatique", desc: "Contrôle de cohérence et dossier de révision digitalisé." },
+                { icon: <AccountBalanceWalletRounded />, title: "Fiscalité Native", desc: "TVA, IR et Annexes générées en temps réel." },
+                { icon: <RuleRounded />, title: "Pré-audit Expert", desc: "Détection des anomalies comptables avant clôture." }
+              ].map((item, index) => (
+                <Grid item xs={12} sm={4} key={index}>
+                  <Box sx={{ p: 3, borderLeft: '1px solid', borderColor: alpha('#00E5FF', 0.3) }}>
+                    <Box sx={{ color: '#00E5FF', mb: 2 }}>{item.icon}</Box>
+                    <Typography variant="subtitle2" sx={{ color: '#FFFFFF', fontWeight: 800, mb: 1 }}>{item.title}</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.5, display: 'block' }}>{item.desc}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        </Grid>
+
+      </Grid>
+    </ThemeProvider>
   );
 }
-
-export default Login

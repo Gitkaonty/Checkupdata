@@ -10,12 +10,13 @@ import {
 import * as Yup from "yup";
 import { Formik, Form } from 'formik';
 import toast from 'react-hot-toast';
-import { FormikPaveItem } from '../Global/Input/Field';
+
 import { ComptabiliteTabContent, FiscalTabContent, InfoSocieteTabContent } from './Tab';
 import DatagridGlobal from './Datagrid/DatagridGlobal';
 
 import SaveIcon from '@mui/icons-material/CheckCircleOutline';
 import useAxiosPrivate from '../../../../config/axiosPrivate';
+import { FormikPaveItem } from '../Global/Input/FieldFormik';
 
 const dataGridHeight = '500px';
 
