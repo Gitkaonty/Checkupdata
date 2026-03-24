@@ -1,7 +1,7 @@
 import { Box, Divider, Grid, Stack, Typography } from "@mui/material";
 import { CompactAccordion } from "./Global";
 import BadgeIcon from '@mui/icons-material/BadgeOutlined';
-import { FormikAutocomplete, FormikAutocompleteMultiple, FormikCheckbox, FormikRadioGroup, FormikTextField, FormikSelect } from "../Global/Input/Field";
+import { FormikAutocomplete, FormikAutocompleteMultiple, FormikCheckbox, FormikRadioGroup, FormikTextField, FormikSelect } from "../Global/Input/FieldFormik";
 import GavelIcon from '@mui/icons-material/GavelOutlined';
 import ContactMailIcon from '@mui/icons-material/ContactMailOutlined';
 
