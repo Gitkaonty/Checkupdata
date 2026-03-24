@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { styled, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiDrawer from '@mui/material/Drawer';
@@ -15,7 +15,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import { Stack, Menu, MenuItem, Divider, GlobalStyles } from '@mui/material';
+import { Stack, Menu, MenuItem, Divider, GlobalStyles, Breadcrumbs } from '@mui/material';
 import { init } from '../../init';
 import { Outlet } from 'react-router-dom';
 import { useFormik } from 'formik';
@@ -34,14 +34,27 @@ import { jwtDecode } from 'jwt-decode';
 import { useLocation } from "react-router-dom";
 import { MdAccountBox } from "react-icons/md";
 import { RiAccountBoxLine } from "react-icons/ri";
-
+import {
+  ChevronRight, Lock, Visibility, CheckCircleOutline, HighlightOff, ErrorOutline,
+  Close, SaveAlt, Comment, Folder, DateRange, MoreVert
+} from '@mui/icons-material';
 import PopupDisconnectCompte from '../components/menuComponent/Compte/PopupDisconnectCompte';
 import PopupPasswordChange from '../components/menuComponent/Compte/PopupPasswordChange';
 import axios from '../../config/axios';
 import Layout from '../components/componentsTools/Home/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
-const drawerWidth = 240;
 
+const drawerWidth = 240;
+const COLORS = {
+  midnight: '#0F172A',
+  cyan: '#00B8D4',
+  border: '#F1F5F9',
+  bgLight: '#F8FAFC',
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  textSecondary: '#64748B'
+};
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
     padding: theme.spacing(2),
@@ -157,12 +170,14 @@ export default function HomePage() {
   const [isOpenPopupDisconnect, setIsOpenPopupDisconnect] = useState(false);
   const [isOpenPopupChangePassword, setOpenPopupChangePassword] = useState(false);
   const [isButtonRolePermissionVisible, setIsButtonRolePermissionVisible] = useState(false);
+  const [fileInfos, setFileInfos] = useState('');
 
   const [activeMenu, setActiveMenu] = useState("");
   const [listePortefeuille, setListePortefeuille] = useState([]);
   const [listeDossier, setListeDossier] = useState([]);
   const [listeRoles, setListeRoles] = useState([]);
   const [consolidation, setConsolidation] = useState([]);
+  const { id } = useParams();
 
   let idDossier = null;
   if (typeof window !== 'undefined') {
@@ -260,6 +275,7 @@ export default function HomePage() {
     axios.get(`/home/FileInfos/${id}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
+        setFileInfos(resData.fileInfos[0]);
         setConsolidation(resData.fileInfos[0].consolidation);
       } else {
         setConsolidation(false);
@@ -331,17 +347,6 @@ export default function HomePage() {
       })
   }
 
-  const handleNavigateToRolePermission = () => {
-    const currentPath = window.location.pathname;
-
-    if (currentPath === '/tab/parametrages/role-permission') {
-      return;
-    }
-
-    const url = window.location.origin + '/tab/parametrages/role-permission';
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
   useEffect(() => {
     if ([5150, 3355].includes(roles)) {
       setIsButtonAddVisible(true);
@@ -411,19 +416,29 @@ export default function HomePage() {
             html: { margin: 0, padding: 0 }
           }} />
           {
-            before && after && (
-              <Box sx={{ width: '100%', px: 4, py: 1.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#fff', boxSizing: 'border-box' }}>
-                <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                  <span style={{ color: '#94A3B8' }}>{before}</span>
-                  {after && <span style={{ color: '#94A3B8' }}> / </span>}
-                  <span style={{ color: '#1E293B' }}>{after}</span>
-                </Typography>
+            // before && after && +
+            (
+              <Box sx={{ width: '100%', pl: 2, py: 1.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#fff', boxSizing: 'border-box' }}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Box sx={{
+                    display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.5,
+                    bgcolor: '#F1F5F9', borderRadius: '6px', border: '1px solid #E2E8F0'
+                  }}>
+                    <Folder sx={{ fontSize: 16, color: COLORS.textSecondary }} />
+                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.midnight }}>{fileInfos?.dossier}</Typography>
+                  </Box>
+                  <Divider orientation="vertical" flexItem sx={{ height: 30, my: 'auto' }} />
+                  <Breadcrumbs separator=">">
+                    <Typography sx={{ fontSize: 14, color: '#94A3B8' }} >{before}</Typography>
+                    <Typography sx={{ fontSize: 14, color: COLORS.cyan }} >{after}</Typography>
+                  </Breadcrumbs>
+                </Stack>
               </Box>
             )
           }
           <Outlet />
         </Box>
-      </Box>
+      </Box >
     </>
   );
 }
