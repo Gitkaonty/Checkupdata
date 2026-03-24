@@ -5,6 +5,40 @@ import {
   CalendarToday
 } from '@mui/icons-material';
 
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Box, Grid, Paper, Typography, Stack, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  GlobalStyles,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  TableFooter,
+  TextField,
+  InputAdornment,
+  Autocomplete,
+  Checkbox
+} from '@mui/material';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar
+} from 'recharts';
+import axios from '../../../../config/axios';
+import { useNavigate, useParams } from 'react-router-dom';
+import useAuth from '../../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
+import { format } from 'date-fns';
+import usePermission from '../../../hooks/usePermission';
+import toast from 'react-hot-toast';
+import { Tooltip as RechartsTooltip } from 'recharts';
+import { AutocompleteMultipleState, AutocompleteState, RadioGroupState } from '../../componentsTools/Global/Input/FieldState';
+import SelectExercice from '../../componentsTools/Global/SelectExercice';
+
 const columns = [
   {
     id: 'compte',
@@ -56,39 +90,6 @@ const columns = [
   },
 ];
 
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Box, Grid, Paper, Typography, Stack, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  GlobalStyles,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  TableFooter,
-  TextField,
-  InputAdornment,
-  Autocomplete,
-  Checkbox
-} from '@mui/material';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar
-} from 'recharts';
-import axios from '../../../../config/axios';
-import { useNavigate, useParams } from 'react-router-dom';
-import useAuth from '../../../hooks/useAuth';
-import { jwtDecode } from 'jwt-decode';
-import { format } from 'date-fns';
-import usePermission from '../../../hooks/usePermission';
-import toast from 'react-hot-toast';
-import { Tooltip as RechartsTooltip } from 'recharts';
-import { AutocompleteMultipleState, AutocompleteState, RadioGroupState } from '../../componentsTools/Global/Input/FieldState';
-
 const COLORS = {
   navy: '#0F172A',
   electric: '#0EA5E9',
@@ -102,7 +103,7 @@ const COLORS = {
 const kpiStyle = (isMain) => ({
   p: 2.5,
   borderRadius: '12px',
-  height: '140px', // Agrandi pour le confort des textes N-1
+  height: '140px',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -342,6 +343,12 @@ const DashboardFinalOptimized = () => {
     }))
   }
 
+  const handleChangeExercice = (exercice_id) => {
+    setSelectedExerciceId(exercice_id);
+    setSelectedPeriodeChoiceId("0");
+    setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
+  }
+
   const getListeJournalEnAttente = () => {
     const sectionIds = selectedSectionsId.map(val => Number(val.id));
     axios.post(`/dashboard/getListeJournalEnAttente`, {
@@ -536,7 +543,12 @@ const DashboardFinalOptimized = () => {
                 marginTop: '-20px'
               }}
             >
-              <Box>
+              {/* <SelectExercice
+                selectedExerciceId={selectedExerciceId}
+                handleChangeExercice={handleChangeExercice}
+                listeExercice={listeExercice}
+              /> */}
+              <Stack sx={{ mt: 1.5 }}>
                 <Paper
                   variant="outlined"
                   sx={{
@@ -555,13 +567,20 @@ const DashboardFinalOptimized = () => {
                       minWidth: 160,
                       '& .MuiSelect-select': { py: 0, fontWeight: 800, color: COLORS.navy, fontSize: '0.95rem' }
                     }}
+                    value={selectedExerciceId}
+                    onChange={(e) => handleChangeExercice(e.target.value)}
                   >
-                    <MenuItem value="2024">Exercice 2024</MenuItem>
-                    <MenuItem value="2025">Exercice 2025</MenuItem>
-                    <MenuItem value="2026">Exercice 2026</MenuItem>
+                    {listeExercice.map((option) => (
+                      <MenuItem
+                        key={option.id}
+                        value={option.id}
+                      >{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
+                    ))
+                    }
                   </TextField>
                 </Paper>
-              </Box>
+              </Stack>
+
               <FormControl variant="standard" sx={{ m: 1, minWidth: 250 }}>
                 <InputLabel id="demo-simple-select-standard-label">Exercice:</InputLabel>
                 <Select
