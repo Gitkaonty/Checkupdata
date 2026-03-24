@@ -15,7 +15,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import { Stack, Menu, MenuItem, Divider } from '@mui/material';
+import { Stack, Menu, MenuItem, Divider, GlobalStyles } from '@mui/material';
 import { init } from '../../init';
 import { Outlet } from 'react-router-dom';
 import { useFormik } from 'formik';
@@ -39,6 +39,7 @@ import PopupDisconnectCompte from '../components/menuComponent/Compte/PopupDisco
 import PopupPasswordChange from '../components/menuComponent/Compte/PopupPasswordChange';
 import axios from '../../config/axios';
 import Layout from '../components/componentsTools/Home/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 const drawerWidth = 240;
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -135,6 +136,10 @@ export default function HomePage() {
   //Récupérer les données de l'utilisateur
   const { auth } = useAuth();
   const location = useLocation();
+  const title = usePageTitle();
+  const parts = title.split(' / ');
+  const before = parts[0] || '';
+  const after = parts[1] || '';
 
   //paramètres de connexion------------------------------------
   const decoded = auth?.accessToken
@@ -370,306 +375,54 @@ export default function HomePage() {
 
       <Box
         sx={{
-          // display: "block",
           width: "100%",
           height: "100vh",
           overflowX: open ? "hidden" : "",
-          overflowY: open ? "hidden" : ""
+          overflowY: open ? "hidden" : "",
+          position: 'relative'
         }}
       >
         <CssBaseline />
-        {/* <AppBar position="fixed" open={open} style={{ height: "30px" }}>
-          <Toolbar style={{ backgroundColor: "#010122", alignContent: 'flex-start', alignItems: "center" }} variant="dense">
-
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              onClick={handleDrawerOpen}
-              edge="start"
-              sx={{ mr: 2, ...(open && { display: 'none' }) }}
-              style={{ textTransform: 'none', outline: 'none' }}
-            >
-              <ChevronRightIcon style={{ textTransform: 'none', outline: 'none' }} />
-            </IconButton>
-
-            <Stack
-              direction={'row'}
-              alignItems={'center'}
-              justifyContent={'space-between'}
-              sx={{ width: "100%" }}
-            >
-              <Stack direction={"row"} alignContent={"center"} alignItems={"center"} marginLeft={"10px"}>
-                <MdAccountBox style={{ width: "40px", height: "40px" }} />
-                <Typography
-                  variant="h4" noWrap component="div"
-                  style={{
-                    height: "35px", width: "100%",
-                    fontSize: "16px", textAlign: "center", alignContent: "center"
-                  }}
-                >
-                  {`${comptename}`}
-                </Typography>
-              </Stack>
-
-              <Stack
-              >
-                <IconButton
-                  size="40"
-                  aria-label="account of current user"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenu}
-                  color="inherit"
-                  style={{ textTransform: 'none', outline: 'none' }}
-                  sx={{
-                    p: 0,
-                  }}
-                >
-                  <div
-                    className="main"
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      fontWeight: "lighter",
-                      height: "35px",
-                      width: "35px",
-                      backgroundColor: "#427AA1",
-                      borderRadius: "50%",
-                      textTransform: 'none',
-                      outline: 'none'
-                    }}
-                  >
-                    <ProfileImage name={decoded.UserInfo.username || 'Invité'} />
-                  </div>
-                </IconButton>
-                <Menu
-                  id="menu-appbar"
-                  anchorEl={anchorEl}
-                  anchorOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  keepMounted
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  open={Boolean(anchorEl)}
-                  onClose={handleClose}
-                  disableScrollLock={true}
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        mt: 4
-                      }
-                    }
-                  }}
-                >
-                  <MenuItem onClick={() => { handleClose(); setOpenPopupChangePassword(true) }} >
-                    <Stack direction={"row"} alignItems={'center'} alignContent={'left'}>
-                      <IconButton
-                        style={{ color: initial.button_exit_color, borderRadius: "50px", borderColor: "transparent", backgroundColor: 'transparent', marginLeft: "-5px" }}
-                        aria-label="close"
-                      >
-                        <TbPasswordUser style={{ width: "25px", height: "25px", color: "gray" }} />
-                      </IconButton>
-                      <Typography>Nouveau mot de passe</Typography>
-                    </Stack>
-                  </MenuItem>
-                  {
-                    isButtonRolePermissionVisible && (
-                      <MenuItem onClick={() => { handleClose(); handleNavigateToRolePermission() }}>
-                        <Stack direction={"row"} alignItems={'center'} alignContent={'center'}>
-                          <IconButton
-                            style={{ color: initial.button_exit_color, borderRadius: "50px", borderColor: "transparent", backgroundColor: 'transparent' }}
-                            aria-label="close"
-                          >
-                            <RiAccountBoxLine style={{ width: "20px", height: "20px", color: "gray" }} />
-                          </IconButton>
-                          <Typography>Gestion de compte</Typography>
-                        </Stack>
-                      </MenuItem>
-                    )
-                  }
-                  <Divider sx={{ my: 0 }} />
-                  <MenuItem onClick={() => { handleClose(); setShowPopupDisconnect(true) }}>
-                    <Stack direction={"row"} alignItems={'center'} alignContent={'center'}>
-                      <IconButton
-                        style={{ color: initial.button_exit_color, borderRadius: "50px", borderColor: "transparent", backgroundColor: 'transparent' }}
-                        aria-label="close"
-                      >
-                        <BsEscape style={{ width: "20px", height: "20px", color: "gray" }} />
-                      </IconButton>
-                      <Typography>Déconnexion</Typography>
-                    </Stack>
-                  </MenuItem>
-                </Menu>
-              </Stack>
-            </Stack>
-
-          </Toolbar>
-        </AppBar> */}
 
         <Layout />
 
-        {/* <Drawer
-          variant="permanent"
-          open={open}
-          style={{
-            marginRight: "-10px"
-          }}
-          PaperProps={{
-            sx: {
-              backgroundColor: initial.theme,
-              color: "white",
-            }
-          }}
-        >
-
-          <Stack height={"47.5px"} width={"100%"} style={{ backgroundColor: "#010122", paddingLeft: 5 }}>
-            <IconButton onClick={handleDrawerClose} style={{ width: "47px", height: "47px", color: "white", textTransform: 'none', outline: 'none' }}>
-              {theme.direction === 'rtl' ? <ChevronRightIcon style={{ textTransform: 'none', outline: 'none' }} /> : <ChevronLeftIcon style={{ textTransform: 'none', outline: 'none' }} />}
-            </IconButton>
-          </Stack>
-
-          <Stack
-            sx={{
-              width: "100%",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <img
-              src="/Logo Kaonty_2.png"
-              alt="Logo Kaonty"
-              style={{
-                width: '40px',
-                height: '40px',
-                marginTop: '10px'
-              }}
-            />
-          </Stack>
-
-          <Stack style={{ marginBottom: "55px" }} />
-
-          <List >
-            {MenuSide.map(item => (
-              <ListItem
-                key={item.text}
-                onClick={() => showSubMenu(item.name, item.subMenu, item.path, item.urlDynamic)}
-              >
-                <ListItemButton
-                  style={{
-                    marginLeft: "-12px",
-                    marginRight: "-12px",
-                    borderRadius: '5px',
-                    marginBottom: '-12px',
-                    backgroundColor: activeMenu
-                      ? activeMenu === item.path
-                        ? "rgba(241, 218, 230, 0.3)"
-                        : "transparent"
-                      : location.pathname.startsWith(item.path)
-                        ? "rgba(241, 218, 230, 0.3)"
-                        : "transparent",
-                  }}
-                >
-                  <ListItemIcon>{item.icons}</ListItemIcon>
-                  <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '15px' }} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Drawer> */}
-
-        {/* SOUS MENU */}
-        {/* <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            minWidth: 0,
-            marginRight: open ? 2 : 0
-          }}>
-          <div
-            style={{
-              position: "relative",
-              width: "100.4%",
-              marginBottom: 0,
-              marginTop: 48,
-              marginLeft: 10,
-              zIndex: 1,
-            }}
-          >
-            {subMenuState.administration && (
-              <Administration
-                humburgerMenuState={open}
-                onWindowState={handleCloseSubMenu}
-                pathToNavigate={subMenuPathNavigation}
-                closeDrawer={() => { setOpen(false); setActiveMenu("") }}
-                roles={roles}
-              />
-            )}
-            {subMenuState.revision && (
-              <Revisions
-                humburgerMenuState={open}
-                onWindowState={handleCloseSubMenu}
-                pathToNavigate={subMenuPathNavigation}
-                closeDrawer={() => { setOpen(false); setActiveMenu("") }}
-                roles={roles}
-              />
-            )}
-            {subMenuState.declaration && (
-              <Declaration
-                humburgerMenuState={open}
-                onWindowState={handleCloseSubMenu}
-                pathToNavigate={subMenuPathNavigation}
-                closeDrawer={() => { setOpen(false); setActiveMenu("") }}
-                roles={roles}
-              />
-            )}
-            {subMenuState.parametrages && (
-              <Parametrages
-                humburgerMenuState={open}
-                onWindowState={handleCloseSubMenu}
-                pathToNavigate={subMenuPathNavigation}
-                closeDrawer={() => { setOpen(false); setActiveMenu("") }}
-                roles={roles}
-                consolidation={consolidation}
-              />
-            )}
-            <Box sx={{ position: 'relative' }}>
-              {open && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '105vh',
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    zIndex: 1,
-                  }}
-                  onClick={() => setOpen(false)}
-                />
-              )}
-              <Box
-                sx={{
-                  position: 'relative',
-                  zIndex: 0,
-                }}>
-                <Outlet />
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '64px',
+          left: 90,
+          right: 0,
+          bottom: 0,
+          overflowY: 'auto',
+          width: `calc(100% - 88px)`,
+          px: 0,
+          py: 0,
+        }}
+      >
+        <Box sx={{
+          bgcolor: '#F8FAFC',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <GlobalStyles styles={{
+            body: { margin: 0, padding: 0, overflowX: 'hidden' },
+            html: { margin: 0, padding: 0 }
+          }} />
+          {
+            before && after && (
+              <Box sx={{ width: '100%', px: 4, py: 1.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#fff', boxSizing: 'border-box' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                  <span style={{ color: '#94A3B8' }}>{before}</span>
+                  {after && <span style={{ color: '#94A3B8' }}> / </span>}
+                  <span style={{ color: '#1E293B' }}>{after}</span>
+                </Typography>
               </Box>
-            </Box>
-          </div>
-        </Box> */}
-        {/* <Box
-          sx={{
-            position: 'relative',
-            zIndex: 0,
-            width: "100%",
-          }}>
+            )
+          }
           <Outlet />
-        </Box> */}
+        </Box>
       </Box>
     </>
   );
