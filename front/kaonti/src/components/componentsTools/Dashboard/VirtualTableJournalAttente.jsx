@@ -11,6 +11,16 @@ import { init } from '../../../../init';
 
 let initial = init[0];
 
+const COLORS = {
+  navy: '#0F172A',
+  electric: '#0EA5E9',
+  cyan: '#22D3EE',
+  success: '#10B981',
+  error: '#EF4444',
+  border: '#E2E8F0',
+  bg: '#F8FAFC'
+};
+
 export default function VirtualTableJournalAttente({ tableHeader, tableRow, searchText }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -36,19 +46,16 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow, sear
   return (
 
     <Stack width={'100%'} height={'100%'}>
-      <TableContainer sx={{ height: '100%' }}>
+      <TableContainer sx={{ maxHeight: 380 }}>
         <Table stickyHeader aria-label="sticky table" >
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ bgcolor: '#F1F5F9' }}>
               {tableHeader.map((column) => (
                 <TableCell
                   sx={{
-                    fontSize: 16,
-                    fontWeight: "bold",
-                    backgroundColor: initial.theme,
-                    paddingY: 0.8,
-                    borderRadius: 0.5,
-                    color: 'white'
+                    textTransform: 'uppercase',
+                    bgcolor: '#F1F5F9',
+                    fontWeight: 900, fontSize: '0.75rem', py: 1
                   }}
                   key={column.id}
                   align={column.align}
@@ -64,14 +71,18 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow, sear
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row, rowIndex) => {
                 return (
-                  <TableRow hover role="checkbox" tabIndex={-1} key={`row-${row.id ?? rowIndex}-${page}`}>
+                  <TableRow hover role="checkbox" tabIndex={-1} sx={{ py: 2, fontSize: '0.85rem' }} key={`row-${row.id ?? rowIndex}-${page}`}>
                     {tableHeader.map((column) => {
                       const value = row[column.id];
                       return (
                         <TableCell
                           key={column.id}
                           align={column.align}
-                          sx={{ paddingY: 1 }}
+                          sx={{
+                            paddingY: 1,
+                            fontWeight: column.id === 'compte' ? 900 : column.id === 'dateecriture' || column.id === 'codejournal' || column.id === 'libelle' ? 600 : 900,
+                            color: column.id === 'compte' ? COLORS.electric : column.id === 'dateecriture' || column.id === 'codejournal' || column.id === 'libelle' ? '#64748B' : '',
+                          }}
                         >
                           {
                             column.format
@@ -86,22 +97,21 @@ export default function VirtualTableJournalAttente({ tableHeader, tableRow, sear
               })}
 
           </TableBody>
-          <TableFooter>
-            <TableRow>
+          <TableFooter
+            sx={{
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 1,
+            }}
+          >
+            <TableRow sx={{ bgcolor: '#F1F5F9' }}>
               {tableHeader.map((column) => (
                 <TableCell
                   key={column.id}
                   align={column.align}
                   sx={{
-                    fontWeight: 'bold',
-                    fontSize: 15,
-                    paddingY: 0.8,
-                    backgroundColor: initial.theme,
-                    position: 'sticky',
-                    bottom: 0,
-                    zIndex: 2,
-                    minWidth: column.minWidth || 80,
-                    color: 'white'
+                    bgcolor: '#F1F5F9',
+                    fontWeight: 900, fontSize: '0.75rem', py: 1
                   }}
                 >
                   {column.id === 'compte'

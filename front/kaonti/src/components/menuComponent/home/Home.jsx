@@ -477,26 +477,8 @@ export default function Home() {
         : null
       }
 
-      <Box sx={{
-        bgcolor: '#F8FAFC',
-        minHeight: '100vh',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <GlobalStyles styles={{
-          body: { margin: 0, padding: 0, overflowX: 'hidden' },
-          html: { margin: 0, padding: 0 }
-        }} />
-
-        <Box sx={{ width: '100%', px: 4, py: 1.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#fff', boxSizing: 'border-box' }}>
-          <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600 }}>
-            Accueil / <span style={{ color: '#1E293B' }}>Dossiers</span>
-          </Typography>
-        </Box>
-
+      <Stack>
         <Box sx={{ p: 4, width: '100%', boxSizing: 'border-box' }}>
-
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.02em' }}>
               Dossiers
@@ -538,7 +520,7 @@ export default function Home() {
           />
 
         </Box>
-      </Box>
+      </Stack>
     </>
   )
 };
