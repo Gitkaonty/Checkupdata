@@ -195,9 +195,9 @@ function calculateResultatDepensesSalariales(data) {
     return round2(total);
 }
 
-function calculateResultatTresoreriesBanques(data) {
+function calculateResultatMargeBrutes(data) {
     const mappedData = data.filter(
-        item => item.compte && item.compte.toString().startsWith('512')
+        item => item.compte && item.compte.toString().startsWith('60')
     );
 
     const total = mappedData.reduce((acc, entry) => {
@@ -209,9 +209,9 @@ function calculateResultatTresoreriesBanques(data) {
     return round2(total);
 }
 
-function calculateResultatTresoreriesCaisses(data) {
+function calculateResultatTresoreriesGlobal(data) {
     const mappedData = data.filter(
-        item => item.compte && item.compte.toString().startsWith('53')
+        item => item.compte && item.compte.toString().startsWith('53') || item.compte.toString().startsWith('512')
     );
 
     const total = mappedData.reduce((acc, entry) => {
@@ -351,6 +351,7 @@ const getJournalsEnAttente = async (id_compte, id_dossier, id_exercice, avecAnal
     } else {
         rows = await db.sequelize.query(`
             SELECT 
+                j.id AS id,
                 j.compteaux AS compte,
                 j.dateecriture,
                 cj.code AS codejournal,
@@ -424,7 +425,6 @@ exports.getAllInfo = async (req, res) => {
         // === Exercice N ===
         const chiffreAffaireN = calculateChiffreAffaire(mappedDataConditionN, moisN);
         const margeBruteN = calculateMargeBrute(mappedDataConditionN, moisN);
-        const margeBruteTotalN = chiffreAffaireN.map((val, i) => round2(val + margeBruteN[i]));
         const tresorerieBanqueN = calculateTresorerieBanque(mappedDataN, moisN);
         const tresorerieCaisseN = calculateTresorerieCaisse(mappedDataN, moisN);
 
@@ -432,19 +432,13 @@ exports.getAllInfo = async (req, res) => {
         const resultatChiffreAffaireN = calculateResultatChiffreAffaire(mappedDataConditionN);
         const resultatDepenseAchatN = calculateResultatDepensesAchats(mappedDataConditionN);
         const resultatDepenseSalarialeN = calculateResultatDepensesSalariales(mappedDataConditionN);
-        const resultatTresorerieBanqueN = calculateResultatTresoreriesBanques(mappedDataN);
-        const resultatTresorerieCaisseN = calculateResultatTresoreriesCaisses(mappedDataN);
+        const resultatTresorerieGlobalN = calculateResultatTresoreriesGlobal(mappedDataN);
+        const resultatMargeBruteN = calculateResultatMargeBrutes(mappedDataN);
 
         // === Exercice N-1 ===
         const { id_exerciceN1 } = await recupExerciceN1.recupInfos(id_compte, id_dossier, id_exercice);
 
         let chiffreAffaireN1 = [],
-            margeBruteN1 = [],
-            margeBruteTotalN1 = [],
-            tresorerieBanqueN1 = [],
-            tresorerieCaisseN1 = [],
-            moisN1 = [],
-            moisN1Mapped = [],
 
             resultatN1 = 0,
             variationResultatN = 0,
@@ -466,15 +460,15 @@ exports.getAllInfo = async (req, res) => {
             variationDepenseSalarialeN1 = 0,
             evolutionDepenseSalarialeN = '',
 
-            resultatTresorerieBanqueN1 = 0,
-            variationTresorerieBanqueN = 0,
-            variationTresorerieBanqueN1 = 0,
-            evolutionTresorerieBanqueN = '',
+            resultatTresorerieGlobalN1 = 0,
+            variationTresorerieGlobalN = 0,
+            variationTresorerieGlobalN1 = 0,
+            evolutionTresorerieGlobalN = '',
 
-            resultatTresorerieCaisseN1 = 0,
-            variationTresorerieCaisseN = 0,
-            variationTresorerieCaisseN1 = 0,
-            evolutionTresorerieCaisseN = ''
+            resultatMargeBruteN1 = 0,
+            variationMargeBruteN = 0,
+            variationMargeBruteN1 = 0,
+            evolutionMargeBruteN = ''
 
         if (id_exerciceN1) {
             const exerciceN1Data = await getExerciceById(id_exerciceN1);
@@ -488,7 +482,7 @@ exports.getAllInfo = async (req, res) => {
                     year: startYearN1 + (month < moisN[0].month ? 1 : 0)
                 };
             });
-            
+
             const mappedDataN1 = await getJournalData(id_compte, id_dossier, id_exerciceN1);
             let mappedDataAnalytiqueN1 = [];
             if (avecAnalytique) {
@@ -498,18 +492,13 @@ exports.getAllInfo = async (req, res) => {
 
             chiffreAffaireN1 = calculateChiffreAffaire(mappedDataConditionN1, moisN1Aligned);
 
-            margeBruteN1 = calculateMargeBrute(mappedDataConditionN1, moisN1Aligned);
-            margeBruteTotalN1 = chiffreAffaireN1.map((val, i) => round2(val + margeBruteN1[i]));
-            tresorerieBanqueN1 = calculateTresorerieBanque(mappedDataN1, moisN1Aligned);
-            tresorerieCaisseN1 = calculateTresorerieCaisse(mappedDataN1, moisN1Aligned);
-
             resultatN1 = calculateResultat(mappedDataConditionN1);
 
             resultatChiffreAffaireN1 = calculateResultatChiffreAffaire(mappedDataConditionN1);
             resultatDepenseAchatN1 = calculateResultatDepensesAchats(mappedDataConditionN1);
             resultatDepenseSalarialeN1 = calculateResultatDepensesSalariales(mappedDataConditionN1);
-            resultatTresorerieBanqueN1 = calculateResultatTresoreriesBanques(mappedDataN1);
-            resultatTresorerieCaisseN1 = calculateResultatTresoreriesCaisses(mappedDataN1);
+            resultatTresorerieGlobalN1 = calculateResultatTresoreriesGlobal(mappedDataN1);
+            resultatMargeBruteN1 = calculateResultatMargeBrutes(mappedDataConditionN1);
         }
         // Resultat
         variationResultatN = safeVariation(resultatN, resultatN1);
@@ -527,27 +516,21 @@ exports.getAllInfo = async (req, res) => {
         variationDepenseSalarialeN = safeVariation(resultatDepenseSalarialeN, resultatDepenseSalarialeN1);
         evolutionDepenseSalarialeN = getEvolution(variationDepenseSalarialeN, variationDepenseSalarialeN1);
 
-        // Tresorerie banque
-        variationTresorerieBanqueN = safeVariation(resultatTresorerieBanqueN, resultatTresorerieBanqueN1);
-        evolutionTresorerieBanqueN = getEvolution(variationTresorerieBanqueN, variationTresorerieBanqueN1);
+        // Trésorerie globale
+        variationTresorerieGlobalN = safeVariation(resultatTresorerieGlobalN, resultatTresorerieGlobalN1);
+        evolutionTresorerieGlobalN = getEvolution(variationTresorerieGlobalN, variationTresorerieGlobalN1);
 
-        // Tresorerie caisse
-        variationTresorerieCaisseN = safeVariation(resultatTresorerieCaisseN, resultatTresorerieCaisseN1);
-        evolutionTresorerieCaisseN = getEvolution(variationTresorerieCaisseN, variationTresorerieCaisseN1);
-
-        console.log('moisNMapped : ', moisNMapped);
-        console.log('moisN1Mapped : ', moisN1Mapped);
+        // Marge brute
+        variationMargeBruteN = safeVariation(resultatMargeBruteN, resultatMargeBruteN1);
+        evolutionMargeBruteN = getEvolution(variationMargeBruteN, variationMargeBruteN1);
 
         return res.json({
 
             chiffreAffaireN,
             chiffreAffaireN1,
-            margeBruteTotalN,
-            margeBruteTotalN1,
+            margeBruteN,
             tresorerieBanqueN,
-            tresorerieBanqueN1,
             tresorerieCaisseN,
-            tresorerieCaisseN1,
 
             resultatChiffreAffaireN,
             resultatChiffreAffaireN1,
@@ -564,15 +547,15 @@ exports.getAllInfo = async (req, res) => {
             variationDepenseSalarialeN,
             evolutionDepenseSalarialeN,
 
-            resultatTresorerieBanqueN,
-            resultatTresorerieBanqueN1,
-            variationTresorerieBanqueN,
-            evolutionTresorerieBanqueN,
+            resultatTresorerieGlobalN,
+            resultatTresorerieGlobalN1,
+            variationTresorerieGlobalN,
+            evolutionTresorerieGlobalN,
 
-            resultatTresorerieCaisseN,
-            resultatTresorerieCaisseN1,
-            variationTresorerieCaisseN,
-            evolutionTresorerieCaisseN,
+            resultatMargeBruteN,
+            resultatMargeBruteN1,
+            variationMargeBruteN,
+            evolutionMargeBruteN,
 
             resultatN,
             resultatN1,

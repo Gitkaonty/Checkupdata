@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Stack, TextField, Tooltip, Typography } from '@mui/material';
-import { init } from '../../../../init';
+import { Box, Button, GlobalStyles, Grid, Stack, Tooltip, Typography } from '@mui/material';
 import toast from 'react-hot-toast';
-import { DataGrid, frFR } from '@mui/x-data-grid';
 import Dialog from '@mui/material/Dialog';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -10,7 +8,6 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import Slide from '@mui/material/Slide';
 import AddNewFile from './Home_addNewFile';
-import QuickFilter, { DataGridStyle } from '../../componentsTools/DatagridToolsStyle';
 import useAuth from '../../../hooks/useAuth';
 // import axios from '../../../../config/axios';
 import { jwtDecode } from 'jwt-decode';
@@ -20,19 +17,52 @@ import useFileInfos from '../../../hooks/useFileInfos';
 import usePermission from '../../../hooks/usePermission';
 import useAxiosPrivate from '../../../../config/axiosPrivate';
 import PopupConfirmPasswordDossier from '../../componentsTools/Dossier/PopupConfirmPasswordDossier';
-import { IoMdAdd } from "react-icons/io";
-import CardInfoDossier from '../../componentsTools/Dossier/CardInfoDossier';
-import { IoFolder } from "react-icons/io5";
-import { BsWalletFill } from "react-icons/bs";
-import { FaBalanceScale } from "react-icons/fa";
-import { FaUser } from "react-icons/fa";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { FaEye } from "react-icons/fa";
-import { FaLock, FaLockOpen } from "react-icons/fa";
+
+import AddIcon from '@mui/icons-material/Add';
+import FolderIcon from '@mui/icons-material/FolderOpenOutlined';
+import WalletIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import GavelIcon from '@mui/icons-material/GavelOutlined';
+import PersonIcon from '@mui/icons-material/PersonOutline';
+import LockIcon from '@mui/icons-material/LockOutlined';
+import DatagridGlobal from '../../componentsTools/Dossier/Datagrid/DatagridGlobal';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
-  return <Slide direction="right" ref={ref} {...props} />;
+  return <Slide direction="up" ref={ref} {...props} />;
 });
+
+const TABLE_BLUE = '#0B3156';
+
+const MiniStatCard = ({ title, value, color, icon }) => (
+  <Box sx={{
+    bgcolor: color,
+    p: 1.5,
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    height: '100%',
+    width: '100%',
+    border: '1px solid rgba(0,0,0,0.03)',
+    boxSizing: 'border-box'
+  }}>
+    <Box sx={{
+      width: 32, height: 32, borderRadius: '8px', bgcolor: '#fff',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 1.5,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+    }}>
+      {React.cloneElement(icon, { sx: { ...icon.props.sx, fontSize: 18 } })}
+    </Box>
+    <Box>
+      <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', mb: -0.5 }}>
+        {title}
+      </Typography>
+      <Typography sx={{ fontSize: '18px', fontWeight: 900, color: '#1E293B' }}>
+        {value}
+      </Typography>
+    </Box>
+  </Box>
+);
 
 export default function Home() {
   const navigate = useNavigate();
@@ -40,10 +70,7 @@ export default function Home() {
 
   const { canAdd, canModify, canDelete, canView } = usePermission();
 
-  let initial = init[0];
-  let [listeDossier, setListeDossier] = useState([]);
   let [finalListeDossier, setFinalListeDossier] = useState([]);
-  let [findText, setFindText] = useState('');
   const [selectedIdDossier, setSelectedIdDossier] = useState(null);
   const [openDialogDeleteDossier, setOpenDialogDeleteDossier] = useState(false);
   const { setIdDossier, setNomDossier } = useFileInfos();
@@ -64,38 +91,6 @@ export default function Home() {
   const compteId = decoded.UserInfo.compteId || null;
   const userId = decoded.UserInfo.userId || null;
 
-  //Chargement des données dans datagrid
-  const GetListeDossier = () => {
-    axios.get(`/home/file/${compteId}`, { params: { userId: userId } }).then((response) => {
-      const resData = response.data;
-      setListeDossier(resData.fileList);
-      canView ? setFinalListeDossier(resData.fileList) : setFinalListeDossier([]);
-    })
-  }
-
-  //Filtrer la liste des dossiers
-  const HandleFindClick = () => {
-    if (findText.trim() === '') {
-      setFinalListeDossier(listeDossier);
-    } else {
-      const filterValue = findText.toLowerCase();
-
-      const filtered = listeDossier.filter(dossier =>
-        dossier.dossier.toLowerCase().includes(filterValue)
-      );
-
-      setFinalListeDossier(filtered);
-    }
-  };
-
-  //Restaurer la liste des dossiers si le champ de filtre est vide
-  const handleChangeFindText = (e) => {
-    setFindText(e.target.value)
-    if (e.target.value === '') {
-      setFinalListeDossier(listeDossier);
-    }
-  }
-
   //Gestion fenetre modale de création d'un nouveau dossier
   const [open, setOpen] = React.useState(false);
 
@@ -109,7 +104,6 @@ export default function Home() {
 
   const handleCloseAfterNewFileCreation = (value) => {
     setOpen(value);
-    GetListeDossier();
   }
 
   //supprimer un dossier
@@ -175,9 +169,10 @@ export default function Home() {
       align: 'center',
       renderCell: (params) => {
         return params.value ? (
-          <FaLock color="gray" size={16} />
+          <LockIcon sx={{ fontSize: 25, color: '#94A3B8' }} />
         ) : (
-          <FaLockOpen color="gray" size={16} />
+          // <LockOpenIcon sx={{ fontSize: 25, color: '#94A3B8' }} />
+          null
         );
       }
     },
@@ -191,7 +186,7 @@ export default function Home() {
       headerClassName: 'HeaderbackColor',
       renderCell: (params) => {
         return (
-          <Tooltip title="Ouvrir le dossier">
+          <Tooltip title="Ouvrir le dossier" >
             <Box
               onClick={() => selectFile(params.row)}
               sx={{
@@ -203,8 +198,8 @@ export default function Home() {
                 gap: 1,
               }}
             >
-              <IoFolder size={25} color="#67bed9" />
-              {params.row.dossier}
+              <FolderIcon sx={{ color: '#3B82F6', fontSize: 25 }} />
+              <p style={{ fontWeight: 'bold' }}> {params.row.dossier}</p>
             </Box>
           </Tooltip>
         )
@@ -255,7 +250,7 @@ export default function Home() {
             width={'100%'}
             spacing={1}
           >
-            <FaUser size={16} />
+            <PersonIcon sx={{ fontSize: 25, color: '#64748B' }} />
             <Typography variant="body2" noWrap>
               {value}
             </Typography>
@@ -281,7 +276,7 @@ export default function Home() {
             width={'100%'}
             spacing={1}
           >
-            <FaUser size={16} />
+            <PersonIcon sx={{ fontSize: 25, color: '#64748B' }} />
             <Typography variant="body2" noWrap>
               {value}
             </Typography>
@@ -307,7 +302,7 @@ export default function Home() {
             width={'100%'}
             spacing={1}
           >
-            <FaUser size={16} />
+            <PersonIcon sx={{ fontSize: 25, color: '#64748B' }} />
             <Typography variant="body2" noWrap>
               {value}
             </Typography>
@@ -330,7 +325,6 @@ export default function Home() {
             <Tooltip title="Supprimer le dossier">
               <span>
                 <IconButton
-                  // disabled={!canDelete || selectedDossierRow.length > 1 || selectedDossierRow.length === 0}
                   onClick={() => {
                     setIdToDelete(id);
                     handleOpenDialogConfirmDeleteDossier();
@@ -382,7 +376,6 @@ export default function Home() {
       try {
         const response = await axios.get(`/home/file/${compteId}`, { params: { userId } });
         const resData = response.data;
-        setListeDossier(resData.fileList);
         canView ? setFinalListeDossier(resData.fileList) : setFinalListeDossier([]);
       } catch (err) {
         console.error(err);
@@ -397,7 +390,6 @@ export default function Home() {
 
   return (
     <>
-      {/* MODAL POUR LA SUPPRESSION D'UN DOSSIER */}
       {
         openDialogDeleteDossier && canDelete
           ?
@@ -416,15 +408,28 @@ export default function Home() {
           />
         )
       }
+
       {open ?
         <Dialog
           fullScreen
           open={true}
           onClose={handleDialogClose}
           TransitionComponent={Transition}
+          PaperProps={{
+            sx: {
+              backgroundColor: 'transparent',
+              overflow: 'hidden'
+            }
+          }}
         >
-          <AppBar sx={{ position: 'relative' }} style={{ backgroundColor: initial.theme }}>
-            <Toolbar style={{ backgroundColor: initial.theme }}>
+          <AppBar sx={{ position: 'fixed' }}
+          >
+            <Toolbar style={{
+              transition: 'all 0.3s ease',
+              background: 'rgba(11, 17, 32, 0.8)',
+              backdropFilter: 'blur(5px)',
+              boxShadow: 'none',
+            }}>
               <Stack
                 sx={{ width: "100%" }}
                 direction={'row'}
@@ -441,7 +446,7 @@ export default function Home() {
                   onClick={handleDialogClose}
                   aria-label="close"
                   style={{
-                    backgroundColor: 'red',
+                    // backgroundColor: 'red',
                     outline: 'none'
                   }}
                 >
@@ -452,147 +457,70 @@ export default function Home() {
           </AppBar>
 
           <Stack
-            style={{
-              // backgroundColor: initial.white,
-              backgroundColor: initial.backgroundColor,
+            sx={{
               height: '100%',
+              pt: '64px',
+              overflow: 'hidden',
+              backgroundColor: '#F8FAFC',
             }}
           >
-            <AddNewFile confirmationState={handleCloseAfterNewFileCreation} />
+            <Box
+              sx={{
+                flex: 1,
+                overflowY: 'auto',
+              }}
+            >
+              <AddNewFile confirmationState={handleCloseAfterNewFileCreation} refresh={() => setIsRefreshing(prev => !prev)} />
+            </Box>
           </Stack>
         </Dialog>
         : null
       }
-      <Box
-        sx={{
-          paddingX: 3,
-          paddingY: 2,
-          width: "100%",
-        }}
-      >
-        <Stack width={"100%"} height={"100%"} spacing={1} alignItems={"start"}
-          justifyContent={"stretch"} alignContent={"flex-start"}>
-          <Typography variant='h6' sx={{ color: "black" }} align='left'><span style={{ color: 'grey', fontWeight: 'initial' }}>Accueil</span> / Dossiers</Typography>
 
-          <Stack
-            width={"100%"}
-            direction={"row"}
-            alignItems={"center"}
-            justifyContent={"space-between"}
-            style={{
-              paddingBlock: '15px',
-              paddingInline: '20px',
-              backgroundColor: 'white',
-              borderRadius: "10px",
-              backgroundColor: initial.white
-            }}
-          >
-            <Stack>
-              <Typography variant='h5' sx={{ color: "black", fontWeight: 'bold' }} align='left'>Dossiers</Typography>
-            </Stack>
-            <Stack>
-              <Button
-                disabled={!canAdd}
-                onClick={handleDialogClickOpen}
-                variant="contained"
-                style={{
-                  textTransform: 'none',
-                  outline: 'none',
-                  backgroundColor: initial.theme,
-                  color: "white",
-                  height: "39px",
-                }}
-                startIcon={<IoMdAdd size={20} />}
-              >
-                Nouveau dossier
-              </Button>
-            </Stack>
+      <Stack>
+        <Box sx={{ p: 4, width: '100%', boxSizing: 'border-box' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.02em' }}>
+              Dossiers
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleDialogClickOpen}
+              disableElevation
+              startIcon={<AddIcon />}
+              sx={{ bgcolor: TABLE_BLUE, borderRadius: '8px', textTransform: 'none', fontWeight: 700, px: 3, height: '40px' }}
+            >
+              Nouveau dossier
+            </Button>
           </Stack>
 
-          <Stack
-            width={"100%"}
-            direction={"row"}
-            alignItems={"center"}
-            justifyContent={"space-between"}
-            style={{
-              paddingBlock: '30px',
-              paddingInline: '20px',
-              backgroundColor: 'white',
-              borderRadius: "10px",
-              height: '120px',
-              backgroundColor: initial.white
-            }}
-            spacing={2}
-          >
-            <CardInfoDossier
-              backgroundColor={'#edf3fe'}
-              text={'Dossiers'}
-              nbr={infoCardDossier.nbr_dossiers}
-              nbrColor={'#67bed9'}
-              icon={<IoFolder size={50} color='#67bed9' />}
-            />
-            <CardInfoDossier
-              backgroundColor={'#f7f2fe'}
-              text={'Portefeuilles'}
-              nbr={infoCardDossier.nbr_portefeuilles}
-              nbrColor={'#1a123a'}
-              icon={<BsWalletFill size={50} color='#1a123a' />}
-            />
-            <CardInfoDossier
-              backgroundColor={'#ecf9f6'}
-              text={'CAC'}
-              nbr={infoCardDossier.nbr_cac}
-              nbrColor={'#307145'}
-              icon={<FaBalanceScale size={50} color='#307145' />}
-            />
-            <CardInfoDossier
-              backgroundColor={'#e9f6fe'}
-              text={'Experts'}
-              nbr={infoCardDossier.nbr_expertcomptable}
-              nbrColor={'#2e76a2'}
-              icon={<FaUser size={50} color='#2e76a2' />}
-            />
-          </Stack>
+          <Grid container spacing={2} sx={{ mb: 4, width: '100%', ml: 0 }}>
+            <Grid item xs={3}>
+              <MiniStatCard title="Dossiers" value={infoCardDossier.nbr_dossiers} color="#E0F2FE" icon={<FolderIcon sx={{ color: '#0EA5E9' }} />} />
+            </Grid>
+            <Grid item xs={3}>
+              <MiniStatCard title="Portefeuilles" value={infoCardDossier.nbr_portefeuilles} color="#F5F3FF" icon={<WalletIcon sx={{ color: '#8B5CF6' }} />} />
+            </Grid>
+            <Grid item xs={3}>
+              <MiniStatCard title="CAC" value={infoCardDossier.nbr_cac} color="#F0FDF4" icon={<GavelIcon sx={{ color: '#22C55E' }} />} />
+            </Grid>
+            <Grid item xs={3}>
+              <MiniStatCard title="Experts" value={infoCardDossier.nbr_expertcomptable} color="#EFF6FF" icon={<PersonIcon sx={{ color: '#3B82F6' }} />} />
+            </Grid>
+          </Grid>
 
-          <Stack
-            width={"100%"}
-            spacing={1}
-            backgroundColor={"white"}
-            padding={"20px"}
-            borderRadius={"10px"}
-            style={{
-              backgroundColor: initial.white
-            }}
-          >
+          <DatagridGlobal
+            list={finalListeDossier}
+            setList={setFinalListeDossier}
+            columnHeader={tableheader}
+            withAddButton={false}
+            withColumnActions={false}
+            setEditableRow={null}
+            datagridHeight={'500px'}
+          />
 
-            <Stack width={"100%"} height={"500px"} spacing={1} alignItems={"flex-start"} direction={"row"} >
-              <DataGrid
-                disableRowSelectionOnClick
-                localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                sx={DataGridStyle.sx}
-                rowHeight={DataGridStyle.rowHeight}
-                columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                rows={finalListeDossier}
-                columns={tableheader}
-                initialState={{
-                  pagination: {
-                    paginationModel: { page: 0, pageSize: 100 },
-                  },
-                }}
-                slots={{
-                  toolbar: QuickFilter,
-                }}
-                pageSizeOptions={[50, 100]}
-                pagination={DataGridStyle.pagination}
-                checkboxSelection={false}
-                columnVisibilityModel={{
-                  id: false,
-                }}
-              />
-            </Stack>
-          </Stack>
-        </Stack>
-      </Box >
+        </Box>
+      </Stack>
     </>
   )
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { styled, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiDrawer from '@mui/material/Drawer';
@@ -15,7 +15,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import { Stack, Menu, MenuItem, Divider } from '@mui/material';
+import { Stack, Menu, MenuItem, Divider, GlobalStyles, Breadcrumbs } from '@mui/material';
 import { init } from '../../init';
 import { Outlet } from 'react-router-dom';
 import { useFormik } from 'formik';
@@ -34,13 +34,27 @@ import { jwtDecode } from 'jwt-decode';
 import { useLocation } from "react-router-dom";
 import { MdAccountBox } from "react-icons/md";
 import { RiAccountBoxLine } from "react-icons/ri";
-
+import {
+  ChevronRight, Lock, Visibility, CheckCircleOutline, HighlightOff, ErrorOutline,
+  Close, SaveAlt, Comment, Folder, DateRange, MoreVert
+} from '@mui/icons-material';
 import PopupDisconnectCompte from '../components/menuComponent/Compte/PopupDisconnectCompte';
 import PopupPasswordChange from '../components/menuComponent/Compte/PopupPasswordChange';
 import axios from '../../config/axios';
 import Layout from '../components/componentsTools/Home/Layout';
-const drawerWidth = 240;
+import { usePageTitle } from '../hooks/usePageTitle';
 
+const drawerWidth = 240;
+const COLORS = {
+  midnight: '#0F172A',
+  cyan: '#00B8D4',
+  border: '#F1F5F9',
+  bgLight: '#F8FAFC',
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  textSecondary: '#64748B'
+};
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
     padding: theme.spacing(2),
@@ -135,6 +149,10 @@ export default function HomePage() {
   //Récupérer les données de l'utilisateur
   const { auth } = useAuth();
   const location = useLocation();
+  const title = usePageTitle();
+  const parts = title.split(' / ');
+  const before = parts[0] || '';
+  const after = parts[1] || '';
 
   //paramètres de connexion------------------------------------
   const decoded = auth?.accessToken
@@ -152,12 +170,15 @@ export default function HomePage() {
   const [isOpenPopupDisconnect, setIsOpenPopupDisconnect] = useState(false);
   const [isOpenPopupChangePassword, setOpenPopupChangePassword] = useState(false);
   const [isButtonRolePermissionVisible, setIsButtonRolePermissionVisible] = useState(false);
+  const [fileInfos, setFileInfos] = useState('');
 
   const [activeMenu, setActiveMenu] = useState("");
   const [listePortefeuille, setListePortefeuille] = useState([]);
   const [listeDossier, setListeDossier] = useState([]);
   const [listeRoles, setListeRoles] = useState([]);
   const [consolidation, setConsolidation] = useState([]);
+  const { id } = useParams();
+
   let idDossier = null;
   if (typeof window !== 'undefined') {
     idDossier = sessionStorage.getItem("fileId");
@@ -254,6 +275,7 @@ export default function HomePage() {
     axios.get(`/home/FileInfos/${id}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
+        setFileInfos(resData.fileInfos[0]);
         setConsolidation(resData.fileInfos[0].consolidation);
       } else {
         setConsolidation(false);
@@ -325,17 +347,6 @@ export default function HomePage() {
       })
   }
 
-  const handleNavigateToRolePermission = () => {
-    const currentPath = window.location.pathname;
-
-    if (currentPath === '/tab/parametrages/role-permission') {
-      return;
-    }
-
-    const url = window.location.origin + '/tab/parametrages/role-permission';
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
   useEffect(() => {
     if ([5150, 3355].includes(roles)) {
       setIsButtonAddVisible(true);
@@ -369,149 +380,18 @@ export default function HomePage() {
 
       <Box
         sx={{
-          // display: "block",
           width: "100%",
           height: "100vh",
           overflowX: open ? "hidden" : "",
-          overflowY: open ? "hidden" : ""
+          overflowY: open ? "hidden" : "",
+          position: 'relative'
         }}
       >
         <CssBaseline />
-        {/* <AppBar position="fixed" open={open} style={{ height: "30px" }}>
-          <Toolbar style={{ backgroundColor: "#010122", alignContent: 'flex-start', alignItems: "center" }} variant="dense">
-
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              onClick={handleDrawerOpen}
-              edge="start"
-              sx={{ mr: 2, ...(open && { display: 'none' }) }}
-              style={{ textTransform: 'none', outline: 'none' }}
-            >
-              <ChevronRightIcon style={{ textTransform: 'none', outline: 'none' }} />
-            </IconButton>
-
-            <Stack
-              direction={'row'}
-              alignItems={'center'}
-              justifyContent={'space-between'}
-              sx={{ width: "100%" }}
-            >
-              <Stack direction={"row"} alignContent={"center"} alignItems={"center"} marginLeft={"10px"}>
-                <MdAccountBox style={{ width: "40px", height: "40px" }} />
-                <Typography
-                  variant="h4" noWrap component="div"
-                  style={{
-                    height: "35px", width: "100%",
-                    fontSize: "16px", textAlign: "center", alignContent: "center"
-                  }}
-                >
-                  {`${comptename}`}
-                </Typography>
-              </Stack>
-
-              <Stack
-              >
-                <IconButton
-                  size="40"
-                  aria-label="account of current user"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenu}
-                  color="inherit"
-                  style={{ textTransform: 'none', outline: 'none' }}
-                  sx={{
-                    p: 0,
-                  }}
-                >
-                  <div
-                    className="main"
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      fontWeight: "lighter",
-                      height: "35px",
-                      width: "35px",
-                      backgroundColor: "#427AA1",
-                      borderRadius: "50%",
-                      textTransform: 'none',
-                      outline: 'none'
-                    }}
-                  >
-                    <ProfileImage name={decoded.UserInfo.username || 'Invité'} />
-                  </div>
-                </IconButton>
-                <Menu
-                  id="menu-appbar"
-                  anchorEl={anchorEl}
-                  anchorOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  keepMounted
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  open={Boolean(anchorEl)}
-                  onClose={handleClose}
-                  disableScrollLock={true}
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        mt: 4
-                      }
-                    }
-                  }}
-                >
-                  <MenuItem onClick={() => { handleClose(); setOpenPopupChangePassword(true) }} >
-                    <Stack direction={"row"} alignItems={'center'} alignContent={'left'}>
-                      <IconButton
-                        style={{ color: initial.button_exit_color, borderRadius: "50px", borderColor: "transparent", backgroundColor: 'transparent', marginLeft: "-5px" }}
-                        aria-label="close"
-                      >
-                        <TbPasswordUser style={{ width: "25px", height: "25px", color: "gray" }} />
-                      </IconButton>
-                      <Typography>Nouveau mot de passe</Typography>
-                    </Stack>
-                  </MenuItem>
-                  {
-                    isButtonRolePermissionVisible && (
-                      <MenuItem onClick={() => { handleClose(); handleNavigateToRolePermission() }}>
-                        <Stack direction={"row"} alignItems={'center'} alignContent={'center'}>
-                          <IconButton
-                            style={{ color: initial.button_exit_color, borderRadius: "50px", borderColor: "transparent", backgroundColor: 'transparent' }}
-                            aria-label="close"
-                          >
-                            <RiAccountBoxLine style={{ width: "20px", height: "20px", color: "gray" }} />
-                          </IconButton>
-                          <Typography>Gestion de compte</Typography>
-                        </Stack>
-                      </MenuItem>
-                    )
-                  }
-                  <Divider sx={{ my: 0 }} />
-                  <MenuItem onClick={() => { handleClose(); setShowPopupDisconnect(true) }}>
-                    <Stack direction={"row"} alignItems={'center'} alignContent={'center'}>
-                      <IconButton
-                        style={{ color: initial.button_exit_color, borderRadius: "50px", borderColor: "transparent", backgroundColor: 'transparent' }}
-                        aria-label="close"
-                      >
-                        <BsEscape style={{ width: "20px", height: "20px", color: "gray" }} />
-                      </IconButton>
-                      <Typography>Déconnexion</Typography>
-                    </Stack>
-                  </MenuItem>
-                </Menu>
-              </Stack>
-            </Stack>
-
-          </Toolbar>
-        </AppBar> */}
 
         <Layout />
 
+<<<<<<< HEAD
         {/* <Drawer
           variant="permanent"
           open={open}
@@ -669,7 +549,56 @@ export default function HomePage() {
           }}>
           <Outlet />
         </Box> */}
+=======
+>>>>>>> a2a531b1e104f543b2c0f6dc117acb3349c0e7a8
       </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '64px',
+          left: 90,
+          right: 0,
+          bottom: 0,
+          overflowY: 'auto',
+          width: `calc(100% - 88px)`,
+          px: 0,
+          py: 0,
+        }}
+      >
+        <Box sx={{
+          bgcolor: '#F8FAFC',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <GlobalStyles styles={{
+            body: { margin: 0, padding: 0, overflowX: 'hidden' },
+            html: { margin: 0, padding: 0 }
+          }} />
+          {
+            // before && after && +
+            (
+              <Box sx={{ width: '100%', pl: 2, py: 1.5, borderBottom: '1px solid #E2E8F0', bgcolor: '#fff', boxSizing: 'border-box' }}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Box sx={{
+                    display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.5,
+                    bgcolor: '#F1F5F9', borderRadius: '6px', border: '1px solid #E2E8F0'
+                  }}>
+                    <Folder sx={{ fontSize: 16, color: COLORS.textSecondary }} />
+                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.midnight }}>{fileInfos?.dossier}</Typography>
+                  </Box>
+                  <Divider orientation="vertical" flexItem sx={{ height: 30, my: 'auto' }} />
+                  <Breadcrumbs separator=">">
+                    <Typography sx={{ fontSize: 14, color: '#94A3B8' }} >{before}</Typography>
+                    <Typography sx={{ fontSize: 14, color: COLORS.cyan }} >{after}</Typography>
+                  </Breadcrumbs>
+                </Stack>
+              </Box>
+            )
+          }
+          <Outlet />
+        </Box>
+      </Box >
     </>
   );
 }

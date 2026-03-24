@@ -1,14 +1,91 @@
 import { GridToolbarQuickFilter, GridToolbarContainer } from '@mui/x-data-grid';
-import { Stack } from '@mui/material';
+import { Box, Button, Stack } from '@mui/material';
 import { init } from '../../../init';
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
+
+
 const initial = init[0];
-export default function QuickFilter() {
+
+export default function QuickFilter({ withAddButton, addAction }) {
   return (
     <GridToolbarContainer>
-      <Stack style={{ backgroundColor: 'transparent', marginBottom: '10px' }} width={'100%'} alignItems={'end'}>
-        <GridToolbarQuickFilter  placeholder="Recherche..." />
+      <Stack
+        width="100%"
+        alignItems="flex-start"
+        sx={{ backgroundColor: 'transparent', marginBottom: '10px' }}
+      >
+        <Box
+          sx={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'transparent',
+            mb: 1,
+          }}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              border: '1px solid #94A3B8',
+              borderRadius: '6px',
+              width: '250px',
+              '& .MuiInputBase-root': {
+                minHeight: '20px',
+                padding: '0px 8px',
+                '&:before, &:after': {
+                  borderBottom: 'none !important',
+                },
+                '&:hover:not(.Mui-disabled):before': {
+                  borderBottom: 'none !important',
+                },
+              },
+              '& .MuiInputBase-input': {
+                padding: '2px 35px 2px 5px',
+                fontSize: '13px',
+                lineHeight: '18px',
+              },
+              '& .MuiDataGrid-toolbarQuickFilterIcon': {
+                display: 'none',
+              },
+              '& > svg:first-of-type': {
+                display: 'none'
+              },
+              '& .custom-search-icon': {
+                position: 'absolute',
+                left: 4,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: 18,
+                color: '#94A3B8',
+                pointerEvents: 'none',
+              },
+            }}
+          >
+            <SearchIcon className="custom-search-icon" />
+            <GridToolbarQuickFilter placeholder="Recherche..." />
+          </Box>
+          {withAddButton && (
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={<AddIcon />}
+              onClick={addAction}
+              sx={{
+                bgcolor: '#1E90FF',
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 3,
+                height: '37px',
+              }}
+            >
+              Ajouter
+            </Button>
+          )}
+        </Box>
       </Stack>
-
     </GridToolbarContainer>
   );
 }
@@ -34,7 +111,7 @@ export const DataGridStyle = {
       visibility: 'visible',
     },
     "& .MuiDataGrid-columnHeader": {
-      borderBottom: "2px solid #1A5276",
+      borderBottom: `2px solid #1A5276`,
     },
 
     "& .MuiDataGrid-row:nth-of-type(even)": {
@@ -54,6 +131,7 @@ export const DataGridStyle = {
       '&:focus': {
         outline: 'none',
       },
+      color: '#94A3B8', fontSize: '13px'
     },
     "& .MuiDataGrid-row": {
       borderBottom: "none",
@@ -73,11 +151,20 @@ export const DataGridStyle = {
       border: 'none',
     },
     '& .MuiDataGrid-columnHeaders': {
-      backgroundColor: initial.theme,
+      backgroundColor: initial.datagridHeaderColor,
+      fontWeight: 800,
       color: 'white',
-      fontWeight: 'bold',
+      fontSize: '11px',
+      borderTopLeftRadius: '10px',
+      borderTopRightRadius: '10px',
     },
-
+    '& .MuiDataGrid-columnHeaderTitle': {
+      textTransform: 'uppercase',
+    },
+    '& .cell-error': {
+      backgroundColor: '#fef3f3',
+      border: '1px solid #EF4444',
+    },
   },
   checkboxSelection: true,
   pagination: true
