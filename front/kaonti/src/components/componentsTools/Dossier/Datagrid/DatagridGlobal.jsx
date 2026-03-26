@@ -9,12 +9,13 @@ import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import SaveIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelIcon from '@mui/icons-material/HighlightOff';
 
-const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHeader, setEditableRow, name, newRow, onSaveRow, onDeleteRow, validateRow, setRowErrors, withColumnActions, withAddButton }) => {
-    const apiRef = useGridApiRef();
+const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHeader, name, newRow, onSaveRow, onDeleteRow, validateRow, setRowErrors, withColumnActions, withAddButton, anotherActionButton, verifyCanUpdate, rowModesModel, setRowModesModel, id_dossier }) => {
+    const apiRefDatagrid = useGridApiRef();
     const [selectedRow, setSelectedRow] = useState([]);
     const [selectedRowId, setSelectedRowId] = useState([]);
-    const [rowModesModel, setRowModesModel] = useState({});
     const [openDialogDelete, setOpenDialogDelete] = useState(false);
+
+    const apiRef = apiRefDatagrid;
 
     const handleSaveClick = (id) => () => {
         apiRef.current.stopRowEditMode({ id });
@@ -22,8 +23,14 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         setSelectedRowId([]);
     };
 
-    const handleEditClick = (id) => () => {
-        setEditableRow ? setEditableRow(true) : null;
+    const handleEditClick = (id) => async () => {
+        let data = false;
+        if (verifyCanUpdate) {
+            data = await verifyCanUpdate(id);
+            if (!data?.state) {
+                return toast.error(data?.message);
+            }
+        }
         setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
     };
 
@@ -32,13 +39,17 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         setOpenDialogDelete(true);
     }
 
-    const deleteAssocieRow = async (value) => {
+    const deleteRow = async (value) => {
         if (value === true) {
             if (onDeleteRow) {
                 if (selectedRowId[0] > 0) {
-                    await onDeleteRow(selectedRowId[0]);
-                    setList(list.filter((row) => row.id !== selectedRowId[0]));
-                    setOpenDialogDelete(false);
+                    const data = await onDeleteRow(selectedRowId[0]);
+                    if (data) {
+                        setList(list.filter((row) => row.id !== selectedRowId[0]));
+                        setOpenDialogDelete(false);
+                    } else {
+                        setOpenDialogDelete(false);
+                    }
                 } else {
                     setList(list.filter((row) => row.id !== selectedRowId[0]));
                     setOpenDialogDelete(false);
@@ -64,10 +75,6 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         toast.success('Modification annulée avec succès');
     };
 
-    const handleCellEditCommit = () => {
-        setEditableRow ? setEditableRow(false) : null;
-    };
-
     const handleOpenDialogAddNew = () => {
         const newId = -Date.now();
 
@@ -81,6 +88,11 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
 
         setSelectedRow([rowToAdd.id]);
         setSelectedRowId([rowToAdd.id]);
+
+        setRowModesModel(prev => ({
+            ...prev,
+            [rowToAdd.id]: { mode: GridRowModes.Edit }
+        }));
     };
 
     const handleRowModesModelChange = (newRowModesModel) => {
@@ -88,7 +100,6 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
     };
 
     const processRowUpdate = (setFieldValue) => async (newRow) => {
-
         if (validateRow) {
             const errors = validateRow(newRow);
 
@@ -200,65 +211,63 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         field: 'actions',
         headerName: 'ACTIONS',
         type: 'actions',
-        width: 100,
+        // width: 100,
         getActions: (params) => {
-            const id = params.id;
             const isInEditMode = rowModesModel[params.id]?.mode === GridRowModes.Edit;
             return [
                 isInEditMode ? (
                     (
                         <>
                             <Tooltip key='save' title="Enregistrer">
-                                <IconButton
-                                    style={{
-                                        width: "35px", height: '35px', borderRadius: "5px",
-                                        borderColor: "transparent",
-                                        textTransform: 'none', outline: 'none'
-                                    }}
-                                    onClick={handleSaveClick(params.id)}
-                                >
-                                    <SaveIcon sx={{ color: 'green' }} />
-                                </IconButton>
+                                <span>
+                                    <IconButton
+                                        size="small"
+                                        sx={{ color: 'green' }}
+                                        onClick={handleSaveClick(params.id)}
+                                        disabled={params.row.id_dossier !== id_dossier}
+                                    >
+                                        <SaveIcon fontSize="small" />
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                             <Tooltip key='cancel' title="Annuler">
-                                <IconButton
-                                    style={{
-                                        width: "35px", height: '35px', borderRadius: "5px",
-                                        borderColor: "transparent",
-                                        textTransform: 'none', outline: 'none'
-                                    }}
-                                    onClick={handleCancelClick(params.id)}
-                                >
-                                    <CancelIcon sx={{ color: '#EF4444' }} />
-                                </IconButton>
+                                <span>
+                                    <IconButton
+                                        size="small" sx={{ color: '#FF5252' }}
+                                        onClick={handleCancelClick(params.id)}
+                                        disabled={params.row.id_dossier !== id_dossier}
+                                    >
+                                        <CancelIcon fontSize="small" />
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                         </>
                     )
                 ) : (
                     <>
+                        {anotherActionButton ? anotherActionButton(params) : null}
                         <Tooltip key='edit' title="Modifier">
-                            <IconButton
-                                style={{
-                                    width: "35px", height: '35px', borderRadius: "5px",
-                                    borderColor: "transparent",
-                                    textTransform: 'none', outline: 'none'
-                                }}
-                                onClick={handleEditClick(params.id)}
-                            >
-                                <EditIcon sx={{ color: '#64748B' }} />
-                            </IconButton>
+                            <span>
+                                <IconButton
+                                    size="small"
+                                    sx={{ color: '#546E7A' }}
+                                    onClick={handleEditClick(params.id)}
+                                    disabled={params.row.id_dossier !== id_dossier}
+                                >
+                                    <EditIcon fontSize="small" />
+                                </IconButton>
+                            </span>
                         </Tooltip>
                         <Tooltip key='delete' title="Supprimer">
-                            <IconButton
-                                style={{
-                                    width: "35px", height: '35px', borderRadius: "5px",
-                                    borderColor: "transparent",
-                                    textTransform: 'none', outline: 'none'
-                                }}
-                                onClick={handleOpenDialogConfirmDelete(params.id)}
-                            >
-                                <DeleteIcon sx={{ color: '#EF4444' }} />
-                            </IconButton>
+                            <span>
+                                <IconButton
+                                    size="small" sx={{ color: '#FF5252' }}
+                                    onClick={handleOpenDialogConfirmDelete(params.id)}
+                                    disabled={params.row.id_dossier !== id_dossier}
+                                >
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </span>
                         </Tooltip>
                     </>
                 ),
@@ -270,9 +279,19 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
         ? [...columnHeader, actionsColumn]
         : [...columnHeader];
 
+    const processRowUpdateSafe = async (newRow) => {
+        const updatedList = list.map(row => row.id === newRow.id ? newRow : row);
+        setList(updatedList);
+
+        if (onSaveRow) {
+            await onSaveRow(newRow);
+        }
+        return newRow;
+    };
+
     return (
         <>
-            {openDialogDelete ? <PopupConfirmDelete msg={"Voulez-vous vraiment supprimer la ligne sélectionnée ?"} confirmationState={deleteAssocieRow} /> : null}
+            {openDialogDelete ? <PopupConfirmDelete msg={"Voulez-vous vraiment supprimer la ligne sélectionnée ?"} confirmationState={deleteRow} /> : null}
             <Box sx={{ bgcolor: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', p: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                 <Stack
                     width={"100%"}
@@ -291,13 +310,12 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
                         rowHeight={DataGridStyle.rowHeight}
                         columnHeaderHeight={DataGridStyle.columnHeaderHeight}
                         rows={list}
-                        onRowClick={(e) => handleCellEditCommit(e.row)}
                         editMode='row'
                         experimentalFeatures={{ newEditingApi: true }}
                         rowModesModel={rowModesModel}
                         onRowModesModelChange={handleRowModesModelChange}
                         onRowEditStop={handleRowEditStop}
-                        processRowUpdate={processRowUpdate(setFieldValue)}
+                        processRowUpdate={setFieldValue && name ? processRowUpdate(setFieldValue) : processRowUpdateSafe}
                         columns={columns}
                         initialState={{
                             pagination: {
@@ -314,6 +332,9 @@ const DatagridGlobal = ({ datagridHeight, setFieldValue, setList, list, columnHe
                         onCellKeyDown={handleCellKeyDown}
                         hideFooterSelectedRowCount
                         onProcessRowUpdateError={() => { }}
+                        onRowEditStart={(params, event) => {
+                            event.defaultMuiPrevented = true;
+                        }}
                     />
                 </Stack>
             </Box>

@@ -336,6 +336,10 @@ export default function ParamCRM() {
                     listeDomBank={listDomBank}
                     listeConsolidation={listConsolidation}
 
+                    setListRegions={setListRegions}
+                    setListDistricts={setListDistricts}
+                    setListCommunes={setListCommunes}
+
                     setListeAssocie={setListAssocie}
                     setListeFiliale={setListFiliales}
                     setListeDomBank={setListDomBank}

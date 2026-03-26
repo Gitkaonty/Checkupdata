@@ -23,25 +23,67 @@ const recupPc = async (req, res) => {
       return res.status(400).json({ state: false, msg: "Paramètres manquants" });
     }
 
+    // const rows = await db.sequelize.query(`
+    //     SELECT
+    //         pc.*,
+    //         base.compte AS "baseCompte",
+    //         d.dossier AS "dossier"
+    //     FROM DOSSIERPLANCOMPTABLES pc
+
+    //     LEFT JOIN DOSSIERPLANCOMPTABLES base
+    //         ON base.id = pc.baseaux_id
+    //         AND base.id_dossier = :fileId
+
+    //     LEFT JOIN DOSSIERS d
+    //         ON d.id = pc.id_dossier
+
+    //     WHERE
+    //         pc.id_dossier = :fileId
+    //         AND pc.id_compte = :compteId
+
+    //     ORDER BY pc.compte ASC
+    // `, {
+    //   replacements: { fileId, compteId },
+    //   type: db.Sequelize.QueryTypes.SELECT
+    // });
+
     const rows = await db.sequelize.query(`
         SELECT
-            pc.*,
-            base.compte AS "baseCompte",
-            d.dossier AS "dossier"
-        FROM DOSSIERPLANCOMPTABLES pc
-
-        LEFT JOIN DOSSIERPLANCOMPTABLES base
-            ON base.id = pc.baseaux_id
-            AND base.id_dossier = :fileId
-
-        LEFT JOIN DOSSIERS d
-            ON d.id = pc.id_dossier
-
+          D.*,
+          BASE.COMPTE AS "baseCompte",
+          DOSSIER.DOSSIER AS "dossier",
+          COALESCE(
+            (
+              SELECT
+                JSON_AGG(JSON_BUILD_OBJECT('id', CHARGE.ID_COMPTECOMPTA, 'nom', CHARGE.COMPTE))
+              FROM
+                DOSSIERPLANCOMPTABLEDETAILCPTCHGS CHARGE
+              WHERE
+                CHARGE.ID_DETAIL = D.ID
+            ),
+            '[]'
+          ) AS CHARGES,
+          COALESCE(
+            (
+              SELECT
+                JSON_AGG(JSON_BUILD_OBJECT('id', TVA.ID_COMPTECOMPTA, 'compte', TVA.COMPTE))
+              FROM
+                DOSSIERPLANCOMPTABLEDETAILCPTTVAS TVA
+              WHERE
+                TVA.ID_DETAIL = D.ID
+            ),
+            '[]'
+          ) AS TVAS
+        FROM
+          DOSSIERPLANCOMPTABLES D
+          LEFT JOIN DOSSIERPLANCOMPTABLES BASE ON BASE.ID = D.BASEAUX_ID
+          AND BASE.ID_DOSSIER = :fileId
+          LEFT JOIN DOSSIERS DOSSIER ON DOSSIER.ID = D.ID_DOSSIER
         WHERE
-            pc.id_dossier = :fileId
-            AND pc.id_compte = :compteId
-
-        ORDER BY pc.compte ASC
+          D.ID_DOSSIER = :fileId
+          AND D.ID_COMPTE = :compteId
+        ORDER BY
+          D.COMPTE ASC
     `, {
       replacements: { fileId, compteId },
       type: db.Sequelize.QueryTypes.SELECT
@@ -103,6 +145,21 @@ const updateCompteAux = async (id_numcpt, baseaux_id, nature) => {
     );
   }
 };
+
+const updateCompteNotAux = async (id_numcpt, compte) => {
+  await db.sequelize.query(`
+    UPDATE dossierplancomptables
+    SET baseaux = :compte, baseaux_id = :id_numcpt
+    WHERE id = :id_numcpt
+  `,
+    {
+      replacements: {
+        compte,
+        id_numcpt
+      }
+    })
+
+}
 
 // const updateLibelleInJournal = async (
 //   id,
@@ -321,7 +378,7 @@ const AddCptToPc = async (req, res) => {
         if (autocompletion) {
           if (nature === "Aux") {
             compteFormated = compte.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
-            compteFormattedAutre = compteautre.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
+            // compteFormattedAutre = compteautre.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
             baseAux = baseauxiliaire.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux) || '';
           } else {
             compteFormated = compte.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
@@ -867,7 +924,7 @@ const AddCptToPc = async (req, res) => {
         if (autocompletion) {
           if (nature === "Aux") {
             compteFormated = compte.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
-            compteFormattedAutre = compteautre.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
+            // compteFormattedAutre = compteautre.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
             baseAux = baseauxiliaire.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux) || '';
           } else {
             compteFormated = compte.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
@@ -1471,64 +1528,54 @@ const deleteItemPc = async (req, res) => {
     let deletedCount = 0;
     let blockedCount = 0;
     const { listId, compteId, fileId } = req.body;
+    console.log('req.body : ', req.body);
 
-    if (listId.length >= 1) {
-      for (let i = 0; i < listId.length; i++) {
-        //tester si le compte est lié à un compte auxiliaire
-        const infosCpt = await dossierPlanComptable.findOne({
-          where: { id: listId[i] }
-        });
+    const infosCpt = await dossierPlanComptable.findOne({
+      where: { id: listId }
+    });
 
-        let cpt = '';
-        if (infosCpt) {
-          cpt = infosCpt.compte;
-        }
-
-        const cptInUse = await dossierPlanComptable.findAll({
-          where: {
-            id_compte: compteId,
-            id_dossier: fileId,
-            baseaux: cpt,
-          }
-        });
-
-        const usageInJournals = await db.journals.count({
-          where: {
-            id_compte: compteId,
-            id_dossier: fileId,
-            id_numcpt: listId[i]
-          }
-        });
-
-        if (cptInUse.length > 1 || usageInJournals > 0) {
-          resData.stateUndeletableCpt = true;
-          blockedCount += 1;
-          if (msgErrorDelete === '') {
-            msgErrorDelete = `Impossible de supprimer les comptes suivants car ils sont utilisés${cptInUse.length > 1 ? ' comme base des comptes auxiliaires' : ''}${usageInJournals > 0 ? ' dans des écritures' : ''}`;
-          } else {
-            msgErrorDelete = `${msgErrorDelete}, ${cpt}`;
-          }
-
-        } else {
-          await dossierPlanComptable.destroy({ where: { id: listId[i] } });
-          deletedCount += 1;
-
-          //supprimer si la ligne possède des comptes de charges ou TVA associés
-          await dossierpcdetailcptchg.destroy({ where: { id_detail: listId[i] } });
-          await dossierpcdetailcpttva.destroy({ where: { id_detail: listId[i] } });
-        }
-      }
-
-      if (deletedCount === 0 && blockedCount > 0) {
-        resData.state = false;
-        resData.msg = msgErrorDelete || 'Impossible de supprimer les comptes sélectionnés.';
-      } else {
-        resData.state = true;
-        resData.msg = "Les comptes séléctionés ont été supprimés avec succès.";
-      }
+    let cpt = '';
+    if (infosCpt) {
+      cpt = infosCpt.compte;
     }
 
-    resData.msgUndeletableCpt = msgErrorDelete;
+    const cptInUse = await dossierPlanComptable.findAll({
+      where: {
+        id_compte: compteId,
+        id_dossier: fileId,
+        baseaux: cpt,
+      }
+    });
+
+    const usageInJournals = await db.journals.count({
+      where: {
+        id_compte: compteId,
+        id_dossier: fileId,
+        id_numcpt: listId
+      }
+    });
+
+    console.log('usageInJournals : ', usageInJournals);
+
+    if (cptInUse.length > 1 || usageInJournals > 0) {
+      resData.stateUndeletableCpt = true;
+      blockedCount += 1;
+      if (msgErrorDelete === '') {
+        msgErrorDelete = `Impossible de supprimer le compte suivant car il est utilisé${cptInUse.length > 1 ? ' comme base des comptes auxiliaires' : ''}${usageInJournals > 0 ? ' dans des écritures' : ''}`;
+      } else {
+        msgErrorDelete = `${msgErrorDelete}, ${cpt}`;
+      }
+
+    } else {
+      await dossierPlanComptable.destroy({ where: { id: listId } });
+      deletedCount += 1;
+
+      //supprimer si la ligne possède des comptes de charges ou TVA associés
+      await dossierpcdetailcptchg.destroy({ where: { id_detail: listId } });
+      await dossierpcdetailcpttva.destroy({ where: { id_detail: listId } });
+    }
+
+    resData.msg = msgErrorDelete;
     return res.json(resData);
   } catch (error) {
     console.log(error);
@@ -2002,6 +2049,182 @@ const recupPcConsolidation = async (req, res) => {
   }
 };
 
+const verifyCanUpdate = async (req, res) => {
+  try {
+    const { id_numcpt, id_compte, id_dossier } = req.body;
+    const usageInJournals = await db.journals.count({
+      where: {
+        id_compte: Number(id_compte),
+        id_dossier: Number(id_dossier),
+        id_numcpt: Number(id_numcpt)
+      }
+    });
+    if (usageInJournals > 0) {
+      return res.json({ state: false, message: 'Vous ne pouvez pas modifier ce compte car ce compte est utilisé dans une écriture du journal' });
+    }
+    return res.json({ state: true });
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+const editPc = async (req, res) => {
+  try {
+    const { row } = req.body;
+    console.log('row : ', row);
+    let id_pc = row?.id;
+    const id_dossier = row?.id_dossier;
+    const id_compte = row?.id_compte;
+    const nature = row?.nature;
+    const compte = row?.compte;
+    const compteautre = row?.compteautre || "";
+    const isNew = row?.isNew || false;
+    const baseaux_id = row?.baseaux_id || 0;
+
+    const dossierData = await dossiers.findOne({
+      where: {
+        id: id_dossier,
+        id_compte: id_compte
+      }
+    });
+
+    const longueurcptaux = dossierData.longcompteaux;
+    const longueurcptstd = dossierData.longcomptestd;
+    const autocompletion = dossierData.autocompletion;
+
+    let compteFormated = '';
+    let compteFormattedAutre = '';
+
+    if (autocompletion) {
+      if (nature === "Aux") {
+        compteFormated = compte.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
+        compteFormattedAutre = compteautre.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
+      } else {
+        compteFormated = compte.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
+        compteFormattedAutre = compteautre.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
+      }
+    } else {
+      if (nature !== "Aux") {
+        compteFormated = compte.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
+        compteFormattedAutre = compteautre.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
+      } else {
+        compteFormated = compte;
+        compteFormattedAutre = compteautre;
+      }
+    }
+
+    if (isNew) {
+      const { id, ...rest } = row;
+
+      const createdData = await dossierPlanComptable.create(
+        { ...rest, compte: compteFormated, baseaux_id },
+      );
+
+      id_pc = createdData?.id;
+
+      if (row?.nature !== 'Aux') {
+        await updateCompteNotAux(id_pc, row?.compte);
+      }
+
+    } else {
+      await dossierPlanComptable.update(
+        { ...row, compte: compteFormated, compteautre: compteFormattedAutre },
+        { where: { id: id_pc } }
+      );
+    }
+
+    const rows = await db.sequelize.query(`
+        SELECT
+            pc.*,
+            base.compte AS "baseCompte",
+            d.dossier AS "dossier"
+        FROM DOSSIERPLANCOMPTABLES pc
+
+        LEFT JOIN DOSSIERPLANCOMPTABLES base
+            ON base.id = pc.baseaux_id
+
+        LEFT JOIN DOSSIERS d
+            ON d.id = pc.id_dossier
+
+        WHERE
+            pc.id = :id
+    `, {
+      replacements: { id: id_pc },
+      type: db.Sequelize.QueryTypes.SELECT
+    });
+
+    return res.json({ state: true, message: 'Modifié avec succès', row: rows });
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+const editPcFromPopup = async (req, res) => {
+  try {
+    const { row } = req.body;
+    const id = Number(row?.itemId);
+    const compteautre = row?.compteautre || "";
+    const id_dossier = row?.idDossier;
+    const nature = row?.nature;
+
+    const dossierData = await dossiers.findOne({
+      where: {
+        id: id_dossier
+      }
+    });
+
+    const longueurcptaux = dossierData.longcompteaux;
+    const longueurcptstd = dossierData.longcomptestd;
+    const autocompletion = dossierData.autocompletion;
+
+    let compteFormattedAutre = '';
+
+    if (autocompletion) {
+      if (nature === "Aux") {
+        compteFormattedAutre = compteautre.toString().padEnd(longueurcptaux, "0").slice(0, longueurcptaux);
+      } else {
+        compteFormattedAutre = compteautre.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
+      }
+    } else {
+      if (nature !== "Aux") {
+        compteFormattedAutre = compteautre.toString().padEnd(longueurcptstd, "0").slice(0, longueurcptstd);
+      } else {
+        compteFormattedAutre = compteautre;
+      }
+    }
+
+    await dossierPlanComptable.update(
+      { ...row, compteautre: compteFormattedAutre },
+      { where: { id } }
+    );
+
+    const rows = await db.sequelize.query(`
+        SELECT
+            pc.*,
+            base.compte AS "baseCompte",
+            d.dossier AS "dossier"
+        FROM DOSSIERPLANCOMPTABLES pc
+
+        LEFT JOIN DOSSIERPLANCOMPTABLES base
+            ON base.id = pc.baseaux_id
+
+        LEFT JOIN DOSSIERS d
+            ON d.id = pc.id_dossier
+
+        WHERE
+            pc.id = :id
+    `, {
+      replacements: { id },
+      type: db.Sequelize.QueryTypes.SELECT
+    });
+
+    return res.json({ state: true, message: 'Modifié avec succès', row: rows });
+
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 module.exports = {
   recupPc,
   AddCptToPc,
@@ -2015,5 +2238,8 @@ module.exports = {
   getDistricts,
   getCommunes,
   recupPcConsolidation,
-  recupPcIdLibelleForJournal
+  recupPcIdLibelleForJournal,
+  verifyCanUpdate,
+  editPc,
+  editPcFromPopup
 };

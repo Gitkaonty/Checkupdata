@@ -127,6 +127,7 @@ const DashboardFinalOptimized = () => {
   const [fileId, setFileId] = useState(0);
   const [listeExercice, setListeExercice] = useState([]);
   const [listeSituation, setListeSituation] = useState([]);
+  const [listePeriode, setListePeriode] = useState([]);
 
   const [axesData, setAxesData] = useState([]);
   const [sectionsData, setSectionsData] = useState([]);
@@ -302,6 +303,15 @@ const DashboardFinalOptimized = () => {
       });
   }
 
+  //Choix période
+  const handleChangePeriode = (choix) => {
+    setSelectedPeriodeChoiceId(choix);
+
+    if (choix === 0) {
+      setSelectedPeriodeId(0);
+    }
+  }
+
   const GetListeDossier = (id) => {
     axios.get(`/home/FileInfos/${id}`).then((response) => {
       const resData = response.data;
@@ -346,8 +356,25 @@ const DashboardFinalOptimized = () => {
 
   const handleChangeExercice = (exercice_id) => {
     setSelectedExerciceId(exercice_id);
-    setSelectedPeriodeChoiceId("0");
-    setListeSituation(listeExercice?.filter((item) => item.id === exercice_id));
+  }
+
+  // Chargement des périodes par exercice
+  const getPeriodes = async () => {
+    const id_exercice = Number(selectedExerciceId);
+
+    axios.get(`/paramExercice/getPeriodes/${id_exercice}`)
+      .then((response) => {
+        if (response?.data?.state) {
+          const data = response?.data?.data;
+          setListePeriode(data);
+        } else {
+          toast.error(response?.data?.message);
+        }
+      });
+  };
+
+  const handleChangePeriod = (period_id) => {
+    setSelectedPeriodeId(period_id);
   }
 
   const getListeJournalEnAttente = () => {
@@ -485,6 +512,12 @@ const DashboardFinalOptimized = () => {
     setSelectedSectionsId(matched);
   }, [sectionsData]);
 
+  useEffect(() => {
+    if (selectedExerciceId) {
+      getPeriodes();
+    }
+  }, [selectedExerciceId]);
+
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -544,105 +577,17 @@ const DashboardFinalOptimized = () => {
                 marginTop: '-20px'
               }}
             >
-              {/* <SelectExercice
+              <SelectExercice
                 selectedExerciceId={selectedExerciceId}
                 handleChangeExercice={handleChangeExercice}
                 listeExercice={listeExercice}
-              /> */}
-              <Stack sx={{ mt: 1.5 }}>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    px: 1.5, py: 0.5, borderRadius: '8px', bgcolor: '#FFF',
-                    borderColor: COLORS.border, display: 'inline-flex', alignItems: 'center'
-                  }}
-                >
-                  <CalendarToday sx={{ fontSize: 18, color: COLORS.textMuted, mr: 1.5 }} />
-                  <TextField
-                    select
-                    size="small"
-                    variant="standard"
-                    defaultValue="2026"
-                    InputProps={{ disableUnderline: true }}
-                    sx={{
-                      minWidth: 160,
-                      '& .MuiSelect-select': { py: 0, fontWeight: 800, color: COLORS.navy, fontSize: '0.95rem' }
-                    }}
-                    value={selectedExerciceId}
-                    onChange={(e) => handleChangeExercice(e.target.value)}
-                  >
-                    {listeExercice.map((option) => (
-                      <MenuItem
-                        key={option.id}
-                        value={option.id}
-                      >{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
-                    ))
-                    }
-                  </TextField>
-                </Paper>
-              </Stack>
+                selectedPeriodeChoiceId={selectedPeriodeChoiceId}
+                handleChangePeriode={handleChangePeriode}
+                listePeriode={listePeriode}
+                selectedPeriodeId={selectedPeriodeId}
+                handleChangePeriod={handleChangePeriod}
+              />
 
-              <FormControl variant="standard" sx={{ m: 1, minWidth: 250 }}>
-                <InputLabel id="demo-simple-select-standard-label">Exercice:</InputLabel>
-                <Select
-                  labelId="demo-simple-select-standard-label"
-                  id="demo-simple-select-standard"
-                  value={selectedExerciceId}
-                  label={"valSelect"}
-                  onChange={(e) => handleChangeExercice(e.target.value)}
-                  sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                  MenuProps={{
-                    disableScrollLock: true
-                  }}
-                >
-                  {listeExercice.map((option) => (
-                    <MenuItem
-                      key={option.id}
-                      value={option.id}
-                    >{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
-                  ))
-                  }
-                </Select>
-              </FormControl>
-
-              <FormControl variant="standard" sx={{ m: 1, minWidth: 150 }}>
-                <InputLabel id="demo-simple-select-standard-label">Période</InputLabel>
-                <Select
-                  disabled
-                  labelId="demo-simple-select-standard-label"
-                  id="demo-simple-select-standard"
-                  value={selectedPeriodeChoiceId}
-                  label={"valSelect"}
-                  onChange={(e) => handleChangePeriode(e.target.value)}
-                  sx={{ width: "150px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                  MenuProps={{
-                    disableScrollLock: true
-                  }}
-                >
-                  <MenuItem value={0}>Toutes</MenuItem>
-                  <MenuItem value={1}>Situations</MenuItem>
-                </Select>
-              </FormControl>
-
-              <FormControl variant="standard" sx={{ m: 1, minWidth: 250 }}>
-                <InputLabel id="demo-simple-select-standard-label">Du</InputLabel>
-                <Select
-                  labelId="demo-simple-select-standard-label"
-                  id="demo-simple-select-standard"
-                  value={selectedPeriodeId}
-                  label={"valSelect"}
-                  onChange={(e) => handleChangeDateIntervalle(e.target.value)}
-                  sx={{ width: "300px", display: "flex", justifyContent: "left", alignItems: "flex-start", alignContent: "flex-start", textAlign: "left" }}
-                  MenuProps={{
-                    disableScrollLock: true
-                  }}
-                >
-                  {listeSituation?.map((option) => (
-                    <MenuItem key={option.id} value={option.id}>{option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}</MenuItem>
-                  ))
-                  }
-                </Select>
-              </FormControl>
             </Stack>
           </Stack>
           <Stack

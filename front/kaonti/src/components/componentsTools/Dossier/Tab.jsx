@@ -35,11 +35,15 @@ const listeActivite = [
     { id: 'AUT', libelle: 'Autres', icon: <VscLinkExternal style={{ color: 'green' }} /> },
 ];
 
-const InfoSocieteTabContent = ({ values, setFieldValue, listePortefeuille, listPays, listProvinces, listRegions, listDistricts, listCommunes, getListeRegions, getListeDistricts, getListeCommunes, type }) => {
+const InfoSocieteTabContent = ({ values, setFieldValue, listePortefeuille, listPays, listProvinces, listRegions, listDistricts, listCommunes, setListRegions, setListDistricts, setListCommunes, getListeRegions, getListeDistricts, getListeCommunes, type }) => {
 
     useEffect(() => {
         if (type === 'modification' && values.province) {
             getListeRegions(values.province);
+        } else {
+            setListRegions([]);
+            setListDistricts([]);
+            setListCommunes([]);
         }
     }, [type, values.province]);
 
@@ -326,7 +330,7 @@ const FiscalTabContent = () => (
             <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 0, mt: 1 }}>Impôt synthétique intermittent (ISI)</Typography></Grid>
             <FormikTextField name='compteisi' inputProps={{ min: 0, max: 50 }} label="Compte ISI" width="120px" />
             <Grid item xs={12}><Divider sx={{ borderStyle: 'dashed', my: 1.5, opacity: 0.4, mb: 0, mt: -2 }} /></Grid>
-            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 1, mb: -1, mt: -0 }}>Taxe sur la valeur ajoutée (TVA)</Typography></Grid>
+            <Grid item xs={12}><Typography sx={{ fontWeight: 800, color: '#1E293B', fontSize: '14px', mb: 1, mt: -0 }}>Taxe sur la valeur ajoutée (TVA)</Typography></Grid>
             <Grid item xs={12}>
                 <FormikCheckbox name="assujettitva" label="Assujettie à la TVA" />
             </Grid>
