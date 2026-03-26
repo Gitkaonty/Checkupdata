@@ -170,6 +170,10 @@ export default function AddNewFile({ confirmationState, refresh }) {
                 setListeDomBank={setListDomBank}
                 setListeConsolidation={setListConsolidation}
 
+                setListRegions={setListRegions}
+                setListDistricts={setListDistricts}
+                setListCommunes={setListCommunes}
+
                 row={[]}
             />
         </Stack>

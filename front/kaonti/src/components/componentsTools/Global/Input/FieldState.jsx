@@ -1,46 +1,48 @@
 import { Autocomplete, Box, Checkbox, Chip, FormControlLabel, FormHelperText, Grid, MenuItem, Radio, RadioGroup, Select, Stack, TextField, Typography } from "@mui/material";
 import { ErrorMessage, Field } from "formik";
 
-const TextFieldState = ({ name, label, width, ...props }) => (
-    <Grid item>
-        <Box sx={{
-            width
-        }}>
-            <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', mb: 0.5, textTransform: 'uppercase' }}>
-                {label}
-            </Typography>
-            <Field name={name}>
-                {({ field, meta }) => (
-                    <>
-                        <TextField
-                            {...field}
-                            fullWidth
-                            size="small"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    bgcolor: '#F8FAFC',
-                                    borderRadius: '8px',
+const TextFieldState = ({ name, label, width, value, setValue, backgroundColor, color, border, ...props }) => {
+    return (
+        <Grid item>
+            <Box sx={{ width }}>
+                <Typography
+                    sx={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        color: '#94A3B8',
+                        mb: 0.5,
+                        textTransform: 'uppercase',
+                    }}
+                >
+                    {label}
+                </Typography>
 
-                                    '&:hover fieldset': {
-                                        borderColor: '#3B82F6 !important',
-                                    },
+                <TextField
+                    fullWidth
+                    size="small"
+                    value={value || ''}
+                    onChange={(e) => setValue(e.target.value)}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            bgcolor: backgroundColor || '#F8FAFC',
+                            borderRadius: '8px',
+                            color: color || 'black',
+                            ...(border && { border }),
+                            '&:hover fieldset': {
+                                borderColor: '#3B82F6 !important',
+                            },
 
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#3B82F6',
-                                    },
-                                },
-                            }}
-                            {...props}
-                        />
-                        {meta.touched && meta.error && (
-                            <Typography sx={{ fontSize: '10px', color: 'red', mt: 0.5 }}>{meta.error}</Typography>
-                        )}
-                    </>
-                )}
-            </Field>
-        </Box>
-    </Grid>
-);
+                            '&.Mui-focused fieldset': {
+                                borderColor: '#3B82F6',
+                            },
+                        },
+                    }}
+                    {...props}
+                />
+            </Box>
+        </Grid>
+    );
+};
 
 const SelectState = ({ name, label, width, options, values, setFieldValue }) => (
     <Grid item>

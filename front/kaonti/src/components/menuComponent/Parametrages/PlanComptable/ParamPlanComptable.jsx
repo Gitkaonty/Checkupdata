@@ -1,638 +1,110 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Typography, Stack, Box, Tab, Chip } from '@mui/material';
-import Tooltip from '@mui/material/Tooltip';
-import { init } from '../../../../../init';
-import axios from '../../../../../config/axios';
+import { useEffect, useState } from 'react';
+import {
+    Box, Typography, IconButton, Drawer, Stack, Chip,
+    TextField, Button,
+    Fade, Tooltip,
+    Autocomplete
+} from '@mui/material';
+import {
+    Close as CloseIcon,
+    VisibilityOutlined as ViewIcon, EditOutlined as EditIcon
+} from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import { DataGrid, frFR } from '@mui/x-data-grid';
-import IconButton from '@mui/material/IconButton';
-import { TabContext, TabList, TabPanel } from '@mui/lab';
-import { IoMdTrash } from "react-icons/io";
-import { TbPlaylistAdd } from "react-icons/tb";
-import { FaRegPenToSquare } from "react-icons/fa6";
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import useAuth from '../../../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
-import QuickFilter from '../../../componentsTools/DatagridToolsStyle';
-import { DataGridStyle } from '../../../componentsTools/DatagridToolsStyle';
-import PopupConfirmDelete from '../../../componentsTools/popupConfirmDelete';
-import { format } from 'date-fns';
-import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
-import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
-import { TbCircleLetterCFilled, TbCircleLetterGFilled, TbCircleLetterAFilled } from "react-icons/tb";
-import { DetailsInformation } from '../../../componentsTools/DetailsInformation';
-import { BsCheckCircleFill } from "react-icons/bs";
-import { PiIdentificationCardFill } from "react-icons/pi";
-import { BsPersonFillSlash } from "react-icons/bs";
-import { FaGlobeAmericas } from "react-icons/fa";
-import { useSearchParams } from "react-router-dom";
-import PopupAddNewAccount from '../../../componentsTools/PlanComptable/PopupAddNewAccount';
+import { GridRowModes, useGridApiRef } from '@mui/x-data-grid';
 import usePermission from '../../../../hooks/usePermission';
+import axios from '../../../../../config/axios';
 import useAxiosPrivate from '../../../../../config/axiosPrivate';
-import { TbRefresh } from "react-icons/tb";
+import DatagridGlobal from '../../../componentsTools/Dossier/Datagrid/DatagridGlobal';
+import { Formik } from 'formik';
+import { FormikAutocomplete, FormikDateField, FormikTextField } from '../../../componentsTools/Global/Input/FieldFormik';
+import { format } from 'date-fns';
+import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
 
-export default function ParamPlanComptable() {
-    const { canAdd, canModify, canDelete, canView } = usePermission();
+const PlanComptablePage = () => {
+    const apiRef = useGridApiRef();
     const axiosPrivate = useAxiosPrivate();
-
-    let initial = init[0];
-    const { auth } = useAuth();
-    const navigate = useNavigate();
-
-    const [searchParams] = useSearchParams();
-    const compte = searchParams.get("compte");
-
-    const [pc, setPc] = useState([]);
-    const [selectedRow, setSelectedRow] = useState([]);
-
-    const [listCptChg, setListCptChg] = useState([]);
-    const [listCptTva, setListCptTva] = useState([]);
-
-    const [pcAllselectedRow, setPcAllselectedRow] = useState([]);
-    const [openDialogDeleteItemsPc, setOpenDialogDeleteItemsPc] = useState(false);
+    const [selectedRow, setSelectedRow] = useState(null);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const { id } = useParams();
-    const [fileId, setFileId] = useState(0);
-    const [fileInfos, setFileInfos] = useState('');
-    const [noFile, setNoFile] = useState(false);
-    const [rowCptInfos, setRowCptInfos] = useState([]);
-    const [openInfos, setOpenInfos] = useState(false);
-    const [consolidation, setConsolidation] = useState(false);
-    const [isTypeComptaAutre, setIsTypeComptaAutre] = useState(false);
-
-    const [openDialogAddNewAccount, setOpenDialogAddNewAccount] = useState(false);
-    const [typeAction, setTypeAction] = useState('');
-    const [isRefresh, setisRefresh] = useState(false);
-
-    const handleOpenDialogAddNewAccount = (type) => {
-        setTypeAction(type);
-        setOpenDialogAddNewAccount(true);
-    }
-
-    const handleCloseDialogAddNewAccount = () => {
-        setOpenDialogAddNewAccount(false);
-        setisRefresh(prev => !prev);
-    }
-
-    const handleActualize = () => {
-        try {
-            axios.post(`/paramPlanComptable/recupPcConsolidation`, { fileId, compteId })
-                .then((response) => {
-                    const listePc = response?.data?.liste;
-                    const unique = Object.values(
-                        (Array.isArray(listePc) ? listePc : []).reduce((acc, r) => {
-                            const k = String(r.compte || '');
-                            if (!acc[k]) acc[k] = r;
-                            return acc;
-                        }, {})
-                    );
-
-                    setPc(unique);
-                    toast.success('Liste mis à jour avec succès')
-                })
-        } catch (error) {
-            const errMsg = error.response?.data?.message || error.message || "Erreur inconnue";
-            toast.error(errMsg);
-        }
-    }
-
-    const columnHeaderDetail = [
-        {
-            field: 'id',
-            headerName: 'ID',
-            type: 'number',
-            sortable: true,
-            width: 70,
-            headerAlign: 'right',
-            headerClassName: 'HeaderbackColor',
-        },
-        {
-            field: 'dossier',
-            headerName: 'Dossier',
-            type: 'string',
-            sortable: true,
-            width: 100,
-            headerAlign: 'left',
-            align: 'left',
-            headerClassName: 'HeaderbackColor',
-        },
-        {
-            field: 'compte',
-            headerName: 'Compte',
-            type: 'string',
-            sortable: true,
-            width: 175,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor',
-            renderCell: (params) => {
-                return (
-                    <span
-                        style={{ cursor: 'pointer', width: '100%' }}
-                        onClick={() => handleShowCptInfos(params.row)}
-                    >
-                        {params.row.compte}
-                    </span>
-                );
-            }
-        },
-        {
-            field: 'libelle',
-            headerName: 'Libellé',
-            type: 'string',
-            sortable: true,
-            width: 300,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor',
-        },
-        {
-            field: 'typecomptabilite',
-            headerName: 'Type comptabilité',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor',
-        },
-        {
-            field: 'nature',
-            headerName: 'Nature',
-            type: 'string',
-            sortable: true,
-            width: 130,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor',
-            renderCell: (params) => {
-                if (params.row.nature === 'General') {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <Chip
-                                icon={<TbCircleLetterGFilled style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Général"
-
-                                style={{
-                                    width: "100%",
-                                    display: 'flex', // ou block, selon le rendu souhaité
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#48A6A7',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                } else if (params.row.nature === 'Collectif') {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-
-                            <Chip
-                                icon={<TbCircleLetterCFilled style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Collectif"
-
-                                style={{
-                                    width: "100%",
-                                    display: 'flex', // ou block, selon le rendu souhaité
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#A6D6D6',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                } else {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-
-                            <Chip
-                                icon={<TbCircleLetterAFilled style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Auxiliaire"
-
-                                style={{
-                                    width: "100%",
-                                    display: 'flex', // ou block, selon le rendu souhaité
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#123458',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                }
-            }
-        },
-        {
-            field: 'baseCompte',
-            headerName: 'Centr. / base aux.',
-            type: 'string',
-            sortable: true,
-            width: 175,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'cptcharge',
-            headerName: 'Cpt charge',
-            type: 'string',
-            sortable: true,
-            width: 100,
-            headerAlign: 'right',
-            headerClassName: 'HeaderbackColor',
-            renderCell: (params) => {
-                if (params.row.cptcharge === 0) {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{
-                                width: 25,
-                                height: 25,
-                                backgroundColor: '#DBDBDB',
-                                borderRadius: 15,
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                {params.row.cptcharge}
-                            </div>
-                        </Stack>
-                    )
-                } else {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{
-                                width: 25,
-                                height: 25,
-                                backgroundColor: '#FDA403',
-                                borderRadius: 15,
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                {params.row.cptcharge}
-                            </div>
-                        </Stack>
-
-                    )
-                }
-            }
-        },
-        {
-            field: 'cpttva',
-            headerName: 'Cpt TVA',
-            type: 'string',
-            sortable: true,
-            width: 100,
-            headerAlign: 'right',
-            headerClassName: 'HeaderbackColor',
-            renderCell: (params) => {
-                if (params.row.cpttva === 0) {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{
-                                width: 25,
-                                height: 25,
-                                backgroundColor: '#DBDBDB',
-                                borderRadius: 15,
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                {params.row.cpttva}
-                            </div>
-                        </Stack>
-                    )
-                } else {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{
-                                width: 25,
-                                height: 25,
-                                backgroundColor: '#FDA403',
-                                borderRadius: 15,
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                {params.row.cpttva}
-                            </div>
-                        </Stack>
-
-                    )
-                }
-            }
-        },
-        {
-            field: 'typetier',
-            headerName: 'Type de tier',
-            type: 'string',
-            sortable: true,
-            width: 130,
-            headerAlign: 'center',
-            headerClassName: 'HeaderbackColor',
-            renderCell: (params) => {
-                if (params.row.typetier === 'sans-nif') {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <Chip
-                                icon={<BsPersonFillSlash style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Sans NIF"
-
-                                style={{
-                                    width: "100%",
-                                    display: 'flex', // ou block, selon le rendu souhaité
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#FF9149',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                } else if (params.row.typetier === 'avec-nif') {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <Chip
-                                icon={<PiIdentificationCardFill style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Avec NIF"
-
-                                style={{
-                                    width: "100%",
-                                    display: 'flex', // ou block, selon le rendu souhaité
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#006A71',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                } else if (params.row.typetier === 'general') {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <Chip
-                                icon={<BsCheckCircleFill style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Général"
-
-                                style={{
-                                    width: "100%",
-                                    display: 'flex', // ou block, selon le rendu souhaité
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#67AE6E',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                } else if (params.row.typetier === 'etranger') {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <Chip
-                                icon={<FaGlobeAmericas style={{ color: 'white', width: 18, height: 18, marginLeft: 10 }} />}
-                                label="Etranger"
-                                style={{
-                                    width: "100%",
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    backgroundColor: '#FBA518',
-                                    color: 'white'
-                                }}
-                            />
-                        </Stack>
-                    )
-                }
-            }
-        },
-        {
-            field: 'nif',
-            headerName: 'Nif',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'statistique',
-            headerName: 'N° statistique',
-            type: 'string',
-            sortable: true,
-            width: 200,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'adresse',
-            headerName: 'Adresse',
-            type: 'string',
-            sortable: true,
-            width: 250,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'cin',
-            headerName: 'CIN',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'datecin',
-            headerName: 'Date CIN',
-            type: 'text',
-            sortable: true,
-            width: 120,
-            headerAlign: 'center',
-            headerClassName: 'HeaderbackColor',
-            renderCell: (params) => {
-                if (params.row.datecin !== null) {
-                    return (
-                        <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
-                            <div>{format(params.row.datecin, "dd/MM/yyyy")}</div>
-                        </Stack>
-                    )
-                }
-            }
-        },
-        {
-            field: 'autrepieceid',
-            headerName: 'Autre pièces Ident.',
-            type: 'text',
-            sortable: true,
-            width: 200,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'refpieceid',
-            headerName: 'Réf pièces Ident.',
-            type: 'text',
-            sortable: true,
-            width: 200,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'adressesansnif',
-            headerName: 'Adresse CIN',
-            type: 'text',
-            sortable: true,
-            width: 250,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'nifrepresentant',
-            headerName: 'NIF représentant',
-            type: 'text',
-            sortable: true,
-            width: 175,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'addresseetranger',
-            headerName: 'Adresse représentant',
-            type: 'text',
-            sortable: true,
-            width: 250,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'pays',
-            headerName: 'Pays',
-            type: 'text',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'province',
-            headerName: 'Province',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'region',
-            headerName: 'Région',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'district',
-            headerName: 'District',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'commune',
-            headerName: 'Commune',
-            type: 'string',
-            sortable: true,
-            width: 180,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        },
-        {
-            field: 'motcle',
-            headerName: 'Mot clé',
-            type: 'string',
-            sortable: true,
-            width: 150,
-            headerAlign: 'left',
-            headerClassName: 'HeaderbackColor'
-        }
-    ]
-
-    const typeIndex = columnHeaderDetail.findIndex(c => c.field === 'libelle');
-
-    const typeComptabiliteAutre = [
-        {
-            field: 'compteautre',
-            headerName: 'Compte (Autre)',
-            type: 'number',
-            sortable: true,
-            width: 175,
-            headerAlign: 'right',
-            headerClassName: 'HeaderbackColor',
-        },
-        {
-            field: 'libelleautre',
-            headerName: 'Libelle (Autre)',
-            type: 'string',
-            sortable: true,
-            width: 300,
-            headerAlign: 'left',
-            align: 'left',
-            headerClassName: 'HeaderbackColor',
-        },
-    ]
-
-    if (isTypeComptaAutre && typeIndex !== -1) {
-        columnHeaderDetail.splice(typeIndex + 1, 0, ...typeComptabiliteAutre)
-    }
-
-    //paramètres de connexion------------------------------------
+    const [pc, setPc] = useState([]);
+    const [pcCollectif, setPcCollectif] = useState([]);
+    const { auth } = useAuth();
     const decoded = auth?.accessToken
         ? jwtDecode(auth.accessToken)
         : undefined
     const compteId = decoded.UserInfo.compteId || 0;
+    const { canAdd, canModify, canDelete, canView } = usePermission();
+    const [searchParams] = useSearchParams();
+    const compte = searchParams.get("compte");
+    const [rowModesModel, setRowModesModel] = useState({});
+    const [consolidation, setConsolidation] = useState(false);
+    const [isTypeComptaAutre, setIsTypeComptaAutre] = useState(false);
+    const navigate = useNavigate();
+    const [noFile, setNoFile] = useState(false);
 
-    const sendToHome = (value) => {
-        setNoFile(!value);
-        navigate('/tab/home');
+    const [listPays, setListPays] = useState([]);
+    const [listProvinces, setListProvinces] = useState([]);
+    const [listRegions, setListRegions] = useState([]);
+    const [listDistricts, setListDistricts] = useState([]);
+    const [listCommunes, setListCommunes] = useState([]);
+
+    const initialValues = {
+        itemId: 0,
+        idCompte: Number(compteId),
+        idDossier: Number(id),
+        nif: '',
+        statistique: '',
+        adresse: '',
+        motcle: '',
+        cin: '',
+        dateCin: '',
+        autrepieceid: '',
+        refpieceid: '',
+        adressesansnif: '',
+        nifrepresentant: '',
+        adresseetranger: '',
+        pays: '',
+        province: '',
+        region: '',
+        district: '',
+        commune: '',
+        compteautre: '',
+        libelleautre: ''
+    };
+
+    const savePopupRows = async (values) => {
+        const response = await axios.post('/paramPlanComptable/editPcFromPopup', { row: values });
+        if (response?.data?.state) {
+            toast.success(response?.data?.message);
+            setSelectedRow(response.data.row[0]);
+        } else {
+            toast.error(response?.data?.message);
+        }
     }
 
-    //Suppression des comptes sélectionnés dans le tableau du plan comptable
-    const handleOpenDialogCptDelete = () => {
-        setOpenDialogDeleteItemsPc(true);
-    }
+    const natureOptions = [
+        { value: 'General', label: 'General' },
+        { value: 'Collectif', label: 'Collectif' },
+        { value: 'Aux', label: 'Auxilliaire' },
+    ];
 
-    const showCptInfos = (state) => {
-        setOpenInfos(state);
-    }
+    const typeTierOptions = [
+        { value: 'sans-nif', label: 'Sans nif' },
+        { value: 'avec-nif', label: 'Avec nif' },
+        { value: 'etranger', label: 'Etranger' },
+        { value: 'general', label: 'General' },
+    ];
 
-    const handleShowCptInfos = (row) => {
-        const itemId = row.id;
-        axios.get(`/paramPlanComptable/keepListCptChgTvaAssoc/${itemId}`).then((response) => {
-            const resData = response.data;
-            if (resData.state) {
-                setListCptChg(resData.detailChg);
-                setListCptTva(resData.detailTva);
-                setRowCptInfos(row);
-                setOpenInfos(true);
-            } else {
-                toast.error(resData.msg);
-            }
-        })
-    }
+    const handleOpenDetails = (row) => {
+        setSelectedRow(row);
+        setDrawerOpen(true);
+    };
 
-    const GetInfosIdDossier = (id) => {
-        axios.get(`/home/FileInfos/${id}`).then((response) => {
-            const resData = response.data;
-
-            if (resData.state) {
-                const isTypeComptaAutre = resData.fileInfos[0].typecomptabilite === 'Autres';
-                setFileInfos(resData.fileInfos[0]);
-                setConsolidation(resData.fileInfos[0].consolidation);
-                setIsTypeComptaAutre(isTypeComptaAutre)
-                setNoFile(false);
-            } else {
-                setFileInfos([]);
-                setNoFile(true);
-            }
-        })
-    }
-
-    //Affichage du plan comptable
     const showPc = () => {
-        axios.post(`/paramPlanComptable/pc`, { fileId: Number(fileId), compteId: Number(compteId) }).then((response) => {
+        axios.post(`/paramPlanComptable/pc`, { fileId: Number(id), compteId: Number(compteId) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 let listePc = resData.liste;
@@ -641,73 +113,563 @@ export default function ParamPlanComptable() {
                     listePc = listePc.filter((row) => row.compte === compte);
                 }
 
-                const unique = Object.values(
-                    (Array.isArray(listePc) ? listePc : []).reduce((acc, r) => {
-                        const k = String(r.compte || '');
-                        if (!acc[k]) acc[k] = r;
-                        return acc;
-                    }, {})
-                );
+                const compteCollectif = listePc.filter(val => val.nature === 'Collectif');
 
-                setPc(unique);
+                setPc(listePc);
+                setPcCollectif(compteCollectif);
             } else {
                 toast.error(resData.msg);
             }
         })
     }
 
-    //Récupération de l'ID de la ligne sélectionner dans le tableau détail du modèle sélectionné
-    const listPCSelectedRow = (selectedRow) => {
-        const itemId = selectedRow[0];
-        setPcAllselectedRow(selectedRow);
+    const columnHeaderDetail = [
+        {
+            field: 'dossier',
+            headerName: 'Dossier',
+            type: 'string',
+            sortable: true,
+            flex: 1,
+            headerAlign: 'left',
+            align: 'left',
+            headerClassName: 'HeaderbackColor',
+            renderCell: (params) => {
+                return (
+                    <Stack sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {params.value}
+                    </Stack>
+                )
+            }
+        },
+        {
+            field: 'compte',
+            headerName: 'Compte',
+            type: 'string',
+            sortable: true,
+            editable: true,
+            flex: 1,
+            headerAlign: 'left',
+            headerClassName: 'HeaderbackColor',
+            renderEditCell: (params) => (
+                <TextField
+                    variant="standard"
+                    defaultValue={params.value}
+                    fullWidth
+                    InputProps={{
+                        disableUnderline: true,
+                    }}
+                    sx={{
+                        backgroundColor: 'white',
+                        border: 'none',
+                        outline: 'none',
+                        '& .MuiInputBase-input': {
+                            padding: '4px 8px',
+                            fontSize: '13px',
+                            paddingLeft: '10px'
+                        },
+                    }}
+                    onChange={(e) => {
+                        params.api.setEditCellValue({
+                            id: params.id,
+                            field: params.field,
+                            value: e.target.value,
+                        });
+                    }}
+                />
+            ),
+        },
+        {
+            field: 'libelle',
+            headerName: 'Libellé',
+            type: 'string',
+            sortable: true,
+            flex: 5,
+            headerAlign: 'left',
+            headerClassName: 'HeaderbackColor',
+            editable: true,
+            renderCell: (params) => {
+                return (
+                    <Stack sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {params.value}
+                    </Stack>
+                )
+            },
+            renderEditCell: (params) => (
+                <TextField
+                    variant="standard"
+                    defaultValue={params.value}
+                    fullWidth
+                    InputProps={{
+                        disableUnderline: true,
+                    }}
+                    sx={{
+                        backgroundColor: 'white',
+                        border: 'none',
+                        outline: 'none',
+                        '& .MuiInputBase-input': {
+                            padding: '4px 8px',
+                            fontSize: '13px',
+                            paddingLeft: '10px'
+                        },
+                    }}
+                    onChange={(e) => {
+                        params.api.setEditCellValue({
+                            id: params.id,
+                            field: params.field,
+                            value: e.target.value,
+                        });
+                    }}
+                />
+            ),
+        },
+        {
+            field: 'nature',
+            headerName: 'Nature',
+            type: 'string',
+            sortable: true,
+            width: 130,
+            headerAlign: 'center',
+            editable: true,
+            headerClassName: 'HeaderbackColor',
+            renderCell: (params) => {
+                const nature = params.row.nature;
+                const color = nature === 'General' ? 'rgba(0, 229, 255, 0.2)' : nature === 'Collectif' ? 'rgba(34, 123, 33, 0.2)' : 'rgba(22, 41, 180, 0.1)';
+                return (
+                    <Stack width={'100%'} style={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center' }}>
+                        <Chip label={params.value} sx={{ height: 20, fontSize: '0.6rem', fontWeight: 800, backgroundColor: color, textTransform: 'uppercase' }} />
+                    </Stack>
+                )
+            },
+            renderEditCell: (params) => {
+                return (
+                    <Autocomplete
+                        key={params.id}
+                        autoHighlight
+                        autoComplete
+                        openOnFocus
+                        disableClearable={false}
+                        popperprops={{ disablePortal: true }}
+                        fullWidth
+                        options={natureOptions}
+                        getOptionLabel={(option) => option.label}
+                        value={
+                            natureOptions.find((option) => option.value === params.value) || null
+                        }
+                        onChange={(event, newValue) => {
+                            params.api.setEditCellValue({
+                                id: params.id,
+                                field: params.field,
+                                value: newValue ? newValue.value : "",
+                            });
+                        }}
+                        noOptionsText="Aucune nature trouvé"
+                        slotProps={{
+                            paper:
+                            {
+                                sx: {
+                                    '& .MuiAutocomplete-option': {
+                                        fontSize: '13px',
+                                    },
+                                    '& .MuiAutocomplete-noOptions': {
+                                        fontSize: '13px',
+                                    }
+                                }
+                            }
+                        }}
+                        renderInput={(paramsInput) => {
+                            return (
+                                <TextField
+                                    {...paramsInput}
+                                    variant="standard"
+                                    placeholder="Choisir un nature"
+                                    fullWidth
+                                    InputProps={{
+                                        ...paramsInput.InputProps,
+                                        disableUnderline: true,
+                                    }}
+                                    sx={{
+                                        '& .MuiInputBase-input': {
+                                            padding: '4px 8px',
+                                            fontSize: '13px',
+                                            paddingLeft: '10px'
+                                        },
+                                        "& .MuiInputBase-root": {
+                                            height: 50,
+                                        },
+                                        paddingLeft: '10px'
+                                    }}
+                                />
+                            );
+                        }}
+                    />
+                )
+            }
+        },
+        {
+            field: 'baseaux_id',
+            headerName: 'Base',
+            type: 'string',
+            sortable: true,
+            flex: 1,
+            headerAlign: 'left',
+            headerClassName: 'HeaderbackColor',
+            editable: true,
+            renderCell: (params) => {
+                const value = params.value;
+                const pcFind = pc.find(val => val.id === value);
+                return (
+                    <Stack sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'text.secondary' }}>
+                        {pcFind?.compte}
+                    </Stack>
+                )
+            },
+            renderEditCell: (params) => {
+                const updatedRow = params.api.getRowWithUpdatedValues(params.id);
+                const currentNature = updatedRow?.nature ?? params.row.nature;
 
-        const itemInfos = pc.find(row => row.id === itemId);
-        if (itemInfos) {
-            setSelectedRow(itemInfos);
+                const isNatureAux = currentNature === 'Aux';
 
-            //récupérer la liste des comptes de charges et compte de TVA associées à la ligne sélectionnée
-            axios.get(`/paramPlanComptable/keepListCptChgTvaAssoc/${itemId}`).then((response) => {
+                return (
+                    <Autocomplete
+                        key={params.id}
+                        autoHighlight
+                        autoComplete
+                        openOnFocus
+                        disableClearable={false}
+                        fullWidth
+
+                        options={isNatureAux ? pcCollectif : []}
+
+                        getOptionLabel={(option) => option.compte + ' - ' + option.libelle}
+                        value={
+                            pcCollectif.find((option) => option.id === params.value) || null
+                        }
+
+                        onChange={(event, newValue) => {
+                            params.api.setEditCellValue({
+                                id: params.id,
+                                field: params.field,
+                                value: newValue ? newValue.id : "",
+                            });
+                        }}
+
+                        noOptionsText={
+                            isNatureAux
+                                ? "Aucun compte trouvé"
+                                : "Sélectionnez d'abord Nature = Aux"
+                        }
+                        slotProps={{
+                            paper:
+                            {
+                                sx: {
+                                    '& .MuiAutocomplete-option': {
+                                        fontSize: '13px',
+                                    },
+                                    '& .MuiAutocomplete-noOptions': {
+                                        fontSize: '13px',
+                                    }
+                                }
+                            }
+                        }}
+                        renderInput={
+                            (paramsInput) => {
+                                return (
+                                    <TextField
+                                        {...paramsInput}
+                                        variant="standard"
+                                        placeholder="Choisir un compte"
+                                        fullWidth
+                                        InputProps={{ ...paramsInput.InputProps, disableUnderline: true }}
+                                        style={{
+                                            width: 400,
+                                            transition: "width 0.2s ease-in-out",
+                                            fontSize: "13px",
+                                        }}
+                                        sx={{
+                                            "& .MuiInputBase-input": {
+                                                padding: "4px 8px",
+                                                fontSize: "13px",
+                                                paddingLeft: "10px",
+                                            },
+                                            "& .MuiInputBase-root": { height: 50 },
+                                            paddingLeft: "10px",
+                                        }}
+                                    />
+                                );
+                            }
+
+                        }
+                    />
+                );
+            }
+        },
+        {
+            field: 'typetier',
+            headerName: 'Type de tier',
+            type: 'string',
+            sortable: true,
+            editable: true,
+            width: 130,
+            headerAlign: 'center',
+            headerClassName: 'HeaderbackColor',
+            renderCell: (params) => {
+                return (
+                    <Stack width={'100%'} sx={{ display: 'flex', alignContent: 'center', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 800, color: '#0A192F', textTransform: 'uppercase' }}>
+                        {params.value}
+                    </Stack>
+                )
+            },
+            renderEditCell: (params) => {
+                return (
+                    <Autocomplete
+                        key={params.id}
+                        autoHighlight
+                        autoComplete
+                        openOnFocus
+                        disableClearable={false}
+                        popperprops={{ disablePortal: true }}
+                        fullWidth
+                        options={typeTierOptions}
+                        getOptionLabel={(option) => option.label}
+                        value={
+                            typeTierOptions.find((option) => option.value === params.value) || null
+                        }
+                        onChange={(event, newValue) => {
+                            params.api.setEditCellValue({
+                                id: params.id,
+                                field: params.field,
+                                value: newValue ? newValue.value : "",
+                            });
+                        }}
+                        noOptionsText="Aucune tier trouvé"
+                        slotProps={{
+                            paper: {
+                                sx: {
+                                    '& .MuiAutocomplete-option': {
+                                        fontSize: '13px',
+                                    }
+                                }
+                            }
+                        }}
+                        renderInput={(paramsInput) => {
+                            return (
+                                <TextField
+                                    {...paramsInput}
+                                    variant="standard"
+                                    placeholder="Choisir un tier"
+                                    fullWidth
+                                    InputProps={{
+                                        ...paramsInput.InputProps,
+                                        disableUnderline: true,
+                                    }}
+                                    sx={{
+                                        '& .MuiInputBase-input': {
+                                            padding: '4px 8px',
+                                            fontSize: '13px',
+                                            paddingLeft: '10px'
+                                        },
+                                        "& .MuiInputBase-root": {
+                                            height: 50,
+                                        },
+                                        paddingLeft: '10px'
+                                    }}
+                                />
+                            );
+                        }}
+                    />
+                )
+            }
+        }
+    ]
+
+    const verifyCanUpdate = async (id_nucpt) => {
+        const response = await axios.post('/paramPlanComptable/verifyCanUpdate', {
+            id_numcpt: Number(id_nucpt),
+            id_compte: Number(compteId),
+            id_dossier: Number(id)
+        })
+        const data = response?.data;
+        return data;
+    }
+
+    const addCompte = () => {
+        const newRow = {
+            id: Date.now(),
+            id_dossier: Number(id),
+            id_compte: Number(compteId),
+            compte: "",
+            libelle: "",
+            nature: "",
+            typetier: "",
+
+            baseaux_id: null,
+
+            isNew: true
+        };
+
+        setPc(prev => [newRow, ...prev]);
+        setRowModesModel(prev => ({
+            ...prev,
+            [newRow.id]: { mode: GridRowModes.Edit }
+        }));
+    };
+
+    const anotherActionButton = (params) => {
+        return (
+            <Tooltip key='voir' title="Voir">
+                <IconButton
+                    size="small"
+                    sx={{ color: '#00E5FF' }}
+                    onClick={() => handleOpenDetails(params.row)}
+                >
+                    <ViewIcon fontSize="small" />
+                </IconButton>
+            </Tooltip>
+        )
+    }
+
+    const handleActualize = () => {
+        try {
+            axios.post(`/paramPlanComptable/recupPcConsolidation`, { fileId: Number(id), compteId: Number(compteId) })
+                .then((response) => {
+                    const listePc = response?.data?.liste;
+                    setPc(listePc);
+                    toast.success('Liste mis à jour avec succès')
+                })
+        } catch (error) {
+            const errMsg = error.response?.data?.message || error.message || "Erreur inconnue";
+            toast.error(errMsg);
+        }
+    }
+
+    const GetInfosIdDossier = () => {
+        axios.get(`/home/FileInfos/${id}`).then((response) => {
+            const resData = response.data;
+
+            if (resData.state) {
+                const isTypeComptaAutre = resData.fileInfos[0].typecomptabilite === 'Autres';
+                setConsolidation(resData.fileInfos[0].consolidation);
+                setIsTypeComptaAutre(isTypeComptaAutre)
+                setNoFile(false);
+            } else {
+                setNoFile(true);
+            }
+        })
+    }
+
+    //récupérer la liste des pays 
+    const getListePays = async () => {
+        await axios.get(`/paramCrm/getListePays/`).then((response) => {
+            const resData = response.data;
+
+            if (resData.state) {
+                setListPays(resData.list);
+            } else {
+                setListPays([]);
+            }
+        });
+    }
+
+    const onSaveRow = async (row) => {
+        const baseaux_id = row?.baseaux_id || 0;
+        const id_numcpt = row?.id;
+        let baseaux = row?.baseaux;
+        if (baseaux_id !== id_numcpt) {
+            const compteBaseaux = pcCollectif.find(val => val.id === baseaux_id);
+            baseaux = compteBaseaux?.compte;
+        }
+        const response = await axios.post('/paramPlanComptable/editPc', { row: { ...row, baseaux } });
+        if (response?.data?.state) {
+            toast.success(response?.data?.message);
+            setPc(prev => prev.map(r => r.id === row.id ? response.data.row[0] : r));
+        } else {
+            toast.error(response?.data?.message);
+        }
+    };
+
+    const onDeleteRow = async (id_numcpt) => {
+        let state = true;
+        const row = pc.find(val => val.id === id_numcpt);
+        if (!row.isNew) {
+            await axiosPrivate.post(`/paramPlanComptable/deleteItemPc`, { listId: Number(id_numcpt), compteId, fileId: Number(id) }).then((response) => {
                 const resData = response.data;
                 if (resData.state) {
-                    setListCptChg(resData.detailChg);
-                    setListCptTva(resData.detailTva);
+                    toast.success(resData.msg);
+                    state = true;
                 } else {
                     toast.error(resData.msg);
+                    state = false;
                 }
-            })
-        }
-    }
-
-    const deleteItemsPC = (value) => {
-        if (value === true) {
-            if (pcAllselectedRow.length >= 1) {
-                const listId = pcAllselectedRow;
-
-                axiosPrivate.post(`/paramPlanComptable/deleteItemPc`, { listId, compteId, fileId }).then((response) => {
-                    const resData = response.data;
-                    showPc();
-                    setOpenDialogDeleteItemsPc(false);
-
-                    // Si certains comptes n'ont pas pu être supprimés, on n'affiche PAS le toast de succès.
-                    if (resData.stateUndeletableCpt) {
-                        toast.error(resData.msgUndeletableCpt || resData.msg);
-                        return;
-                    }
-
-                    if (resData.state) {
-                        toast.success(resData.msg);
-                    } else {
-                        toast.error(resData.msg);
-                    }
-                });
-
-            } else {
-                toast.error("Veuillez sélectionner au moins une ligne dans le tableau plan comptable.");
-            }
+            });
+            return state;
         } else {
-            setOpenDialogDeleteItemsPc(false);
+            toast.success('Ligne supprimé avec succès');
+            return true;
         }
     }
+
+    //Récupération des données géographiques depuis l'API existante
+    const getListeProvinces = () => {
+        axios.get('/paramPlanComptable/getProvinces').then((response) => {
+            const provinces = response.data.map(name => ({ id: name, name: name }));
+            setListProvinces(provinces);
+        }).catch((error) => {
+            console.error('Erreur lors du chargement des provinces:', error);
+        });
+    }
+
+    const getListeRegions = (province) => {
+        if (!province) {
+            setListRegions([]);
+            return;
+        }
+        axios.get(`/paramPlanComptable/getRegions/${province}`).then((response) => {
+            const regions = response.data.map(name => ({ id: name, name: name }));
+            setListRegions(regions);
+            return regions;
+        }).catch((error) => {
+            console.error('Erreur lors du chargement des régions:', error);
+        });
+    }
+
+    const getListeDistricts = (province, region) => {
+        if (!province || !region) {
+            setListDistricts([]);
+            return;
+        }
+        axios.get(`/paramPlanComptable/getDistricts/${province}/${region}`).then((response) => {
+            const districts = response.data.map(name => ({ id: name, name: name }));
+            setListDistricts(districts);
+            return districts;
+        }).catch((error) => {
+            console.error('Erreur lors du chargement des districts:', error);
+        });
+    }
+
+    const sendToHome = (value) => {
+        setNoFile(!value);
+        navigate('/tab/home');
+    }
+
+    const getListeCommunes = (province, region, district) => {
+        if (!province || !region || !district) {
+            setListCommunes([]);
+            return;
+        }
+        axios.get(`/paramPlanComptable/getCommunes/${province}/${region}/${district}`).then((response) => {
+            const communes = response.data.map(name => ({ id: name, name: name }));
+            setListCommunes(communes);
+            return communes;
+        }).catch((error) => {
+            console.error('Erreur lors du chargement des communes:', error);
+        });
+    }
+
+    useEffect(() => {
+        if (canView && id && compteId) {
+            showPc();
+        }
+    }, [id, compteId]);
 
     useEffect(() => {
         const navigationEntries = performance.getEntriesByType('navigation');
@@ -717,11 +679,9 @@ export default function ParamPlanComptable() {
             const navigationType = navigationEntries[0].type;
             if (navigationType === 'reload') {
                 const idDossier = sessionStorage.getItem("fileId");
-                setFileId(idDossier);
                 idFile = idDossier;
             } else {
                 sessionStorage.setItem('fileId', id);
-                setFileId(id);
                 idFile = id;
             }
         }
@@ -729,194 +689,553 @@ export default function ParamPlanComptable() {
     }, []);
 
     useEffect(() => {
-        if (canView && fileId && compteId) {
-            showPc();
-        }
-    }, [fileId, compteId, compte, isRefresh]);
+        getListePays();
+        getListeProvinces();
+    }, []);
+
+    const processRowUpdateSimple = async (newRow) => {
+        const updatedList = list.map(row => row.id === newRow.id ? newRow : row);
+        setList(updatedList);
+
+        return newRow;
+    };
 
     return (
         <>
-
             {
-                noFile
-                    ?
+                noFile ?
                     <PopupTestSelectedFile
                         confirmationState={sendToHome}
                     />
                     :
                     null
             }
-            {
-                (openInfos && canView) ?
-                    <DetailsInformation
-                        row={rowCptInfos}
-                        confirmOpen={showCptInfos}
-                        listCptChg={listCptChg}
-                        listCptTva={listCptTva}
-                    />
-                    :
-                    null}
-            {
-                openDialogAddNewAccount && (canAdd || canModify) && (
-                    <PopupAddNewAccount
-                        id_dossier={fileId}
-                        id_compte={compteId}
-                        selectedRow={selectedRow}
-                        open={openDialogAddNewAccount}
-                        onClose={handleCloseDialogAddNewAccount}
-                        stateAction={typeAction}
-                        isTypeComptaAutre={isTypeComptaAutre}
-                        setSelectedRow={setSelectedRow}
-                    />
-                )
-            }
-            {
-                (openDialogDeleteItemsPc && canDelete)
-                    ?
-                    <PopupConfirmDelete
-                        msg={"Voulez-vous vraiment supprimer les comptes sélectionnés ?"}
-                        confirmationState={deleteItemsPC}
-                    />
-                    :
-                    null
-            }
-            <Box>
-                <TabContext value={"1"}>
-                    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                        <TabList aria-label="lab API tabs example">
-                            <Tab
-                                style={{
-                                    textTransform: 'none',
-                                    outline: 'none',
-                                    border: 'none',
-                                    margin: -5
-                                }}
-                                label={InfoFileStyle(fileInfos?.dossier)} value="1"
-                            />
-                        </TabList>
-                    </Box>
-                    <TabPanel value="1">
-                        <Stack width={"100%"} height={"90%"} spacing={0.5} alignItems={"flex-start"} justifyContent={"stretch"}>
-                            <Typography variant='h6' sx={{ color: "black" }} align='left'>Paramétrages : Plan comptable</Typography>
-                            <Stack width={"100%"} height={"30px"} spacing={0} alignItems={"center"} alignContent={"center"}
-                                direction={"row"} style={{ marginLeft: "0px", marginTop: "30px", justifyContent: "right" }}>
+            <Box sx={{ width: '100%' }}>
+                <Box sx={{ px: 3, py: 3 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
 
-                                <Stack width={"100%"} height={"30px"} spacing={0.5} alignItems={"center"} alignContent={"center"}
-                                    direction={"row"} justifyContent={"right"}>
-                                    {
-                                        consolidation && (
-                                            <Tooltip title="Actualiser les comptes">
-                                                <span>
-                                                    <IconButton
-                                                        // disabled={statutDeleteButton}  
-                                                        onClick={handleActualize}
-                                                        variant="contained"
-                                                        style={{
-                                                            width: "35px", height: '35px',
-                                                            borderRadius: "5px", borderColor: "transparent",
-                                                            backgroundColor: initial.theme,
-                                                            textTransform: 'none', outline: 'none'
-                                                        }}
-                                                    >
-                                                        <TbRefresh style={{ width: '25px', height: '25px', color: 'white' }} />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
-                                        )
-                                    }
-                                    <Tooltip title="Ajouter un nouveau compte">
-                                        <span>
-                                            <IconButton
-                                                disabled={!canAdd}
-                                                // disabled={statutDeleteButton}  
-                                                onClick={() => handleOpenDialogAddNewAccount('ajout')}
-                                                variant="contained"
-                                                style={{
-                                                    width: "35px", height: '35px',
-                                                    borderRadius: "5px", borderColor: "transparent",
-                                                    backgroundColor: initial.theme,
-                                                    textTransform: 'none', outline: 'none'
-                                                }}
-                                            >
-                                                <TbPlaylistAdd style={{ width: '25px', height: '25px', color: 'white' }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
+                        <Stack direction="row" spacing={2} width={'100%'} justifyContent={'end'} alignItems="center">
+                            <Button
+                                variant="contained"
+                                onClick={addCompte}
+                                sx={{ backgroundColor: '#0A192F', color: '#00E5FF', fontWeight: 700, borderRadius: '8px', border: '1px solid #00E5FF', fontSize: '0.8rem' }}
+                            >
+                                NOUVEAU COMPTE
+                            </Button>
+                            {
+                                consolidation && (
+                                    <Button
+                                        variant="contained"
+                                        onClick={handleActualize}
+                                        sx={{ backgroundColor: '#0A192F', color: '#00E5FF', fontWeight: 700, borderRadius: '8px', border: '1px solid #00E5FF', fontSize: '0.8rem' }}
+                                    >
+                                        ACTUALISER
+                                    </Button>
+                                )
+                            }
 
-                                    <Tooltip title="Modifier le compte sélectionné">
-                                        <span>
-                                            <IconButton
-                                                disabled={(!canModify) || selectedRow.length === 0}
-                                                onClick={() => handleOpenDialogAddNewAccount('modification')}
-                                                variant="contained"
-                                                style={{
-                                                    width: "35px", height: '35px',
-                                                    borderRadius: "5px", borderColor: "transparent",
-                                                    backgroundColor: initial.theme,
-                                                    textTransform: 'none', outline: 'none'
-                                                }}
-                                            >
-                                                <FaRegPenToSquare style={{ width: '25px', height: '25px', color: 'white' }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
+                        </Stack>
+                    </Stack>
+                </Box>
+                <Stack sx={{ px: 3, pb: 4 }}>
+                    <DatagridGlobal
+                        apiRefPops={apiRef}
+                        list={pc}
+                        setList={setPc}
+                        columnHeader={columnHeaderDetail}
+                        withAddButton={false}
+                        withColumnActions={true}
+                        datagridHeight={'650px'}
+                        executeCellEditCommit={false}
+                        setFieldValueProps={processRowUpdateSimple}
+                        anotherActionButton={anotherActionButton}
+                        onSaveRow={onSaveRow}
+                        onDeleteRow={onDeleteRow}
+                        verifyCanUpdate={verifyCanUpdate}
+                        rowModesModel={rowModesModel}
+                        setRowModesModel={setRowModesModel}
+                        id_dossier={Number(id)}
+                    />
+                </Stack>
 
-                                    <Tooltip title="Supprimer le compte sélectionné">
-                                        <span>
-                                            <IconButton
-                                                disabled={!canDelete || selectedRow.length === 0}
-                                                onClick={handleOpenDialogCptDelete}
-                                                variant="contained"
-                                                style={{
-                                                    width: "35px", height: '35px',
-                                                    borderRadius: "5px", borderColor: "transparent",
-                                                    backgroundColor: initial.button_delete_color,
-                                                    textTransform: 'none', outline: 'none'
-                                                }}
-                                            >
-                                                <IoMdTrash style={{ width: '40px', height: '40px', color: 'white' }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
+                <Drawer
+                    anchor="right"
+                    open={drawerOpen}
+                    onClose={() => setDrawerOpen(false)}
+                    PaperProps={{ sx: { width: 550, backgroundColor: 'rgba(10, 25, 47, 0.9)', color: '#FFF', borderLeft: '2px solid #00E5FF' } }}
+                    sx={{
+                        '& .MuiDrawer-paper': {
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                        },
+                    }}
+                >
+                    {selectedRow && (
+                        <Box sx={{ p: 4 }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 6, marginTop: -1 }}>
+                                <Box>
+                                    <Typography variant="overline" sx={{ color: '#00E5FF', fontSize: '18px', fontWeight: 700 }}>Détails</Typography>
+                                    <Stack>
+                                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '14px', color: '#94A3B8' }}>{selectedRow.libelle}</Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '18px', color: '#94A3B8' }}>{selectedRow.compte}</Typography>
+                                    </Stack>
+                                </Box>
+                                <Stack
+                                    sx={{
+                                        position: 'absolute',
+                                        top: 15,
+                                        right: 15
+                                    }}
+                                >
+                                    <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: '#FFF', bgcolor: 'rgba(255,255,255,0.05)' }}><CloseIcon /></IconButton>
                                 </Stack>
                             </Stack>
-                            <Stack height={"70vh"} width={'100%'}>
-                                <DataGrid
-                                    disableMultipleSelection={DataGridStyle.disableMultipleSelection}
-                                    disableColumnSelector={DataGridStyle.disableColumnSelector}
-                                    disableDensitySelector={DataGridStyle.disableDensitySelector}
-                                    localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                                    disableRowSelectionOnClick
-                                    disableSelectionOnClick={true}
-                                    slots={{ toolbar: QuickFilter }}
-                                    sx={DataGridStyle.sx}
-                                    rowHeight={DataGridStyle.rowHeight}
-                                    columnHeaderHeight={DataGridStyle.columnHeaderHeight}
-                                    onRowSelectionModelChange={ids => {
-                                        const lastId = ids && ids.length ? ids[ids.length - 1] : null;
-                                        listPCSelectedRow(lastId != null ? [lastId] : []);
-                                    }}
-                                    rowSelectionModel={pcAllselectedRow}
-                                    rows={pc}
-                                    columns={columnHeaderDetail}
-                                    initialState={{
-                                        pagination: {
-                                            paginationModel: { page: 0, pageSize: 100 },
-                                        },
-                                    }}
-                                    experimentalFeatures={{ columnPinning: true }}
-                                    pageSizeOptions={[50, 100]}
-                                    pagination={DataGridStyle.pagination}
-                                    checkboxSelection={DataGridStyle.checkboxSelection}
-                                    columnVisibilityModel={{
-                                        id: false,
-                                    }}
-                                />
-                            </Stack>
-                        </Stack>
-                    </TabPanel>
-                </TabContext>
-            </Box>
+
+                            <Fade in={drawerOpen}>
+                                <Stack spacing={2} sx={{ marginTop: -3 }}>
+                                    <Formik
+                                        initialValues={initialValues}
+                                        enableReinitialize
+                                        validateOnBlur={false}
+                                        onSubmit={(values) => {
+                                            savePopupRows(values);
+                                        }}
+                                    >
+                                        {({ values, handleSubmit, setFieldValue }) => {
+                                            useEffect(() => {
+                                                setFieldValue("itemId", Number(selectedRow.id));
+                                                setFieldValue("idCompte", Number(compteId));
+                                                setFieldValue("idDossier", Number(id));
+                                                setFieldValue("compte", selectedRow.compte || "");
+                                                setFieldValue("libelle", selectedRow.libelle || "");
+                                                setFieldValue("nature", selectedRow.nature || "");
+
+                                                setFieldValue("nif", selectedRow.nif || "");
+                                                setFieldValue("statistique", selectedRow.statistique || "");
+                                                setFieldValue("adresse", selectedRow.adresse || "");
+                                                setFieldValue("motcle", selectedRow.motcle || "");
+                                                setFieldValue("cin", selectedRow.cin || "");
+                                                setFieldValue("datecin", selectedRow.datecin ? format(selectedRow?.datecin, 'yyyy-MM-dd') : null);
+                                                setFieldValue("autrepieceid", selectedRow.autrepieceid || "");
+                                                setFieldValue("refpieceid", selectedRow.refpieceid || "");
+                                                setFieldValue("adressesansnif", selectedRow.adressesansnif || "");
+                                                setFieldValue("nifrepresentant", selectedRow.nifrepresentant || "");
+                                                setFieldValue("adresseetranger", selectedRow.adresseetranger || "");
+                                                setFieldValue("pays", selectedRow.pays || "");
+
+                                                setFieldValue("province", selectedRow.province || "");
+                                                setFieldValue("region", selectedRow.region || "");
+                                                setFieldValue("district", selectedRow.district || "");
+                                                setFieldValue("commune", selectedRow.commune || "");
+
+                                                setFieldValue("compteautre", selectedRow?.compteautre || "");
+                                                setFieldValue("libelleautre", selectedRow?.libelleautre || "");
+
+                                            }, [selectedRow]);
+
+                                            useEffect(() => {
+                                                if (values.province) {
+                                                    getListeRegions(values.province);
+                                                } else {
+                                                    setListRegions([]);
+                                                    setListDistricts([]);
+                                                    setListCommunes([]);
+                                                }
+                                            }, [values.province]);
+
+                                            useEffect(() => {
+                                                if (values.province && values.region) {
+                                                    getListeDistricts(values.province, values.region);
+                                                }
+                                            }, [values.province, values.region]);
+
+                                            useEffect(() => {
+                                                if (values.province && values.region && values.district) {
+                                                    getListeCommunes(values.province, values.region, values.district);
+                                                }
+                                            }, [values.province, values.region, values.district]);
+
+                                            return (
+                                                <>
+                                                    {
+                                                        selectedRow?.nature === 'Aux' && (
+                                                            <>
+                                                                {
+                                                                    selectedRow?.typetier === 'general' ?
+                                                                        (
+                                                                            null
+                                                                        )
+                                                                        : selectedRow?.typetier === 'avec-nif' ?
+                                                                            (
+                                                                                <Stack direction={'column'} spacing={2}>
+                                                                                    <Stack
+                                                                                        direction="row"
+                                                                                        alignItems="center"
+                                                                                        spacing={2}
+                                                                                        width="100%"
+                                                                                    >
+                                                                                        <Box flex={1}>
+                                                                                            <FormikTextField
+                                                                                                name="nif"
+                                                                                                label="NIF"
+                                                                                                width="100%"
+                                                                                                backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                                color={'white'}
+                                                                                                border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                                labelColor={'white'}
+                                                                                            />
+                                                                                        </Box>
+                                                                                        <Box flex={1}>
+                                                                                            <FormikTextField
+                                                                                                name="statistique"
+                                                                                                label="Numéro statistique"
+                                                                                                width="100%"
+                                                                                                backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                                color={'white'}
+                                                                                                border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                                labelColor={'white'}
+                                                                                            />
+                                                                                        </Box>
+                                                                                    </Stack>
+                                                                                    <FormikTextField
+                                                                                        name="adresse"
+                                                                                        label="Adresse"
+                                                                                        width="100%"
+                                                                                        backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                        color={'white'}
+                                                                                        border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                        labelColor={'white'}
+                                                                                    />
+                                                                                </Stack>
+                                                                            )
+                                                                            : selectedRow?.typetier === 'sans-nif' ?
+                                                                                (
+                                                                                    <Stack direction={'column'} spacing={2} width={'100%'}>
+                                                                                        <Stack
+                                                                                            direction="row"
+                                                                                            alignItems="center"
+                                                                                            spacing={2}
+                                                                                            width="100%"
+                                                                                        >
+                                                                                            <Box flex={1}>
+                                                                                                <FormikTextField
+                                                                                                    name="cin"
+                                                                                                    label="CIN"
+                                                                                                    width="100%"
+                                                                                                    backgroundColor="rgba(255,255,255,0.03)"
+                                                                                                    color="white"
+                                                                                                    border="1px solid rgba(255,255,255,0.08)"
+                                                                                                    labelColor="white"
+                                                                                                />
+                                                                                            </Box>
+
+                                                                                            <Box flex={1}>
+                                                                                                <FormikDateField
+                                                                                                    name="datecin"
+                                                                                                    label="Date CIN"
+                                                                                                    width="100%"
+                                                                                                    backgroundColor="rgba(255,255,255,0.03)"
+                                                                                                    color="white"
+                                                                                                    border="1px solid rgba(255,255,255,0.08)"
+                                                                                                />
+                                                                                            </Box>
+                                                                                        </Stack>
+                                                                                        <Stack
+                                                                                            direction="row"
+                                                                                            alignItems="center"
+                                                                                            spacing={2}
+                                                                                            width="100%"
+                                                                                        >
+                                                                                            <Box flex={1}>
+                                                                                                <FormikTextField
+                                                                                                    name="autrepieceid"
+                                                                                                    label="Autres pièces d'identité"
+                                                                                                    width="100%"
+                                                                                                    backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                                    color={'white'}
+                                                                                                    border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                                    labelColor={'white'}
+                                                                                                />
+                                                                                            </Box>
+                                                                                            <Box flex={1}>
+                                                                                                <FormikTextField
+                                                                                                    name="refpieceid"
+                                                                                                    label="Référence piéce d'identité"
+                                                                                                    width="100%"
+                                                                                                    backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                                    color={'white'}
+                                                                                                    border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                                    labelColor={'white'}
+                                                                                                />
+                                                                                            </Box>
+                                                                                        </Stack>
+                                                                                        <FormikTextField
+                                                                                            name="adressesansnif"
+                                                                                            label="Adresse"
+                                                                                            width="100%"
+                                                                                            backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                            color={'white'}
+                                                                                            border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                            labelColor={'white'}
+                                                                                        />
+                                                                                    </Stack>
+                                                                                )
+                                                                                :
+                                                                                (
+                                                                                    <Stack direction={'column'} spacing={2}>
+                                                                                        <FormikTextField
+                                                                                            name="nifrepresentant"
+                                                                                            label="Nif du représentant"
+                                                                                            width="48%"
+                                                                                            backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                            color={'white'}
+                                                                                            border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                            labelColor={'white'}
+                                                                                        />
+                                                                                        <Stack
+                                                                                            direction="row"
+                                                                                            alignItems="center"
+                                                                                            spacing={2}
+                                                                                            width="100%"
+                                                                                        >
+                                                                                            <Box flex={1}>
+                                                                                                <FormikTextField
+                                                                                                    name="adresseetranger"
+                                                                                                    label="Adresse"
+                                                                                                    width="100%"
+                                                                                                    backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                                    color={'white'}
+                                                                                                    border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                                    labelColor={'white'}
+                                                                                                />
+                                                                                            </Box>
+                                                                                            <Box flex={1}>
+                                                                                                <FormikAutocomplete
+                                                                                                    name='pays'
+                                                                                                    label="Pays"
+                                                                                                    type="select"
+                                                                                                    width="100%"
+                                                                                                    options={listPays.map(item => ({
+                                                                                                        value: item.code,
+                                                                                                        label: item.nompays
+                                                                                                    }))}
+                                                                                                    values={values}
+                                                                                                    setFieldValue={setFieldValue}
+                                                                                                    backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                                                    color={'white'}
+                                                                                                    border={'1px solid rgba(255,255,255,0.08)'}
+                                                                                                    labelColor={'white'}
+                                                                                                    listColor={'rgba(10, 25, 47)'}
+                                                                                                    listeTextColor={'white'}
+                                                                                                />
+                                                                                            </Box>
+                                                                                        </Stack>
+                                                                                    </Stack>
+                                                                                )
+                                                                }
+                                                            </>
+                                                        )
+                                                    }
+                                                    {
+                                                        (selectedRow?.typetier === 'avec-nif' || selectedRow?.typetier === 'sans-nif') && (
+                                                            <>
+                                                                <Stack
+                                                                    direction="row"
+                                                                    alignItems="center"
+                                                                    spacing={2}
+                                                                    width="100%"
+                                                                >
+                                                                    <Box flex={1}>
+                                                                        <FormikAutocomplete
+                                                                            name='province'
+                                                                            label="Province"
+                                                                            type="select"
+                                                                            width="100%"
+                                                                            options={listProvinces.map(item => ({
+                                                                                value: item.name,
+                                                                                label: item.name
+                                                                            }))}
+                                                                            values={values}
+                                                                            setFieldValue={(name, value) => {
+                                                                                setFieldValue(name, value);
+                                                                                setFieldValue('region', '');
+                                                                                setFieldValue('district', '');
+                                                                                setFieldValue('commune', '');
+                                                                                getListeRegions(value);
+                                                                            }}
+                                                                            backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                            color={'white'}
+                                                                            border={'1px solid rgba(255,255,255,0.08)'}
+                                                                            labelColor={'white'}
+                                                                            listColor={'rgba(10, 25, 47)'}
+                                                                            listeTextColor={'white'}
+                                                                        />
+                                                                    </Box>
+                                                                    <Box flex={1}>
+                                                                        <FormikAutocomplete
+                                                                            name='region'
+                                                                            label="Region"
+                                                                            type="select"
+                                                                            width="100%"
+                                                                            options={listRegions.length > 0 ? listRegions.map(item => ({
+                                                                                value: item.name,
+                                                                                label: item.name
+                                                                            })) : []}
+                                                                            values={values}
+                                                                            setFieldValue={(name, value) => {
+                                                                                const province = values.province;
+                                                                                setFieldValue(name, value);
+                                                                                setFieldValue('district', '');
+                                                                                setFieldValue('commune', '');
+                                                                                getListeDistricts(province, value);
+                                                                            }}
+                                                                            backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                            color={'white'}
+                                                                            border={'1px solid rgba(255,255,255,0.08)'}
+                                                                            labelColor={'white'}
+                                                                            listColor={'rgba(10, 25, 47)'}
+                                                                            listeTextColor={'white'}
+                                                                        />
+                                                                    </Box>
+                                                                </Stack>
+
+                                                                <Stack
+                                                                    direction="row"
+                                                                    alignItems="center"
+                                                                    spacing={2}
+                                                                    width="100%"
+                                                                >
+                                                                    <Box flex={1}>
+                                                                        <FormikAutocomplete
+                                                                            name='district'
+                                                                            label="District"
+                                                                            type="select"
+                                                                            width="100%"
+                                                                            options={listDistricts.map(item => ({
+                                                                                value: item.name,
+                                                                                label: item.name
+                                                                            }))}
+                                                                            values={values}
+                                                                            setFieldValue={(name, value) => {
+                                                                                const province = values.province;
+                                                                                const region = values.region;
+                                                                                setFieldValue(name, value);
+                                                                                setFieldValue('commune', '');
+                                                                                getListeCommunes(province, region, value);
+                                                                            }}
+                                                                            backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                            color={'white'}
+                                                                            border={'1px solid rgba(255,255,255,0.08)'}
+                                                                            labelColor={'white'}
+                                                                            listColor={'rgba(10, 25, 47)'}
+                                                                            listeTextColor={'white'}
+                                                                        />
+                                                                    </Box>
+                                                                    <Box flex={1}>
+                                                                        <FormikAutocomplete
+                                                                            name='commune'
+                                                                            label="Commune"
+                                                                            type="select"
+                                                                            width="100%"
+                                                                            options={listCommunes.map(item => ({
+                                                                                value: item.name,
+                                                                                label: item.name
+                                                                            }))}
+                                                                            values={values}
+                                                                            setFieldValue={setFieldValue}
+                                                                            backgroundColor={'rgba(255,255,255,0.03)'}
+                                                                            color={'white'}
+                                                                            border={'1px solid rgba(255,255,255,0.08)'}
+                                                                            labelColor={'white'}
+                                                                            listColor={'rgba(10, 25, 47)'}
+                                                                            listeTextColor={'white'}
+                                                                        />
+                                                                    </Box>
+                                                                </Stack>
+                                                            </>
+                                                        )
+                                                    }
+                                                    {
+                                                        isTypeComptaAutre && (
+                                                            <Stack
+                                                                direction="row"
+                                                                alignItems="center"
+                                                                spacing={2}
+                                                                width="100%"
+                                                            >
+                                                                <Box flex={1}>
+                                                                    <FormikTextField
+                                                                        name="compteautre"
+                                                                        label="Compte autre"
+                                                                        width="100%"
+                                                                        backgroundColor="rgba(255,255,255,0.03)"
+                                                                        color="white"
+                                                                        border="1px solid rgba(255,255,255,0.08)"
+                                                                        labelColor="white"
+                                                                    />
+                                                                </Box>
+
+                                                                <Box flex={1}>
+                                                                    <FormikTextField
+                                                                        name="libelleautre"
+                                                                        label="Libellé autre"
+                                                                        width="100%"
+                                                                        backgroundColor="rgba(255,255,255,0.03)"
+                                                                        color="white"
+                                                                        border="1px solid rgba(255,255,255,0.08)"
+                                                                        labelColor="white"
+                                                                    />
+                                                                </Box>
+                                                            </Stack>
+                                                        )
+                                                    }
+                                                    <FormikTextField
+                                                        name="motcle"
+                                                        label="Mot clé"
+                                                        width="100%"
+                                                        backgroundColor={'rgba(255,255,255,0.03)'}
+                                                        color={'white'}
+                                                        border={'1px solid rgba(255,255,255,0.08)'}
+                                                        labelColor={'white'}
+                                                    />
+                                                    <Stack
+                                                        position="sticky"
+                                                        bottom={20}
+                                                    >
+                                                        <Button
+                                                            variant="contained"
+                                                            fullWidth
+                                                            startIcon={<EditIcon />}
+                                                            onClick={handleSubmit}
+                                                            sx={{
+                                                                backgroundColor: '#00E5FF',
+                                                                color: '#0A192F',
+                                                                fontWeight: 800,
+                                                                mt: 2,
+                                                                borderRadius: '8px',
+                                                                '&.Mui-disabled': {
+                                                                    backgroundColor: '#00E5FF',
+                                                                    color: '#0A192F',
+                                                                    opacity: 0.6,
+                                                                }
+                                                            }}
+                                                            disabled={selectedRow?.id_dossier !== id}
+                                                        >
+                                                            MODIFIER LE COMPTE
+                                                        </Button>
+                                                    </Stack>
+                                                </>
+                                            )
+                                        }}
+                                    </Formik>
+                                </Stack>
+                            </Fade>
+                        </Box>
+                    )}
+                </Drawer>
+            </Box >
         </>
-    )
-}
+    );
+};
+
+export default PlanComptablePage;
