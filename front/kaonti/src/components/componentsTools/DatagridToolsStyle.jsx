@@ -114,27 +114,29 @@ export const DataGridStyle = {
       borderBottom: `2px solid #1A5276`,
     },
 
-    "& .MuiDataGrid-row:nth-of-type(even)": {
-      backgroundColor: "#F4F9F9",
-      borderBottom: "0px",
-      borderTop: "0px"
-    },
+    // "& .MuiDataGrid-row:nth-of-type(even)": {
+    //   backgroundColor: "#F4F9F9",
+    //   borderBottom: "0px",
+    //   borderTop: "0px"
+    // },
 
-    "& .MuiDataGrid-row:nth-of-type(odd)": {
-      backgroundColor: "#ffffff",
-      borderBottom: "0px",
-      borderTop: "0px"
-    },
+    // "& .MuiDataGrid-row:nth-of-type(odd)": {
+    //   backgroundColor: "#ffffff",
+    //   borderBottom: "0px",
+    //   borderTop: "0px"
+    // },
 
     "& .MuiDataGrid-cell": {
       borderBottom: "none",
       '&:focus': {
         outline: 'none',
       },
-      color: '#94A3B8', fontSize: '13px'
+      // color: '#94A3B8',
+      fontSize: '13px'
     },
     "& .MuiDataGrid-row": {
-      borderBottom: "none",
+      // borderBottom : 'none',
+      borderBottom: '1px solid #F0F0F0'
     },
     "& .MuiDataGrid-footer": {
       display: 'none',
@@ -167,5 +169,5 @@ export const DataGridStyle = {
     },
   },
   checkboxSelection: true,
-  pagination: true
+  pagination: true,
 };

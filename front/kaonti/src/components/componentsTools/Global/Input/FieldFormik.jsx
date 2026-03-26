@@ -2,7 +2,7 @@ import { Autocomplete, Box, Checkbox, Chip, FormControlLabel, FormHelperText, Gr
 import { ErrorMessage, Field } from "formik";
 import FormatedInput from "../../FormatedInput";
 
-const FormikTextField = ({ name, label, width, ...props }) => (
+const FormikTextField = ({ name, label, width, backgroundColor, color, border, labelColor, ...props }) => (
     <Grid item>
         <Box sx={{
             width
@@ -19,8 +19,11 @@ const FormikTextField = ({ name, label, width, ...props }) => (
                             size="small"
                             sx={{
                                 '& .MuiOutlinedInput-root': {
-                                    bgcolor: '#F8FAFC',
+                                    bgcolor: backgroundColor || '#F8FAFC',
                                     borderRadius: '8px',
+                                    color: color || 'black',
+                                    height: 40,
+                                    ...(border && { border }),
 
                                     '&:hover fieldset': {
                                         borderColor: '#3B82F6 !important',
@@ -100,7 +103,7 @@ const FormikSelect = ({ name, label, width, options, values, setFieldValue }) =>
     </Grid>
 );
 
-const FormikAutocomplete = ({ name, label, width, options, values, setFieldValue }) => {
+const FormikAutocomplete = ({ name, label, width, options, values, color, border, backgroundColor, labelColor, listColor, listeTextColor, setFieldValue }) => {
     return (
         <Grid item>
             <Box sx={{ width }}>
@@ -138,6 +141,17 @@ const FormikAutocomplete = ({ name, label, width, options, values, setFieldValue
                                         </li>
                                     )
                                 }}
+                                slotProps={{
+                                    paper: {
+                                        sx: {
+                                            bgcolor: listColor,
+                                            color: listeTextColor,
+                                            '& .MuiAutocomplete-noOptions': {
+                                                color: listeTextColor,
+                                            }
+                                        }
+                                    }
+                                }}
                                 renderInput={(params) => {
                                     const selectedOption = options.find(opt => opt.value === values[name]);
                                     return (
@@ -146,12 +160,14 @@ const FormikAutocomplete = ({ name, label, width, options, values, setFieldValue
                                             size="small"
                                             sx={{
                                                 '& .MuiOutlinedInput-root': {
+                                                    bgcolor: backgroundColor || '#F8FAFC',
                                                     borderRadius: '8px',
-                                                    bgcolor: '#F8FAFC',
                                                     height: 40,
+                                                    color: color || 'black',
+                                                    ...(border && { border }),
                                                 },
                                                 '& .MuiOutlinedInput-notchedOutline': {
-                                                    borderColor: '#E2E8F0',
+                                                    borderColor: border || '#E2E8F0',
                                                 },
                                                 '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
                                                     borderColor: '#3B82F6',
@@ -342,4 +358,74 @@ const FormikPaveItem = ({ name, label, unit, disabled = false, isCurrency = fals
     );
 };
 
-export { FormikTextField, FormikSelect, FormikAutocomplete, FormikRadioGroup, FormikCheckbox, FormikAutocompleteMultiple, FormikPaveItem }
+const FormikDateField = ({
+    name,
+    label,
+    width,
+    backgroundColor,
+    color,
+    border,
+    labelColor,
+    ...props
+}) => (
+    <Grid item>
+        <Box sx={{ width }}>
+            <Typography
+                sx={{
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    color: labelColor || '#94A3B8',
+                    mb: 0.5,
+                    textTransform: 'uppercase',
+                }}
+            >
+                {label}
+            </Typography>
+
+            <Field name={name}>
+                {({ field, form, meta }) => (
+                    <>
+                        <TextField
+                            type="date"
+                            fullWidth
+                            size="small"
+                            value={field.value || ""}
+                            onChange={(e) => {
+                                form.setFieldValue(name, e.target.value);
+                            }}
+                            onBlur={() => form.setFieldTouched(name, true)}
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    bgcolor: backgroundColor || '#F8FAFC',
+                                    borderRadius: '8px',
+                                    color: color || 'black',
+                                    height: 40,
+                                    ...(border && { border }),
+
+                                    '&:hover fieldset': {
+                                        borderColor: '#3B82F6 !important',
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: '#3B82F6',
+                                    },
+                                },
+                            }}
+                            {...props}
+                        />
+
+                        {meta.touched && meta.error && (
+                            <Typography sx={{ fontSize: '10px', color: 'red', mt: 0.5 }}>
+                                {meta.error}
+                            </Typography>
+                        )}
+                    </>
+                )}
+            </Field>
+        </Box>
+    </Grid>
+);
+
+export { FormikTextField, FormikSelect, FormikAutocomplete, FormikRadioGroup, FormikCheckbox, FormikAutocompleteMultiple, FormikPaveItem, FormikDateField }

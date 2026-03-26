@@ -84,6 +84,10 @@ const MainDossier = ({
     listCommunes,
     listeDossier,
 
+    setListRegions,
+    setListDistricts,
+    setListCommunes,
+
     listeAssocie,
     listeFiliale,
     listeDomBank,
@@ -262,7 +266,6 @@ const MainDossier = ({
                                     <Button
                                         // type='submit'
                                         onClick={() => {
-                                            console.log('isValid : ', isValid);
                                             if (!isValid) {
                                                 const touchedFields = Object.keys(errors).reduce((acc, field) => {
                                                     acc[field] = true;
@@ -307,7 +310,7 @@ const MainDossier = ({
                                 </Stack>
 
                                 <Box>
-                                    {activeTab === 'Infos société' && <InfoSocieteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listePortefeuille={listePortefeuille} listPays={listPays} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} type={type} />}
+                                    {activeTab === 'Infos société' && <InfoSocieteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listePortefeuille={listePortefeuille} listPays={listPays} listProvinces={listProvinces} listRegions={listRegions} listDistricts={listDistricts} listCommunes={listCommunes} getListeRegions={getListeRegions} getListeDistricts={getListeDistricts} getListeCommunes={getListeCommunes} type={type} setListRegions={setListRegions} setListDistricts={setListDistricts} setListCommunes={setListCommunes} />}
                                     {activeTab === 'Comptabilité' && <ComptabiliteTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listModel={listModel} type={type} listeDevise={listeDevise} />}
                                     {activeTab === 'Fiscales' && <FiscalTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} />}
                                     {activeTab === 'Associés' && <AssociatesTabContent values={values} handleChange={handleChange} handleBlur={handleBlur} setFieldValue={setFieldValue} listAssocie={listeAssocie} setListAssocie={setListeAssocie} axiosPrivate={axiosPrivate} type={type} />}
@@ -325,8 +328,8 @@ const MainDossier = ({
 };
 
 const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssocie, axiosPrivate, type }) => {
-    const [editableRowAssocie, setEditableRowAssocie] = useState(false);
     const [rowErrors, setRowErrors] = useState({});
+    const [rowModesModel, setRowModesModel] = useState({});
 
     const validateRow = (row) => {
         const errors = {};
@@ -369,7 +372,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             flex: 1,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableRowAssocie,
+            editable: true,
             valueFormatter: (params) => {
                 const selectedType = TypesOptions.find((option) => option.value === params.value);
                 return selectedType ? selectedType.label : params.value;
@@ -422,7 +425,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
             disableClickEventBubbling: true,
-            editable: editableRowAssocie,
+            editable: true,
             renderCell: (params) => {
                 return <div>{params.value}</div>;
             },
@@ -466,7 +469,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             flex: 1,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableRowAssocie,
+            editable: true,
             renderEditCell: (params) => (
                 <TextField
                     variant="standard"
@@ -508,7 +511,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             headerAlign: 'left',
             align: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableRowAssocie,
+            editable: true,
             valueGetter: (params) => {
                 if (!params.value) return null;
                 return new Date(params.value);
@@ -577,7 +580,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             flex: 1,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableRowAssocie,
+            editable: true,
             valueGetter: (params) => {
                 if (!params.value) return null;
                 return new Date(params.value);
@@ -645,7 +648,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             flex: 0.35,
             headerAlign: 'right',
             headerClassName: 'HeaderbackColor',
-            editable: editableRowAssocie,
+            editable: true,
             renderEditCell: (params) => (
                 <TextField
                     variant="standard"
@@ -687,7 +690,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             flex: 0.3,
             headerAlign: 'center',
             headerClassName: 'HeaderbackColor',
-            editable: editableRowAssocie,
+            editable: true,
         }
     ];
 
@@ -715,6 +718,7 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
     }
 
     const deleteRowAssocie = (id) => {
+        let state = true;
         axiosPrivate.post(`/paramCrm/associeDelete`, { idToDelete: Number(id) }).then((response) => {
             const resData = response.data;
             if (resData.state) {
@@ -722,8 +726,10 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
             } else {
                 setOpenDialogDeleteAssocieRow(false);
                 toast.error(resData.msg);
+                state = false;
             }
         });
+        return state;
     }
 
     return (
@@ -738,7 +744,6 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                 list={listAssocie}
                 setList={setListAssocie}
                 columnHeader={associeColumnHeader}
-                setEditableRow={setEditableRowAssocie}
                 name={'listeAssocies'}
                 newRow={createNewRow}
                 datagridHeight={dataGridHeight}
@@ -749,14 +754,17 @@ const AssociatesTabContent = ({ values, setFieldValue, listAssocie, setListAssoc
                 rowErrors={rowErrors}
                 withColumnActions={true}
                 withAddButton={true}
+                verifyCanUpdate={null}
+                rowModesModel={rowModesModel}
+                setRowModesModel={setRowModesModel}
             />
         </Stack>
     )
 };
 
 const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale, axiosPrivate, type }) => {
-    const [editableFiliale, setEditableRowFiliale] = useState(false);
     const [rowErrors, setRowErrors] = useState({});
+    const [rowModesModel, setRowModesModel] = useState({});
 
     const validateRow = (row) => {
         const errors = {};
@@ -786,7 +794,7 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
             disableClickEventBubbling: true,
-            editable: editableFiliale,
+            editable: true,
             renderCell: (params) => {
                 return <div>{params.value}</div>;
             },
@@ -831,7 +839,7 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             headerAlign: 'left',
             align: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableFiliale,
+            editable: true,
             valueGetter: (params) => {
                 if (!params.value) return null;
                 return new Date(params.value);
@@ -900,7 +908,7 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             flex: 1,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableFiliale,
+            editable: true,
             valueGetter: (params) => {
                 if (!params.value) return null;
                 return new Date(params.value);
@@ -968,7 +976,7 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             flex: 0.35,
             headerAlign: 'right',
             headerClassName: 'HeaderbackColor',
-            editable: editableFiliale,
+            editable: true,
             renderEditCell: (params) => (
                 <TextField
                     variant="standard"
@@ -1013,7 +1021,7 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             flex: 0.3,
             headerAlign: 'center',
             headerClassName: 'HeaderbackColor',
-            editable: editableFiliale,
+            editable: true,
         }
     ];
 
@@ -1041,14 +1049,17 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
     };
 
     const deleteRowFiliale = (id) => {
+        let state = true;
         axiosPrivate.post(`/paramCrm/filialeDelete`, { idToDelete: id }).then((response) => {
             const resData = response.data;
             if (resData.state) {
                 toast.success(resData.msg);
             } else {
                 toast.error(resData.msg);
+                state = false;
             }
         });
+        return state;
     }
 
     return (
@@ -1057,7 +1068,6 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             list={listFiliale}
             setList={setListFiliale}
             columnHeader={filialeColumnHeader}
-            setEditableRow={setEditableRowFiliale}
             name={'listeFiliales'}
             newRow={createNewRow}
             datagridHeight={dataGridHeight}
@@ -1067,13 +1077,16 @@ const FilialeTabContent = ({ values, setFieldValue, listFiliale, setListFiliale,
             setRowErrors={setRowErrors}
             withColumnActions={true}
             withAddButton={true}
+            verifyCanUpdate={null}
+            rowModesModel={rowModesModel}
+            setRowModesModel={setRowModesModel}
         />
     )
 };
 
 const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listPays, axiosPrivate, type }) => {
-    const [editableDomB, setEditableDomB] = useState(false);
     const [rowErrors, setRowErrors] = useState({});
+    const [rowModesModel, setRowModesModel] = useState({});
 
     const validateRow = (row) => {
         const errors = {};
@@ -1107,7 +1120,7 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
             disableClickEventBubbling: true,
-            editable: editableDomB,
+            editable: true,
             renderCell: (params) => {
                 return <div>{params.value}</div>;
             },
@@ -1152,7 +1165,7 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
             disableClickEventBubbling: true,
-            editable: editableDomB,
+            editable: true,
             renderCell: (params) => {
                 return <div>{params.value}</div>;
             },
@@ -1197,7 +1210,7 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
             disableClickEventBubbling: true,
-            editable: editableDomB,
+            editable: true,
             renderCell: (params) => {
                 return <div>{params.value}</div>;
             },
@@ -1242,7 +1255,7 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             flex: 0.8,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableDomB,
+            editable: true,
             valueFormatter: (params) => {
                 const selectedType = listPays.find((option) => option.code === params.value);
                 return selectedType ? selectedType.nompays : params.value;
@@ -1294,7 +1307,7 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             flex: 0.3,
             headerAlign: 'center',
             headerClassName: 'HeaderbackColor',
-            editable: editableDomB,
+            editable: true,
         }
     ];
 
@@ -1336,7 +1349,6 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             list={listDomB}
             setList={setListDomB}
             columnHeader={domBColumnHeader}
-            setEditableRow={setEditableDomB}
             name={'listeDomBank'}
             newRow={createNewRow}
             datagridHeight={dataGridHeight}
@@ -1346,6 +1358,9 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
             setRowErrors={setRowErrors}
             withColumnActions={true}
             withAddButton={true}
+            verifyCanUpdate={null}
+            rowModesModel={rowModesModel}
+            setRowModesModel={setRowModesModel}
         />
     )
 };
@@ -1353,6 +1368,7 @@ const DomBankTabContent = ({ values, setFieldValue, listDomB, setListDomB, listP
 const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, setListConsolidation, listeDossier, axiosPrivate, type }) => {
     const [editableConsolidation, setEditableConsolidation] = useState(false);
     const [rowErrors, setRowErrors] = useState({});
+    const [rowModesModel, setRowModesModel] = useState({});
 
     const validateRow = (row) => {
         const errors = {};
@@ -1384,7 +1400,7 @@ const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, set
             flex: 1,
             headerAlign: 'left',
             headerClassName: 'HeaderbackColor',
-            editable: editableConsolidation,
+            editable: true,
             valueFormatter: (params) => {
                 const selectedType = listeDossier.find((option) => option.id === params.value);
                 return selectedType ? selectedType.dossier : params.value;
@@ -1477,7 +1493,6 @@ const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, set
             list={listConsolidation}
             setList={setListConsolidation}
             columnHeader={consolidationColumnHeader}
-            setEditableRow={setEditableConsolidation}
             name={'listeConsolidation'}
             newRow={createNewRow}
             datagridHeight={dataGridHeight}
@@ -1487,6 +1502,9 @@ const ConsolidationTabContent = ({ values, setFieldValue, listConsolidation, set
             setRowErrors={setRowErrors}
             withColumnActions={true}
             withAddButton={true}
+            verifyCanUpdate={null}
+            rowModesModel={rowModesModel}
+            setRowModesModel={setRowModesModel}
         />
     )
 };

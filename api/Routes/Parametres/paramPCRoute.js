@@ -43,4 +43,13 @@ router.get('/getCommunes/:province/:region/:district', paramPCController.getComm
 // Récupération des dossier plan comptable avec les consolidation des dossier
 router.post('/recupPcConsolidation', paramPCController.recupPcConsolidation);
 
+// Vérifier qu'on peut modifier une compte
+router.post('/verifyCanUpdate', paramPCController.verifyCanUpdate);
+
+// Sauvegarde des modifications de comptes
+router.post('/editPc', paramPCController.editPc);
+
+// Sauvegarde des modification depuis le popup
+router.post('/editPcFromPopup', paramPCController.editPcFromPopup);
+
 module.exports = router;
