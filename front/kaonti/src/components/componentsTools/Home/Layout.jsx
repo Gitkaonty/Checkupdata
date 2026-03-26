@@ -28,7 +28,7 @@ const initial = init[0];
 const drawerWidth = 350;
 const collapsedWidth = 88;
 const ELECTRIC_BLUE = '#00F0FF';
-const TOP_BLUE = '#0B1120';
+const TOP_BLUE = '#2e384f';
 const BOTTOM_BLACK = '#020617';
 
 const mainSections = [
@@ -241,7 +241,8 @@ const Layout = () => {
                             height: '100vh',
                             overflowY: 'auto',
                             transition: 'width 0.5s ease',
-                            background: `linear-gradient(180deg, ${TOP_BLUE}CC 0%, ${BOTTOM_BLACK} 100%)`,
+                            // background: `linear-gradient(180deg, ${TOP_BLUE}CC 0%, ${BOTTOM_BLACK} 100%)`,
+                            background: `radial-gradient(circle at 20% 30%, ${TOP_BLUE} 0%, ${BOTTOM_BLACK} 100%)`,
                             backdropFilter: 'blur(10px)',
                             WebkitBackdropFilter: 'blur(10px)',
                             color: '#FFFFFF',

@@ -19,7 +19,7 @@ import axios from '../../../../../config/axios';
 import useAxiosPrivate from '../../../../../config/axiosPrivate';
 import DatagridGlobal from '../../../componentsTools/Dossier/Datagrid/DatagridGlobal';
 import { Formik } from 'formik';
-import { FormikAutocomplete, FormikDateField, FormikTextField } from '../../../componentsTools/Global/Input/FieldFormik';
+import { FormikAutocomplete, FormikAutocompleteMultiple, FormikDateField, FormikTextField } from '../../../componentsTools/Global/Input/FieldFormik';
 import { format } from 'date-fns';
 import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
 
@@ -51,6 +51,9 @@ const PlanComptablePage = () => {
     const [listDistricts, setListDistricts] = useState([]);
     const [listCommunes, setListCommunes] = useState([]);
 
+    const [listCptChg, setListCptChg] = useState([]);
+    const [listCptTva, setListCptTva] = useState([]);
+
     const initialValues = {
         itemId: 0,
         idCompte: Number(compteId),
@@ -72,7 +75,9 @@ const PlanComptablePage = () => {
         district: '',
         commune: '',
         compteautre: '',
-        libelleautre: ''
+        libelleautre: '',
+        cptchage: [],
+        cpttva: []
     };
 
     const savePopupRows = async (values) => {
@@ -108,7 +113,6 @@ const PlanComptablePage = () => {
             const resData = response.data;
             if (resData.state) {
                 let listePc = resData.liste;
-
                 if (compte) {
                     listePc = listePc.filter((row) => row.compte === compte);
                 }
@@ -117,6 +121,14 @@ const PlanComptablePage = () => {
 
                 setPc(listePc);
                 setPcCollectif(compteCollectif);
+
+                const compteCharge = listePc?.filter((item) => item.nature === 'General');
+
+                setListCptChg(compteCharge);
+
+                const compteTva = listePc?.filter(item => item.compte.startsWith('4456') || item.compte.startsWith('4457'));
+                setListCptTva(compteTva);
+
             } else {
                 toast.error(resData.msg);
             }
@@ -665,6 +677,11 @@ const PlanComptablePage = () => {
         });
     }
 
+    // const handleOpenDialogAddNewCptAss = () => {
+    //     const result = pc?.filter((item) => item.nature === 'General');
+    //     setPcHorsCollectif(result);
+    // }
+
     useEffect(() => {
         if (canView && id && compteId) {
             showPc();
@@ -699,6 +716,8 @@ const PlanComptablePage = () => {
 
         return newRow;
     };
+
+    console.log('selectedRow : ', selectedRow);
 
     return (
         <>
@@ -830,6 +849,8 @@ const PlanComptablePage = () => {
 
                                                 setFieldValue("compteautre", selectedRow?.compteautre || "");
                                                 setFieldValue("libelleautre", selectedRow?.libelleautre || "");
+                                                setFieldValue("cptcharge", selectedRow?.charges || []);
+                                                setFieldValue("cpttva", selectedRow.tvas || []);
 
                                             }, [selectedRow]);
 
@@ -1155,6 +1176,42 @@ const PlanComptablePage = () => {
                                                             </>
                                                         )
                                                     }
+                                                    <FormikAutocompleteMultiple
+                                                        name='cptcharge'
+                                                        label="Compte charge"
+                                                        type='select'
+                                                        width="100%"
+                                                        values={values}
+                                                        setFieldValue={setFieldValue}
+                                                        options={listCptChg.map(item => ({
+                                                            id: item.id,
+                                                            nom: item.compte
+                                                        }))}
+                                                        backgroundColor={'rgba(255,255,255,0.03)'}
+                                                        color={'white'}
+                                                        border={'1px solid rgba(255,255,255,0.08)'}
+                                                        labelColor={'white'}
+                                                        listColor={'rgba(10, 25, 47)'}
+                                                        listeTextColor={'white'}
+                                                    />
+                                                    <FormikAutocompleteMultiple
+                                                        name='cpttva'
+                                                        label="Compte tva"
+                                                        type='select'
+                                                        width="100%"
+                                                        values={values}
+                                                        setFieldValue={setFieldValue}
+                                                        options={listCptTva.map(item => ({
+                                                            id: item.id,
+                                                            nom: item.compte
+                                                        }))}
+                                                        backgroundColor={'rgba(255,255,255,0.03)'}
+                                                        color={'white'}
+                                                        border={'1px solid rgba(255,255,255,0.08)'}
+                                                        labelColor={'white'}
+                                                        listColor={'rgba(10, 25, 47)'}
+                                                        listeTextColor={'white'}
+                                                    />
                                                     {
                                                         isTypeComptaAutre && (
                                                             <Stack
@@ -1219,7 +1276,7 @@ const PlanComptablePage = () => {
                                                                     opacity: 0.6,
                                                                 }
                                                             }}
-                                                            disabled={selectedRow?.id_dossier !== id}
+                                                            disabled={!(selectedRow?.id_dossier !== id)}
                                                         >
                                                             MODIFIER LE COMPTE
                                                         </Button>
