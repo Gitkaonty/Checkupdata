@@ -139,6 +139,7 @@ const Layout = () => {
         idDossier = sessionStorage.getItem("fileId");
     }
     const navigate = useNavigate();
+    const [hoverTimeout, setHoverTimeout] = useState(null);
 
     const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
@@ -190,6 +191,21 @@ const Layout = () => {
         transition: 'all 0.3s ease',
     });
 
+    const handleMouseEnter = () => {
+        const timeout = setTimeout(() => {
+            setIsCollapsed(false);
+        }, 100);
+
+        setHoverTimeout(timeout);
+    };
+
+    const handleMouseLeave = () => {
+        if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+        }
+        setIsCollapsed(true);
+    };
+
     return (
         <Stack
             sx={{
@@ -212,17 +228,19 @@ const Layout = () => {
                     ModalProps={{
                         hideBackdrop: true
                     }}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
                     open={true}
                     onClose={() => setIsCollapsed(false)}
                     sx={{
                         width: isCollapsed ? collapsedWidth : drawerWidth,
                         flexShrink: 0,
-                        transition: 'width 0.2s ease',
+                        transition: 'width 0.5s ease',
                         '& .MuiDrawer-paper': {
                             width: isCollapsed ? collapsedWidth : drawerWidth,
                             height: '100vh',
                             overflowY: 'auto',
-                            transition: 'width 0.2s ease',
+                            transition: 'width 0.5s ease',
                             background: `linear-gradient(180deg, ${TOP_BLUE}CC 0%, ${BOTTOM_BLACK} 100%)`,
                             backdropFilter: 'blur(10px)',
                             WebkitBackdropFilter: 'blur(10px)',
@@ -230,7 +248,6 @@ const Layout = () => {
                             padding: '20px 16px',
                             borderRight: '1px solid rgba(255, 255, 255, 0.1)',
                             overflowX: 'hidden',
-                            overflowY: 'auto',
                             scrollbarWidth: 'thin',
                             scrollbarColor: 'rgba(255,255,255,0.3) transparent',
                             '&::-webkit-scrollbar': {
@@ -410,7 +427,7 @@ const Layout = () => {
                         sx={{
                             width: `calc(100% - ${isCollapsed ? collapsedWidth : drawerWidth}px)`,
                             ml: `${isCollapsed ? collapsedWidth : drawerWidth}px`,
-                            transition: 'all 0.2s ease',
+                            transition: 'all 0.5s ease',
                             background: 'rgba(11, 17, 32, 0.8)',
                             backdropFilter: 'blur(12px)',
                             boxShadow: 'none',
