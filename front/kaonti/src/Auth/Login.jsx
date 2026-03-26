@@ -152,7 +152,7 @@ export default function KaontyProSplit() {
           display: { xs: 'none', md: 'flex' },
           flexDirection: 'column', justifyContent: 'center',
           p: 12,
-          background: 'radial-gradient(circle at 20% 30%, #0A192F 0%, #010810 100%)',
+          background: 'radial-gradient(circle at 20% 30%, #2f4566 0%, #010810 100%)',
           position: 'relative'
         }}>
           <Box sx={{

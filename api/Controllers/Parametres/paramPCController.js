@@ -23,25 +23,67 @@ const recupPc = async (req, res) => {
       return res.status(400).json({ state: false, msg: "Paramètres manquants" });
     }
 
+    // const rows = await db.sequelize.query(`
+    //     SELECT
+    //         pc.*,
+    //         base.compte AS "baseCompte",
+    //         d.dossier AS "dossier"
+    //     FROM DOSSIERPLANCOMPTABLES pc
+
+    //     LEFT JOIN DOSSIERPLANCOMPTABLES base
+    //         ON base.id = pc.baseaux_id
+    //         AND base.id_dossier = :fileId
+
+    //     LEFT JOIN DOSSIERS d
+    //         ON d.id = pc.id_dossier
+
+    //     WHERE
+    //         pc.id_dossier = :fileId
+    //         AND pc.id_compte = :compteId
+
+    //     ORDER BY pc.compte ASC
+    // `, {
+    //   replacements: { fileId, compteId },
+    //   type: db.Sequelize.QueryTypes.SELECT
+    // });
+
     const rows = await db.sequelize.query(`
         SELECT
-            pc.*,
-            base.compte AS "baseCompte",
-            d.dossier AS "dossier"
-        FROM DOSSIERPLANCOMPTABLES pc
-
-        LEFT JOIN DOSSIERPLANCOMPTABLES base
-            ON base.id = pc.baseaux_id
-            AND base.id_dossier = :fileId
-
-        LEFT JOIN DOSSIERS d
-            ON d.id = pc.id_dossier
-
+          D.*,
+          BASE.COMPTE AS "baseCompte",
+          DOSSIER.DOSSIER AS "dossier",
+          COALESCE(
+            (
+              SELECT
+                JSON_AGG(JSON_BUILD_OBJECT('id', CHARGE.ID_COMPTECOMPTA, 'nom', CHARGE.COMPTE))
+              FROM
+                DOSSIERPLANCOMPTABLEDETAILCPTCHGS CHARGE
+              WHERE
+                CHARGE.ID_DETAIL = D.ID
+            ),
+            '[]'
+          ) AS CHARGES,
+          COALESCE(
+            (
+              SELECT
+                JSON_AGG(JSON_BUILD_OBJECT('id', TVA.ID_COMPTECOMPTA, 'compte', TVA.COMPTE))
+              FROM
+                DOSSIERPLANCOMPTABLEDETAILCPTTVAS TVA
+              WHERE
+                TVA.ID_DETAIL = D.ID
+            ),
+            '[]'
+          ) AS TVAS
+        FROM
+          DOSSIERPLANCOMPTABLES D
+          LEFT JOIN DOSSIERPLANCOMPTABLES BASE ON BASE.ID = D.BASEAUX_ID
+          AND BASE.ID_DOSSIER = :fileId
+          LEFT JOIN DOSSIERS DOSSIER ON DOSSIER.ID = D.ID_DOSSIER
         WHERE
-            pc.id_dossier = :fileId
-            AND pc.id_compte = :compteId
-
-        ORDER BY pc.compte ASC
+          D.ID_DOSSIER = :fileId
+          AND D.ID_COMPTE = :compteId
+        ORDER BY
+          D.COMPTE ASC
     `, {
       replacements: { fileId, compteId },
       type: db.Sequelize.QueryTypes.SELECT

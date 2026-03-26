@@ -103,7 +103,52 @@ const FormikSelect = ({ name, label, width, options, values, setFieldValue }) =>
     </Grid>
 );
 
-const FormikAutocomplete = ({ name, label, width, options, values, color, border, backgroundColor, labelColor, listColor, listeTextColor, setFieldValue }) => {
+const FormikRadioGroup = ({ name, options, row = false }) => (
+    <Field name={name}>
+        {({ field, form }) => (
+            <>
+                <RadioGroup
+                    {...field}
+                    row={row}
+                    value={field.value || ''}
+                    onChange={(e) => form.setFieldValue(name, e.target.value)}
+                >
+                    {options.map((opt) => (
+                        <FormControlLabel
+                            key={opt.value}
+                            value={opt.value}
+                            control={<Radio size="small" />}
+                            label={
+                                <Typography
+                                    component="span"
+                                    sx={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                    {opt.label}
+                                </Typography>
+                            }
+                        />
+                    ))}
+                </RadioGroup>
+                <FormHelperText error>
+                    <ErrorMessage name={name} />
+                </FormHelperText>
+            </>
+        )}
+    </Field>
+);
+
+const FormikCheckbox = ({ name, label, ...props }) => (
+    <Field name={name}>
+        {({ field }) => (
+            <FormControlLabel
+                control={<Checkbox {...field} checked={field.value} {...props} />}
+                label={<Typography sx={{ fontSize: '12px', fontWeight: 700 }}>{label}</Typography>}
+            />
+        )}
+    </Field>
+);
+
+const FormikAutocomplete = ({ name, label, width, options, values, color, border, backgroundColor, listColor, listeTextColor, setFieldValue }) => {
     return (
         <Grid item>
             <Box sx={{ width }}>
@@ -202,52 +247,7 @@ const FormikAutocomplete = ({ name, label, width, options, values, color, border
     );
 };
 
-const FormikRadioGroup = ({ name, options, row = false }) => (
-    <Field name={name}>
-        {({ field, form }) => (
-            <>
-                <RadioGroup
-                    {...field}
-                    row={row}
-                    value={field.value || ''}
-                    onChange={(e) => form.setFieldValue(name, e.target.value)}
-                >
-                    {options.map((opt) => (
-                        <FormControlLabel
-                            key={opt.value}
-                            value={opt.value}
-                            control={<Radio size="small" />}
-                            label={
-                                <Typography
-                                    component="span"
-                                    sx={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                                >
-                                    {opt.label}
-                                </Typography>
-                            }
-                        />
-                    ))}
-                </RadioGroup>
-                <FormHelperText error>
-                    <ErrorMessage name={name} />
-                </FormHelperText>
-            </>
-        )}
-    </Field>
-);
-
-const FormikCheckbox = ({ name, label, ...props }) => (
-    <Field name={name}>
-        {({ field }) => (
-            <FormControlLabel
-                control={<Checkbox {...field} checked={field.value} {...props} />}
-                label={<Typography sx={{ fontSize: '12px', fontWeight: 700 }}>{label}</Typography>}
-            />
-        )}
-    </Field>
-);
-
-const FormikAutocompleteMultiple = ({ name, label, width, options, values, setFieldValue }) => {
+const FormikAutocompleteMultiple = ({ name, label, width, options, values, color, border, backgroundColor, listColor, listeTextColor, setFieldValue }) => {
     return (
         <Grid item>
             <Box
@@ -279,6 +279,12 @@ const FormikAutocompleteMultiple = ({ name, label, width, options, values, setFi
                                 {...getTagProps({ index })}
                                 key={option.id}
                                 size="small"
+                                sx={{
+                                    color: listeTextColor,
+                                    '& .MuiChip-deleteIcon': {
+                                        color: listeTextColor,
+                                    },
+                                }}
                             />
                         ))
                     }
@@ -286,16 +292,36 @@ const FormikAutocompleteMultiple = ({ name, label, width, options, values, setFi
                     sx={{
                         width: 'auto',
                     }}
+                    slotProps={{
+                        paper: {
+                            sx: {
+                                bgcolor: listColor,
+                                color: listeTextColor,
+                                '& .MuiAutocomplete-noOptions': {
+                                    color: listeTextColor,
+                                }
+                            }
+                        }
+                    }}
                     renderInput={(params) => (
                         <TextField
                             {...params}
                             size="small"
                             sx={{
                                 '& .MuiOutlinedInput-root': {
+                                    bgcolor: backgroundColor || '#F8FAFC',
                                     borderRadius: '8px',
-                                    bgcolor: '#F8FAFC',
+                                    // height: 40,
+                                    color: color || 'black',
+                                    ...(border && { border }),
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: border || '#E2E8F0',
                                 },
                                 '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: '#3B82F6',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
                                     borderColor: '#3B82F6',
                                 },
                             }}
