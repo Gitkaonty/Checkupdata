@@ -13,8 +13,8 @@ const permissions = db.permissions;
 const rolePermissionMiddleware = require('../Middlewares/RolePermission/rolePermission');
 const createUserPermission = rolePermissionMiddleware.createUserPermission;
 
-User.belongsTo(Userscomptes, { foreignKey: 'compte_id' });
-Userscomptes.hasMany(User, { foreignKey: 'compte_id' });
+// User.belongsTo(Userscomptes, { foreignKey: 'compte_id' });
+// Userscomptes.hasMany(User, { foreignKey: 'compte_id' });
 
 const handleLogin = async (req, res) => {
     const { email, password } = req.body;
@@ -23,7 +23,7 @@ const handleLogin = async (req, res) => {
 
     const foundUser = await User.findOne({
         where: { email: email },
-        include: [{ model: Userscomptes, attributes: ['nom'] }]
+        // include: [{ model: Userscomptes, attributes: ['nom'] }]
     });
 
     if (!foundUser) return res.status(401).json({ 'message': 'Compte non trouvé.' });

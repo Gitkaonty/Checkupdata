@@ -24,7 +24,7 @@
     "fs.promises": "^0.1.2",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "multer": "^2.0.1",
+    "multer": "^2.1.1",
     "mysql2": "^3.11.3",
     "nodemailer": "^7.0.5",
     "nodemon": "^3.0.3",
@@ -39,6 +39,7 @@
     "puppeteer": "^24.18.0",
     "sequelize": "^6.37.5",
     "sequelize-cli": "^6.6.2",
+    "xlsx": "^0.18.5",
     "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {

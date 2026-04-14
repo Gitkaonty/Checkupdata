@@ -26,6 +26,7 @@ app.use(express.json());
 app.use(cookieParser());
 // app.use(express.static(path.join(__dirname, '/public')));
 app.use('/public', express.static(path.join(__dirname, '/public')));
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 //synchronizing the database and forcing it to false so we dont lose data (ito no ampiasaina ra toa ka executena ny DROP TABLE am sequelize)
 //db.sequelize.sync({ force: true }).then(() => {
@@ -63,8 +64,24 @@ app.use('/logout', require('./Routes/logoutRoute'));
 //app.use('/', userRoutes);
 
 //----------------------------------------------------------------------------------------------------------------
-// MENU HOME
+// MENU GESTION DES MEMBRES
 //----------------------------------------------------------------------------------------------------------------
+app.use('/api/membres', require('./Routes/gestionMembre/membreRoute'));
+app.use('/api/membres-updates', require('./Routes/gestionMembre/membreUpdateRoute'));
+app.use('/api/membres-situation', require('./Routes/gestionMembre/membreSituationRoute'));
+
+//--------------------------------------------------------------------------------------------------------
+//MENU PARAMETRES
+//-------------------------------------------------------------------------------------------------------------
+app.use('/api/exercices', require('./Routes/parametres/exerciceRoute'));
+app.use('/api/grille-tarifaire', require('./Routes/parametres/grilleTarifaireRoute'));
+
+
+//--------------------------------------------------------------------------------------------------------
+//MENU COTISATION
+//-------------------------------------------------------------------------------------------------------------
+app.use("/api/cotisations", require('./Routes/cotisation/appelRoute'));
+app.use('/api/paiements', require('./Routes/cotisation/paiementRoute'));
 
 /*app.all('*', (req,res) => {
     res.status(404);
