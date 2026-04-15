@@ -35,6 +35,7 @@ const MainLayout = ({ children }) => {
   const traitementItems = [
     { label: 'Consultation', path: '/traitement/consultation' },
     { label: 'Import journal', path: '/traitement/importjournal' },
+    { label: 'Dossier de révision', path: '/traitement/dossierrevision' },
     { 
       label: 'Export', 
       isSubmenu: true, 
@@ -50,6 +51,7 @@ const MainLayout = ({ children }) => {
     { label: 'CRM', path: '/parametres/crm' },
     { label: 'Exercice', path: '/parametres/exercice' },
     { label: 'Portefeuille', path: '/parametres/portefeuille' },
+    { label: 'Gestion des contrôles', path: '/parametres/gestioncontrole' },
   ];
 
   const drawer = (

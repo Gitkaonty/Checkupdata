@@ -1,41 +1,119 @@
 import React, { useState } from 'react';
 import { 
   Box, Typography, Stack, Button, IconButton, Paper, 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Breadcrumbs, Link
+  Breadcrumbs, Link
 } from '@mui/material';
+import { 
+  DataGrid, GridActionsCellItem, GridRowModes 
+} from '@mui/x-data-grid';
 import { 
   AddOutlined, EditOutlined, DeleteOutline, 
   CheckOutlined, CloseOutlined, NavigateNext,
-  SettingsOutlined, FolderOutlined,
-  DashboardOutlined
+  FolderOutlined, DashboardOutlined, SaveOutlined
 } from '@mui/icons-material';
 
 const Portefeuille = () => {
-  // Liste fictive de portefeuilles
-  const [items, setItems] = useState([
-    { id: 1, nom: 'Dossiers Permanents', isEditing: false },
-    { id: 2, nom: 'Archives Fiscales', isEditing: false },
-    { id: 3, nom: 'Portefeuille Social', isEditing: false },
+  const [rows, setRows] = useState([
+    { id: 1, nom: 'Dossiers Permanents' },
+    { id: 2, nom: 'Archives Fiscales' },
+    { id: 3, nom: 'Portefeuille Social' },
   ]);
 
-  const [editValue, setEditValue] = useState("");
+  const [rowModesModel, setRowModesModel] = useState({});
 
-  // Activer le mode édition
-  const handleEditClick = (id, currentNom) => {
-    setEditValue(currentNom);
-    setItems(items.map(item => item.id === id ? { ...item, isEditing: true } : item));
+  // --- LOGIQUE ACTIONS ---
+
+  const handleEditClick = (id) => () => {
+    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
   };
 
-  // Annuler l'édition
-  const handleCancel = (id) => {
-    setItems(items.map(item => item.id === id ? { ...item, isEditing: false } : item));
+  const handleSaveClick = (id) => () => {
+    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
   };
 
-  // Sauvegarder (simulation)
-  const handleSave = (id) => {
-    setItems(items.map(item => item.id === id ? { ...item, nom: editValue, isEditing: false } : item));
+  const handleDeleteClick = (id) => () => {
+    setRows(rows.filter((row) => row.id !== id));
   };
+
+  const handleCancelClick = (id) => () => {
+    setRowModesModel({
+      ...rowModesModel,
+      [id]: { mode: GridRowModes.View, ignoreModifications: true },
+    });
+  };
+
+  const processRowUpdate = (newRow) => {
+    const updatedRow = { ...newRow, isNew: false };
+    setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
+    return updatedRow;
+  };
+
+  const handleAddRow = () => {
+    const id = Math.max(0, ...rows.map((r) => r.id)) + 1;
+    setRows([{ id, nom: '', isNew: true }, ...rows]);
+    setRowModesModel((oldModel) => ({
+      ...oldModel,
+      [id]: { mode: GridRowModes.Edit, fieldToFocus: 'nom' },
+    }));
+  };
+
+  // --- COLONNES ---
+
+  const columns = [
+    { 
+      field: 'nom', 
+      headerName: 'NOM DU PORTEFEUILLE', 
+      flex: 1, 
+      editable: true,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <FolderOutlined sx={{ color: '#94A3B8', fontSize: 18 }} />
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E293B' }}>
+            {params.value}
+          </Typography>
+        </Stack>
+      )
+    },
+    {
+      field: 'actions',
+      type: 'actions',
+      headerName: 'ACTIONS',
+      width: 120,
+      getActions: ({ id }) => {
+        const isInEditMode = rowModesModel[id]?.mode === GridRowModes.Edit;
+
+        if (isInEditMode) {
+          return [
+            <GridActionsCellItem
+              icon={<CheckOutlined sx={{ color: '#10B981' }} />}
+              label="Save"
+              onClick={handleSaveClick(id)}
+            />,
+            <GridActionsCellItem
+              icon={<CloseOutlined sx={{ color: '#EF4444' }} />}
+              label="Cancel"
+              onClick={handleCancelClick(id)}
+            />,
+          ];
+        }
+
+        return [
+          <GridActionsCellItem
+            icon={<EditOutlined sx={{ color: '#6366F1' }} />}
+            label="Edit"
+            onClick={handleEditClick(id)}
+            sx={{ bgcolor: '#EEF2FF', mr: 1 }}
+          />,
+          <GridActionsCellItem
+            icon={<DeleteOutline sx={{ color: '#EF4444' }} />}
+            label="Delete"
+            onClick={handleDeleteClick(id)}
+            sx={{ bgcolor: '#FEF2F2' }}
+          />,
+        ];
+      },
+    },
+  ];
 
   return (
     <Box sx={{ p: 3, height: '100%', bgcolor: '#F8FAFC' }}>
@@ -45,9 +123,7 @@ const Portefeuille = () => {
         separator={<NavigateNext fontSize="small" />} 
         sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
       >
-        <Link underline="hover" color="inherit" href="/dashboard" 
-          sx={{ display: 'flex', alignItems: 'center' }}
-          >
+        <Link underline="hover" color="inherit" href="/dashboard" sx={{ display: 'flex', alignItems: 'center' }}>
           <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
         </Link>
         <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Portefeuilles</Typography>
@@ -62,9 +138,10 @@ const Portefeuille = () => {
 
         <Button 
           variant="contained" 
-          startIcon={<AddOutlined sx={{ color: '#10B981' }} />} // Icône en vert (Neon Cyan/Emerald)
+          onClick={handleAddRow}
+          startIcon={<AddOutlined sx={{ color: '#10B981' }} />} 
           sx={{ 
-            bgcolor: '#000000', // Bouton noir
+            bgcolor: '#000000', 
             color: '#FFFFFF',
             textTransform: 'none', 
             borderRadius: '8px', 
@@ -77,84 +154,39 @@ const Portefeuille = () => {
         </Button>
       </Stack>
 
-      {/* --- TABLEAU --- */}
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
-        <Table size="small">
-          <TableHead sx={{ bgcolor: '#F8FAFC' }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 800, color: '#64748B', py: 1.5, fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                Nom du Portefeuille
-              </TableCell>
-              <TableCell align="right" sx={{ fontWeight: 800, color: '#64748B', fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                Actions
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((row) => (
-              <TableRow key={row.id} sx={{ '&:hover': { bgcolor: '#F1F5F930' } }}>
-                <TableCell sx={{ py: 1 }}>
-                  {row.isEditing ? (
-                    <TextField 
-                      fullWidth 
-                      size="small" 
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      autoFocus
-                      sx={{ 
-                        '& .MuiInputBase-input': { fontSize: '0.85rem', fontWeight: 600, py: 0.5 } 
-                      }}
-                    />
-                  ) : (
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <FolderOutlined sx={{ color: '#94A3B8', fontSize: 18 }} />
-                      <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E293B' }}>
-                        {row.nom}
-                      </Typography>
-                    </Stack>
-                  )}
-                </TableCell>
-                
-                <TableCell align="right">
-                  {row.isEditing ? (
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button 
-                        size="small" 
-                        variant="contained" 
-                        color="success"
-                        onClick={() => handleSave(row.id)}
-                        startIcon={<CheckOutlined />}
-                        sx={{ textTransform: 'none', fontSize: '0.7rem', fontWeight: 800, bgcolor: '#10B981', '&:hover': { bgcolor: '#059669' } }}
-                      >
-                        Sauvegarder
-                      </Button>
-                      <Button 
-                        size="small" 
-                        variant="outlined" 
-                        color="error"
-                        onClick={() => handleCancel(row.id)}
-                        startIcon={<CloseOutlined />}
-                        sx={{ textTransform: 'none', fontSize: '0.7rem', fontWeight: 800 }}
-                      >
-                        Annuler
-                      </Button>
-                    </Stack>
-                  ) : (
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <IconButton size="small" onClick={() => handleEditClick(row.id, row.nom)} sx={{ color: '#6366F1', bgcolor: '#EEF2FF' }}>
-                        <EditOutlined fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" sx={{ color: '#EF4444', bgcolor: '#FEF2F2' }}>
-                        <DeleteOutline fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {/* --- DATAGRID --- */}
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', height: 400 }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          editMode="row"
+          rowModesModel={rowModesModel}
+          onRowModesModelChange={(newModel) => setRowModesModel(newModel)}
+          processRowUpdate={processRowUpdate}
+          density="compact"
+          disableSelectionOnClick
+          sx={{
+            border: 'none',
+            '& .MuiDataGrid-columnHeaders': {
+              bgcolor: '#F8FAFC',
+              borderBottom: '1px solid #E2E8F0',
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                color: '#64748B',
+                textTransform: 'uppercase',
+              }
+            },
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #F1F5F9',
+              '&:focus': { outline: 'none' }
+            },
+            '& .MuiDataGrid-row:hover': {
+              bgcolor: '#F1F5F930'
+            }
+          }}
+        />
+      </Paper>
     </Box>
   );
 };

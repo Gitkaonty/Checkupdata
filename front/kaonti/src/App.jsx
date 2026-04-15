@@ -17,6 +17,12 @@ import DetailsControles from './pages/DetailsControles';
 import Portefeuille from './pages/parametres/Portefeuille';
 import CRM from './pages/parametres/Crm';
 import ImportJournal from './pages/traitement/ImportJournal';
+import ExportJournal from './pages/exports/Exportsjournal';
+import ExportGrandLivre from './pages/exports/ExportGrandLivre';
+import ExportBalance from './pages/exports/ExportBalance';
+import GestionControles from './pages/parametres/GestionControle';
+import GestionRevisionCycles from './pages/traitement/DossierRevision';
+import ConsultationComptes from './pages/traitement/Consultation';
 // Importe ton hook d'auth pour remplacer "isAuthenticated" par une vraie valeur
 import useAuth from './hooks/useAuth'; 
 
@@ -52,13 +58,19 @@ export default function App() {
               <Route path="/dashboard" element={<MainLayout><DashboardHome /></MainLayout>} />
               <Route path="/controles/details" element={<MainLayout><DetailsControles /></MainLayout>} />
 
-               {/* menu Parametres */}
+               {/* menu Traitements */}
+               <Route path="/traitement/consultation" element={<MainLayout><ConsultationComptes /></MainLayout>} />
               <Route path="/traitement/importjournal" element={<MainLayout><ImportJournal /></MainLayout>} />
+              <Route path="/traitement/dossierrevision" element={<MainLayout><GestionRevisionCycles /></MainLayout>} />
+              <Route path="/traitement/export/journal" element={<MainLayout><ExportJournal /></MainLayout>} />
+              <Route path="/traitement/export/grandlivre" element={<MainLayout><ExportGrandLivre /></MainLayout>} />
+              <Route path="/traitement/export/balance" element={<MainLayout><ExportBalance /></MainLayout>} />
               
               {/* Sous-menu Parametres */}
               <Route path="/parametres/exercice" element={<MainLayout><Exercices /></MainLayout>} />
               <Route path="/parametres/portefeuille" element={<MainLayout><Portefeuille /></MainLayout>} />
               <Route path="/parametres/crm" element={<MainLayout><CRM /></MainLayout>} />
+              <Route path="/parametres/gestioncontrole" element={<MainLayout><GestionControles /></MainLayout>} />
             </Route>
           </Route>
 
