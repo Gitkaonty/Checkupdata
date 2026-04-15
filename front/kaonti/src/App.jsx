@@ -22,6 +22,7 @@ import ExportGrandLivre from './pages/exports/ExportGrandLivre';
 import ExportBalance from './pages/exports/ExportBalance';
 import GestionControles from './pages/parametres/GestionControle';
 import GestionRevisionCycles from './pages/traitement/DossierRevision';
+import ConsultationComptes from './pages/traitement/Consultation';
 // Importe ton hook d'auth pour remplacer "isAuthenticated" par une vraie valeur
 import useAuth from './hooks/useAuth'; 
 
@@ -57,6 +58,7 @@ export default function App() {
               <Route path="/controles/details" element={<MainLayout><DetailsControles /></MainLayout>} />
 
                {/* menu Traitements */}
+               <Route path="/traitement/consultation" element={<MainLayout><ConsultationComptes /></MainLayout>} />
               <Route path="/traitement/importjournal" element={<MainLayout><ImportJournal /></MainLayout>} />
               <Route path="/traitement/dossierrevision" element={<MainLayout><GestionRevisionCycles /></MainLayout>} />
               <Route path="/traitement/export/journal" element={<MainLayout><ExportJournal /></MainLayout>} />
