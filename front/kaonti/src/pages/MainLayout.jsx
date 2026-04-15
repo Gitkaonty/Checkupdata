@@ -58,7 +58,7 @@ const MainLayout = ({ children }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Box sx={{ p: 3, display: 'flex', alignItems: 'center', height: 64 }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: '#10B981', fontWeight: 'bold', fontSize: 14 }}>K</Avatar>
+        <Avatar sx={{ width: 32, height: 32, bgcolor: '#10B981', fontWeight: 'bold', fontSize: 14 }}>Cd</Avatar>
         {isHovered && <Typography variant="h6" sx={{ml:1, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
           Checkup<span style={{ color: '#10B981' }}>Data</span>
         </Typography>}

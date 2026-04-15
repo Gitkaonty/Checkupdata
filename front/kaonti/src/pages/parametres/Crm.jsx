@@ -9,7 +9,9 @@ import {
   SettingsOutlined, NavigateNext, BusinessOutlined, 
   AddOutlined, EditOutlined, DeleteOutline, SaveOutlined,
   AnalyticsOutlined, MenuBookOutlined, AccountTreeOutlined,
-  ListAltOutlined, AdminPanelSettingsOutlined
+  ListAltOutlined, AdminPanelSettingsOutlined,
+  ChevronRight,
+  DashboardOutlined
 } from '@mui/icons-material';
 
 const CRM = () => {
@@ -35,17 +37,36 @@ const CRM = () => {
   );
 
   return (
-    <Box sx={{ p: 4, height: '100%', bgcolor: '#F8FAFC' }}>
+    <Box sx={{ p: 2, height: '100%', bgcolor: '#F8FAFC' }}>
         {/* --- BREADCRUMBS --- */}
-      <Breadcrumbs separator={<NavigateNext sx={{ fontSize: 14 }} />} sx={{ mb: 3 }}>
-        <Link underline="none" color="inherit" href="/" sx={{ fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-          <SettingsOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Paramètres
-        </Link>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#1E293B' }}>CRM & Dossier</Typography>
-      </Breadcrumbs>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+          <Chip 
+            label="Cabinet Randria & Associés" 
+            sx={{ 
+              borderRadius: '4px', // Rectangulaire comme demandé
+              bgcolor: '#F1F5F9', 
+              color: '#475569', 
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              border: '1px solid #E2E8F0',
+              height: 24,
+            }} 
+          />
+        <Breadcrumbs 
+          separator={<NavigateNext fontSize="small" />} 
+          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+        >
+          <Link underline="hover" color="inherit" href="/dashboard" 
+            sx={{ display: 'flex', alignItems: 'center' }}
+            >
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+          </Link>
+          <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>CRM & Dossier</Typography>
+        </Breadcrumbs>
+      </Stack>
       
       {/* --- TITRE DE LA PAGE --- */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 3 , mt:2}}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <AdminPanelSettingsOutlined sx={{ color: '#1E293B', fontSize: 32 }} />
           <Typography variant="h4" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-1px' }}>

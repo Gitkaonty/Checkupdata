@@ -8,7 +8,8 @@ import {
   ChevronLeft, ChevronRight, AddOutlined, 
   DeleteOutline, CalendarMonthOutlined, NavigateNext,
   RocketLaunchOutlined, CalendarTodayOutlined, InfoOutlined,
-  SettingsOutlined
+  SettingsOutlined,
+  DashboardOutlined
 } from '@mui/icons-material';
 
 // --- COMPOSANT INTERNE : POPUP INITIALISATION (1er EXERCICE) ---
@@ -110,15 +111,31 @@ const exercices = () => {
     <Box sx={{ p: 3, height: '100%', bgcolor: '#F8FAFC' }}>
       
       {/* --- BREADCRUMBS NAVIGATION --- */}
-      <Breadcrumbs 
-        separator={<NavigateNext fontSize="small" />} 
-        sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.75rem', fontWeight: 600 } }}
-      >
-        <Link underline="hover" color="inherit" href="/" sx={{ display: 'flex', alignItems: 'center' }}>
-          <SettingsOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Paramètres
-        </Link>
-        <Typography color="text.primary">Exercices & Périodes</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+        <Chip 
+          label="Cabinet Randria & Associés" 
+          sx={{ 
+            borderRadius: '4px', // Rectangulaire comme demandé
+            bgcolor: '#F1F5F9', 
+            color: '#475569', 
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            border: '1px solid #E2E8F0',
+            height: 24,
+          }} 
+        />
+        <Breadcrumbs 
+          separator={<NavigateNext fontSize="small" />} 
+          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+        >
+          <Link underline="hover" color="inherit" href="/dashboard" 
+            sx={{ display: 'flex', alignItems: 'center' }}
+            >
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+          </Link>
+          <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Exercices & Périodes</Typography>
+        </Breadcrumbs>
+      </Stack>
 
       {/* --- HEADER AVEC AFFICHAGE DÉTAILLÉ --- */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>

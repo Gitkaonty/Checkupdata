@@ -163,7 +163,7 @@ const LoginPage = () => {
                   fontSize: '1rem'
                 }}
               >
-                Lancer le contrôle global
+                Acceder à mon espace de travail
               </Button>
             </form>
 
@@ -216,7 +216,7 @@ const LoginPage = () => {
                   <Box sx={{ textAlign: 'center' }}>
                     <Box sx={{ color: '#10B981', mb: 1 }}>{React.cloneElement(item.icon, { sx: { fontSize: 40 } })}</Box>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{item.title}</Typography>
-                    <Typography variant="caption" sx={{ color: '#64748B' }}>{item.desc}</Typography>
+                    <Typography variant="caption" sx={{ color: '#a1acbc' }}>{item.desc}</Typography>
                   </Box>
                 </Grid>
               ))}

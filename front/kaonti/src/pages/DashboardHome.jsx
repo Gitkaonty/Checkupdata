@@ -10,7 +10,8 @@ import {
   AccountBalanceWalletOutlined, PaymentsOutlined, 
   BarChartOutlined, ChevronRight,
   ArrowForwardOutlined, HistoryToggleOffOutlined,
-  HomeOutlined
+  HomeOutlined,
+  NavigateNext
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,9 +58,12 @@ const Dashboard = () => {
           }} 
         />
         <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto', borderColor: '#CBD5E1' }} />
-        <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.85rem' }}>
-          <Link underline="hover" color="inherit" href="/home" 
-            sx={{ color: '#94A3B8', fontSize: '0.85rem', alignContent:'center', alignItems:'center' }}
+        <Breadcrumbs 
+          separator={<NavigateNext fontSize="small" />} 
+          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+        >
+          <Link underline="hover" color="inherit" href="/dashboard" 
+            sx={{ display: 'flex', alignItems: 'center' }}
             >
             <HomeOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dossier
           </Link>

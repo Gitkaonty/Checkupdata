@@ -3,12 +3,16 @@ import {
   Box, Typography, Stack, Button, Paper, Grid,
   Breadcrumbs, Link, MenuItem, Select, Divider,
   LinearProgress, Table, TableBody, TableCell, TableContainer, 
-  TableHead, TableRow, Dialog, DialogTitle, DialogContent, IconButton, List
+  TableHead, TableRow, Dialog, DialogTitle, DialogContent, IconButton, List,
+  Chip
 } from '@mui/material';
 import { 
   NavigateNext, FileUploadOutlined, 
   DownloadOutlined, CloudUploadOutlined, ErrorOutline,
-  CheckCircleOutline, HistoryOutlined, Close
+  CheckCircleOutline, HistoryOutlined, Close,
+  HomeOutlined,
+  ChevronRight,
+  DashboardOutlined
 } from '@mui/icons-material';
 
 const ImportJournal = () => {
@@ -36,14 +40,34 @@ const ImportJournal = () => {
       
       {/* --- HEADER COMPACT --- */}
       <Box sx={{ mb: 2 }}>
-        <Breadcrumbs separator={<NavigateNext sx={{ fontSize: 14 }} />} sx={{ mb: 2 }}>
-          <Link underline="none" color="inherit" href="/" sx={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-            <HistoryOutlined sx={{ mr: 0.5, fontSize: '0.95rem' }} /> Écritures
-          </Link>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E293B' }}>Import Journal</Typography>
-        </Breadcrumbs>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+          <Chip 
+            label="Cabinet Randria & Associés" 
+            sx={{ 
+              borderRadius: '4px', // Rectangulaire comme demandé
+              bgcolor: '#F1F5F9', 
+              color: '#475569', 
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              border: '1px solid #E2E8F0',
+              height: 24,
+            }} 
+          />
+          <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto', borderColor: '#CBD5E1' }} />
+          <Breadcrumbs 
+            separator={<NavigateNext fontSize="small" />} 
+            sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+          >
+            <Link underline="hover" color="inherit" href="/dashboard" 
+              sx={{ display: 'flex', alignItems: 'center' }}
+              >
+              <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+            </Link>
+            <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Import journal</Typography>
+          </Breadcrumbs>
+        </Stack>
         
-        <Stack direction="column" spacing={1.5}>
+        <Stack direction="column" spacing={1.5} sx={{mt:2}}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <FileUploadOutlined sx={{ color: '#6366F1', fontSize: 24 }} />
             <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px' }}>

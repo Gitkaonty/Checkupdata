@@ -7,7 +7,8 @@ import {
 import { 
   AddOutlined, EditOutlined, DeleteOutline, 
   CheckOutlined, CloseOutlined, NavigateNext,
-  SettingsOutlined, FolderOutlined
+  SettingsOutlined, FolderOutlined,
+  DashboardOutlined
 } from '@mui/icons-material';
 
 const Portefeuille = () => {
@@ -42,12 +43,14 @@ const Portefeuille = () => {
       {/* --- BREADCRUMBS --- */}
       <Breadcrumbs 
         separator={<NavigateNext fontSize="small" />} 
-        sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.75rem', fontWeight: 600 } }}
+        sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
       >
-        <Link underline="hover" color="inherit" href="/" sx={{ display: 'flex', alignItems: 'center' }}>
-          <SettingsOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Paramètres
+        <Link underline="hover" color="inherit" href="/dashboard" 
+          sx={{ display: 'flex', alignItems: 'center' }}
+          >
+          <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
         </Link>
-        <Typography color="text.primary">Portefeuilles</Typography>
+        <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Portefeuilles</Typography>
       </Breadcrumbs>
 
       {/* --- HEADER --- */}

@@ -8,7 +8,8 @@ import {
 import { 
   CompareArrowsOutlined, CalendarMonthOutlined, AccountBalanceOutlined,
   PeopleAltOutlined, ContentCopyOutlined, HelpOutline,
-  LabelOutlined, ChevronRight, FileDownloadOutlined, FilterListOutlined
+  LabelOutlined, ChevronRight, FileDownloadOutlined, FilterListOutlined,
+  DashboardOutlined
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Link, useNavigate } from 'react-router-dom';
@@ -57,8 +58,9 @@ const DetailsControles = () => {
         />
         <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto', borderColor: '#CBD5E1' }} />
         <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.8rem' }}>
-          <MuiLink component={Link} to="/" underline="hover" color="inherit" sx={{ color: '#94A3B8' }}>Dossiers</MuiLink>
-          <MuiLink component={Link} to="/dashboard" underline="hover" color="inherit" sx={{ color: '#94A3B8' }}>Dashboard</MuiLink>
+          <MuiLink component={Link} to="/dashboard" underline="hover" color="inherit" sx={{ fontSize: '1rem', color: '#94A3B8'}}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} />  Dashboard
+          </MuiLink>
           <Typography sx={{ fontWeight: 600, color: '#64748B' }}>Détails des contrôles</Typography>
         </Breadcrumbs>
       </Stack>
