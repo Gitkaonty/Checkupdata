@@ -12,42 +12,89 @@ import {
 } from '@mui/icons-material';
 
 // --- COMPOSANT INTERNE : POPUP INITIALISATION (1er EXERCICE) ---
-const InitPremierExercice = ({ open, onClose }) => (
-  <Dialog open={open} onClose={onClose} PaperProps={{ sx: { borderRadius: '20px', width: 450, p: 1 } }}>
-    <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-      <Box sx={{ width: 60, height: 60, bgcolor: '#EEF2FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', mb: 2 }}>
-        <RocketLaunchOutlined sx={{ color: '#6366F1', fontSize: 32 }} />
-      </Box>
-      <Typography variant="h6" sx={{ fontWeight: 900, color: '#1E293B' }}>Initialisation du Dossier</Typography>
-      <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mt: 1 }}>Configurez votre tout premier exercice comptable</Typography>
-    </DialogTitle>
-    <DialogContent>
-      <Stack spacing={3} sx={{ mt: 2 }}>
-        <TextField
-          label="Nom de l'exercice (Année)"
-          placeholder="Ex: 2025"
-          fullWidth
-          size="small"
-          InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarTodayOutlined sx={{ fontSize: 18, color: '#94A3B8' }} /></InputAdornment>) }}
-        />
-        <Stack direction="row" spacing={2}>
-          <TextField label="Date de début" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} />
-          <TextField label="Date de fin" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} />
-        </Stack>
-        <Box sx={{ p: 2, bgcolor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', gap: 1.5 }}>
-          <InfoOutlined sx={{ color: '#64748B', fontSize: 20 }} />
-          <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.4 }}>
-            <strong>Note :</strong> Une fois créé, vous pourrez définir vos périodes manuellement.
-          </Typography>
+const InitPremierExercice = ({ open, onClose }) => {
+  const labelStyle = { 
+    display: 'block', 
+    mb: 0.8, 
+    fontWeight: 700, 
+    color: '#64748B', 
+    textTransform: 'uppercase', 
+    fontSize: '0.65rem' 
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} PaperProps={{ sx: { borderRadius: '20px', width: 450, p: 1 } }}>
+      <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
+        <Box sx={{ width: 60, height: 60, bgcolor: '#EEF2FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', mb: 2 }}>
+          <RocketLaunchOutlined sx={{ color: '#6366F1', fontSize: 32 }} />
         </Box>
-      </Stack>
-    </DialogContent>
-    <DialogActions sx={{ p: 4, pt: 2, justifyContent: 'center' }}>
-      <Button onClick={onClose} sx={{ color: '#64748B', textTransform: 'none', fontWeight: 700 }}>Annuler</Button>
-      <Button variant="contained" sx={{ bgcolor: '#1E293B', textTransform: 'none', borderRadius: '8px', px: 4, fontWeight: 800 }}>Lancer le dossier</Button>
-    </DialogActions>
-  </Dialog>
-);
+        <Typography variant="h6" sx={{ fontWeight: 900, color: '#1E293B' }}>Initialisation du Dossier</Typography>
+        <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mt: 1 }}>Configurez votre tout premier exercice comptable</Typography>
+      </DialogTitle>
+
+      <DialogContent sx={{ overflowY: 'visible' }}>
+        <Stack spacing={2.5} sx={{ mt: 2 }}>
+          
+          {/* NOM EXERCICE */}
+          <Box>
+            <Typography variant="caption" sx={labelStyle}>Nom de l'exercice (Année)</Typography>
+            <TextField
+              placeholder="Ex: 2025"
+              fullWidth
+              size="small"
+              InputProps={{ 
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CalendarTodayOutlined sx={{ fontSize: 18, color: '#94A3B8' }} />
+                  </InputAdornment>
+                ) 
+              }}
+            />
+          </Box>
+
+          {/* DATES DÉBUT ET FIN */}
+          <Stack direction="row" spacing={2}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="caption" sx={labelStyle}>Date de début</Typography>
+              <TextField type="date" fullWidth size="small" />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="caption" sx={labelStyle}>Date de fin</Typography>
+              <TextField type="date" fullWidth size="small" />
+            </Box>
+          </Stack>
+
+          {/* INFO BOX */}
+          <Box sx={{ p: 2, bgcolor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', gap: 1.5 }}>
+            <InfoOutlined sx={{ color: '#64748B', fontSize: 20 }} />
+            <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.4 }}>
+              <strong>Note :</strong> Une fois créé, vous pourrez définir vos périodes (mois, trimestres) manuellement.
+            </Typography>
+          </Box>
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 4, pt: 2, justifyContent: 'center' }}>
+        <Button onClick={onClose} sx={{ color: '#64748B', textTransform: 'none', fontWeight: 700 }}>
+          Annuler
+        </Button>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            bgcolor: '#1E293B', 
+            textTransform: 'none', 
+            borderRadius: '10px', 
+            px: 4, 
+            fontWeight: 800,
+            '&:hover': { bgcolor: '#0F172A' }
+          }}
+        >
+          Lancer le dossier
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
 
 const exercices = () => {
   const [openPeriode, setOpenPeriode] = useState(false);
@@ -126,16 +173,51 @@ const exercices = () => {
         <DialogTitle sx={{ fontWeight: 900, pt: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
           <CalendarMonthOutlined sx={{ color: '#6366F1' }} /> Nouvelle Période
         </DialogTitle>
+        
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <TextField label="Nom de la période" placeholder="Ex: Janvier, T1..." fullWidth size="small" />
-            <TextField label="Date de début" value={exerciceActuel.debut} disabled fullWidth size="small" helperText="Liée à l'ouverture de l'exercice." />
-            <TextField label="Date de fin" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} />
+          <Stack spacing={2.5} sx={{ mt: 1 }}>
+            
+            {/* CHAMP : NOM */}
+            <Box>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                Nom de la période
+              </Typography>
+              <TextField placeholder="Ex: Janvier, T1..." fullWidth size="small" />
+            </Box>
+
+            {/* CHAMP : DÉBUT */}
+            <Box>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                Date de début
+              </Typography>
+              <TextField 
+                value={exerciceActuel.debut} 
+                disabled 
+                fullWidth 
+                size="small" 
+                helperText="Liée à l'ouverture de l'exercice." 
+                sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#F8FAFC' } }}
+              />
+            </Box>
+
+            {/* CHAMP : FIN */}
+            <Box>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                Date de fin
+              </Typography>
+              <TextField type="date" fullWidth size="small" />
+            </Box>
+
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setOpenPeriode(false)} sx={{ color: '#64748B', textTransform: 'none' }}>Annuler</Button>
-          <Button variant="contained" sx={{ bgcolor: '#1E293B', textTransform: 'none', px: 4 }}>Valider</Button>
+
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setOpenPeriode(false)} sx={{ color: '#64748B', textTransform: 'none', fontWeight: 600 }}>
+            Annuler
+          </Button>
+          <Button variant="contained" sx={{ bgcolor: '#0F172A', textTransform: 'none', px: 4, fontWeight: 700, borderRadius: '8px', '&:hover': { bgcolor: '#1E293B' } }}>
+            Valider
+          </Button>
         </DialogActions>
       </Dialog>
 

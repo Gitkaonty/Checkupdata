@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { 
   Box, Typography, Stack, Tabs, Tab, Paper, 
-  Divider, Button, Chip, Breadcrumbs, Link as MuiLink
+  Divider, Button, Chip, Breadcrumbs, Link as MuiLink,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { 
   CompareArrowsOutlined, CalendarMonthOutlined, AccountBalanceOutlined,
@@ -20,6 +22,8 @@ import ControleAnalytique from './listecontroles/controleAnalytique';
 
 const DetailsControles = () => {
   const [activeTab, setActiveTab] = useState(0);
+  const [exercise, setExercise] = useState('2024');
+  const [periode, setPeriode] = useState('2024');
   const navigate = useNavigate();
 
   const handleTabChange = (event, newValue) => setActiveTab(newValue);
@@ -62,6 +66,95 @@ const DetailsControles = () => {
       <Typography variant="h4" sx={{ fontWeight: 900, color: '#0F172A', mb: 4, letterSpacing: '-0.5px' }}>
         Détails des contrôles
       </Typography>
+
+      <Stack 
+        direction="row" 
+        alignItems="center" 
+        sx={{ 
+          mb: 3, 
+          p: 0.5, 
+          bgcolor: '#FFFFFF', 
+          borderRadius: '10px', 
+          border: '1px solid #E2E8F0',
+          width: 'fit-content',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}
+      >
+        {/* BLOC EXERCICE */}
+        <Box sx={{ px: 2, py: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontWeight: 800, 
+              color: '#94A3B8', 
+              display: 'block', 
+              mb: 0, 
+              textTransform: 'uppercase', 
+              fontSize: '0.55rem',
+              letterSpacing: '0.02rem'
+            }}
+          >
+            Exercice
+          </Typography>
+          <Select 
+            value={exercise} 
+            onChange={(e) => setExercise(e.target.value)} 
+            variant="standard"
+            disableUnderline
+            size="small" 
+            sx={{ 
+              height: 24, 
+              fontSize: '0.8rem', 
+              fontWeight: 700, 
+              color: '#1E293B',
+              minWidth: 100,
+              '& .MuiSelect-select': { py: 0 }
+            }}
+          >
+            <MenuItem value="2024">Exercice 2024</MenuItem>
+            <MenuItem value="2025">Exercice 2025</MenuItem>
+          </Select>
+        </Box>
+
+        <Divider orientation="vertical" flexItem sx={{ height: 28, alignSelf: 'center', borderColor: '#E2E8F0' }} />
+
+        {/* BLOC PÉRIODE */}
+        <Box sx={{ px: 2, py: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontWeight: 800, 
+              color: '#94A3B8', 
+              display: 'block', 
+              mb: 0, 
+              textTransform: 'uppercase', 
+              fontSize: '0.55rem',
+              letterSpacing: '0.02rem'
+            }}
+          >
+            Période
+          </Typography>
+          <Select 
+            value={periode} 
+            onChange={(e) => setPeriode(e.target.value)} 
+            variant="standard"
+            disableUnderline
+            size="small" 
+            sx={{ 
+              height: 24, 
+              fontSize: '0.8rem', 
+              fontWeight: 700, 
+              color: '#1E293B',
+              minWidth: 140,
+              '& .MuiSelect-select': { py: 0 }
+            }}
+          >
+            <MenuItem value="01-2024">Janvier 2024</MenuItem>
+            <MenuItem value="02-2024">Février 2024</MenuItem>
+            <MenuItem value="T1-2024">Trimestre 1 2024</MenuItem>
+          </Select>
+        </Box>
+      </Stack>
 
       {/* --- ZONE PRINCIPALE : SIDEBAR + CONTENU --- */}
       <Box sx={{ display: 'flex', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden', height: '70vh' }}>

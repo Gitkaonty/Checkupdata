@@ -1,18 +1,23 @@
-import React from 'react';
+import {React ,useState} from 'react';
 import { 
   Box, Typography, Grid, Paper, LinearProgress, 
-  Stack, Divider, Chip, Breadcrumbs, Link, Button
+  Stack, Divider, Chip, Breadcrumbs, Link, Button,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { 
   ErrorOutline, CheckCircleOutline, TrendingUpOutlined, 
   AccountBalanceWalletOutlined, PaymentsOutlined, 
   BarChartOutlined, ChevronRight,
-  ArrowForwardOutlined, HistoryToggleOffOutlined
+  ArrowForwardOutlined, HistoryToggleOffOutlined,
+  HomeOutlined
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [exercise, setExercise] = useState('2024');
+  const [periode, setPeriode] = useState('2024');
 
   // Ratios financiers du dossier (Bandeau supérieur)
   const ratios = [
@@ -35,7 +40,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <Box sx={{ p: 4, bgcolor: '#FFFFFF', minHeight: '100%' }}>
+    <Box sx={{ p: 2, bgcolor: '#FFFFFF', minHeight: '100%' }}>
       
       {/* --- HEADER CONTEXTUEL (Chip + Breadcrumb) --- */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
@@ -46,21 +51,114 @@ const Dashboard = () => {
             bgcolor: '#F1F5F9', 
             color: '#475569', 
             fontWeight: 700,
-            fontSize: '0.72rem',
+            fontSize: '0.95rem',
             border: '1px solid #E2E8F0',
-            height: 24
+            height: 24,
           }} 
         />
         <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto', borderColor: '#CBD5E1' }} />
-        <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.8rem' }}>
-          <Link underline="hover" color="inherit" href="/" sx={{ color: '#94A3B8' }}>Dossiers</Link>
+        <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.85rem' }}>
+          <Link underline="hover" color="inherit" href="/home" 
+            sx={{ color: '#94A3B8', fontSize: '0.85rem', alignContent:'center', alignItems:'center' }}
+            >
+            <HomeOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dossier
+          </Link>
           <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Dashboard</Typography>
         </Breadcrumbs>
       </Stack>
 
-      <Typography variant="h4" sx={{ fontWeight: 900, color: '#0F172A', mb: 4, letterSpacing: '-0.5px' }}>
+      <Typography variant="h4" sx={{ fontWeight: 900, color: '#0F172A', mb: 2, letterSpacing: '-0.5px' }}>
         Dashboard
       </Typography>
+        
+      <Stack 
+        direction="row" 
+        alignItems="center" 
+        sx={{ 
+          mb: 3, 
+          p: 0.5, 
+          bgcolor: '#FFFFFF', 
+          borderRadius: '10px', 
+          border: '1px solid #E2E8F0',
+          width: 'fit-content',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}
+      >
+        {/* BLOC EXERCICE */}
+        <Box sx={{ px: 2, py: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontWeight: 800, 
+              color: '#94A3B8', 
+              display: 'block', 
+              mb: 0, 
+              textTransform: 'uppercase', 
+              fontSize: '0.55rem',
+              letterSpacing: '0.02rem'
+            }}
+          >
+            Exercice
+          </Typography>
+          <Select 
+            value={exercise} 
+            onChange={(e) => setExercise(e.target.value)} 
+            variant="standard"
+            disableUnderline
+            size="small" 
+            sx={{ 
+              height: 24, 
+              fontSize: '0.8rem', 
+              fontWeight: 700, 
+              color: '#1E293B',
+              minWidth: 100,
+              '& .MuiSelect-select': { py: 0 }
+            }}
+          >
+            <MenuItem value="2024">Exercice 2024</MenuItem>
+            <MenuItem value="2025">Exercice 2025</MenuItem>
+          </Select>
+        </Box>
+
+        <Divider orientation="vertical" flexItem sx={{ height: 28, alignSelf: 'center', borderColor: '#E2E8F0' }} />
+
+        {/* BLOC PÉRIODE */}
+        <Box sx={{ px: 2, py: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontWeight: 800, 
+              color: '#94A3B8', 
+              display: 'block', 
+              mb: 0, 
+              textTransform: 'uppercase', 
+              fontSize: '0.55rem',
+              letterSpacing: '0.02rem'
+            }}
+          >
+            Période
+          </Typography>
+          <Select 
+            value={periode} 
+            onChange={(e) => setPeriode(e.target.value)} 
+            variant="standard"
+            disableUnderline
+            size="small" 
+            sx={{ 
+              height: 24, 
+              fontSize: '0.8rem', 
+              fontWeight: 700, 
+              color: '#1E293B',
+              minWidth: 140,
+              '& .MuiSelect-select': { py: 0 }
+            }}
+          >
+            <MenuItem value="01-2024">Janvier 2024</MenuItem>
+            <MenuItem value="02-2024">Février 2024</MenuItem>
+            <MenuItem value="T1-2024">Trimestre 1 2024</MenuItem>
+          </Select>
+        </Box>
+      </Stack>
 
       {/* --- 1. BANDEAU DES RATIOS --- */}
       <Grid container spacing={2} sx={{ mb: 4 }}>

@@ -37,7 +37,7 @@ const MainLayout = ({ children }) => {
     { label: 'Import journal', path: '/traitement/importjournal' },
     { 
       label: 'Export', 
-      isSubmenu: true, // Flag pour identifier le dossier
+      isSubmenu: true, 
       children: [
         { label: 'Balance', path: '/traitement/export/balance' },
         { label: 'Grand Livre', path: '/traitement/export/grandlivre' },
@@ -77,7 +77,6 @@ const MainLayout = ({ children }) => {
 
         <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.05)' }} />
 
-        {/* --- SECTION TRAITEMENT --- */}
         <Box>
           <ListItemButton onClick={() => setOpenTraitement(!openTraitement)} sx={menuItemStyle}>
             <ListItemIcon sx={iconStyle}><AccountBalanceWalletOutlined /></ListItemIcon>
@@ -90,7 +89,6 @@ const MainLayout = ({ children }) => {
               {traitementItems.map((item) => (
                 <React.Fragment key={item.label}>
                   {item.isSubmenu ? (
-                    /* Rendu pour l'élément qui a des enfants (Export) */
                     <>
                       <ListItemButton onClick={() => setOpenExport(!openExport)} sx={subItemStyle}>
                         <ListItemText primary={item.label} />
@@ -113,7 +111,6 @@ const MainLayout = ({ children }) => {
                       </Collapse>
                     </>
                   ) : (
-                    /* Rendu pour les liens directs (Consultation, Import) */
                     <ListItemButton 
                       component={Link} 
                       to={item.path} 
@@ -129,7 +126,6 @@ const MainLayout = ({ children }) => {
           </Collapse>
         </Box>
 
-        {/* --- SECTION PARAMÈTRES --- */}
         <Box sx={{ mt: 1 }}>
           <ListItemButton onClick={() => setOpenParams(!openParams)} sx={menuItemStyle}>
             <ListItemIcon sx={iconStyle}><SettingsOutlined /></ListItemIcon>
@@ -191,16 +187,57 @@ const MainLayout = ({ children }) => {
                     <IconButton sx={{ color: '#64748B' }}>
                         <Badge badgeContent={4} color="error"><NotificationsOutlined /></Badge>
                     </IconButton>
-                    <ButtonBase onClick={handleUserMenuOpen} sx={{ p: 0.5, pr: 1.5, borderRadius: '12px' }}>
+                    
+                    {/* --- BOUTON PROFILE --- */}
+                    <ButtonBase onClick={handleUserMenuOpen} sx={{ p: 0.5, pr: 1.5, borderRadius: '12px', transition: '0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                            <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold' }}>DR</Avatar>
+                            <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>DR</Avatar>
                             <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'left' }}>
                                 <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 600 }}>Daniela Randria</Typography>
                                 <Typography variant="caption" sx={{ color: '#64748B' }}>Administrateur</Typography>
                             </Box>
-                            <ExpandMore sx={{ color: '#64748B', fontSize: 18 }} />
+                            <ExpandMore sx={{ color: '#64748B', fontSize: 18, transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
                         </Stack>
                     </ButtonBase>
+
+                    {/* --- MENU DEROULANT REINSTAURÉ --- */}
+                    <Menu
+                      anchorEl={anchorEl}
+                      open={Boolean(anchorEl)}
+                      onClose={handleUserMenuClose}
+                      PaperProps={{
+                        sx: {
+                          mt: 1.5,
+                          width: 200,
+                          borderRadius: '12px',
+                          bgcolor: '#0F172A',
+                          color: '#F8FAFC',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                          '& .MuiMenuItem-root': {
+                            fontSize: '0.85rem',
+                            py: 1.2,
+                            px: 2,
+                            gap: 1.5,
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                            '& .MuiSvgIcon-root': { fontSize: 18, color: '#64748B' }
+                          }
+                        }
+                      }}
+                      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                    >
+                      <MenuItem onClick={handleUserMenuClose}>
+                        <PersonOutline /> Mon profil
+                      </MenuItem>
+                      <MenuItem onClick={handleUserMenuClose}>
+                        <SettingsOutlined /> Paramètres
+                      </MenuItem>
+                      <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
+                      <MenuItem onClick={() => { handleUserMenuClose(); navigate('/login'); }} sx={{ color: '#EF4444' }}>
+                        <LogoutOutlined sx={{ color: '#EF4444 !important' }} /> Se déconnecter
+                      </MenuItem>
+                    </Menu>
                 </Stack>
             </Toolbar>
         </AppBar>
