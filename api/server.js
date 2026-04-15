@@ -76,12 +76,18 @@ app.use('/api/membres-situation', require('./Routes/gestionMembre/membreSituatio
 app.use('/api/exercices', require('./Routes/parametres/exerciceRoute'));
 app.use('/api/grille-tarifaire', require('./Routes/parametres/grilleTarifaireRoute'));
 
+// Portefeuille
+app.use('/param/portefeuille', require('./Routes/Portefeuille/portefeuilleRoute'));
+
 
 //--------------------------------------------------------------------------------------------------------
 //MENU COTISATION
 //-------------------------------------------------------------------------------------------------------------
 app.use("/api/cotisations", require('./Routes/cotisation/appelRoute'));
 app.use('/api/paiements', require('./Routes/cotisation/paiementRoute'));
+
+//routes pour home
+app.use('/home', require('./Routes/Home/homeRoute'));
 
 /*app.all('*', (req,res) => {
     res.status(404);

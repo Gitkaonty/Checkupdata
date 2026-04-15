@@ -42,13 +42,20 @@ db.membres = require('./membreIdentiteModel')(sequelize, DataTypes);
 db.membres_updates = require("./membreUpdateModel")(sequelize, Sequelize);
 
 //paramétres - exercice
-db.exercices = require('./exerciceModel')(sequelize, Sequelize);
+db.exercices = require('./exerciceModel')(sequelize, DataTypes);
+db.periodes = require('./periodesModel')(sequelize, DataTypes);
 db.grille_tarifaires = require('./grilleTarifaire')(sequelize, Sequelize);
 
 //paramètres cotisation
 db.appels = require("./appelModel")(sequelize, Sequelize);
 db.ajustementappels = require("./ajustementappel")(sequelize, Sequelize);
 db.paiements = require("./paiementModel")(sequelize, Sequelize);
+
+// home / dossiers
+db.dossiers = require('./dossiersModel')(sequelize, DataTypes);
+
+// parametres / portefeuille
+db.portefeuille = require('./portefeuilleModel')(sequelize, DataTypes);
 
 Object.keys(db).forEach(modelName => {
     if (db[modelName].associate) {
@@ -97,6 +104,10 @@ db.membres.hasMany(db.appels, {
     foreignKey: 'membre_id', 
     as: 'appels' 
 });
+
+
+// Compte portefeuille relationships removed - portefeuille references userscomptes via id_compte, not users directly
+
 
 db.membres.hasMany(db.paiements, { foreignKey: 'membre_id', as: 'paiements' });
 db.paiements.belongsTo(db.membres, { foreignKey: 'membre_id', as: 'membre' });

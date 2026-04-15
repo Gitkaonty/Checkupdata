@@ -48,6 +48,7 @@ export default function App() {
               
               {/* Le MainLayout entoure ici toutes les pages "Admin" DossiersPage*/}
               <Route path="/home" element={<MainLayout><DossiersPage /></MainLayout>} />
+              <Route path="/tab/dashboard/:id" element={<MainLayout><DashboardHome /></MainLayout>} />
               <Route path="/dashboard" element={<MainLayout><DashboardHome /></MainLayout>} />
               <Route path="/controles/details" element={<MainLayout><DetailsControles /></MainLayout>} />
 
