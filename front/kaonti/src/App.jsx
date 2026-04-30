@@ -55,21 +55,20 @@ export default function App() {
               {/* Le MainLayout entoure ici toutes les pages "Admin" DossiersPage*/}
               <Route path="/home" element={<MainLayout><DossiersPage /></MainLayout>} />
               <Route path="/tab/dashboard/:id" element={<MainLayout><DashboardHome /></MainLayout>} />
-              <Route path="/dashboard" element={<MainLayout><DashboardHome /></MainLayout>} />
               <Route path="/controles/details" element={<MainLayout><DetailsControles /></MainLayout>} />
 
                {/* menu Traitements */}
-               <Route path="/traitement/consultation" element={<MainLayout><ConsultationComptes /></MainLayout>} />
-              <Route path="/traitement/importjournal" element={<MainLayout><ImportJournal /></MainLayout>} />
-              <Route path="/traitement/dossierrevision" element={<MainLayout><GestionRevisionCycles /></MainLayout>} />
-              <Route path="/traitement/export/journal" element={<MainLayout><ExportJournal /></MainLayout>} />
-              <Route path="/traitement/export/grandlivre" element={<MainLayout><ExportGrandLivre /></MainLayout>} />
-              <Route path="/traitement/export/balance" element={<MainLayout><ExportBalance /></MainLayout>} />
+               <Route path="/traitement/consultation/:id" element={<MainLayout><ConsultationComptes /></MainLayout>} />
+              <Route path="/traitement/importjournal/:id" element={<MainLayout><ImportJournal /></MainLayout>} />
+              <Route path="/traitement/dossierrevision/:id" element={<MainLayout><GestionRevisionCycles /></MainLayout>} />
+              <Route path="/traitement/export/journal/:id" element={<MainLayout><ExportJournal /></MainLayout>} />
+              <Route path="/traitement/export/grandlivre/:id" element={<MainLayout><ExportGrandLivre /></MainLayout>} />
+              <Route path="/traitement/export/balance/:id" element={<MainLayout><ExportBalance /></MainLayout>} />
               
               {/* Sous-menu Parametres */}
-              <Route path="/parametres/exercice" element={<MainLayout><Exercices /></MainLayout>} />
-              <Route path="/parametres/portefeuille" element={<MainLayout><Portefeuille /></MainLayout>} />
-              <Route path="/parametres/crm" element={<MainLayout><CRM /></MainLayout>} />
+              <Route path="/parametres/exercice/:id" element={<MainLayout><Exercices /></MainLayout>} />
+              <Route path="/parametres/portefeuille/:id" element={<MainLayout><Portefeuille /></MainLayout>} />
+              <Route path="/parametres/crm/:id" element={<MainLayout><CRM /></MainLayout>} />
               <Route path="/parametres/gestioncontrole" element={<MainLayout><GestionControles /></MainLayout>} />
             </Route>
           </Route>

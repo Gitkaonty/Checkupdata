@@ -5,6 +5,10 @@ const dossier = db.dossiers;
 const portefeuille = db.portefeuille;
 const compteDossiers = db.compteDossiers;
 const comptePortefeuilles = db.comptePortefeuilles;
+const dossierassocies = db.dossierassocies;
+
+const dombancaires = db.dombancaires;
+const pays = db.pays;
 
 // dombancaires.belongsTo(pays, { as: 'tablepays', foreignKey: 'pays', targetKey: 'code' });
 
@@ -299,15 +303,15 @@ const informationsFile = async (req, res) => {
         }
       });
 
-      const listAssocie = await dossierassocies.findAll({
+      const listAssocie = dossierassocies ? await dossierassocies.findAll({
         where:
         {
           id_dossier: fileId,
           enactivite: true
         }
-      });
+      }) : [];
 
-      const listDomBank = await dombancaires.findAll({
+      const listDomBank = (dombancaires && pays) ? await dombancaires.findAll({
         where:
         {
           id_dossier: fileId,
@@ -324,7 +328,7 @@ const informationsFile = async (req, res) => {
           },
         ],
         raw: true,
-      });
+      }) : [];
 
       if (list.length > 0) {
         resData.state = true;

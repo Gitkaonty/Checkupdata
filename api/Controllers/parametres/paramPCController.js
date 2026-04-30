@@ -1,0 +1,1332 @@
+const bcrypt = require("bcrypt");
+const db = require("../../Models");
+const { Sequelize } = require("sequelize");
+require('dotenv').config();
+
+const dossierPlanComptable = db.dossierplancomptables;
+const dossierPlanComptableCopy = db.dossierplancomptables;
+const dossierpcdetailcptchg = db.dossierpcdetailcptchg;
+const dossierpcdetailcpttva = db.dossierpcdetailcpttva;
+const dossiers = db.dossiers;
+const localites = db.localites;
+const consolidationDossier = db.consolidationDossier;
+const journals = db.journals;
+const exercices = db.exercices;
+
+const { Op } = require("sequelize");
+
+const recupPc = async (req, res) => {
+  try {
+    const { fileId, compteId } = req.body;
+
+    if (!fileId || !compteId) {
+      return
+    }
+
+    let resData = {
+      state: false,
+      msg: 'une erreur est survenue',
+      liste: []
+    }
+
+    const listepc = (await dossierPlanComptable.findAll({
+      where:
+      {
+        id_dossier: fileId,
+        id_compte: compteId
+      },
+      include: [
+        { model: dossiers, as: 'dossier', attributes: ['dossier'] },
+      ],
+      // raw: true,
+      order: [['compte', 'ASC']]
+    })).map((val => {
+      const data = val.toJSON();
+      data.dossier = data?.dossier?.dossier;
+      return data;
+    }))
+
+    if (listepc) {
+      resData.state = true;
+      resData.liste = listepc;
+    } else {
+      resData.state = false;
+      resData.msg = "Une erreur est survenue au moment du traitement des données";
+    }
+
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const updateCompteAux = async (id_numcpt, baseaux_id, nature) => {
+  if (nature === 'Aux' && baseaux_id) {
+    const compteCollectif = await dossierPlanComptable.findByPk(baseaux_id);
+    if (!compteCollectif) return
+    await dossierPlanComptable.update({
+      baseaux: compteCollectif.compte,
+      baseaux_id
+    }, {
+      where: {
+        id: id_numcpt
+      }
+    })
+  }
+}
+
+const updateLibelleInJournal = async (
+  id,
+  id_compte,
+  id_dossier,
+  nature,
+  libelle
+) => {
+
+  const exerciceData = await exercices.findAll({
+    where: {
+      id_dossier,
+      id_compte,
+      rang: { [Op.gte]: 0 }
+    },
+    raw: true
+  })
+
+  if (!exerciceData.length) return
+
+  const id_exercices = exerciceData.map(e => Number(e.id))
+
+  if (nature === 'Aux') {
+    await journals.update(
+      {
+        libelleaux: libelle
+      },
+      {
+        where: {
+          id_numcpt: id,
+          id_compte,
+          id_dossier,
+          id_exercice: { [Op.in]: id_exercices }
+        }
+      }
+    )
+    return
+  }
+
+  if (nature === 'General') {
+    await journals.update(
+      {
+        libellecompte: libelle,
+        libelleaux: libelle
+      },
+      {
+        where: {
+          id_numcptcentralise: id,
+          id_compte,
+          id_dossier,
+          id_exercice: { [Op.in]: id_exercices }
+        }
+      }
+    )
+    return
+  }
+
+  if (nature === 'Collectif') {
+    await journals.update(
+      {
+        libellecompte: libelle
+      },
+      {
+        where: {
+          id_numcptcentralise: id,
+          id_compte,
+          id_dossier,
+          id_exercice: { [Op.in]: id_exercices }
+        }
+      }
+    )
+  }
+}
+
+const AddCptToPc = async (req, res) => {
+  try {
+    const {
+      action,
+      itemId,
+      idCompte,
+      idDossier,
+      compte,
+      libelle,
+      nature,
+      baseCptCollectif,
+      typeTier,
+      nif,
+      stat,
+      adresse,
+      motcle,
+      cin,
+      dateCin,
+      autrePieceID,
+      refPieceID,
+      adresseSansNIF,
+      nifRepresentant,
+      adresseEtranger,
+      pays,
+      listeCptChg,
+      listeCptTva,
+      province,
+      region,
+      district,
+      commune,
+      compteautre,
+      libelleautre,
+    } = req.body;
+
+    const DossierParam = await dossiers.findOne({
+      where: {
+        id: idDossier,
+        id_compte: idCompte
+      }
+    });
+
+    // Plus de limitation de longueur pour les comptes
+    const autocompletion = DossierParam.autocompletion;
+
+    if (action === "new") {
+      let resData = {
+        state: false,
+        msg: ''
+      };
+
+      if (typeTier === "sans-nif") {
+        let baseauxiliaire = '';
+        let baseaux_id = null;
+
+        if (nature === 'General' || nature === 'Collectif') {
+          baseauxiliaire = compte;
+
+
+          const findedID = await dossierPlanComptable.findOne({
+            where:
+            {
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              compte: compte
+            }
+          });
+
+          if (findedID) {
+            baseaux_id = findedID.id;
+          }
+        } else {
+          // Pour les comptes Auxiliaires: récupérer le compte collectif par son ID
+          baseaux_id = baseCptCollectif;
+
+          if (baseCptCollectif) {
+            const findedCollectif = await dossierPlanComptable.findOne({
+              where: {
+                id: baseCptCollectif,
+                id_compte: idCompte,
+                id_dossier: idDossier
+              }
+            });
+
+            if (findedCollectif) {
+              baseauxiliaire = findedCollectif.compte;
+            }
+          }
+        }
+
+        let compteFormated = '';
+        let compteFormattedAutre = '';
+        let baseAux = '';
+
+        // Formatage compte & baseaux selon les règles métier
+        if (autocompletion) {
+          if (nature === "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          }
+        } else {
+          if (nature !== "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte;
+            compteFormattedAutre = compteautre;
+            baseAux = baseauxiliaire;
+          }
+        }
+
+        let cptChNb = 0;
+        if (listeCptChg.length > 0) {
+          cptChNb = listeCptChg.length;
+        }
+
+        let cptTvaNb = 0;
+        if (listeCptTva.length > 0) {
+          cptTvaNb = listeCptTva.length;
+        }
+
+        const NewCptAdded = await dossierPlanComptable.create({
+          id_compte: idCompte,
+          id_dossier: idDossier,
+          compte: compteFormated,
+          compteautre: compteFormattedAutre,
+          libelleautre: libelleautre,
+          libelle: libelle,
+          nature: nature,
+          baseaux: baseAux,
+          cptcharge: cptChNb,
+          cpttva: cptTvaNb,
+
+          typetier: typeTier,
+          cin: cin,
+          datecin: dateCin,
+          autrepieceid: autrePieceID,
+          refpieceid: refPieceID,
+          adressesansnif: adresseSansNIF,
+          motcle: motcle,
+          baseaux_id: baseaux_id,
+
+          province: province,
+          region: region,
+          district: district,
+          commune: commune,
+        });
+
+        // Mettre à jour baseaux_id avec l'ID du nouveau compte seulement pour General/Collectif
+        // Pour les comptes Auxiliaires, baseaux_id doit rester l'ID du compte collectif parent
+        if (NewCptAdded.id && (nature === 'General' || nature === 'Collectif')) {
+          await NewCptAdded.update({ baseaux_id: NewCptAdded.id });
+        }
+
+        await updateCompteAux(NewCptAdded.id, baseCptCollectif, nature);
+
+        //Enregistrer les compte de charges et TVA associés au compte
+        if (listeCptChg.length > 0) {
+          listeCptChg.map(async (item) => {
+            const saveCptCh = await dossierpcdetailcptchg.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: NewCptAdded.id,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        if (listeCptTva.length > 0) {
+          listeCptTva.map(async (item) => {
+            const saveCptTva = await dossierpcdetailcpttva.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: NewCptAdded.id,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        resData.state = true;
+        resData.msg = "Le nouveau compte a été enregistré avec succès";
+      }
+
+      if (typeTier === "avec-nif") {
+        let baseauxiliaire = '';
+        let baseaux_id = null;
+
+        if (nature === 'General' || nature === 'Collectif') {
+          baseauxiliaire = compte;
+
+          const findedID = await dossierPlanComptable.findOne({
+            where:
+            {
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              compte: compte
+            }
+          });
+
+          if (findedID) {
+            baseaux_id = findedID.id;
+          }
+        } else {
+          const findedID = await dossierPlanComptable.findOne({
+            where:
+            {
+              id: itemId
+            }
+          });
+
+          baseaux_id = baseCptCollectif;
+
+          if (findedID) {
+            baseauxiliaire = findedID.compte;
+          }
+        }
+
+        let compteFormated = '';
+        let compteFormattedAutre = '';
+        let baseAux = '';
+
+        // Formatage compte & baseaux selon les règles métier
+        if (autocompletion) {
+          if (nature === "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          }
+        } else {
+          if (nature !== "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString();
+          } else {
+            compteFormated = compte;
+            compteFormattedAutre = compteautre;
+            baseAux = baseauxiliaire;
+          }
+        }
+
+        let cptChNb = 0;
+        if (listeCptChg.length > 0) {
+          cptChNb = listeCptChg.length;
+        }
+
+        let cptTvaNb = 0;
+        if (listeCptTva.length > 0) {
+          cptTvaNb = listeCptTva.length;
+        }
+
+        const NewCptAdded = await dossierPlanComptable.create({
+          id_compte: idCompte,
+          id_dossier: idDossier,
+          compte: compteFormated,
+          compteautre: compteFormattedAutre,
+          libelle: libelle,
+          libelleautre: libelleautre,
+          nature: nature,
+          baseaux: baseAux,
+          cptcharge: cptChNb,
+          cpttva: cptTvaNb,
+
+          typetier: typeTier,
+          nif: nif,
+          statistique: stat,
+          adresse: adresse,
+          motcle: motcle,
+          baseaux_id: baseaux_id,
+
+          province: province,
+          region: region,
+          district: district,
+          commune: commune,
+        });
+
+        // Mettre à jour baseaux_id avec l'ID du nouveau compte seulement pour General/Collectif
+        // Pour les comptes Auxiliaires, baseaux_id doit rester l'ID du compte collectif parent
+        if (NewCptAdded.id && (nature === 'General' || nature === 'Collectif')) {
+          await NewCptAdded.update({ baseaux_id: NewCptAdded.id });
+        }
+        await updateCompteAux(NewCptAdded.id, baseCptCollectif, nature);
+
+        //Enregistrer les compte de charges et TVA associés au compte
+        if (listeCptChg.length > 0) {
+          listeCptChg.map(async (item) => {
+            const saveCptCh = await dossierpcdetailcptchg.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: NewCptAdded.id,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        if (listeCptTva.length > 0) {
+          listeCptTva.map(async (item) => {
+            const saveCptTva = await dossierpcdetailcpttva.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: NewCptAdded.id,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        resData.state = true;
+        resData.msg = "Le nouveau compte a été enregistré avec succès";
+      }
+
+
+      if (typeTier === "general") {
+        let baseauxiliaire = '';
+        let baseaux_id = null;
+
+        if (nature === 'General' || nature === 'Collectif') {
+          baseauxiliaire = compte;
+
+          const findedID = await dossierPlanComptable.findOne({
+            where:
+            {
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              compte: compte
+            }
+          });
+
+          if (findedID) {
+            baseaux_id = findedID.id;
+          }
+        } else {
+          const findedID = await dossierPlanComptable.findOne({
+            where:
+            {
+              id: itemId
+            }
+          });
+
+          baseaux_id = baseCptCollectif;
+
+          if (findedID) {
+            baseauxiliaire = findedID.compte;
+          }
+        }
+
+        let compteFormated = '';
+        let compteFormattedAutre = '';
+        let baseAux = '';
+
+        // Formatage compte & baseaux selon les règles métier
+        if (autocompletion) {
+          if (nature === "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          }
+        } else {
+          if (nature !== "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte;
+            compteFormattedAutre = compteautre;
+            baseAux = baseauxiliaire;
+          }
+        }
+
+        let cptChNb = 0;
+        if (listeCptChg.length > 0) {
+          cptChNb = listeCptChg.length;
+        }
+
+        let cptTvaNb = 0;
+        if (listeCptTva.length > 0) {
+          cptTvaNb = listeCptTva.length;
+        }
+
+        const NewCptAdded = await dossierPlanComptable.create({
+          id_compte: idCompte,
+          id_dossier: idDossier,
+          compte: compteFormated,
+          compteautre: compteFormattedAutre,
+          libelle: libelle,
+          libelleautre: libelleautre,
+          nature: nature,
+          baseaux: baseAux,
+          cptcharge: cptChNb,
+          cpttva: cptTvaNb,
+
+          typetier: typeTier,
+          pays: 'Madagascar',
+          motcle: motcle,
+          baseaux_id: baseaux_id,
+
+          province: province,
+          region: region,
+          district: district,
+          commune: commune,
+        });
+
+        // Mettre à jour baseaux_id avec l'ID du nouveau compte seulement pour General/Collectif
+        // Pour les comptes Auxiliaires, baseaux_id doit rester l'ID du compte collectif parent
+        if (NewCptAdded.id && (nature === 'General' || nature === 'Collectif')) {
+          await NewCptAdded.update({ baseaux_id: NewCptAdded.id });
+        }
+        await updateCompteAux(NewCptAdded.id, baseCptCollectif, nature);
+
+        //Enregistrer les compte de charges et TVA associés au compte
+        if (listeCptChg.length > 0) {
+          listeCptChg.map(async (item) => {
+            const saveCptCh = await dossierpcdetailcptchg.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: NewCptAdded.id,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        if (listeCptTva.length > 0) {
+          listeCptTva.map(async (item) => {
+            const saveCptTva = await dossierpcdetailcpttva.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: NewCptAdded.id,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        resData.state = true;
+        resData.msg = "Le nouveau compte a été enregistré avec succès";
+      }
+
+      res.json(resData);
+
+    } else {
+      let resData = {
+        state: false,
+        msg: '',
+        dataModified: {}
+      };
+
+      if (typeTier === "general") {
+        let baseauxiliaire = '';
+        let baseaux_id = null;
+
+        if (nature === 'General' || nature === 'Collectif') {
+          baseauxiliaire = compte;
+          // baseaux_id = itemId;
+
+          // const findedID = await dossierPlanComptable.findOne({
+          //   where:
+          //   {
+          //     id_compte: idCompte,
+          //     id_dossier: idDossier,
+          //     compte: compte
+          //   }
+          // });
+
+          // if (findedID) {
+          //   baseaux_id = findedID.id;
+          // }
+        } else {
+          // Pour les comptes auxiliaires, récupérer le compte de base
+          const findedID = await dossierPlanComptable.findOne({
+            where: {
+              id: baseCptCollectif,
+              id_compte: idCompte,
+              id_dossier: idDossier
+            }
+          });
+
+          baseaux_id = baseCptCollectif;
+
+          if (findedID) {
+            baseauxiliaire = findedID.compte;
+          }
+        }
+
+        let compteFormated = '';
+        let compteFormattedAutre = '';
+        let baseAux = '';
+
+        // Formatage compte & baseaux selon les règles
+        if (autocompletion) {
+          if (nature === "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          }
+        } else {
+          if (nature !== "Aux") {
+            compteFormated = compte.toString();
+            compteFormattedAutre = compteautre.toString();
+            baseAux = baseauxiliaire.toString() || '';
+          } else {
+            compteFormated = compte;
+            compteFormattedAutre = compteautre;
+            baseAux = baseauxiliaire;
+          }
+        }
+
+        let cptChNb = 0;
+        if (listeCptChg.length > 0) {
+          cptChNb = listeCptChg.length;
+        }
+
+        let cptTvaNb = 0;
+        if (listeCptTva.length > 0) {
+          cptTvaNb = listeCptTva.length;
+        }
+
+        const updateData = {
+          id_compte: idCompte,
+          id_dossier: idDossier,
+          compte: compteFormated,
+          compteautre: compteFormattedAutre,
+          libelle: libelle,
+          libelleautre: libelleautre,
+          nature: nature,
+          baseaux: baseAux,
+          cptcharge: cptChNb,
+          cpttva: cptTvaNb,
+
+          typetier: typeTier,
+          pays: 'Madagascar',
+          motcle: motcle,
+          ...(nature === 'Aux' && { baseaux_id: baseCptCollectif }),
+
+          province: province,
+          region: region,
+          district: district,
+          commune: commune,
+        };
+
+        const NewCptAdded = await dossierPlanComptable.update(
+          updateData,
+          {
+            where: { id: itemId }
+          }
+        );
+
+        //Enregistrer les compte de charges et TVA associés au compte
+        if (listeCptChg.length > 0) {
+          listeCptChg.map(async (item) => {
+            //supprimer l'ancienne ligne
+            await dossierpcdetailcptchg.destroy({ where: { id: item.id } });
+
+            const saveCptCh = await dossierpcdetailcptchg.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: itemId,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+        if (listeCptTva.length > 0) {
+          listeCptTva.map(async (item) => {
+            //supprimer l'ancienne ligne
+            await dossierpcdetailcpttva.destroy({ where: { id: item.id } });
+
+            const saveCptTva = await dossierpcdetailcpttva.create({
+              id_compte: idCompte,
+              id_dossier: idDossier,
+              id_detail: itemId,
+              compte: item.compte,
+              libelle: item.libelle,
+              id_comptecompta: item.idCpt
+            });
+          });
+        }
+
+
+        resData.state = true;
+        resData.msg = "Les modifications ont été enregistrées avec succès";
+      }
+      const dpcUpdated = await dossierPlanComptable.findByPk(itemId);
+      resData.dataModified = dpcUpdated;
+
+      await updateLibelleInJournal(itemId, idCompte, idDossier, nature, libelle);
+
+      res.json(resData);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+const keepListCptChgTvaAssoc = async (req, res) => {
+  try {
+    let resData = {
+      state: false,
+      msg: '',
+      detailChg: [],
+      detailTva: []
+    }
+
+    const itemId = req.params.itemId;
+    const listeDetailModelCptChgData = await dossierpcdetailcptchg.findAll({
+      where: {
+        id_detail: itemId
+      },
+      order: [['compte', 'ASC']]
+    });
+
+    const listeDetailModelCptTvaData = await dossierpcdetailcpttva.findAll({
+      where: {
+        id_detail: itemId
+      },
+      order: [['compte', 'ASC']]
+    });
+
+    if (listeDetailModelCptChgData || listeDetailModelCptTvaData) {
+
+      resData.state = true;
+      resData.msg = '';
+      resData.detailChg = listeDetailModelCptChgData;
+      resData.detailTva = listeDetailModelCptTvaData;
+
+    } else {
+      resData.state = false;
+      resData.msg = 'Une erreur est survenue lors de la récupération des données';
+    }
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const deleteItemPc = async (req, res) => {
+  try {
+    let resData = {
+      state: false,
+      stateUndeletableCpt: false,
+      msg: 'Une erreur est survenue lors du traitement.',
+      msgUndeletableCpt: ''
+    }
+
+    let msgErrorDelete = '';
+    let deletedCount = 0;
+    let blockedCount = 0;
+    const { listId, compteId, fileId } = req.body;
+
+    if (listId.length >= 1) {
+      for (let i = 0; i < listId.length; i++) {
+        //tester si le compte est lié à un compte auxiliaire
+        const infosCpt = await dossierPlanComptable.findOne({
+          where: { id: listId[i] }
+        });
+
+        let cpt = '';
+        if (infosCpt) {
+          cpt = infosCpt.compte;
+        }
+
+        const cptInUse = await dossierPlanComptable.findAll({
+          where: {
+            id_compte: compteId,
+            id_dossier: fileId,
+            baseaux: cpt,
+          }
+        });
+
+        const usageInJournals = await db.journals.count({
+          where: {
+            id_compte: compteId,
+            id_dossier: fileId,
+            id_numcpt: listId[i]
+          }
+        });
+
+        if (cptInUse.length > 1 || usageInJournals > 0) {
+          resData.stateUndeletableCpt = true;
+          blockedCount += 1;
+          if (msgErrorDelete === '') {
+            msgErrorDelete = `Impossible de supprimer les comptes suivants car ils sont utilisés${cptInUse.length > 1 ? ' comme base des comptes auxiliaires' : ''}${usageInJournals > 0 ? ' dans des écritures' : ''}`;
+          } else {
+            msgErrorDelete = `${msgErrorDelete}, ${cpt}`;
+          }
+
+        } else {
+          await dossierPlanComptable.destroy({ where: { id: listId[i] } });
+          deletedCount += 1;
+
+          //supprimer si la ligne possède des comptes de charges ou TVA associés
+          await dossierpcdetailcptchg.destroy({ where: { id_detail: listId[i] } });
+          await dossierpcdetailcpttva.destroy({ where: { id_detail: listId[i] } });
+        }
+      }
+
+      if (deletedCount === 0 && blockedCount > 0) {
+        resData.state = false;
+        resData.msg = msgErrorDelete || 'Impossible de supprimer les comptes sélectionnés.';
+      } else {
+        resData.state = true;
+        resData.msg = "Les comptes séléctionés ont été supprimés avec succès.";
+      }
+    }
+
+    resData.msgUndeletableCpt = msgErrorDelete;
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+const recupPcIdLibelle = async (req, res) => {
+  try {
+    const { id_dossier, id_compte } = req.params;
+
+    const dossierData = await dossiers.findByPk(id_dossier);
+    const consolidation = dossierData?.consolidation || false;
+
+    let id_dossiers_a_utiliser = [Number(id_dossier)];
+
+    if (consolidation) {
+      const consolidationDossierData = await consolidationDossier.findAll({
+        where: {
+          id_dossier,
+          id_compte
+        }
+      });
+
+      if (!consolidationDossierData.length) {
+        return res.json({
+          state: true,
+          msg: "Consolidation de dossier vide",
+          liste: []
+        });
+      }
+
+      id_dossiers_a_utiliser = [...new Set(
+        consolidationDossierData.map(val => Number(val.id_dossier_autre))
+      ), id_dossier];
+    }
+
+    const listepc = await dossierPlanComptable.findAll({
+      where: {
+        id_dossier: { [Sequelize.Op.in]: id_dossiers_a_utiliser },
+        id_compte,
+        nature: { [Sequelize.Op.ne]: 'Collectif' },
+      },
+      include: [
+        {
+          model: dossierPlanComptable,
+          as: 'BaseAux',
+          attributes: ['compte', 'libelle'],
+          required: false,
+          where: {
+            id_dossier: { [Sequelize.Op.in]: id_dossiers_a_utiliser },
+            id_compte
+          }
+        },
+        {
+          model: dossiers,
+          as: 'dossier',
+          attributes: ['dossier'],
+        }
+      ],
+      order: [['compte', 'ASC']],
+      attributes: ['libelle', 'id', 'id_dossier', 'compteautre', 'libelleautre', 'compte']
+    });
+
+    const mappedListe = listepc.map(item => ({
+      id: item.id,
+      libelle: item?.libelle || 'Aucune libellé',
+      compte: item?.compte || null,
+      libelleaux: item?.BaseAux?.libelle || 'Aucune libellé',
+      id_dossier: Number(item?.id_dossier) || null,
+      dossier: item?.dossier.dossier || null,
+    }));
+
+    mappedListe.sort((a, b) => {
+      const compteA = parseInt(a.compte?.replace(/\D/g, '') || '0', 10);
+      const compteB = parseInt(b.compte?.replace(/\D/g, '') || '0', 10);
+      return compteA - compteB;
+    });
+
+    const uniqueListe = [];
+    const seen = new Set();
+    for (const item of mappedListe) {
+      const key = `${item.libelle}-${item.compte}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueListe.push(item);
+      }
+    }
+
+    return res.json({
+      state: uniqueListe.length > 0,
+      msg: uniqueListe.length > 0 ? "Données reçues avec succès !" : "Aucune donnée trouvée",
+      liste: uniqueListe
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      state: false,
+      msg: "Erreur serveur",
+      error: error.message
+    });
+  }
+};
+
+const recupPcIdLibelleForJournal = async (req, res) => {
+  try {
+    const { id_dossier, id_compte } = req.params;
+
+    const dossierData = await dossiers.findByPk(id_dossier);
+
+    const listepc = await dossierPlanComptable.findAll({
+      where: {
+        id_dossier: id_dossier,
+        id_compte,
+        libelle: { [Sequelize.Op.ne]: 'Collectif' },
+      },
+      include: [
+        {
+          model: dossierPlanComptable,
+          as: 'BaseAux',
+          attributes: ['compte'],
+          required: false,
+          where: {
+            id_dossier: id_dossier,
+            id_compte
+          }
+        },
+        {
+          model: dossiers,
+          as: 'dossier',
+          attributes: ['dossier'],
+        }
+      ],
+      order: [['compte', 'ASC']],
+      attributes: ['libelle', 'id', 'id_dossier', 'compteautre', 'libelleautre']
+    });
+
+    const mappedListe = listepc.map(item => ({
+      id: item.id,
+      libelle: item?.libelle || 'Aucune libellé',
+      compte: item?.BaseAux?.compte || null,
+      id_dossier: Number(item?.id_dossier) || null,
+      dossier: item?.dossier.dossier || null,
+    }));
+
+    const uniqueListe = [];
+    const seen = new Set();
+    for (const item of mappedListe) {
+      const key = `${item.libelle}-${item.compte}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueListe.push(item);
+      }
+    }
+
+    return res.json({
+      state: uniqueListe.length > 0,
+      msg: uniqueListe.length > 0 ? "Données reçues avec succès !" : "Aucune donnée trouvée",
+      liste: uniqueListe
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      state: false,
+      msg: "Erreur serveur",
+      error: error.message
+    });
+  }
+}
+
+const recupPcClasseSix = async (req, res) => {
+  try {
+    const { id_dossier, id_compte } = req.params;
+
+    const listepc = await dossierPlanComptable.findAll({
+      where: {
+        id_dossier: id_dossier,
+        id_compte: id_compte,
+        libelle: { [Sequelize.Op.ne]: 'Collectif' },
+        compte: { [Sequelize.Op.like]: '6%' }
+      },
+      include: [
+        {
+          model: dossierPlanComptable,
+          as: 'BaseAux',
+          attributes: ['compte'],
+          required: false,
+          where: {
+            id_dossier: id_dossier,
+            id_compte: id_compte
+          }
+        }
+      ],
+      order: [['compte', 'ASC']],
+      attributes: ['libelle', 'id']
+    });
+
+    const mappedListe = listepc.map(item => ({
+      id: item.id,
+      libelle: item.libelle,
+      compte: item.BaseAux?.compte || null
+    }));
+
+    const uniqueListe = [];
+    const seen = new Set();
+
+    for (const item of mappedListe) {
+      const key = `${item.libelle}-${item.compte}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueListe.push(item);
+      }
+    }
+
+    const resData = {
+      state: true,
+      msg: "Donnée reçues avec succes !",
+      liste: uniqueListe
+    };
+
+    if (listepc) {
+      resData.state = true;
+      resData.msg = "Donnée reçues avec succes !"
+    } else {
+      resData.state = false;
+      resData.msg = "Une erreur est survenue au moment du traitement des données";
+    }
+
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+const recupPcCompteIsi = async (req, res) => {
+  try {
+    const { id_dossier, id_compte } = req.params;
+    const { compteisi } = req.query;
+
+    if (!id_compte) {
+      return res.status(400).json({ state: false, message: 'Id_compte non trouvé' });
+    }
+    if (!id_dossier) {
+      return res.status(400).json({ state: false, message: 'Id_dossier non trouvé' });
+    }
+    if (!compteisi) {
+      return res.status(400).json({ state: false, message: 'Compte isi non trouvé' });
+    }
+
+    const listepc = await dossierPlanComptable.findAll({
+      where: {
+        id_dossier: id_dossier,
+        id_compte: id_compte,
+        libelle: { [Sequelize.Op.ne]: 'Collectif' },
+        compte: { [Sequelize.Op.like]: `${compteisi}%` }
+      },
+      include: [
+        {
+          model: dossierPlanComptable,
+          as: 'BaseAux',
+          attributes: ['compte'],
+          required: false,
+          where: {
+            id_dossier: id_dossier,
+            id_compte: id_compte
+          }
+        }
+      ],
+      order: [['compte', 'ASC']],
+      attributes: ['libelle', 'id']
+    });
+
+    const mappedListe = listepc.map(item => ({
+      id: item.id,
+      libelle: item.libelle,
+      compte: item.BaseAux?.compte || null
+    }));
+
+    const uniqueListe = [];
+    const seen = new Set();
+
+    for (const item of mappedListe) {
+      const key = `${item.libelle}-${item.compte}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueListe.push(item);
+      }
+    }
+
+    const resData = {
+      state: true,
+      msg: "Donnée reçues avec succes !",
+      liste: uniqueListe
+    };
+
+    if (listepc) {
+      resData.state = true;
+      resData.msg = "Donnée reçues avec succes !"
+    } else {
+      resData.state = false;
+      resData.msg = "Une erreur est survenue au moment du traitement des données";
+    }
+
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+const getProvinces = async (req, res) => {
+  try {
+    const provinces = await localites.findAll({
+      attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('province')), 'province']],
+      order: [[Sequelize.col('province'), 'ASC']],
+      raw: true
+    });
+    res.json(provinces.map(p => p.province));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getRegions = async (req, res) => {
+  try {
+    const { province } = req.params;
+    const regions = await localites.findAll({
+      attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('region')), 'region']],
+      order: [[Sequelize.col('region'), 'ASC']],
+      where: { province },
+      raw: true
+    });
+    res.json(regions.map(r => r.region));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getDistricts = async (req, res) => {
+  try {
+    const { province, region } = req.params;
+
+    const districts = await localites.findAll({
+      attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('district')), 'district']],
+      where: { province, region },
+      order: [[Sequelize.col('district'), 'ASC']],
+      raw: true
+    });
+
+    res.json(districts.map(d => d.district));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getCommunes = async (req, res) => {
+  try {
+    const { province, region, district } = req.params;
+
+    const communes = await localites.findAll({
+      attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('commune')), 'commune']],
+      where: { province, region, district },
+      order: [[Sequelize.col('commune'), 'ASC']],
+      raw: true
+    });
+
+    res.json(communes.map(c => c.commune));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const recupPcConsolidation = async (req, res) => {
+  try {
+    const { fileId, compteId } = req.body;
+
+    let resData = {
+      state: false,
+      msg: 'une erreur est survenue',
+      liste: []
+    }
+
+    let id_dossiers_a_utiliser = [Number(fileId)];
+
+    const consolidationDossierData = await consolidationDossier.findAll({
+      where: {
+        id_dossier: fileId,
+        id_compte: compteId
+      }
+    });
+
+    if (!consolidationDossierData.length) {
+      return res.json({
+        state: true,
+        msg: "Consolidation de dossier vide",
+        liste: []
+      });
+    }
+
+    id_dossiers_a_utiliser = [...new Set(
+      consolidationDossierData.map(val => Number(val.id_dossier_autre))
+    )];
+
+    const listepc = (await dossierPlanComptable.findAll({
+      where:
+      {
+        id_dossier: id_dossiers_a_utiliser,
+        id_compte: compteId
+      },
+      include: [
+        { model: dossiers, as: 'dossier', attributes: ['dossier'] },
+      ],
+      // raw: true,
+      order: [['compte', 'ASC']]
+    })).map((val => {
+      const data = val.toJSON();
+      data.dossier = data?.dossier?.dossier;
+      return data;
+    }))
+
+    if (listepc) {
+      resData.state = true;
+      resData.liste = listepc;
+    } else {
+      resData.state = false;
+      resData.msg = "Une erreur est survenue au moment du traitement des données";
+    }
+
+    return res.json(resData);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+module.exports = {
+  recupPc,
+  AddCptToPc,
+  keepListCptChgTvaAssoc,
+  deleteItemPc,
+  recupPcIdLibelle,
+  recupPcClasseSix,
+  recupPcCompteIsi,
+  getProvinces,
+  getRegions,
+  getDistricts,
+  getCommunes,
+  recupPcConsolidation,
+  recupPcIdLibelleForJournal
+};

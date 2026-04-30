@@ -29,6 +29,7 @@ db.sequelize = sequelize
 
 //connecting to model
 db.users = require('./userModel')(sequelize, DataTypes);
+db.userscomptes = require('./compteModel')(sequelize, DataTypes);
 db.resetToken = require('./resetTokenModel')(sequelize, DataTypes);
 
 //Gsetion rôle et permission
@@ -46,10 +47,43 @@ db.exercices = require('./exerciceModel')(sequelize, DataTypes);
 db.periodes = require('./periodesModel')(sequelize, DataTypes);
 db.grille_tarifaires = require('./grilleTarifaire')(sequelize, Sequelize);
 
+db.revision = require('./RevisionModel')(sequelize, DataTypes);
+db.revisionControle = require('./RevisionControleModel')(sequelize, DataTypes);
+db.revisionControleMatrix = require('./RevisionControleMatrixModel')(sequelize, DataTypes);
+db.tableControleAnomalies = require('./tableControleAnomaliesModel')(sequelize, DataTypes);
+db.revisionCommentaireAnomalies = require('./RevisionCommentaireAnomaliesModel')(sequelize, DataTypes);
+//paramétres - revision controle
+//db.revisionControleMatrix = require('./revisionControleMatrixModel')(sequelize, DataTypes);
+//db.revisionControle = require('./revisionControleModel')(sequelize, DataTypes);
+
+//paramétres - codes journaux
+db.codejournals = require('./codejournalsModel')(sequelize, DataTypes);
+
+//paramétres - comptabilité analytique
+db.caAxes = require('./caAxesModel')(sequelize, DataTypes);
+db.caSections = require('./caSectionsModel')(sequelize, DataTypes);
+
+//paramétres - comptabilité
+db.dossierplancomptables = require('./dossierPCModel')(sequelize, DataTypes);
+db.dossierpcdetailcptchg = require('./dossierPCDetailCptChgModel')(sequelize, DataTypes);
+db.dossierpcdetailcpttva = require('./dossierPCDetailCptTvaModel')(sequelize, DataTypes);
+db.localites = require('./localites')(sequelize, DataTypes);
+db.consolidationDossier = require('./consolidationDossierModel')(sequelize, DataTypes);
+db.journals = require('./journalsModel')(sequelize, DataTypes);
+
 //paramètres cotisation
 db.appels = require("./appelModel")(sequelize, Sequelize);
 db.ajustementappels = require("./ajustementappel")(sequelize, Sequelize);
 db.paiements = require("./paiementModel")(sequelize, Sequelize);
+
+//paramètres crm
+// db.dossierassocies = require('./dossierassociesModel')(sequelize, DataTypes);
+// db.dossierfiliales = require('./dossierfilialesModel')(sequelize, DataTypes);
+// db.dombancaires = require('./dombancairesModel')(sequelize, DataTypes);
+// db.pays = require('./paysModel')(sequelize, DataTypes);
+// db.dossierplancomptable = require('./dossierplancomptableModel')(sequelize, DataTypes);
+
+db.devises = require('./deviseModel')(sequelize, DataTypes);
 
 // home / dossiers
 db.dossiers = require('./dossiersModel')(sequelize, DataTypes);
@@ -57,11 +91,29 @@ db.dossiers = require('./dossiersModel')(sequelize, DataTypes);
 // parametres / portefeuille
 db.portefeuille = require('./portefeuilleModel')(sequelize, DataTypes);
 
+db.journals = require('./journalsModel')(sequelize, DataTypes);
+db.balanceimportees = require('./balanceimporteesModel')(sequelize, DataTypes);
+db.balances = require('./balanceModel')(sequelize, DataTypes);
+
+// Dossier Revision Matrice (cycles de révision)
+db.dossierRevisionMatrice = require('./dossierRevisionMatriceModel')(sequelize, DataTypes);
+db.dossierRevision = require('./dossierRevisionModel')(sequelize, DataTypes);
+db.dossierRevisionSynthese = require('./dossierRevisionSyntheseModel')(sequelize, DataTypes);
+db.dossierRevisionCommentaire = require('./dossierRevisionCommentaireModel')(sequelize, DataTypes);
+
+db.dossierRevisionAnalytique = require('./dossierRevisionAnalytiqueModel')(sequelize, DataTypes);
+db.commentaireAnalytique = require('./commentaireAnalytiqueModel')(sequelize, DataTypes);
+db.revuAnalytique = require('./revuAnalytiqueModel')(sequelize, DataTypes);
+db.commentaireAnalytiqueMensuelle = require('./commentaireAnalytiqueMensuelleModel.js')(sequelize, DataTypes);
+
 Object.keys(db).forEach(modelName => {
     if (db[modelName].associate) {
         db[modelName].associate(db);
     }
 });
+
+db.devises.belongsTo(db.userscomptes, { foreignKey: 'id_compte', targetKey: 'id' });
+db.userscomptes.hasMany(db.devises, { foreignKey: 'id_compte', sourceKey: 'id' });
 
 // Rôle et permission
 db.roles.hasMany(db.rolePermission, { foreignKey: 'role_id', sourceKey: 'id' });
@@ -82,6 +134,50 @@ db.users.belongsTo(db.roles, { foreignKey: 'role_id', targetKey: 'id' });
 // Définir la relation (Pour le JOIN)
 db.membres.hasMany(db.membres_updates, { foreignKey: 'membre_id' });
 db.membres_updates.belongsTo(db.membres, { foreignKey: 'membre_id', as: 'membre_info' });
+
+db.balances.belongsTo(db.dossierplancomptables, { as: 'infosCompte', foreignKey: 'id_numcompte', targetKey: 'id' });
+
+
+db.dossierplancomptables.hasMany(db.journals, { foreignKey: 'id_numcpt', sourceKey: 'id' });
+db.codejournals.hasMany(db.journals, { foreignKey: 'id_journal', sourceKey: 'id' });
+db.dossiers.hasMany(db.journals, { foreignKey: 'id_dossier', sourceKey: 'id' });
+
+db.journals.belongsTo(db.dossierplancomptables, { foreignKey: 'id_numcpt', targetKey: 'id' });
+db.journals.belongsTo(db.dossierplancomptables, { foreignKey: 'id_numcptcentralise', targetKey: 'id', as: 'compteCentralise' });
+db.journals.belongsTo(db.codejournals, { foreignKey: 'id_journal', targetKey: 'id' });
+db.journals.belongsTo(db.dossiers, { foreignKey: 'id_dossier', targetKey: 'id' });
+
+db.dossierRevisionSynthese = require('./dossierRevisionSyntheseModel')(sequelize, DataTypes);
+db.dossierRevisionCommentaire = require('./dossierRevisionCommentaireModel')(sequelize, DataTypes);
+db.dossierRevisionAnalytique = require('./dossierRevisionAnalytiqueModel')(sequelize, DataTypes);
+
+// Analyse Fournisseur/Client
+db.analyseFournisseurLignes = require('./analyseFournisseurLigneModel')(sequelize, DataTypes);
+db.analyseFournisseurAnomalies = require('./analyseFournisseurAnomalieModel')(sequelize, DataTypes);
+
+// Analyse Client
+db.analyseClientLignes = require('./analyseClientLigneModel')(sequelize, DataTypes);
+db.analyseClientAnomalies = require('./analyseClientAnomalieModel')(sequelize, DataTypes);
+
+//Doublon
+db.rechercheDoublons = require('./rechercheDoublonModel')(sequelize, DataTypes);
+
+// Revision analytique
+db.revisionAnalytiqueResultats = require('./revisionAnalytiqueResultatModel')(sequelize, DataTypes);
+
+// Revision analytique resultats associations
+db.revisionAnalytiqueResultats.belongsTo(db.dossiers, { foreignKey: 'id_dossier', targetKey: 'id' });
+db.dossiers.hasMany(db.revisionAnalytiqueResultats, { foreignKey: 'id_dossier', sourceKey: 'id' });
+
+db.revisionAnalytiqueResultats.belongsTo(db.exercices, { foreignKey: 'id_exercice', targetKey: 'id' });
+db.exercices.hasMany(db.revisionAnalytiqueResultats, { foreignKey: 'id_exercice', sourceKey: 'id' });
+
+db.revisionAnalytiqueResultats.belongsTo(db.userscomptes, { foreignKey: 'id_compte', targetKey: 'id' });
+db.userscomptes.hasMany(db.revisionAnalytiqueResultats, { foreignKey: 'id_compte', sourceKey: 'id' });
+
+db.revisionAnalytiqueResultats.belongsTo(db.journals, { foreignKey: 'id_jnl', targetKey: 'id' });
+db.journals.hasMany(db.revisionAnalytiqueResultats, { foreignKey: 'id_jnl', sourceKey: 'id' });
+
 
 // --- DÉFINITION DES RELATIONS ---
 // Un exercice possède plusieurs tarifs

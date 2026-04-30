@@ -1,0 +1,3737 @@
+const db = require("../../Models");
+const { Op } = require("sequelize");
+require('dotenv').config();
+
+const devises = db.devises;
+const journals = db.journals;
+const dossierplancomptable = db.dossierplancomptables;
+const codejournals = db.codejournals;
+const rapprochements = db.rapprochements;
+const analytiques = db.analytiques;
+const consolidationDossier = db.consolidationDossier;
+const dossiers = db.dossiers;
+const exercices = db.exercices;
+const detailsimmo = db.detailsimmo;
+const sequelize = db.sequelize;
+
+const fs = require('fs');
+const path = require('path');
+
+// Fonction pour plurieliser un mot
+function pluralize(count, word) {
+    return count > 1 ? word + 's' : word;
+}
+
+// --- Rapprochements: PC 512 éligibles par exercice ---
+exports.listEligiblePc512 = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        if (!fileId || !compteId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        // Lister tous les comptes 512 du plan comptable du dossier et du compte (pas de filtre exercice)
+        const sql = `
+            SELECT pc.*
+            FROM dossierplancomptables pc
+            WHERE pc.id_dossier = :fileId
+              AND pc.id_compte = :compteId
+              AND pc.compte LIKE '512%'
+            ORDER BY pc.compte ASC
+        `;
+        const rows = await db.sequelize.query(sql, {
+            replacements: { fileId, compteId },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+        return res.json({ state: true, list: rows || [] });
+    } catch (err) {
+        console.error('[RAPPRO][PCS] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Ecritures: marquer/démarquer comme rapprochée en masse ---
+exports.updateEcrituresRapprochement = async (req, res) => {
+    try {
+        const { ids, fileId, compteId, exerciceId, rapprocher, dateRapprochement } = req.body || {};
+        if (!Array.isArray(ids) || ids.length === 0 || !fileId || !compteId || !exerciceId || typeof rapprocher !== 'boolean') {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants ou invalides' });
+        }
+        const payload = {
+            rapprocher: !!rapprocher,
+            // store as 'YYYY-MM-DD' to avoid TZ shift
+            date_rapprochement: !!rapprocher ? (dateRapprochement ? String(dateRapprochement).substring(0, 10) : null) : null,
+            modifierpar: Number(compteId) || 0,
+        };
+        if (rapprocher && !payload.date_rapprochement) {
+            return res.status(400).json({ state: false, msg: 'dateRapprochement requis quand rapprocher = true' });
+        }
+        const [affected] = await journals.update(payload, {
+            where: {
+                id: ids,
+                id_compte: Number(compteId),
+                id_dossier: Number(fileId),
+                id_exercice: Number(exerciceId),
+            }
+        });
+        return res.json({ state: true, updated: affected });
+    } catch (err) {
+        console.error('[RAPPRO][MARK] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Rapprochements: calcul des soldes pour une ligne sélectionnée ---
+exports.computeSoldesRapprochement = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const pcId = Number(req.query?.pcId);
+        const rapproId = Number(req.query?.rapproId);
+        const endDateParam = req.query?.endDate; // requis pour la ligne sélectionnée
+        const soldeBancaireParam = req.query?.soldeBancaire; // optionnel
+        if (!fileId || !compteId || !exerciceId || !pcId || !endDateParam || !rapproId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        const exo = await db.exercices.findByPk(exerciceId);
+        if (!exo) return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        const dateDebut = exo.date_debut ? String(exo.date_debut).substring(0, 10) : null;
+        const dateFin = endDateParam ? String(endDateParam).substring(0, 10) : null;
+        if (!dateDebut || !dateFin) return res.status(400).json({ state: false, msg: 'Dates invalides' });
+        try {
+            console.debug('[RAPPRO][COMPUTE][INPUT]', { fileId, compteId, exerciceId, pcId, rapproId, endDateParam, dateDebut, dateFin, soldeBancaireParam });
+        } catch { }
+
+        const sqlAggBase = `
+            FROM journals j
+            JOIN codejournals cj ON cj.id = j.id_journal
+            JOIN dossierplancomptables pc ON pc.id = :pcId
+            JOIN dossierplancomptables c ON c.id = j.id_numcpt
+            WHERE j.id_compte = :compteId
+              AND j.id_dossier = :fileId
+              AND j.id_exercice = :exerciceId
+              AND cj.compteassocie = pc.compte
+              AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+              AND c.compte <> pc.compte
+        `;
+
+        // Total de TOUTES les écritures (pour solde_comptable)
+        // sous-ensemble identique au grid: NON rapprochées
+        // + rapprochées dont la date_rapprochement = dateFin sélectionnée
+        const sqlAll = `SELECT COALESCE(SUM(j.credit),0) AS sum_credit, COALESCE(SUM(j.debit),0) AS sum_debit ${sqlAggBase}
+                        AND ( (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 0
+                              OR ( (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 1 AND j.date_rapprochement = :dateFin )
+                            )`;
+        // Total des écritures NON rapprochées uniquement (rapprocher = false)
+        const sqlNonRapp = `SELECT COALESCE(SUM(j.credit),0) AS sum_credit, COALESCE(SUM(j.debit),0) AS sum_debit ${sqlAggBase}
+                            AND (CASE WHEN j.rapprocher THEN 1 ELSE 0 END) = 0`;
+
+        const [totAll] = await db.sequelize.query(sqlAll, {
+            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+        const [totNonRapp] = await db.sequelize.query(sqlNonRapp, {
+            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+
+        // Utiliser la même convention que le grid: Débit - Crédit
+        const totalAll = (Number(totAll.sum_debit) || 0) - (Number(totAll.sum_credit) || 0);
+        const totalNonRapp = (Number(totNonRapp.sum_debit) || 0) - (Number(totNonRapp.sum_credit) || 0);
+
+        // solde comptable = total Débit - Crédit sur TOUTES les écritures
+        const solde_comptable = totalAll;
+        // solde lignes non rapprochées = total Débit - Crédit sur les lignes NON rapprochées uniquement
+        const solde_non_rapproche = totalNonRapp;
+
+        const solde_bancaire = soldeBancaireParam !== undefined && soldeBancaireParam !== null ? Number(soldeBancaireParam) : null;
+        const ecart = typeof solde_bancaire === 'number' && !isNaN(solde_bancaire)
+            ? (solde_comptable - solde_bancaire - solde_non_rapproche)
+            : null;
+
+        const payload = { state: true, solde_comptable, solde_non_rapproche, solde_bancaire, ecart };
+        try {
+            console.debug('[RAPPRO][COMPUTE][RESULT]', { totals: { totAll, totNonRapp, totalAll, totalNonRapp }, payload });
+        } catch { }
+
+        // Persister immédiatement les soldes sur la ligne de rapprochement concernée
+        try {
+            await rapprochements.update(
+                {
+                    solde_comptable,
+                    solde_non_rapproche,
+                    // on met à jour solde_bancaire seulement s'il est fourni
+                    ...(typeof solde_bancaire === 'number' && !isNaN(solde_bancaire) ? { solde_bancaire } : {}),
+                    ecart,
+                },
+                {
+                    where: {
+                        id: rapproId,
+                        id_dossier: fileId,
+                        id_compte: compteId,
+                        id_exercice: exerciceId,
+                        pc_id: pcId,
+                    },
+                }
+            );
+        } catch (errUpdate) {
+            console.error('[RAPPRO][COMPUTE][UPDATE_RAPPRO] error:', errUpdate);
+        }
+
+        return res.json(payload);
+
+    } catch (err) {
+        console.error('[RAPPRO][COMPUTE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Rapprochements: liste des rapprochements pour un PC ---
+exports.listRapprochements = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const pcId = Number(req.query?.pcId);
+        if (!fileId || !compteId || !exerciceId || !pcId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        const rows = await rapprochements.findAll({
+            where: {
+                id_dossier: fileId,
+                id_compte: compteId,
+                id_exercice: exerciceId,
+                pc_id: pcId,
+            },
+            order: [['date_debut', 'ASC'], ['id', 'ASC']]
+        });
+        return res.json({ state: true, list: rows || [] });
+    } catch (err) {
+        console.error('[RAPPRO][LIST] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Rapprochements: créer ---
+exports.createRapprochement = async (req, res) => {
+    try {
+        const {
+            fileId, compteId, exerciceId, pcId,
+            date_debut, date_fin,
+            solde_comptable = 0, solde_bancaire = 0, solde_non_rapproche = 0,
+        } = req.body || {};
+        if (!fileId || !compteId || !exerciceId || !pcId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        const row = await rapprochements.create({
+            id_dossier: Number(fileId),
+            id_compte: Number(compteId),
+            id_exercice: Number(exerciceId),
+            pc_id: Number(pcId),
+            // Store as provided date-only strings to avoid timezone issues
+            date_debut: date_debut ? String(date_debut).substring(0, 10) : null,
+            date_fin: date_fin ? String(date_fin).substring(0, 10) : null,
+            solde_comptable: Number(solde_comptable) || 0,
+            solde_bancaire: Number(solde_bancaire) || 0,
+            solde_non_rapproche: Number(solde_non_rapproche) || 0,
+        });
+        return res.json({ state: true, id: row.id });
+    } catch (err) {
+        console.error('[RAPPRO][CREATE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Rapprochements: modifier ---
+exports.updateRapprochement = async (req, res) => {
+    try {
+        const id = Number(req.params?.id);
+        const {
+            fileId, compteId, exerciceId, pcId,
+            date_debut, date_fin,
+            solde_comptable = 0, solde_bancaire = 0, solde_non_rapproche = 0,
+        } = req.body || {};
+        if (!id || !fileId || !compteId || !exerciceId || !pcId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        const [affected] = await rapprochements.update({
+            date_debut: date_debut ? String(date_debut).substring(0, 10) : null,
+            date_fin: date_fin ? String(date_fin).substring(0, 10) : null,
+            solde_comptable: Number(solde_comptable) || 0,
+            solde_bancaire: Number(solde_bancaire) || 0,
+            solde_non_rapproche: Number(solde_non_rapproche) || 0,
+        }, {
+            where: {
+                id,
+                id_dossier: Number(fileId),
+                id_compte: Number(compteId),
+                id_exercice: Number(exerciceId),
+                pc_id: Number(pcId),
+            }
+        });
+        if (affected === 0) return res.status(404).json({ state: false, msg: 'Introuvable' });
+        return res.json({ state: true, id });
+    } catch (err) {
+        console.error('[RAPPRO][UPDATE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Rapprochements: supprimer ---
+exports.deleteRapprochement = async (req, res) => {
+    try {
+        const id = Number(req.params?.id);
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        if (!id || !fileId || !compteId || !exerciceId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        const affected = await rapprochements.destroy({ where: { id, id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId } });
+        if (!affected) return res.status(404).json({ state: false, msg: 'Introuvable' });
+        return res.json({ state: true, id });
+    } catch (err) {
+        console.error('[RAPPRO][DELETE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Ecritures pour rapprochement: liste des écritures filtrées ---
+exports.listEcrituresForRapprochement = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const pcId = Number(req.query?.pcId);
+        const endDateParam = req.query?.endDate; // optionnel, sinon on prend fin d'exercice
+        if (!fileId || !compteId || !exerciceId || !pcId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        // Récupérer début/fin d'exercice
+        const exo = await db.exercices.findByPk(exerciceId);
+        if (!exo) return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        const dateDebut = exo.date_debut;
+        const dateFin = endDateParam ? new Date(endDateParam) : exo.date_fin;
+        // SQL: journaux du code journal associé au compte 512 sélectionné, dates incluses, et compte different du 512 sélectionné
+        const sql = `
+            SELECT j.*, c.compte AS compte_ecriture, cj.code AS code_journal
+            FROM journals j
+            JOIN codejournals cj ON cj.id = j.id_journal
+            JOIN dossierplancomptables pc ON pc.id = :pcId
+            JOIN dossierplancomptables c ON c.id = j.id_numcpt
+            WHERE j.id_compte = :compteId
+              AND j.id_dossier = :fileId
+              AND j.id_exercice = :exerciceId
+              AND cj.compteassocie = pc.compte
+              AND j.dateecriture BETWEEN :dateDebut AND :dateFin
+              AND c.compte <> pc.compte
+            ORDER BY j.dateecriture ASC, j.id ASC
+        `;
+        const rows = await db.sequelize.query(sql, {
+            replacements: { fileId, compteId, exerciceId, pcId, dateDebut, dateFin },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+        return res.json({ state: true, list: rows || [] });
+    } catch (err) {
+        console.error('[RAPPRO][ECRITURES] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: comptes de classe 2 (hors 28 et 29) ---
+exports.listImmobilisationsPc2 = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        if (!fileId || !compteId || !exerciceId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        // Lister tous les comptes d'immobilisations (classe 2 hors 28 et 29)
+        // Solde calculé directement à partir des journaux: SUM(debit) - SUM(credit)
+        // Compte d'amortissement déduit (ex: 20100 -> 28010) puis recherché dans le plan comptable.
+        const sql = `
+            SELECT
+              pc.pc_id AS id,
+              pc.compte,
+              pc.libelle,
+              pc_amort.id AS compte_amort_id,
+              pc_amort.compte AS compte_amort,
+              -- Solde sur le compte d'immobilisation (journals j)
+              (
+                SELECT COALESCE(SUM(j1.debit), 0)
+                FROM journals j1
+                WHERE j1.id_numcpt = pc.pc_id
+                  AND j1.id_compte = :compteId
+                  AND j1.id_dossier = :fileId
+                  AND j1.id_exercice = :exerciceId
+              ) AS mvtdebit,
+              (
+                SELECT COALESCE(SUM(j1.credit), 0)
+                FROM journals j1
+                WHERE j1.id_numcpt = pc.pc_id
+                  AND j1.id_compte = :compteId
+                  AND j1.id_dossier = :fileId
+                  AND j1.id_exercice = :exerciceId
+              ) AS mvtcredit,
+              (
+                SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
+                FROM journals j1
+                WHERE j1.id_numcpt = pc.pc_id
+                  AND j1.id_compte = :compteId
+                  AND j1.id_dossier = :fileId
+                  AND j1.id_exercice = :exerciceId
+              ) AS solde,
+              -- Amortissement antérieur: compte d'amort, journaux type RAN
+              (
+                SELECT
+                  COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
+                  - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
+                FROM journals ja1
+                LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
+                WHERE ja1.id_numcpt = pc_amort.id
+                  AND ja1.id_compte = :compteId
+                  AND ja1.id_dossier = :fileId
+                  AND ja1.id_exercice = :exerciceId
+              ) AS amort_ant,
+              -- Dotation: compte d'amort, journaux type <> RAN (ou sans type)
+              (
+                SELECT
+                  COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
+                  - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
+                FROM journals ja2
+                LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
+                WHERE ja2.id_numcpt = pc_amort.id
+                  AND ja2.id_compte = :compteId
+                  AND ja2.id_dossier = :fileId
+                  AND ja2.id_exercice = :exerciceId
+              ) AS dotation,
+              -- Valeur nette et VNC immo: solde - amort_ant - dotation
+              (
+                (
+                  SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
+                  FROM journals j1
+                  WHERE j1.id_numcpt = pc.pc_id
+                    AND j1.id_compte = :compteId
+                    AND j1.id_dossier = :fileId
+                    AND j1.id_exercice = :exerciceId
+                )
+                - (
+                  SELECT
+                    COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
+                  FROM journals ja1
+                  LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
+                  WHERE ja1.id_numcpt = pc_amort.id
+                    AND ja1.id_compte = :compteId
+                    AND ja1.id_dossier = :fileId
+                    AND ja1.id_exercice = :exerciceId
+                )
+                - (
+                  SELECT
+                    COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
+                  FROM journals ja2
+                  LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
+                  WHERE ja2.id_numcpt = pc_amort.id
+                    AND ja2.id_compte = :compteId
+                    AND ja2.id_dossier = :fileId
+                    AND ja2.id_exercice = :exerciceId
+                )
+              ) AS valeur_nette,
+              (
+                (
+                  SELECT COALESCE(SUM(j1.debit), 0) - COALESCE(SUM(j1.credit), 0)
+                  FROM journals j1
+                  WHERE j1.id_numcpt = pc.pc_id
+                    AND j1.id_compte = :compteId
+                    AND j1.id_dossier = :fileId
+                    AND j1.id_exercice = :exerciceId
+                )
+                - (
+                  SELECT
+                    COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.credit ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN cj1.type = 'RAN' THEN ja1.debit ELSE 0 END), 0)
+                  FROM journals ja1
+                  LEFT JOIN codejournals cj1 ON cj1.id = ja1.id_journal
+                  WHERE ja1.id_numcpt = pc_amort.id
+                    AND ja1.id_compte = :compteId
+                    AND ja1.id_dossier = :fileId
+                    AND ja1.id_exercice = :exerciceId
+                )
+                - (
+                  SELECT
+                    COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.credit ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN cj2.type <> 'RAN' OR cj2.type IS NULL THEN ja2.debit ELSE 0 END), 0)
+                  FROM journals ja2
+                  LEFT JOIN codejournals cj2 ON cj2.id = ja2.id_journal
+                  WHERE ja2.id_numcpt = pc_amort.id
+                    AND ja2.id_compte = :compteId
+                    AND ja2.id_dossier = :fileId
+                    AND ja2.id_exercice = :exerciceId
+                )
+              ) AS vnc_immo
+            FROM (
+              SELECT
+                MIN(id) AS pc_id,
+                compte,
+                MIN(libelle) AS libelle,
+                id_compte,
+                id_dossier
+                FROM dossierplancomptables
+                WHERE id_dossier = :fileId
+                AND id_compte = :compteId
+                AND compte LIKE '2%'
+                AND compte NOT LIKE '28%'
+                AND compte NOT LIKE '29%'
+                GROUP BY compte, id_compte, id_dossier
+            ) pc
+            LEFT JOIN dossierplancomptables pc_amort
+              ON pc_amort.id_compte = pc.id_compte
+              AND pc_amort.id_dossier = pc.id_dossier
+              AND pc_amort.compte = CONCAT(
+                SUBSTRING(pc.compte, 1, 1),
+                '8',
+                SUBSTRING(pc.compte, 2, CHAR_LENGTH(pc.compte) - 2)
+              )
+            ORDER BY pc.compte ASC
+        `;
+        const rows = await db.sequelize.query(sql, {
+            replacements: { fileId, compteId, exerciceId },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+        return res.json({ state: true, list: rows || [] });
+    } catch (err) {
+        console.error('[IMMO][PCS] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: lignes d'amortissement par immobilisation (details_immo_lignes) ---
+exports.listDetailsImmoLignes = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const detailImmoId = Number(req.query?.detailId);
+        if (!fileId || !compteId || !exerciceId || !detailImmoId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+        const rows = await db.detailsImmoLignes.findAll({
+            where: {
+                id_dossier: fileId,
+                id_compte: compteId,
+                id_exercice: exerciceId,
+                id_detail_immo: detailImmoId,
+            },
+            order: [['id', 'ASC']],
+        });
+        return res.json({ state: true, list: rows || [] });
+    } catch (err) {
+        console.error('[IMMO][LIGNES] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: génération écritures comptables (journal Imau) ---
+exports.generateImmoEcritures = async (req, res) => {
+    try {
+        const fileId = Number(req.body?.fileId);
+        const compteId = Number(req.body?.compteId);
+        const exerciceId = Number(req.body?.exerciceId);
+        const detailedByMonth = Boolean(req.body?.detailedByMonth);
+
+        if (!fileId || !compteId || !exerciceId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        // Le mode détaillé par mois est maintenant implémenté
+
+        const [exo, dossier] = await Promise.all([
+            db.exercices.findByPk(exerciceId),
+            db.dossiers.findByPk(fileId),
+        ]);
+        if (!exo) return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        if (!dossier) return res.status(404).json({ state: false, msg: 'Dossier introuvable' });
+
+        const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+        if (!exoFin || isNaN(exoFin.getTime())) {
+            return res.status(400).json({ state: false, msg: 'date_fin exercice invalide' });
+        }
+
+        const toYMD = (d) => {
+            const x = new Date(d);
+            if (isNaN(x.getTime())) return null;
+            return x.toISOString().substring(0, 10);
+        };
+        const exoFinYMD = toYMD(exoFin);
+
+        // 1) Assurer l'existence du code journal Imau
+        let imau = await db.codejournals.findOne({
+            where: { id_compte: compteId, id_dossier: fileId, code: 'Imau' },
+        });
+        if (!imau) {
+            imau = await db.codejournals.create({
+                id_compte: compteId,
+                id_dossier: fileId,
+                code: 'Imau',
+                libelle: 'amortissement',
+                type: 'OD',
+            });
+        }
+
+        // 2) Suppression des anciennes écritures Imau (sécurité)
+        await db.journals.destroy({
+            where: {
+                id_compte: compteId,
+                id_dossier: fileId,
+                id_exercice: exerciceId,
+                id_journal: imau.id,
+            }
+        });
+
+
+        const [details, lignes] = await Promise.all([
+            // Utiliser SQL avec JOIN pour récupérer le libellé du compte directement
+            db.sequelize.query(`
+                SELECT 
+                    d.*,
+                    pc.compte as compte_immo,
+                    pc.libelle as libelle_compte_immo
+                FROM details_immo d
+                LEFT JOIN dossierplancomptables pc ON d.pc_id = pc.id
+                WHERE d.id_dossier = :fileId
+                  AND d.id_compte = :compteId
+                  AND d.id_exercice = :exerciceId
+                ORDER BY d.id ASC
+            `, {
+                replacements: { fileId, compteId, exerciceId },
+                type: db.Sequelize.QueryTypes.SELECT,
+            }).then(result => {
+                if (result && result.length > 0) {
+                    console.log('[IMMO][DEBUG] Champs disponibles:', Object.keys(result[0]));
+                }
+                return result;
+            }),
+            db.detailsImmoLignes.findAll({
+                where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId },
+                order: [['id', 'ASC']],
+                raw: true,
+            }),
+        ]);
+
+
+        const detailsById = new Map((details || []).map(d => [Number(d.id), d]));
+        const lignesByDetailId = new Map();
+        for (const l of (lignes || [])) {
+            const did = Number(l.id_detail_immo);
+            if (!lignesByDetailId.has(did)) lignesByDetailId.set(did, []);
+            lignesByDetailId.get(did).push(l);
+        }
+
+       
+
+        // Solution de secours : si pas de détails mais des lignes, créer des détails factices
+        if (detailsById.size === 0 && lignesByDetailId.size > 0) {
+
+            // Récupérer les IDs des immobilisations depuis les lignes
+            const detailImmoIds = Array.from(lignesByDetailId.keys());
+
+            // Charger les immobilisations depuis details_immo (sans filtre exercice, dossier, compte)
+            const missingDetails = await db.sequelize.query(`
+                SELECT 
+                    d.*,
+                    pc.compte as compte_immo,
+                    pc.libelle as libelle_compte_immo
+                FROM details_immo d
+                LEFT JOIN dossierplancomptables pc ON d.pc_id = pc.id
+                WHERE d.id IN (:detailIds)
+                ORDER BY d.id ASC
+            `, {
+                replacements: { detailIds: detailImmoIds },
+                type: db.Sequelize.QueryTypes.SELECT,
+            });
+
+
+            // Ajouter les immobilisations récupérées à la map
+            for (const detail of missingDetails) {
+                detailsById.set(Number(detail.id), detail);
+            }
+
+            // Si certaines immobilisations n'ont toujours pas été trouvées, créer des détails factices
+            for (const [detailId, lignes] of lignesByDetailId.entries()) {
+                if (!detailsById.has(detailId)) {
+                    const premiereLigne = lignes[0] || {};
+                    detailsById.set(detailId, {
+                        id: detailId,
+                        code: `IMMO${detailId}`,
+                        compte_amortissement: premiereLigne.compte_amortissement || '281000',
+                        pc_id: null,
+                        compte_immo: null,
+                        libelle_compte_immo: null,
+                        intitule: null,
+                    });
+                }
+            }
+
+        }
+
+        // 4) Helpers plan comptable
+        const ensureCompte = async (compteNum, libelle) => {
+            const compte = String(compteNum || '').trim();
+            if (!compte) return null;
+
+            let row = await db.dossierplancomptables.findOne({
+                where: { id_compte: compteId, id_dossier: fileId, compte },
+            });
+            if (!row) {
+                // Créer le compte avec le libellé fourni
+                row = await db.dossierplancomptables.create({
+                    id_compte: compteId,
+                    id_dossier: fileId,
+                    compte,
+                    libelle: libelle || `Compte ${compte}`,
+                    nature: 'General',
+                    typetier: 'general',
+                    baseaux: compte,
+                    pays: 'Madagascar',
+                });
+                await db.sequelize.query(
+                    `UPDATE dossierplancomptables SET baseaux_id = id WHERE id = :id`,
+                    { replacements: { id: row.id }, type: db.Sequelize.QueryTypes.UPDATE }
+                );
+            } else if (libelle && (!row.libelle || row.libelle.trim() === '' || row.libelle === `Compte ${compte}`)) {
+                // Mettre à jour le libellé si le compte existe mais n'a pas de libellé ou a un libellé générique
+                await db.dossierplancomptables.update(
+                    { libelle: libelle },
+                    { where: { id: row.id } }
+                );
+                row.libelle = libelle; // Mettre à jour l'objet local
+            }
+            return row;
+        };
+
+        await Promise.all([
+            ensureCompte('68111', 'Dotations amort. immobilisations incorporelles'),
+            ensureCompte('68112', 'Dotations amort. immobilisations corporelles'),
+            ensureCompte('68113', 'Dotations amort. immobilisations financières'),
+        ]);
+
+        // 5) Créer écritures selon le mode
+        const inserted = [];
+        let createdEcritures = 0;
+        let createdLignes = 0;
+
+        // Variables communes pour les calculs
+        const baseJours = Number(dossier.immo_amort_base_jours) || 360;
+
+        if (detailedByMonth) {
+            // Mode détaillé par mois : une écriture par mois par immobilisation avec proratisation
+            for (const [detailId, detail] of detailsById.entries()) {
+                const compteAmort = String(detail?.compte_amortissement || '').trim();
+                if (!compteAmort) continue;
+
+                // Récupérer les données de l'immobilisation
+                const montantHT = Number(detail?.montant_ht || detail?.montant) || 0;
+                const dureeMois = Number(detail?.duree_amort_mois) || 0;
+                const dateMiseService = detail?.date_mise_service ? new Date(detail.date_mise_service) : null;
+
+
+                if (!dateMiseService || isNaN(dateMiseService.getTime()) || montantHT <= 0 || dureeMois <= 0) {
+                    continue;
+                }
+
+                // Détermination compte 681xx selon compte_amortissement
+                let compteCharge = null;
+                if (compteAmort.startsWith('280')) compteCharge = '68111';
+                else if (compteAmort.startsWith('281')) compteCharge = '68112';
+                else if (compteAmort.startsWith('286')) compteCharge = '68113';
+                else if (compteAmort.startsWith('28')) compteCharge = '68112';
+                else compteCharge = '68112';
+
+                const [rowCharge, rowAmort] = await Promise.all([
+                    ensureCompte(compteCharge, 'Dotations amort. immobilisations corporelles'),
+                    ensureCompte(compteAmort, `Amortissement ${detail?.intitule || detail?.code || compteAmort}`),
+                ]);
+                if (!rowCharge || !rowAmort) continue;
+
+                const libelleCompteImmo = detail?.libelle_compte_immo || detail?.intitule || detail?.code || '';
+
+                // Calculer la dotation mensuelle et journalière
+                const dotationMensuelle = montantHT / dureeMois;
+                const dotationJournaliere = baseJours === 360 ? (dotationMensuelle / 30) : (dotationMensuelle / 30.4167); // Moyenne pour 365j
+
+                // Calculer les écritures mois par mois
+                let currentDate = new Date(dateMiseService);
+                let cumulAmort = 0;
+                let monthIndex = 0;
+                const finAmort = new Date(dateMiseService);
+                finAmort.setMonth(finAmort.getMonth() + dureeMois);
+
+             
+
+                let loopCount = 0;
+                while (cumulAmort < montantHT && monthIndex < dureeMois && currentDate < exoFin) {
+                    loopCount++;
+                    if (loopCount > 100) {
+                        break;
+                    }
+                    let montantMois = 0;
+                    let dateFinMois = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0); // Dernier jour du mois
+
+                    if (dateFinMois > exoFin) dateFinMois = new Date(exoFin);
+                    if (dateFinMois > finAmort) dateFinMois = new Date(finAmort);
+
+                    if (monthIndex === 0) {
+                        // Premier mois : proratisation selon date de mise en service
+                        if (baseJours === 360) {
+                            const jourMiseService = currentDate.getDate();
+                            const joursRestants = 30 - jourMiseService + 1;
+                            montantMois = Math.round(dotationJournaliere * joursRestants * 100) / 100;
+                        } else {
+                            // Base 365 : jours réels restants dans le mois
+                            const dernierJourMois = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+                            const joursRestants = dernierJourMois - currentDate.getDate() + 1;
+                            montantMois = Math.round(dotationJournaliere * joursRestants * 100) / 100;
+                        }
+                    } else {
+                        // Mois suivants : dotation complète
+                        if (baseJours === 360) {
+                            montantMois = Math.round(dotationJournaliere * 30 * 100) / 100;
+                        } else {
+                            // Base 365 : nombre de jours réels du mois
+                            const joursRéelsMois = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+                            montantMois = Math.round(dotationJournaliere * joursRéelsMois * 100) / 100;
+                        }
+                    }
+
+                    // Ajuster le dernier mois pour ne pas dépasser le montant total
+                    if (cumulAmort + montantMois > montantHT) {
+                        montantMois = Math.round((montantHT - cumulAmort) * 100) / 100;
+                    }
+
+                    if (montantMois > 0) {
+                        const idEcriture = String(Date.now() + Math.floor(Math.random() * 1000));
+                        const libelle = `Dot amort ${libelleCompteImmo}`.trim();
+
+                        const common = {
+                            id_compte: compteId,
+                            id_dossier: fileId,
+                            id_exercice: exerciceId,
+                            id_ecriture: idEcriture,
+                            datesaisie: new Date(),
+                            dateecriture: dateFinMois,
+                            id_journal: imau.id,
+                            piece: null,
+                            piecedate: null,
+                            libelle: libelle || 'Dot amort',
+                            devise: 'MGA',
+                            id_immob: detailId,
+                        };
+
+                        const [lDebit, lCredit] = await Promise.all([
+                            db.journals.create({
+                                ...common,
+                                id_numcpt: rowCharge.id,
+                                debit: montantMois,
+                                credit: 0,
+                            }),
+                            db.journals.create({
+                                ...common,
+                                id_numcpt: rowAmort.id,
+                                debit: 0,
+                                credit: montantMois,
+                            })
+                        ]);
+
+                        inserted.push(lDebit, lCredit);
+                        createdEcritures += 1;
+                        createdLignes += 2;
+                        cumulAmort += montantMois;
+                    }
+
+                    // Passer au mois suivant
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                    currentDate.setDate(1);
+                    monthIndex++;
+                }
+
+            }
+        } else {
+            // Mode simple : une écriture par compte classe 2 (compte_immo)
+            const groupedByCompte = new Map();
+
+            for (const [detailId, schedule] of lignesByDetailId.entries()) {
+                const detail = detailsById.get(detailId);
+                if (!detail) continue;
+
+                // Utiliser la somme des dotations de l'exercice (lignes sauvegardées)
+                let montant = 0;
+
+                // Trouver la ligne correspondant à la fin de l'exercice
+                const exactLine = exoFinYMD
+                    ? schedule.find(x => String(x.date_fin_exercice || '').substring(0, 10) === exoFinYMD)
+                    : null;
+
+                if (exactLine) {
+                    // Utiliser la dotation de la ligne exacte
+                    montant = Number(exactLine.dotation_periode_comp) || 0;
+                } else {
+                    // Sinon, sommer toutes les lignes de l'exercice
+                    montant = schedule.reduce((sum, ligne) => {
+                        return sum + (Number(ligne.dotation_periode_comp) || 0);
+                    }, 0);
+                }
+
+                if (montant <= 0) continue;
+
+                const compteAmort = String(detail?.compte_amortissement || '').trim();
+                const compteImmo = String(detail?.compte_immo || '').trim();
+                const libelleCompteImmo = detail?.libelle_compte_immo || detail?.intitule || detail?.code || '';
+
+                if (!compteAmort || !compteImmo) continue;
+
+                // Clé de regroupement : compte_immo + compte_amortissement
+                const groupKey = `${compteImmo}|${compteAmort}`;
+
+                if (!groupedByCompte.has(groupKey)) {
+                    groupedByCompte.set(groupKey, {
+                        compteImmo,
+                        compteAmort,
+                        libelleCompteImmo,
+                        montantTotal: 0,
+                        immobilisations: []
+                    });
+                }
+
+                const group = groupedByCompte.get(groupKey);
+                group.montantTotal += montant;
+                group.immobilisations.push({ detailId, montant });
+            }
+
+            // Créer une écriture par groupe (par compte classe 2)
+            for (const [groupKey, group] of groupedByCompte.entries()) {
+                const { compteImmo, compteAmort, libelleCompteImmo, montantTotal, immobilisations } = group;
+
+                // Détermination compte 681xx selon compte_amortissement
+                let compteCharge = null;
+                if (compteAmort.startsWith('280')) compteCharge = '68111';
+                else if (compteAmort.startsWith('281')) compteCharge = '68112';
+                else if (compteAmort.startsWith('286')) compteCharge = '68113';
+                else if (compteAmort.startsWith('28')) compteCharge = '68112';
+                else compteCharge = '68112';
+
+                const [rowCharge, rowAmort] = await Promise.all([
+                    ensureCompte(compteCharge, 'Dotations amort. immobilisations corporelles'),
+                    ensureCompte(compteAmort, `Amortissement ${libelleCompteImmo}`),
+                ]);
+                if (!rowCharge || !rowAmort) continue;
+
+                
+
+                const idEcriture = String(Date.now() + Math.floor(Math.random() * 1000));
+                const libelle = `Dot amort ${libelleCompteImmo}`.trim();
+
+                const common = {
+                    id_compte: compteId,
+                    id_dossier: fileId,
+                    id_exercice: exerciceId,
+                    id_ecriture: idEcriture,
+                    datesaisie: new Date(),
+                    dateecriture: exoFin,
+                    id_journal: imau.id,
+                    piece: null,
+                    piecedate: null,
+                    libelle: libelle || 'Dot amort',
+                    devise: 'MGA',
+                    id_immob: null,
+                };
+
+                const [lDebit, lCredit] = await Promise.all([
+                    db.journals.create({
+                        ...common,
+                        id_numcpt: rowCharge.id,
+                        debit: montantTotal,
+                        credit: 0,
+                    }),
+                    db.journals.create({
+                        ...common,
+                        id_numcpt: rowAmort.id,
+                        debit: 0,
+                        credit: montantTotal,
+                    })
+                ]);
+
+                inserted.push(lDebit, lCredit);
+                createdEcritures += 1;
+                createdLignes += 2;
+            }
+        }
+
+        return res.json({
+            state: true,
+            msg: 'Écritures générées',
+            created_ecritures: createdEcritures,
+            created_lignes: createdLignes,
+        });
+    } catch (err) {
+        console.error('[IMMO][ECRITURES][GENERATE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: annulation écritures comptables (journal Imau) ---
+exports.cancelImmoEcritures = async (req, res) => {
+    try {
+        const fileId = Number(req.body?.fileId);
+        const compteId = Number(req.body?.compteId);
+        const exerciceId = Number(req.body?.exerciceId);
+
+        if (!fileId || !compteId || !exerciceId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        const imau = await db.codejournals.findOne({
+            where: { id_compte: compteId, id_dossier: fileId, code: 'Imau' },
+        });
+
+        if (!imau) {
+            return res.json({ state: true, msg: 'Aucune écriture à supprimer', deleted_lignes: 0 });
+        }
+
+        const deleted = await db.journals.destroy({
+            where: {
+                id_compte: compteId,
+                id_dossier: fileId,
+                id_exercice: exerciceId,
+                id_journal: imau.id,
+            }
+        });
+
+        return res.json({ state: true, msg: 'Écritures supprimées', deleted_lignes: Number(deleted) || 0 });
+    } catch (err) {
+        console.error('[IMMO][ECRITURES][CANCEL] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: aperçu calcul amortissement linéaire (sans sauvegarde) ---
+
+exports.previewImmoLineaire = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const detailImmoId = Number(req.query?.detailId);
+
+        if (!fileId || !compteId || !exerciceId || !detailImmoId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        const [dossier, exo, detail] = await Promise.all([
+            db.dossiers.findByPk(fileId),
+            db.exercices.findByPk(exerciceId),
+            db.detailsimmo.findByPk(detailImmoId),
+        ]);
+        if (!dossier || !exo || !detail) {
+            return res.status(404).json({ state: false, msg: 'Données introuvables' });
+        }
+
+        // -----------------------------
+        // PARAMÈTRES DE BASE
+        // -----------------------------
+        const baseJours = Number(dossier.immo_amort_base_jours) || 360;
+        const montantHT = Number(detail.montant_ht) || Number(detail.montant) || 0;
+        const dateMS = new Date(detail.date_mise_service);
+        const exoDebut = exo.date_debut ? new Date(exo.date_debut) : null;
+        const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+
+        const dureeCompInitiale = Math.max(1, Number(detail.duree_amort_mois) || 0);
+        const dureeFisc = Math.max(0, Math.floor(Number(detail.duree_amort_mois_fisc) || 0));
+
+        // -----------------------------
+        // DONNÉES DE REPRISE (séparées comptable / fiscal)
+        // -----------------------------
+        const repriseActiveComp = Number(
+            detail.reprise_immobilisation_comp ?? detail.reprise_immobilisation
+        ) === 1;
+        const dateRepriseComp = (detail.date_reprise_comp || detail.date_reprise)
+            ? new Date(detail.date_reprise_comp || detail.date_reprise)
+            : null;
+        const amortAntComp = Number(detail.amort_ant_comp) || 0;
+
+        const repriseActiveFisc = Number(
+            detail.reprise_immobilisation_fisc ?? detail.reprise_immobilisation
+        ) === 1;
+        const dateRepriseFisc = (detail.date_reprise_fisc || detail.date_reprise)
+            ? new Date(detail.date_reprise_fisc || detail.date_reprise)
+            : null;
+        const amortAntFisc = Number(detail.amort_ant_fisc) || 0;
+
+        if (exoDebut && !isNaN(exoDebut.getTime()) && exoFin && !isNaN(exoFin.getTime())) {
+            if (repriseActiveComp && dateRepriseComp && !isNaN(dateRepriseComp.getTime()) && (dateRepriseComp < exoDebut || dateRepriseComp > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise comptable hors période de l'exercice" });
+            }
+            if (repriseActiveFisc && dateRepriseFisc && !isNaN(dateRepriseFisc.getTime()) && (dateRepriseFisc < exoDebut || dateRepriseFisc > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
+            }
+        }
+
+        // -----------------------------
+        // OUTILS
+        // -----------------------------
+        // Fonction pour ajouter des mois à une date
+        // d = date de départ, m = nombre de mois à ajouter
+        const addMonths = (d, m) => {
+            const nd = new Date(d);       // On crée une copie de la date pour ne pas modifier l'originale
+            nd.setMonth(nd.getMonth() + m); // On ajoute le nombre de mois à la date
+            return nd;                    // On retourne la nouvelle date
+        };
+
+        // Fonction pour ajouter des jours à une date
+        // d = date de départ, n = nombre de jours à ajouter
+        const addDays = (d, n) => {
+            const nd = new Date(d);       // On crée une copie de la date
+            nd.setDate(nd.getDate() + n); // On ajoute le nombre de jours
+            return nd;                    // On retourne la nouvelle date
+        };
+
+        // Fonction pour retourner la date la plus petite entre deux dates
+        // a et b = deux objets Date
+        const minDate = (a, b) => (a <= b ? a : b);
+
+        // Fonction pour convertir une date en format "YYYY-MM-DD"
+        const toYMD = d => d.toISOString().substring(0, 10);
+
+        // Fonction pour arrondir un nombre à 2 décimales
+        // v = nombre à arrondir
+        const clamp = v => Math.round((v + 0.0000001) * 100) / 100;
+        //////////////////////////////////
+        // Fonction pour calculer le nombre de jours entre deux dates
+        // debut = date de départ, fin = date de fin
+        const nbJoursBetween = (debut, fin) => {
+
+            // Si on utilise la base 360 (méthode financière/bancaire)
+            if (baseJours === 360) {
+
+                // On prend le jour du mois de la date de départ, max 30
+                const dStart = Math.min(debut.getDate(), 30);
+
+                // On prend le jour du mois de la date de fin, max 30
+                const dEnd = Math.min(fin.getDate(), 30);
+
+                // On calcule la différence en nombre de mois entre les deux dates
+                const monthsDiff = (fin.getFullYear() - debut.getFullYear()) * 12
+                    + (fin.getMonth() - debut.getMonth());
+
+                // Si les deux dates sont dans le même mois
+                if (monthsDiff === 0)
+                    // On retourne la différence de jours + 1 (inclus le premier jour)
+                    // Math.max(1, ...) évite de retourner 0 ou un nombre négatif
+                    return Math.max(1, dEnd - dStart + 1);
+
+                // Sinon, on calcule :
+                // 1) Jours restants du premier mois : 30 - dStart + 1
+                // 2) Mois complets entre les deux dates : (monthsDiff - 1) * 30
+                // 3) Jours du dernier mois : dEnd
+                return (30 - dStart + 1) + Math.max(0, monthsDiff - 1) * 30 + dEnd;
+            }
+
+            // Sinon, méthode normale : différence réelle en jours
+            // fin - debut donne la différence en millisecondes
+            // On divise par 1000*60*60*24 pour convertir en jours
+            // +1 pour inclure le premier jour
+            return Math.floor((fin - debut) / (1000 * 60 * 60 * 24)) + 1;
+        };
+
+        // -----------------------------
+        // CALCUL DE LA REPRISE (COMPTABLE)
+        // -----------------------------
+        // On initialise la date de départ de l’amortissement comptable
+        // Par défaut, elle commence à la date de mise en service (dateMS)
+        let dateDepartAmortComp = new Date(dateMS);
+
+        // On initialise la durée effective avec la durée initiale prévue
+        let dureeAmortCompEffective = dureeCompInitiale;
+
+        // On initialise le cumul d’amortissement antérieur à 0
+        let cumulInitialComp = 0;
+
+        // On vérifie si la reprise d’amortissement est active,
+        // qu’une date de reprise existe,
+        // et qu’il y a déjà un amortissement antérieur
+        if (repriseActiveComp && dateRepriseComp && amortAntComp > 0) {
+
+            // On calcule la date de fin théorique d’amortissement :
+            // on ajoute la durée initiale en mois à la date de mise en service,
+            // puis on enlève 1 jour
+            const finTheo = addDays(addMonths(dateMS, dureeCompInitiale), -1);
+
+            // On vérifie que la date de reprise est avant ou égale à la fin théorique
+            if (dateRepriseComp <= finTheo) {
+
+                // On calcule le nombre de jours restants entre la date de reprise
+                // et la fin théorique d’amortissement
+                const joursRestants = nbJoursBetween(dateRepriseComp, finTheo);
+
+                // On convertit les jours restants en mois :
+                // (jours / baseJours) donne une fraction d’année
+                // * 12 pour convertir en mois
+                // clamp pour arrondir à 2 décimales
+                dureeAmortCompEffective = clamp((joursRestants / baseJours) * 12);
+
+                // La nouvelle date de départ devient la date de reprise
+                dateDepartAmortComp = new Date(dateRepriseComp);
+
+                // On conserve le montant déjà amorti avant la reprise
+                cumulInitialComp = amortAntComp;
+            }
+        }
+
+        // -----------------------------
+        // AMORTISSEMENT COMPTABLE
+        // -----------------------------
+        // Calcul du taux annuel basé sur la durée effective en mois
+        // Exemple : si dureeAmortCompEffective = 24 mois, tauxAnnuelComp = 12 / 24 = 0.5
+        const tauxAnnuelComp = 12 / dureeAmortCompEffective;
+
+        // Base restante à amortir : montant hors taxe moins le cumul déjà amorti
+        const baseRestanteComp = clamp(montantHT - cumulInitialComp);
+
+        // Tableau qui va contenir chaque ligne d’amortissement
+        const compLines = [];
+
+        // Date de début de l’amortissement
+        let debutC = new Date(dateDepartAmortComp);
+
+        // Date de fin de l’amortissement : date de départ + durée effective en mois - 1 jour
+        const finAmortComp = addDays(addMonths(dateDepartAmortComp, dureeAmortCompEffective), -1);
+
+        // Index de l’année ou du rang d’amortissement
+        let indexC = 1;
+
+        // Cumul amorti jusqu’à présent (au début, c’est le cumul initial)
+        let cumulC = cumulInitialComp;
+
+        // Valeur nette comptable restante (VNC)
+        let vncC = clamp(montantHT - cumulInitialComp);
+
+        // Compteur de sécurité pour éviter boucle infinie
+        let safetyC = 0;
+
+        // Boucle principale : on calcule année par année tant que la VNC > 0
+        while (vncC > 0 && safetyC < 1000) {
+
+            // Si la date de début dépasse la fin théorique, on sort
+            if (debutC > finAmortComp) break;
+
+            // Calcul de la date de fin pour cette période
+            // Pour la 1ère ligne : on prend soit la fin de l’exercice, soit la fin théorique
+            // Pour les suivantes : on avance d’1 an (12 mois) et on enlève 1 jour
+            let fin = indexC === 1
+                ? (exoFin && exoFin < finAmortComp ? exoFin : finAmortComp)
+                : addDays(addMonths(debutC, 12), -1);
+
+            // On s’assure que la fin ne dépasse pas la fin théorique
+            if (fin > finAmortComp) fin = finAmortComp;
+
+            // Cas où la fin est avant le début (exercice incomplet) : ajustement
+            if (fin < debutC) {
+                fin = minDate(addDays(addMonths(debutC, 1), -1), finAmortComp);
+                if (fin < debutC) break; // si toujours invalide, on sort
+            }
+
+            // Nombre de jours entre début et fin de cette période
+            const nbJours = nbJoursBetween(debutC, fin);
+            if (!isFinite(nbJours) || nbJours <= 0) break;
+
+            // Nombre d’année fractionnaire pour cette période
+            const anneeNombre = clamp(nbJours / baseJours);
+
+            // Dotation théorique pour cette période : base restante * taux annuel * fraction d’année
+            const dotTheorique = clamp(baseRestanteComp * tauxAnnuelComp * anneeNombre);
+
+            // Dotation réelle
+            let dot;
+            if (fin >= finAmortComp || vncC - dotTheorique < 1) {
+                // Si on est à la dernière période ou si VNC restante < dotation théorique → on prend le reste
+                dot = vncC;
+            } else {
+                // Sinon, on prend le minimum entre VNC et dotation théorique
+                dot = Math.min(vncC, dotTheorique);
+            }
+
+            // On ajoute la ligne dans le tableau des amortissements
+            compLines.push({
+                rang: indexC,                            // numéro de la ligne
+                date_debut: toYMD(debutC),               // début période
+                date_fin: toYMD(fin),                    // fin période
+                nb_jours: nbJours,                        // nombre de jours
+                annee_nombre: anneeNombre,                // fraction d’année
+                dotation_mensuelle: clamp(baseRestanteComp / dureeCompInitiale), // dotation mensuelle
+                dot_ant: clamp(cumulC),                  // cumul précédent
+                dotation_annuelle: dot,                  // dotation de l’année
+                cumul_amort: clamp(cumulC + dot),        // cumul après dotation
+                vnc: clamp(vncC - dot),                  // valeur nette comptable restante
+            });
+
+            // Mise à jour des variables pour la prochaine itération
+            cumulC += dot;               // cumul amorti
+            vncC -= dot;                 // VNC restante
+            debutC = addDays(fin, 1);    // date de début de la prochaine période
+            indexC++;                    // rang suivant
+            safetyC++;                    // compteur de sécurité pour éviter boucle infinie
+        }
+
+        // -----------------------------
+        // AMORTISSEMENT FISCAL (avec reprise séparée)
+        // -----------------------------
+        let fiscLines = [];
+        let dureeFiscEffectiveOut = null;
+        let finAmortFiscOut = null;
+        if (dureeFisc > 0) {
+            let debutF = new Date(dateMS);
+            let dureeFiscEffective = dureeFisc;
+            let cumulInitialFisc = 0;
+
+            if (repriseActiveFisc && dateRepriseFisc && amortAntFisc > 0) {
+                const finTheoF = addDays(addMonths(dateMS, dureeFisc), -1);
+                if (dateRepriseFisc <= finTheoF) {
+                    const joursRestantsF = nbJoursBetween(dateRepriseFisc, finTheoF);
+                    dureeFiscEffective = clamp((joursRestantsF / baseJours) * 12);
+                    debutF = new Date(dateRepriseFisc);
+                    cumulInitialFisc = amortAntFisc;
+                }
+            }
+
+            const tauxAnnuelFisc = 12 / dureeFiscEffective;
+            const baseRestanteFisc = clamp(montantHT - cumulInitialFisc);
+            const finAmortFisc = addDays(addMonths(debutF, dureeFiscEffective), -1);
+            dureeFiscEffectiveOut = dureeFiscEffective;
+            finAmortFiscOut = finAmortFisc;
+
+            let indexF = 1;
+            let cumulF = cumulInitialFisc;
+            let vncF = clamp(montantHT - cumulInitialFisc);
+            let safetyF = 0;
+
+            while (vncF > 0 && safetyF < 1000) {
+                if (debutF > finAmortFisc) break;
+
+                let fin = indexF === 1
+                    ? (exoFin && exoFin < finAmortFisc ? exoFin : finAmortFisc)
+                    : addDays(addMonths(debutF, 12), -1);
+
+                if (fin > finAmortFisc) fin = finAmortFisc;
+
+                if (fin < debutF) {
+                    fin = minDate(addDays(addMonths(debutF, 1), -1), finAmortFisc);
+                    if (fin < debutF) break;
+                }
+
+                const nbJours = nbJoursBetween(debutF, fin);
+                if (!isFinite(nbJours) || nbJours <= 0) break;
+
+                const anneeNombre = clamp(nbJours / baseJours);
+                const dotTheorique = clamp(baseRestanteFisc * tauxAnnuelFisc * anneeNombre);
+
+                let dot;
+                if (fin >= finAmortFisc || vncF - dotTheorique < 1) {
+                    dot = vncF;
+                } else {
+                    dot = Math.min(vncF, dotTheorique);
+                }
+
+                fiscLines.push({
+                    rang: indexF,
+                    date_debut: toYMD(debutF),
+                    date_fin: toYMD(fin),
+                    nb_jours: nbJours,
+                    annee_nombre: anneeNombre,
+                    dotation_mensuelle: clamp(baseRestanteFisc / dureeFisc),
+                    dot_ant: clamp(cumulF),
+                    dotation_annuelle: dot,
+                    cumul_amort: clamp(cumulF + dot),
+                    vnc: clamp(vncF - dot),
+                });
+
+                cumulF += dot;
+                vncF -= dot;
+                debutF = addDays(fin, 1);
+                indexF++;
+                safetyF++;
+            }
+        }
+
+        // -----------------------------
+        // RÉPONSE
+        // -----------------------------
+        return res.json({
+            state: true,
+            meta: {
+                base_jours: baseJours,
+                montant_ht: montantHT,
+                date_mise_service: toYMD(dateMS),
+                // Back-compat: reprise = reprise comptable
+                reprise: repriseActiveComp && dateRepriseComp ? {
+                    date_reprise: toYMD(dateRepriseComp),
+                    amort_ant: amortAntComp,
+                    duree_restante_mois: dureeAmortCompEffective
+                } : null,
+                reprise_comp: repriseActiveComp && dateRepriseComp ? {
+                    date_reprise: toYMD(dateRepriseComp),
+                    amort_ant: amortAntComp,
+                    duree_restante_mois: dureeAmortCompEffective
+                } : null,
+                reprise_fisc: repriseActiveFisc && dateRepriseFisc ? {
+                    date_reprise: toYMD(dateRepriseFisc),
+                    amort_ant: amortAntFisc,
+                    duree_restante_mois: dureeFiscEffectiveOut
+                } : null,
+                fin_amort_comp: toYMD(finAmortComp),
+                fin_amort_fisc: finAmortFiscOut ? toYMD(finAmortFiscOut) : null,
+            },
+
+            list_comp: compLines,
+            list_fisc: fiscLines,
+        });
+
+    } catch (err) {
+        console.error('[IMMO][LINEAIRE][PREVIEW] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: aperçu calcul amortissement degressif (sans sauvegarde) ---
+exports.previewImmoDegressif = async (req, res) => {
+    try {
+        // 1. Récupération des paramètres depuis la requête
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const detailImmoId = Number(req.query?.detailId);
+
+        if (!fileId || !compteId || !exerciceId || !detailImmoId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        // 2. Récupération des données dans la base (dossier, exercice, détail d'immobilisation)
+        const [dossier, exo, detail] = await Promise.all([
+            db.dossiers.findByPk(fileId),
+            db.exercices.findByPk(exerciceId),
+            db.detailsimmo.findByPk(detailImmoId),
+        ]);
+        if (!dossier || !exo || !detail) {
+            return res.status(404).json({ state: false, msg: 'Données introuvables' });
+        }
+
+        // 3. Initialisation des variables principales
+        const baseJours = Number(dossier.immo_amort_base_jours) || 360; // base de calcul (par défaut 360 jours)
+        const montantHT = Number(detail.montant_ht) || Number(detail.montant) || 0; // valeur de l'immobilisation
+        const dateMS = detail.date_mise_service ? new Date(detail.date_mise_service) : null;
+        if (!dateMS || isNaN(dateMS.getTime())) return res.status(400).json({ state: false, msg: 'date_mise_service invalide' });
+        if (montantHT <= 0) return res.status(400).json({ state: false, msg: 'montant HT invalide' });
+
+        const exoDebut = exo.date_debut ? new Date(exo.date_debut) : null;
+        const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+
+        const repriseActiveComp = Number(
+            detail.reprise_immobilisation_comp ?? detail.reprise_immobilisation
+        ) === 1;
+        const dateRepriseComp = (detail.date_reprise_comp || detail.date_reprise)
+            ? new Date(detail.date_reprise_comp || detail.date_reprise)
+            : null;
+        const amortAntComp = Number(detail.amort_ant_comp) || 0;
+
+        const repriseActiveFisc = Number(
+            detail.reprise_immobilisation_fisc ?? detail.reprise_immobilisation
+        ) === 1;
+        const dateRepriseFisc = (detail.date_reprise_fisc || detail.date_reprise)
+            ? new Date(detail.date_reprise_fisc || detail.date_reprise)
+            : null;
+        const amortAntFisc = Number(detail.amort_ant_fisc) || 0;
+
+        if (exoDebut && !isNaN(exoDebut.getTime()) && exoFin && !isNaN(exoFin.getTime())) {
+            if (repriseActiveComp && dateRepriseComp && !isNaN(dateRepriseComp.getTime()) && (dateRepriseComp < exoDebut || dateRepriseComp > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise comptable hors période de l'exercice" });
+            }
+            if (repriseActiveFisc && dateRepriseFisc && !isNaN(dateRepriseFisc.getTime()) && (dateRepriseFisc < exoDebut || dateRepriseFisc > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
+            }
+        }
+
+        // 4. Durée d'amortissement en mois et en années
+        const dureeMois = Math.max(1, Number(detail.duree_amort_mois) || 0);
+        const dureeAnnees = Math.ceil(dureeMois / 12);
+
+        // 5. Détermination du coefficient dégressif selon la durée
+        let coef = 0;
+        if (dureeAnnees >= 1 && dureeAnnees <= 4) coef = 1.25;
+        else if (dureeAnnees >= 5 && dureeAnnees <= 6) coef = 1.75;
+        else if (dureeAnnees > 6) coef = 2.25;
+
+        // 6. Calcul des taux annuels linéaire et dégressif
+        const tauxLinAnnuel = 1 / dureeAnnees;
+        const tauxDegAnnuel = tauxLinAnnuel * coef;
+
+        // 7. Fonctions utilitaires
+        const addMonths = (d, m) => { const nd = new Date(d); nd.setMonth(nd.getMonth() + m); return nd; }; // ajoute des mois à une date
+        const addDays = (d, n) => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; }; // ajoute des jours à une date
+        const minDate = (a, b) => (a <= b ? a : b); // retourne la date la plus petite
+        const toYMD = d => d.toISOString().substring(0, 10); // format YYYY-MM-DD
+        const clamp = v => Math.round((v + 0.0000001) * 100) / 100; // arrondi à 2 décimales (optionnel)
+
+        const nbJoursBetween = (debut, fin) => {
+            if (baseJours === 360) {
+                const dStart = Math.min(debut.getDate(), 30);
+                const dEnd = Math.min(fin.getDate(), 30);
+                const monthsDiff = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth());
+                if (monthsDiff === 0) return Math.max(1, dEnd - dStart + 1);
+                return (30 - dStart + 1) + Math.max(0, monthsDiff - 1) * 30 + dEnd;
+            }
+            return Math.floor((fin - debut) / (1000 * 60 * 60 * 24)) + 1;
+        };
+
+        const computeRepriseParams = (dureeMoisX, repriseActiveX, dateRepriseX, amortAntX) => {
+            const dureeM = Math.max(1, Number(dureeMoisX) || 0);
+            const finTheoX = addDays(addMonths(dateMS, dureeM), -1);
+
+            let dateDepartX = new Date(dateMS);
+            let dureeMEffective = dureeM;
+            let cumulInitialX = 0;
+
+            if (repriseActiveX && dateRepriseX && amortAntX > 0 && dateRepriseX <= finTheoX) {
+                const joursRestantsX = nbJoursBetween(dateRepriseX, finTheoX);
+                dureeMEffective = clamp((joursRestantsX / baseJours) * 12);
+                dateDepartX = new Date(dateRepriseX);
+                cumulInitialX = amortAntX;
+            }
+
+            const finAmortX = addDays(addMonths(dateDepartX, dureeMEffective), -1);
+            const baseRestanteX = clamp(montantHT - cumulInitialX);
+            return { dureeM, finTheoX, dateDepartX, dureeMEffective, cumulInitialX, finAmortX, baseRestanteX };
+        };
+
+        // 8. Constructeur générique d'un tableau dégressif avec bascule linéaire
+        const buildDegSchedule = (dureeMoisX, repriseActiveX, dateRepriseX, amortAntX, labelX) => {
+            const rp = computeRepriseParams(dureeMoisX, repriseActiveX, dateRepriseX, amortAntX);
+            const dureeA = Math.ceil(rp.dureeMEffective / 12);
+
+            let coefX = 0;
+            if (dureeA >= 1 && dureeA <= 4) coefX = 1.25;
+            else if (dureeA >= 5 && dureeA <= 6) coefX = 1.75;
+            else if (dureeA > 6) coefX = 2.25;
+
+            const tauxLinX = 1 / dureeA;
+            const tauxDegX = tauxLinX * coefX;
+            const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+
+            const linesX = [];
+            let vncX = clamp(montantHT - rp.cumulInitialX);
+            let cumulX = clamp(rp.cumulInitialX);
+            let debutX = new Date(rp.dateDepartX);
+            let anneeCumuleeX = 0;
+            let indexX = 1;
+            let safetyX = 0;
+            let modeX = 'degressif';
+            let didSwitchLogX = false;
+
+            while (vncX > 0 && safetyX < 1000) {
+                if (debutX > rp.finAmortX) break;
+
+                let finX = indexX === 1
+                    ? (exoFin && exoFin < rp.finAmortX ? exoFin : rp.finAmortX)
+                    : addDays(addMonths(debutX, 12), -1);
+                if (finX > rp.finAmortX) finX = rp.finAmortX;
+                if (finX < debutX) {
+                    finX = minDate(addDays(addMonths(debutX, 1), -1), rp.finAmortX);
+                    if (finX < debutX) break;
+                }
+
+                const isLastX = finX.getTime() === rp.finAmortX.getTime();
+                const nbJoursX = nbJoursBetween(debutX, finX);
+                if (!isFinite(nbJoursX) || nbJoursX <= 0) break;
+                const prorataX = nbJoursX / baseJours;
+
+                const dureeRestanteX = Math.max(1e-9, dureeA - anneeCumuleeX);
+                const dotDegAnnX = vncX * tauxDegX;
+                const dotLinRestAnnX = vncX / dureeRestanteX;
+                if (modeX === 'degressif' && dotLinRestAnnX > dotDegAnnX) {
+                    if (!didSwitchLogX) {                     
+                        didSwitchLogX = true;
+                    }
+                    modeX = 'lineaire';
+                }
+
+                let dotPeriodeX = modeX === 'degressif'
+                    ? (vncX * tauxDegX * prorataX)
+                    : (dotLinRestAnnX * prorataX);
+
+                if (isLastX || vncX - dotPeriodeX < 0.01) {
+                    dotPeriodeX = vncX;
+                }
+
+                dotPeriodeX = clamp(dotPeriodeX);
+                const antX = clamp(cumulX);
+                cumulX = clamp(cumulX + dotPeriodeX);
+                vncX = clamp(montantHT - cumulX);
+
+                linesX.push({
+                    rang: indexX,
+                    date_debut: toYMD(debutX),
+                    date_fin: toYMD(finX),
+                    nb_jours: nbJoursX,
+                    annee_nombre: clamp(prorataX),
+                    mode_utilise: modeX,
+                    dot_ant: antX,
+                    dotation_annuelle: dotPeriodeX,
+                    cumul_amort: cumulX,
+                    vnc: vncX,
+                });
+
+                anneeCumuleeX += prorataX;
+                if (vncX <= 0) break;
+                debutX = addDays(finX, 1);
+                indexX++;
+                safetyX++;
+            }
+
+            return {
+                coef: coefX,
+                duree_mois: rp.dureeMEffective,
+                duree_annees: dureeA,
+                taux_lin_annuel: tauxLinX,
+                taux_deg_annuel: tauxDegX,
+                lines: linesX,
+                finAmort: rp.finAmortX,
+                reprise: repriseActiveX && dateRepriseX && rp.cumulInitialX > 0 ? {
+                    date_reprise: toYMD(dateRepriseX),
+                    amort_ant: rp.cumulInitialX,
+                    duree_restante_mois: rp.dureeMEffective,
+                } : null,
+            };
+        };
+
+        // 9. Constructeur linéaire (prorata jours, 30/360 pris en compte)
+        const buildLinSchedule = (dureeMoisX, repriseActiveX, dateRepriseX, amortAntX) => {
+            const rp = computeRepriseParams(dureeMoisX, repriseActiveX, dateRepriseX, amortAntX);
+            const dureeA = Math.ceil(rp.dureeMEffective / 12);
+            const tauxLinX = 1 / dureeA;
+            const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+
+            const linesX = [];
+            let vncX = clamp(montantHT - rp.cumulInitialX);
+            let cumulX = clamp(rp.cumulInitialX);
+            let debutX = new Date(rp.dateDepartX);
+            let indexX = 1;
+            let safetyX = 0;
+
+            while (vncX > 0 && safetyX < 1000) {
+                if (debutX > rp.finAmortX) break;
+
+                let finX = indexX === 1
+                    ? (exoFin && exoFin < rp.finAmortX ? exoFin : rp.finAmortX)
+                    : addDays(addMonths(debutX, 12), -1);
+                if (finX > rp.finAmortX) finX = rp.finAmortX;
+                if (finX < debutX) {
+                    finX = minDate(addDays(addMonths(debutX, 1), -1), rp.finAmortX);
+                    if (finX < debutX) break;
+                }
+
+                const nbJoursX = nbJoursBetween(debutX, finX);
+                if (!isFinite(nbJoursX) || nbJoursX <= 0) break;
+                const prorataX = nbJoursX / baseJours;
+
+                let dotPeriodeX = rp.baseRestanteX * tauxLinX * prorataX;
+                if (finX.getTime() === rp.finAmortX.getTime() || vncX - dotPeriodeX < 0.01) {
+                    dotPeriodeX = vncX;
+                }
+
+                dotPeriodeX = clamp(dotPeriodeX);
+                const antX = clamp(cumulX);
+                cumulX = clamp(cumulX + dotPeriodeX);
+                vncX = clamp(montantHT - cumulX);
+
+                linesX.push({
+                    rang: indexX,
+                    date_debut: toYMD(debutX),
+                    date_fin: toYMD(finX),
+                    nb_jours: nbJoursX,
+                    annee_nombre: clamp(prorataX),
+                    mode_utilise: 'lineaire',
+                    dot_ant: antX,
+                    dotation_annuelle: dotPeriodeX,
+                    cumul_amort: cumulX,
+                    vnc: vncX,
+                });
+
+                if (vncX <= 0) break;
+                debutX = addDays(finX, 1);
+                indexX++;
+                safetyX++;
+            }
+
+            return {
+                coef: 0,
+                duree_mois: rp.dureeMEffective,
+                duree_annees: dureeA,
+                taux_lin_annuel: tauxLinX,
+                taux_deg_annuel: 0,
+                lines: linesX,
+                finAmort: rp.finAmortX,
+                reprise: repriseActiveX && dateRepriseX && rp.cumulInitialX > 0 ? {
+                    date_reprise: toYMD(dateRepriseX),
+                    amort_ant: rp.cumulInitialX,
+                    duree_restante_mois: rp.dureeMEffective,
+                } : null,
+            };
+        };
+
+        const normalizeNoAccent = (s) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+        const typeComp = normalizeNoAccent(detail?.type_amort);
+        const typeFisc = normalizeNoAccent(detail?.type_amort_fisc);
+
+        const dureeMoisComp = Math.max(1, Number(detail.duree_amort_mois) || 0);
+        const compIsDeg = typeComp.includes('degr');
+        const resComp = compIsDeg
+            ? buildDegSchedule(dureeMoisComp, repriseActiveComp, dateRepriseComp, amortAntComp, 'comptable')
+            : buildLinSchedule(dureeMoisComp, repriseActiveComp, dateRepriseComp, amortAntComp);
+
+        const dureeMoisFisc = Math.max(0, Math.floor(Number(detail.duree_amort_mois_fisc) || 0));
+        const hasFisc = dureeMoisFisc > 0;
+        const fiscIsDeg = typeFisc.includes('degr');
+        const resFisc = hasFisc
+            ? (fiscIsDeg
+                ? buildDegSchedule(dureeMoisFisc, repriseActiveFisc, dateRepriseFisc, amortAntFisc, 'fiscal')
+                : buildLinSchedule(dureeMoisFisc, repriseActiveFisc, dateRepriseFisc, amortAntFisc))
+            : null;
+
+        return res.json({
+            state: true,
+            meta: {
+                base_jours: baseJours,
+                montant_ht: montantHT,
+                date_mise_service: toYMD(dateMS),
+                // Back-compat: reprise = reprise comptable
+                reprise: resComp.reprise,
+                reprise_comp: resComp.reprise,
+                reprise_fisc: resFisc ? resFisc.reprise : null,
+                comp: {
+                    coef_degressif: resComp.coef,
+                    duree_mois: resComp.duree_mois,
+                    duree_annees: resComp.duree_annees,
+                    taux_lin_annuel: resComp.taux_lin_annuel,
+                    taux_deg_annuel: resComp.taux_deg_annuel,
+                    fin_amort_prevue: toYMD(resComp.finAmort),
+                },
+                fisc: hasFisc ? {
+                    coef_degressif: resFisc.coef,
+                    duree_mois: resFisc.duree_mois,
+                    duree_annees: resFisc.duree_annees,
+                    taux_lin_annuel: resFisc.taux_lin_annuel,
+                    taux_deg_annuel: resFisc.taux_deg_annuel,
+                    fin_amort_prevue: toYMD(resFisc.finAmort),
+                } : null,
+            },
+            list_comp: resComp.lines,
+            list_fisc: hasFisc ? resFisc.lines : [],
+        });
+
+    } catch (err) {
+        console.error('[IMMO][DEGRESSIF][PREVIEW] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: sauvegarde des lignes pré-calculées depuis preview ---
+exports.saveImmoLineaire = async (req, res) => {
+    try {
+        const fileId = Number(req.body?.fileId ?? req.query?.fileId);
+        const compteId = Number(req.body?.compteId ?? req.query?.compteId);
+        const exerciceId = Number(req.body?.exerciceId ?? req.query?.exerciceId);
+        const detailImmoId = Number(req.body?.detailId ?? req.query?.detailId);
+
+        // Récupérer les lignes pré-calculées depuis le frontend
+        const { lignes } = req.body || {};
+
+        // Préparer les lignes pour l'insertion (utiliser les lignes pré-calculées)
+        const out = lignes.map((ligne) => ({
+            id_dossier: fileId,
+            id_compte: compteId,
+            id_exercice: exerciceId,
+            id_detail_immo: detailImmoId,
+            rang: ligne.rang,
+            date_mise_service: ligne.date_mise_service,
+            date_fin_exercice: ligne.date_fin_exercice,
+            annee_nombre: ligne.annee_nombre,
+            montant_immo_ht: ligne.montant_immo_ht,
+            vnc: ligne.vnc,
+            amort_ant_comp: ligne.amort_ant_comp,
+            dotation_periode_comp: ligne.dotation_periode_comp,
+            cumul_amort_comp: ligne.cumul_amort_comp,
+            amort_ant_fisc: ligne.amort_ant_fisc,
+            dotation_periode_fisc: ligne.dotation_periode_fisc,
+            cumul_amort_fisc: ligne.cumul_amort_fisc,
+            dot_derogatoire: ligne.dot_derogatoire || 0,
+        }));
+
+        await db.detailsImmoLignes.destroy({
+            where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId, id_detail_immo: detailImmoId },
+        });
+        if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
+        return res.json({ state: true, saved: out.length });
+    } catch (err) {
+        console.error('[IMMO][SAVE][LINEAIRE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+// --- Immobilisations: sauvegarde des lignes dégressives pré-calculées depuis preview ---
+exports.saveImmoDegressif = async (req, res) => {
+    try {
+        const fileId = Number(req.body?.fileId ?? req.query?.fileId);
+        const compteId = Number(req.body?.compteId ?? req.query?.compteId);
+        const exerciceId = Number(req.body?.exerciceId ?? req.query?.exerciceId);
+        const detailImmoId = Number(req.body?.detailId ?? req.query?.detailId);
+
+        // Récupérer les lignes pré-calculées depuis le frontend
+        const { lignes } = req.body || {};
+
+        if (!fileId || !compteId || !exerciceId || !detailImmoId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        if (!lignes || !Array.isArray(lignes)) {
+
+            // Fallback : essayer de traiter comme un amortissement linéaire
+            try {
+
+                // Charger les données nécessaires pour le calcul linéaire
+                const [dossier, exo, detail] = await Promise.all([
+                    db.dossiers.findByPk(fileId),
+                    db.exercices.findByPk(exerciceId),
+                    db.detailsimmo.findByPk(detailImmoId),
+                ]);
+
+                if (!dossier || !exo || !detail) {
+                    return res.status(404).json({ state: false, msg: 'Données introuvables' });
+                }
+
+                // Calcul linéaire simple
+                const baseJours = Number(dossier.immo_amort_base_jours) || 360;
+                const montantHT = Number(detail.montant_ht) || Number(detail.montant) || 0;
+                const dateMiseService = detail.date_mise_service ? new Date(detail.date_mise_service) : null;
+                const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+                const dureeComp = Math.max(1, Math.floor(Number(detail.duree_amort_mois) || 0));
+
+                if (montantHT <= 0) {
+                    return res.status(400).json({ state: false, msg: 'montant HT invalide' });
+                }
+
+                const dotMensComp = montantHT / dureeComp;
+                const dotAnnComp = dotMensComp * 12;
+
+                const out = [];
+                let debut = new Date(dateMiseService);
+                let index = 1;
+                let cumulComp = 0;
+                let vncComp = montantHT;
+
+                while (vncComp > 0 && index <= 50) {
+                    const fin = index === 1 ? (exoFin || new Date(debut.getFullYear() + 1, debut.getMonth(), debut.getDate() - 1)) : new Date(debut.getFullYear() + 1, debut.getMonth(), debut.getDate() - 1);
+                    const nbJours = Math.floor((fin - debut) / (1000 * 60 * 60 * 24)) + 1;
+                    const anneeNombre = nbJours / baseJours;
+                    const dotComp = Math.min(vncComp, Math.round(dotAnnComp * anneeNombre * 100) / 100);
+
+                    cumulComp += dotComp;
+                    vncComp = montantHT - cumulComp;
+
+                    out.push({
+                        id_dossier: fileId,
+                        id_compte: compteId,
+                        id_exercice: exerciceId,
+                        id_detail_immo: detailImmoId,
+                        rang: index,
+                        date_mise_service: debut.toISOString().substring(0, 10),
+                        date_fin_exercice: fin.toISOString().substring(0, 10),
+                        annee_nombre: Math.round(anneeNombre * 100) / 100,
+                        montant_immo_ht: montantHT,
+                        vnc: Math.max(0, vncComp),
+                        amort_ant_comp: Math.round((cumulComp - dotComp) * 100) / 100,
+                        dotation_periode_comp: dotComp,
+                        cumul_amort_comp: cumulComp,
+                        amort_ant_fisc: 0,
+                        dotation_periode_fisc: 0,
+                        cumul_amort_fisc: 0,
+                        dot_derogatoire: 0,
+                    });
+
+                    debut = new Date(fin.getTime() + 24 * 60 * 60 * 1000);
+                    index++;
+                }
+
+                await db.detailsImmoLignes.destroy({
+                    where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId, id_detail_immo: detailImmoId },
+                });
+                if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
+
+                return res.json({ state: true, saved: out.length, fallback: 'linear' });
+
+            } catch (fallbackError) {
+                return res.status(400).json({
+                    state: false,
+                    msg: 'Lignes calculées manquantes - utilisez d\'abord previewImmoDegressif ou corrigez le frontend pour utiliser saveImmoLineaire'
+                });
+            }
+        }
+
+        // Préparer les lignes pour l'insertion (utiliser les lignes pré-calculées)
+        const out = lignes.map((ligne) => ({
+            id_dossier: fileId,
+            id_compte: compteId,
+            id_exercice: exerciceId,
+            id_detail_immo: detailImmoId,
+            rang: ligne.rang,
+            date_mise_service: ligne.date_mise_service,
+            date_fin_exercice: ligne.date_fin_exercice,
+            annee_nombre: ligne.annee_nombre,
+            montant_immo_ht: ligne.montant_immo_ht,
+            vnc: ligne.vnc,
+            amort_ant_comp: ligne.amort_ant_comp,
+            dotation_periode_comp: ligne.dotation_periode_comp,
+            cumul_amort_comp: ligne.cumul_amort_comp,
+            amort_ant_fisc: ligne.amort_ant_fisc,
+            dotation_periode_fisc: ligne.dotation_periode_fisc,
+            cumul_amort_fisc: ligne.cumul_amort_fisc,
+            dot_derogatoire: ligne.dot_derogatoire || 0,
+        }));
+
+        await db.detailsImmoLignes.destroy({
+            where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId, id_detail_immo: detailImmoId },
+        });
+        if (out.length > 0) await db.detailsImmoLignes.bulkCreate(out);
+
+        return res.json({ state: true, saved: out.length });
+    } catch (err) {
+        console.error('[IMMO][DEGRESSIF][SAVE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+exports.getAllDevises = async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!id) {
+            return res.status(400).json({ state: false, message: 'Id_compte non trouvé' })
+        }
+        const devisesData = await devises.findAll({ where: { compte_id: id } });
+        if (!devisesData) {
+            return res.status(404).json({ state: false, message: 'Devise non trouvé' })
+        }
+        return res.status(200).json({ state: true, list: devisesData });
+    } catch (err) {
+        res.status(500).json({ message: "Erreur serveur", error: err });
+    }
+};
+
+const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+
+const getDateSaisieNow = (id) => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `${dd}${mm}${yyyy}${hh}${min}${ss}${id}`;
+};
+
+exports.modificationJournal = async (req, res) => {
+    try {
+        const jsonData = JSON.parse(req.body.data);
+        const file = req.file;
+        const conserverFichier = jsonData.conserverFichier === true;
+
+        if (!jsonData) {
+            return res.status(400).json({ message: "Données ou fichier manquant" });
+        }
+
+        const id_compte = Number(jsonData.id_compte);
+        const id_dossier = Number(jsonData.id_dossier);
+        const id_exercice = Number(jsonData.id_exercice);
+        const id_journal = Number(jsonData.valSelectCodeJnl);
+        const id_devise = Number(jsonData.id_devise);
+
+        const codeJournal = await codejournals.findByPk(id_journal);
+        if (!codeJournal) {
+            return res.status(404).json({ message: "Code journal introuvable" });
+        }
+
+        const typeCodeJournal = codeJournal.type;
+        const mois = jsonData.valSelectMois;
+        const annee = jsonData.valSelectAnnee;
+        const currency = jsonData.currency;
+        const devise = jsonData.choixDevise === 'MGA' ? jsonData.choixDevise : currency;
+        const tableRows = jsonData.tableRows;
+        const listCa = jsonData.listCa;
+        const taux = jsonData.taux;
+        const deletedIds = jsonData.deletedIds || [];
+        const num_facture = jsonData.num_facture;
+
+        let fichierCheminRelatif = null;
+
+        if (file) {
+            const dossierRelatif = path.join(
+                "public",
+                "ScanEcriture",
+                id_compte.toString(),
+                id_dossier.toString(),
+                id_exercice.toString(),
+                typeCodeJournal
+            );
+
+            const dossierAbsolu = path.resolve(dossierRelatif);
+            fs.mkdirSync(dossierAbsolu, { recursive: true });
+
+            const nomFichier = `journal_${Date.now()}${path.extname(file.originalname)}`;
+            const cheminComplet = path.join(dossierAbsolu, nomFichier);
+
+            fs.renameSync(file.path, cheminComplet);
+
+            fichierCheminRelatif = path.join(dossierRelatif, nomFichier).replace(/\\/g, '/');
+        }
+
+        let ajout = 0;
+        let modification = 0;
+
+        let idEcritureCommun = null;
+        for (const row of tableRows) {
+            if (row.id && Number(row.id) > 0) {
+                const journalExistant = await journals.findByPk(row.id);
+                idEcritureCommun = journalExistant.id_ecriture;
+                break;
+            }
+        }
+
+        for (const row of tableRows) {
+            const dossierPc = await dossierplancomptable.findByPk(row.compte);
+            const libellecompte = dossierPc?.libelle;
+            const comptegen = dossierPc?.compte;
+            const comptebaseaux = dossierPc?.baseaux_id;
+
+            let id_numcptcentralise = null;
+            let libelleaux = '';
+            let compteaux = null;
+            if (comptebaseaux) {
+                const cpt = await dossierplancomptable.findByPk(comptebaseaux);
+                id_numcptcentralise = cpt?.id || null;
+                compteaux = cpt?.compte;
+                libelleaux = cpt?.libelle;
+            }
+
+            const dateecriture = new Date(
+                annee,
+                mois - 1,
+                row.jour + 1
+            );
+
+            if (!isValidDate(dateecriture)) {
+                throw new Error(`Date invalide pour la ligne ${JSON.stringify(row)}`);
+            }
+
+            const journalData = {
+                id_temporaire: row.id,
+                id_compte,
+                id_dossier,
+                id_exercice,
+                id_numcpt: row.compte,
+                id_journal,
+                id_devise,
+                num_facture,
+                taux,
+                devise,
+                modifierpar: id_compte,
+                debit: row.debit === "" ? 0 : row.debit,
+                credit: row.credit === "" ? 0 : row.credit,
+                num_facture: row.num_facture,
+                montant_devise: row.montant_devise || 0,
+                dateecriture: dateecriture,
+                id_numcptcentralise,
+                libelle: row.libelle || '',
+                piece: row.piece || '',
+                piecedate: row.piecedate || null,
+                id_ecriture: idEcritureCommun,
+                fichier: null,
+                comptegen: comptegen,
+                compteaux: compteaux,
+                libellecompte: libellecompte,
+                libelleaux: libelleaux
+            };
+
+            const journalExistant = await journals.findByPk(row.id);
+            if (row.id && Number(row.id) > 0) {
+                if (!journalExistant) continue;
+
+                if (file) {
+                    if (journalExistant.fichier) {
+                        const ancienChemin = path.resolve(process.cwd(), journalExistant.fichier);
+                        if (fs.existsSync(ancienChemin)) fs.unlinkSync(ancienChemin);
+                    }
+                    journalData.fichier = fichierCheminRelatif;
+
+                } else if (conserverFichier && journalExistant.fichier) {
+                    journalData.fichier = journalExistant.fichier;
+
+                } else if (!conserverFichier && journalExistant.fichier) {
+                    const ancienChemin = path.resolve(process.cwd(), journalExistant.fichier);
+                    if (fs.existsSync(ancienChemin)) fs.unlinkSync(ancienChemin);
+                    journalData.fichier = null;
+
+                } else {
+                    journalData.fichier = null;
+                }
+
+                await journals.update(journalData, { where: { id: row.id } });
+                modification++;
+
+                const relevantCa = listCa?.filter(item => item.id_ligne_ecriture === row.id) || [];
+
+                for (const item of relevantCa) {
+                    const whereClause = {
+                        id_ligne_ecriture: row.id,
+                        id_axe: item.id_axe,
+                        id_section: item.id_section
+                    };
+
+                    const [affectedRows] = await analytiques.update(
+                        {
+                            debit: item.debit || 0,
+                            credit: item.credit || 0,
+                            pourcentage: item.pourcentage || 0
+                        },
+                        { where: whereClause }
+                    );
+
+                    if (affectedRows === 0) {
+                        await analytiques.create({
+                            id_compte,
+                            id_dossier,
+                            id_exercice,
+                            ...whereClause,
+                            debit: item.debit || 0,
+                            credit: item.credit || 0,
+                            pourcentage: item.pourcentage || 0
+                        });
+                    }
+                }
+            }
+            else {
+                journalData.fichier = fichierCheminRelatif || null;
+
+                const createdJournal = await journals.create(journalData);
+
+                const journalId = createdJournal.id;
+
+                const relevantCa = listCa?.filter(item => item.id_ligne_ecriture === row.id_temporaire) || [];
+
+                if (relevantCa.length > 0) {
+                    const listCaRows = relevantCa.map(item => ({
+                        id_compte,
+                        id_dossier,
+                        id_exercice,
+                        id_ligne_ecriture: journalId,
+                        id_axe: item.id_axe,
+                        id_section: item.id_section,
+                        debit: item.debit || 0,
+                        credit: item.credit || 0,
+                        pourcentage: item.pourcentage || 0
+
+                    }));
+
+                    await analytiques.bulkCreate(listCaRows);
+                }
+                ajout++;
+            }
+        }
+
+        if (deletedIds.length > 0) {
+            await journals.destroy({ where: { id: deletedIds } });
+        }
+
+        return res.json({
+            message: `${modification} ${pluralize(modification, 'ligne')} ${pluralize(modification, 'modifiée')}, ${ajout} ${pluralize(ajout, 'ajoutée')}, ${deletedIds.length} ${pluralize(deletedIds.length, 'supprimée')}`,
+            state: true
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(400).json({ state: false, message: error.message });
+    }
+};
+
+exports.getJournal = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice } = req.params;
+
+        if (!id_dossier) return res.status(400).json({ state: false, message: 'Dossier non trouvé' });
+        if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
+        if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
+
+        const firstTenIds = await journals.findAll({
+            attributes: ['id_ecriture', 'createdAt'],
+            where: { id_compte, id_dossier, id_exercice },
+            order: [['createdAt', 'DESC']],
+            raw: true
+        });
+
+        const uniqueEcritures = [...new Set(firstTenIds.map(val => val.id_ecriture))];
+
+        const id_ecritures = uniqueEcritures.slice(0, 10);
+
+        const journalData = await journals.findAll({
+            where: {
+                id_compte,
+                id_dossier,
+                id_exercice,
+                id_ecriture: id_ecritures
+            },
+            include: [
+                { model: dossierplancomptable, attributes: ['compte'] },
+                { model: codejournals, attributes: ['code'] },
+                { model: dossiers, attributes: ['dossier'] },
+            ],
+            order: [
+                // ['id_ecriture', 'ASC'],
+                // ['dateecriture', 'ASC'],
+                // ['id', 'ASC']
+                ['createdAt', 'DESC']
+            ]
+        });
+
+        const mappedData = journalData.map(journal => {
+            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
+            return {
+                ...rest,
+                compte: dossierplancomptable?.compte || null,
+                journal: codejournal?.code || null,
+                dossier: dossier?.dossier || null
+            };
+        });
+
+        return res.json(mappedData);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+}
+
+exports.getAllJournal = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice } = req.params;
+
+        if (!id_dossier) return res.status(400).json({ state: false, message: 'Dossier non trouvé' });
+        if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
+        if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
+
+        const dossierData = await dossiers.findByPk(id_dossier);
+        const exerciceData = await exercices.findByPk(id_exercice);
+
+        if (!exerciceData || !exerciceData.date_debut || !exerciceData.date_fin) {
+            return res.status(400).json({ state: false, message: 'Exercice invalide ou dates manquantes' });
+        }
+
+        const consolidation = dossierData?.consolidation || false;
+        const date_debut_exercice = new Date(exerciceData.date_debut);
+        const date_fin_exercice = new Date(exerciceData.date_fin);
+
+        if (isNaN(date_debut_exercice.getTime()) || isNaN(date_fin_exercice.getTime())) {
+            return res.status(400).json({ state: false, message: 'Dates d\'exercice invalides' });
+        }
+
+        let id_dossiers_a_utiliser = [Number(id_dossier)];
+
+        if (consolidation) {
+            const consolidationDossierData = await consolidationDossier.findAll({
+                where: {
+                    id_dossier,
+                    id_compte
+                }
+            });
+
+            if (!consolidationDossierData.length) {
+                return res.json({
+                    state: true,
+                    msg: "Consolidation de dossier vide",
+                    liste: []
+                });
+            }
+
+            id_dossiers_a_utiliser = [...new Set(
+                consolidationDossierData.map(val => Number(val.id_dossier_autre))
+            ), Number(id_dossier)];
+        }
+
+        const exerciceDataToUse = await exercices.findAll({
+            where: {
+                id_compte,
+                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+                [Op.and]: [
+                    { date_debut: { [Op.lte]: date_fin_exercice } },
+                    { date_fin: { [Op.gte]: date_debut_exercice } }
+                ]
+            }
+        })
+
+        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
+
+        const whereClause = {
+            id_compte,
+            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+            id_exercice: { [Op.in]: id_exercices_a_utiliser }
+        };
+
+        const journalData = await journals.findAll({
+            where: whereClause,
+            include: [
+                { model: dossierplancomptable, attributes: ['compte'] },
+                { model: codejournals, attributes: ['code'] },
+                { model: dossiers, attributes: ['dossier'] },
+            ],
+            order: [
+                // ['id_ecriture', 'ASC'],
+                // ['dateecriture', 'ASC'],
+                // ['id', 'ASC']
+                ['createdAt', 'DESC']
+            ]
+        });
+
+        const mappedData = journalData.map(journal => {
+            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
+            return {
+                ...rest,
+                compte: dossierplancomptable?.compte || null,
+                journal: codejournal?.code || null,
+                dossier: dossier?.dossier || null
+            };
+        });
+
+        return res.json(mappedData);
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+    }
+}
+
+exports.getJournalFiltered = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice, journal, compte, piece, libelle, debut, fin } = req.body;
+        const id_numcpt = compte?.id;
+
+        if (!id_dossier) return res.status(400).json({ state: false, message: 'Dossier non trouvé' });
+        if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
+        if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
+
+        const dossierData = await dossiers.findByPk(id_dossier);
+        const exerciceData = await exercices.findByPk(id_exercice);
+
+        if (!exerciceData || !exerciceData.date_debut || !exerciceData.date_fin) {
+            return res.status(400).json({ state: false, message: 'Exercice invalide ou dates manquantes' });
+        }
+
+        const consolidation = dossierData?.consolidation || false;
+        const date_debut_exercice = new Date(exerciceData.date_debut);
+        const date_fin_exercice = new Date(exerciceData.date_fin);
+
+        if (isNaN(date_debut_exercice.getTime()) || isNaN(date_fin_exercice.getTime())) {
+            return res.status(400).json({ state: false, message: 'Dates d\'exercice invalides' });
+        }
+
+        let id_dossiers_a_utiliser = [Number(id_dossier)];
+
+        if (consolidation) {
+            const consolidationDossierData = await consolidationDossier.findAll({
+                where: {
+                    id_dossier,
+                    id_compte
+                }
+            });
+
+            if (!consolidationDossierData.length) {
+                return res.json({
+                    state: true,
+                    msg: "Consolidation de dossier vide",
+                    liste: []
+                });
+            }
+
+            id_dossiers_a_utiliser = [...new Set(
+                consolidationDossierData.map(val => Number(val.id_dossier_autre))
+            ), Number(id_dossier)];
+        }
+
+        const exerciceDataToUse = await exercices.findAll({
+            where: {
+                id_compte,
+                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+                [Op.and]: [
+                    { date_debut: { [Op.lte]: date_fin_exercice } },
+                    { date_fin: { [Op.gte]: date_debut_exercice } }
+                ]
+            }
+        })
+
+        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
+
+        const whereClause = {
+            id_compte,
+            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+            id_exercice: { [Op.in]: id_exercices_a_utiliser }
+        };
+
+        if (piece) whereClause.piece = { [Op.iLike]: `%${piece}%` };
+        if (libelle) whereClause.libelle = { [Op.iLike]: `%${libelle}%` };
+        if (debut && fin) {
+            whereClause.dateecriture = { [Op.between]: [debut, fin] };
+        } else if (debut) {
+            whereClause.dateecriture = { [Op.gte]: debut };
+        } else if (fin) {
+            whereClause.dateecriture = { [Op.lte]: fin };
+        } else if (date_debut_exercice && date_fin_exercice && consolidation) {
+            whereClause.dateecriture = { [Op.between]: [date_debut_exercice, date_fin_exercice] };
+        }
+
+        const journalData = await journals.findAll({
+            where: whereClause,
+            order: [['createdAt', 'DESC']],
+            include: [
+                {
+                    model: dossierplancomptable,
+                    attributes: ['compte', 'id'],
+                    where:
+                    {
+                        ...(compte ? { id: id_numcpt } : {}),
+                    }
+                },
+                {
+                    model: codejournals,
+                    attributes: ['code'],
+                    where:
+                    {
+                        ...(journal ? { code: journal } : {}),
+                    }
+                }
+            ]
+        });
+
+        const id_ecritures = [...new Set(journalData.map(val => val.id_ecriture))];
+
+        const journalFinal = await journals.findAll({
+            where: {
+                id_ecriture: id_ecritures,
+                id_compte,
+                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+                id_exercice: { [Op.in]: id_exercices_a_utiliser }
+            },
+            include: [
+                { model: dossierplancomptable, attributes: ['compte'] },
+                { model: codejournals, attributes: ['code'] },
+                { model: dossiers, attributes: ['dossier'] },
+            ],
+            order: [
+                // ['id_ecriture', 'ASC'],
+                // ['dateecriture', 'ASC'],
+                // ['id', 'ASC']
+                ['createdAt', 'DESC']
+            ]
+        })
+
+        const mappedData = journalFinal.map(journal => {
+            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
+            return {
+                ...rest,
+                compte: dossierplancomptable?.compte || null,
+                journal: codejournal?.code || null,
+                dossier: dossier?.dossier || null,
+            };
+        });
+
+        return res.json({ state: true, list: mappedData });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+    }
+};
+
+function nextLettrage(current) {
+    if (!current) return 'A';
+
+    const chars = current.toUpperCase().split('');
+    let i = chars.length - 1;
+
+    while (i >= 0) {
+        if (chars[i] !== 'Z') {
+            chars[i] = String.fromCharCode(chars[i].charCodeAt(0) + 1);
+            for (let j = i + 1; j < chars.length; j++) {
+                chars[j] = 'A';
+            }
+            return chars.join('');
+        }
+        i--;
+    }
+    return 'A'.repeat(current.length + 1);
+}
+
+exports.addLettrage = async (req, res) => {
+    try {
+        const { data, id_compte, id_dossier, id_exercice } = req.body;
+
+        if (!data || !Array.isArray(data) || data.length === 0 || !id_compte || !id_dossier || !id_exercice) {
+            return res.status(400).json({ state: false, message: 'Données manquantes ou invalides' });
+        }
+
+        const dernierLettrage = await journals.max('lettrage', {
+            where: {
+                id_compte,
+                id_dossier,
+                id_exercice,
+            }
+        });
+
+        const nouveauLettrage = nextLettrage(dernierLettrage);
+
+        await journals.update(
+            { lettrage: nouveauLettrage },
+            {
+                where: {
+                    id: data,
+                }
+            }
+        );
+
+        return res.status(200).json({
+            state: true,
+            message: `Lettrage "${nouveauLettrage}" ajouté avec succès à ${data.length} lignes`,
+            lettrage: nouveauLettrage
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Erreur serveur",
+            error: error.message
+        });
+    }
+};
+
+exports.deleteLettrage = async (req, res) => {
+    try {
+        const { data, id_compte, id_dossier, id_exercice } = req.body;
+
+        if (!data || !Array.isArray(data) || data.length === 0 || !id_compte || !id_dossier || !id_exercice) {
+            return res.status(400).json({ state: false, message: 'Données manquantes ou invalides' });
+        }
+
+        // journals.update retourne un tableau dont la première valeur est le nombre de lignes affectées
+        const [affectedRows] = await journals.update(
+            { lettrage: "" },
+            {
+                where: {
+                    id: data,
+                }
+            }
+        );
+
+        return res.status(200).json({
+            state: true,
+            message: `Lettrage supprimé avec succès sur ${Number(affectedRows) || 0} ${pluralize(Number(affectedRows), 'ligne')}`,
+            affected: Number(affectedRows) || 0,
+            lettrage: ""
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Erreur serveur",
+            error: error.message
+        });
+    }
+};
+
+exports.deleteJournal = async (req, res) => {
+    try {
+        const { ids } = req.body;
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ state: false, msg: "Aucun ID fourni" });
+        }
+
+        // Vérifier si les écritures appartiennent à un journal de type RAN
+        const journalsToDelete = await journals.findAll({
+            where: { id: ids },
+            include: [{
+                model: codejournals,
+                attributes: ['type']
+            }]
+        });
+
+        const hasRanType = journalsToDelete.some(j => j.codejournal?.type === 'RAN');
+        if (hasRanType) {
+            return res.status(403).json({
+                state: false,
+                msg: "Impossible de supprimer des écritures de type RAN (Report à nouveau)"
+            });
+        }
+
+        const journal = await journals.findOne({
+            where: { id: ids[0] }
+        });
+
+        if (journal?.fichier) {
+            const filePath = path.resolve(process.cwd(), journal.fichier);
+            try {
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                } else {
+                    console.warn("Fichier introuvable :", filePath);
+                }
+            } catch (err) {
+                console.warn("Erreur suppression fichier :", err.message);
+            }
+        }
+
+        const result = await journals.destroy({
+            where: {
+                id: ids
+            }
+        });
+
+        return res.json({
+            state: result > 0,
+            msg: result > 0 ? "Lignes supprimées avec succès" : "Aucune ligne supprimée"
+        });
+
+    } catch (error) {
+        console.error("Erreur deleteJournal :", error);
+        return res.status(500).json({
+            state: false,
+            msg: "Une erreur est survenue lors de la suppression des écritures. Veuillez réessayer.",
+            error: error.message
+        });
+    }
+};
+
+// -------------------- IMMOBILISATIONS: details_immo CRUD --------------------
+exports.listDetailsImmo = async (req, res) => {
+    try {
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        const pcId = req.query?.pcId ? Number(req.query.pcId) : null;
+        if (!fileId || !exerciceId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        // Si pcId est fourni, on filtre par pc_id (ID du plan comptable)
+        // Sinon on filtre par id_compte (ID du compte utilisateur)
+        const whereClause = pcId
+            ? 'AND d.pc_id = :pcId'
+            : (compteId ? 'AND d.id_compte = :compteId' : '');
+
+        const sql = `
+            SELECT d.*
+            FROM details_immo d
+            WHERE d.id_dossier = :fileId
+              AND d.id_exercice = :exerciceId
+              ${whereClause}
+            ORDER BY d.id ASC
+        `;
+        const rows = await db.sequelize.query(sql, {
+            replacements: { fileId, compteId, exerciceId, pcId },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+        return res.json({ state: true, list: rows || [] });
+    } catch (err) {
+        console.error('[IMMO][DETAILS][LIST] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+exports.createDetailsImmo = async (req, res) => {
+    try {
+        const {
+            fileId, compteId, exerciceId, pcId,
+            code, intitule, lien_ecriture_id, fournisseur,
+            date_acquisition, date_mise_service, duree_amort_mois, type_amort,
+            montant, taux_tva, montant_tva, montant_ht,
+            reprise_immobilisation, date_reprise,
+            reprise_immobilisation_comp, date_reprise_comp,
+            reprise_immobilisation_fisc, date_reprise_fisc,
+            // legacy (back-compat)
+            amort_ant, dotation_periode, amort_exceptionnel, total_amortissement, derogatoire,
+            // new comptable suffix
+            amort_ant_comp, dotation_periode_comp, amort_exceptionnel_comp, total_amortissement_comp, derogatoire_comp,
+            // new fiscale suffix
+            amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
+            duree_amort_mois_fisc, type_amort_fisc,
+            compte_amortissement, vnc, date_sortie, prix_vente,
+        } = req.body || {};
+
+        if (!fileId || !compteId || !exerciceId || !pcId || !code) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        const exo = await db.exercices.findByPk(Number(exerciceId));
+        if (!exo) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+        const exoDebut = exo.date_debut ? new Date(exo.date_debut) : null;
+        const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+
+        if (exoDebut && !isNaN(exoDebut.getTime()) && exoFin && !isNaN(exoFin.getTime())) {
+            const dAcq = date_acquisition ? new Date(String(date_acquisition).substring(0, 10)) : null;
+            const dMs = date_mise_service ? new Date(String(date_mise_service).substring(0, 10)) : null;
+            const dRepriseLegacy = date_reprise ? new Date(String(date_reprise).substring(0, 10)) : null;
+            const dRepriseComp = date_reprise_comp ? new Date(String(date_reprise_comp).substring(0, 10)) : null;
+            const dRepriseFisc = date_reprise_fisc ? new Date(String(date_reprise_fisc).substring(0, 10)) : null;
+
+            if (dAcq && !isNaN(dAcq.getTime()) && dAcq < exoDebut) {
+                return res.status(400).json({ state: false, msg: "Date d'acquisition avant la date de début de l'exercice" });
+            }
+            if (dMs && !isNaN(dMs.getTime()) && dMs < exoDebut) {
+                return res.status(400).json({ state: false, msg: "Date de mise en service avant la date de début de l'exercice" });
+            }
+
+            if (dRepriseLegacy && !isNaN(dRepriseLegacy.getTime()) && (dRepriseLegacy < exoDebut || dRepriseLegacy > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise hors période de l'exercice" });
+            }
+            if (dRepriseComp && !isNaN(dRepriseComp.getTime()) && (dRepriseComp < exoDebut || dRepriseComp > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise comptable hors période de l'exercice" });
+            }
+            if (dRepriseFisc && !isNaN(dRepriseFisc.getTime()) && (dRepriseFisc < exoDebut || dRepriseFisc > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
+            }
+        }
+
+        // Validate that amortisation account is provided (front derives one from compte)
+        if (!compte_amortissement || String(compte_amortissement).trim() === '') {
+            return res.status(400).json({ state: false, msg: "Veuillez ajouter un compte d'amort" });
+        }
+
+        const insertSql = `
+            INSERT INTO details_immo (
+                id_dossier, id_compte, id_exercice, pc_id,
+                code, intitule, lien_ecriture_id, fournisseur,
+                date_acquisition, date_mise_service, duree_amort_mois, type_amort,
+                montant, taux_tva, montant_tva, montant_ht,
+                compte_amortissement, vnc, date_sortie, prix_vente,
+                reprise_immobilisation, date_reprise,
+                reprise_immobilisation_comp, date_reprise_comp,
+                reprise_immobilisation_fisc, date_reprise_fisc,
+                amort_ant_comp, dotation_periode_comp, amort_exceptionnel_comp, total_amortissement_comp, derogatoire_comp,
+                amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
+                duree_amort_mois_fisc, type_amort_fisc,
+                created_at, updated_at
+            ) VALUES (
+                :fileId, :compteId, :exerciceId, :pcId,
+                :code, :intitule, :lien_ecriture_id, :fournisseur,
+                :date_acquisition, :date_mise_service, :duree_amort_mois, :type_amort,
+                :montant, :taux_tva, :montant_tva, :montant_ht,
+                :compte_amortissement, :vnc, :date_sortie, :prix_vente,
+                :reprise_immobilisation, :date_reprise,
+                :reprise_immobilisation_comp, :date_reprise_comp,
+                :reprise_immobilisation_fisc, :date_reprise_fisc,
+                :amort_ant_comp, :dotation_periode_comp, :amort_exceptionnel_comp, :total_amortissement_comp, :derogatoire_comp,
+                :amort_ant_fisc, :dotation_periode_fisc, :amort_exceptionnel_fisc, :total_amortissement_fisc, :derogatoire_fisc,
+                :duree_amort_mois_fisc, :type_amort_fisc,
+                NOW(), NOW()
+            ) RETURNING id;
+        `;
+        const [ret] = await db.sequelize.query(insertSql, {
+            replacements: {
+                fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId),
+                code: String(code), intitule: intitule ?? null, lien_ecriture_id: lien_ecriture_id ?? null, fournisseur: fournisseur ?? null,
+                date_acquisition: date_acquisition ? String(date_acquisition).substring(0, 10) : null,
+                date_mise_service: date_mise_service ? String(date_mise_service).substring(0, 10) : null,
+                duree_amort_mois: duree_amort_mois ?? null, type_amort: type_amort ?? null,
+                montant: Number(montant) || 0, taux_tva: taux_tva ?? null, montant_tva: montant_tva ?? null, montant_ht: montant_ht ?? null,
+                compte_amortissement: compte_amortissement ?? null,
+                vnc: Number(vnc) || 0,
+                date_sortie: date_sortie ? String(date_sortie).substring(0, 10) : null, prix_vente: prix_vente ?? null,
+                reprise_immobilisation: Number(reprise_immobilisation) === 1 || reprise_immobilisation === true,
+                date_reprise: date_reprise ? String(date_reprise).substring(0, 10) : null,
+                reprise_immobilisation_comp: Number(reprise_immobilisation_comp) === 1 || reprise_immobilisation_comp === true,
+                date_reprise_comp: date_reprise_comp ? String(date_reprise_comp).substring(0, 10) : null,
+                reprise_immobilisation_fisc: Number(reprise_immobilisation_fisc) === 1 || reprise_immobilisation_fisc === true,
+                date_reprise_fisc: date_reprise_fisc ? String(date_reprise_fisc).substring(0, 10) : null,
+                amort_ant_comp: Number(amort_ant_comp) || 0,
+                dotation_periode_comp: Number(dotation_periode_comp) || 0,
+                amort_exceptionnel_comp: Number(amort_exceptionnel_comp) || 0,
+                total_amortissement_comp: Number(total_amortissement_comp) || 0,
+                derogatoire_comp: Number(derogatoire_comp) || 0,
+                amort_ant_fisc: Number(amort_ant_fisc) || 0,
+                dotation_periode_fisc: Number(dotation_periode_fisc) || 0,
+                amort_exceptionnel_fisc: Number(amort_exceptionnel_fisc) || 0,
+                total_amortissement_fisc: Number(total_amortissement_fisc) || 0,
+                derogatoire_fisc: Number(derogatoire_fisc) || 0,
+                duree_amort_mois_fisc: duree_amort_mois_fisc ?? null,
+                type_amort_fisc: type_amort_fisc ?? null,
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+        });
+
+        const insertedId = Array.isArray(ret) ? ret[0]?.id : ret?.id;
+        if (insertedId && lien_ecriture_id) {
+            const [jrow] = await db.sequelize.query(
+                `SELECT id_ecriture FROM public.journals WHERE id = :ligne AND id_dossier = :file AND id_exercice = :exo LIMIT 1`,
+                { replacements: { ligne: Number(lien_ecriture_id), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.SELECT }
+            );
+            if (jrow?.id_ecriture) {
+                await db.sequelize.query(
+                    `UPDATE public.journals SET id_immob = :immobId WHERE id_ecriture = :idec AND id_dossier = :file AND id_exercice = :exo`,
+                    { replacements: { immobId: Number(insertedId), idec: String(jrow.id_ecriture), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
+                );
+            } else {
+                await db.sequelize.query(
+                    `UPDATE public.journals SET id_immob = :immobId WHERE id = :ligne AND id_dossier = :file AND id_exercice = :exo`,
+                    { replacements: { immobId: Number(insertedId), ligne: Number(lien_ecriture_id), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
+                );
+            }
+        } else if (insertedId && !lien_ecriture_id) {
+            await db.sequelize.query(
+                `UPDATE public.journals SET id_immob = 0 WHERE id_dossier = :file AND id_exercice = :exo AND id_immob = :immobId`,
+                { replacements: { immobId: Number(insertedId), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
+            );
+        }
+
+        return res.json({ state: true, id: insertedId || null });
+    } catch (err) {
+        console.error('[IMMO][DETAILS][UPDATE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+exports.updateDetailsImmo = async (req, res) => {
+    try {
+        const id = Number(req.params?.id);
+        const {
+            fileId, compteId, exerciceId, pcId,
+            code, intitule, lien_ecriture_id, fournisseur,
+            date_acquisition, date_mise_service, duree_amort_mois, type_amort,
+            montant, taux_tva, montant_tva, montant_ht,
+            reprise_immobilisation, date_reprise,
+            reprise_immobilisation_comp, date_reprise_comp,
+            reprise_immobilisation_fisc, date_reprise_fisc,
+            // new comptable suffix
+            amort_ant_comp, dotation_periode_comp, amort_exceptionnel_comp, total_amortissement_comp, derogatoire_comp,
+            // new fiscale suffix
+            amort_ant_fisc, dotation_periode_fisc, amort_exceptionnel_fisc, total_amortissement_fisc, derogatoire_fisc,
+            duree_amort_mois_fisc, type_amort_fisc,
+            compte_amortissement, vnc, date_sortie, prix_vente,
+        } = req.body || {};
+        if (!id || !fileId || !compteId || !exerciceId || !pcId || !code) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        const exo = await db.exercices.findByPk(Number(exerciceId));
+        if (!exo) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+        const exoDebut = exo.date_debut ? new Date(exo.date_debut) : null;
+        const exoFin = exo.date_fin ? new Date(exo.date_fin) : null;
+
+        if (exoDebut && !isNaN(exoDebut.getTime()) && exoFin && !isNaN(exoFin.getTime())) {
+            const dAcq = date_acquisition ? new Date(String(date_acquisition).substring(0, 10)) : null;
+            const dMs = date_mise_service ? new Date(String(date_mise_service).substring(0, 10)) : null;
+            const dRepriseLegacy = date_reprise ? new Date(String(date_reprise).substring(0, 10)) : null;
+            const dRepriseComp = date_reprise_comp ? new Date(String(date_reprise_comp).substring(0, 10)) : null;
+            const dRepriseFisc = date_reprise_fisc ? new Date(String(date_reprise_fisc).substring(0, 10)) : null;
+
+            if (dAcq && !isNaN(dAcq.getTime()) && dAcq < exoDebut) {
+                return res.status(400).json({ state: false, msg: "Date d'acquisition avant la date de début de l'exercice" });
+            }
+            if (dMs && !isNaN(dMs.getTime()) && dMs < exoDebut) {
+                return res.status(400).json({ state: false, msg: "Date de mise en service avant la date de début de l'exercice" });
+            }
+
+            if (dRepriseLegacy && !isNaN(dRepriseLegacy.getTime()) && (dRepriseLegacy < exoDebut || dRepriseLegacy > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise hors période de l'exercice" });
+            }
+            if (dRepriseComp && !isNaN(dRepriseComp.getTime()) && (dRepriseComp < exoDebut || dRepriseComp > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise comptable hors période de l'exercice" });
+            }
+            if (dRepriseFisc && !isNaN(dRepriseFisc.getTime()) && (dRepriseFisc < exoDebut || dRepriseFisc > exoFin)) {
+                return res.status(400).json({ state: false, msg: "Date de reprise fiscale hors période de l'exercice" });
+            }
+        }
+
+        const updateSql = `
+            UPDATE details_immo SET
+                pc_id = :pcId,
+                code = :code,
+                intitule = :intitule,
+                lien_ecriture_id = :lien_ecriture_id,
+                fournisseur = :fournisseur,
+                date_acquisition = :date_acquisition,
+                date_mise_service = :date_mise_service,
+                duree_amort_mois = :duree_amort_mois,
+                type_amort = :type_amort,
+                montant = :montant,
+                taux_tva = :taux_tva,
+                montant_tva = :montant_tva,
+                montant_ht = :montant_ht,
+                compte_amortissement = :compte_amortissement,
+                vnc = :vnc,
+                date_sortie = :date_sortie,
+                prix_vente = :prix_vente,
+                reprise_immobilisation = :reprise_immobilisation,
+                date_reprise = :date_reprise,
+                reprise_immobilisation_comp = :reprise_immobilisation_comp,
+                date_reprise_comp = :date_reprise_comp,
+                reprise_immobilisation_fisc = :reprise_immobilisation_fisc,
+                date_reprise_fisc = :date_reprise_fisc,
+                amort_ant_comp = :amort_ant_comp,
+                dotation_periode_comp = :dotation_periode_comp,
+                amort_exceptionnel_comp = :amort_exceptionnel_comp,
+                total_amortissement_comp = :total_amortissement_comp,
+                derogatoire_comp = :derogatoire_comp,
+                amort_ant_fisc = :amort_ant_fisc,
+                dotation_periode_fisc = :dotation_periode_fisc,
+                amort_exceptionnel_fisc = :amort_exceptionnel_fisc,
+                total_amortissement_fisc = :total_amortissement_fisc,
+                derogatoire_fisc = :derogatoire_fisc,
+                duree_amort_mois_fisc = :duree_amort_mois_fisc, 
+                type_amort_fisc = :type_amort_fisc,
+                updated_at = NOW()
+            WHERE id = :id AND id_dossier = :fileId AND id_compte = :compteId AND id_exercice = :exerciceId
+        `;
+
+        await db.sequelize.query(updateSql, {
+            replacements: {
+                id: Number(id), fileId: Number(fileId), compteId: Number(compteId), exerciceId: Number(exerciceId), pcId: Number(pcId),
+                code: String(code), intitule: intitule ?? null, lien_ecriture_id: lien_ecriture_id ?? null, fournisseur: fournisseur ?? null,
+                date_acquisition: date_acquisition ? String(date_acquisition).substring(0, 10) : null,
+                date_mise_service: date_mise_service ? String(date_mise_service).substring(0, 10) : null,
+                duree_amort_mois: duree_amort_mois ?? null, type_amort: type_amort ?? null,
+                montant: Number(montant) || 0, taux_tva: taux_tva ?? null, montant_tva: montant_tva ?? null, montant_ht: montant_ht ?? null,
+                compte_amortissement: compte_amortissement ?? null,
+                vnc: Number(vnc) || 0,
+                date_sortie: date_sortie ? String(date_sortie).substring(0, 10) : null, prix_vente: prix_vente ?? null,
+                reprise_immobilisation: Number(reprise_immobilisation) === 1 || reprise_immobilisation === true,
+                date_reprise: date_reprise ? String(date_reprise).substring(0, 10) : null,
+                reprise_immobilisation_comp: Number(reprise_immobilisation_comp) === 1 || reprise_immobilisation_comp === true,
+                date_reprise_comp: date_reprise_comp ? String(date_reprise_comp).substring(0, 10) : null,
+                reprise_immobilisation_fisc: Number(reprise_immobilisation_fisc) === 1 || reprise_immobilisation_fisc === true,
+                date_reprise_fisc: date_reprise_fisc ? String(date_reprise_fisc).substring(0, 10) : null,
+                amort_ant_comp: Number(amort_ant_comp) || 0,
+                dotation_periode_comp: Number(dotation_periode_comp) || 0,
+                amort_exceptionnel_comp: Number(amort_exceptionnel_comp) || 0,
+                total_amortissement_comp: Number(total_amortissement_comp) || 0,
+                derogatoire_comp: Number(derogatoire_comp) || 0,
+                amort_ant_fisc: Number(amort_ant_fisc) || 0,
+                dotation_periode_fisc: Number(dotation_periode_fisc) || 0,
+                amort_exceptionnel_fisc: Number(amort_exceptionnel_fisc) || 0,
+                total_amortissement_fisc: Number(total_amortissement_fisc) || 0,
+                derogatoire_fisc: Number(derogatoire_fisc) || 0,
+                duree_amort_mois_fisc: duree_amort_mois_fisc ?? null,
+                type_amort_fisc: type_amort_fisc ?? null,
+            },
+            type: db.Sequelize.QueryTypes.UPDATE,
+        });
+
+        if (id && lien_ecriture_id) {
+            const [jrow] = await db.sequelize.query(
+                `SELECT id_ecriture FROM public.journals WHERE id = :ligne AND id_dossier = :file AND id_exercice = :exo LIMIT 1`,
+                { replacements: { ligne: Number(lien_ecriture_id), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.SELECT }
+            );
+            if (jrow?.id_ecriture) {
+                await db.sequelize.query(
+                    `UPDATE public.journals SET id_immob = :immobId WHERE id_ecriture = :idec AND id_dossier = :file AND id_exercice = :exo`,
+                    { replacements: { immobId: Number(id), idec: String(jrow.id_ecriture), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
+                );
+            } else {
+                await db.sequelize.query(
+                    `UPDATE public.journals SET id_immob = :immobId WHERE id = :ligne AND id_dossier = :file AND id_exercice = :exo`,
+                    { replacements: { immobId: Number(id), ligne: Number(lien_ecriture_id), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
+                );
+            }
+        } else if (id && !lien_ecriture_id) {
+            await db.sequelize.query(
+                `UPDATE public.journals SET id_immob = 0 WHERE id_dossier = :file AND id_exercice = :exo AND id_immob = :immobId`,
+                { replacements: { immobId: Number(id), file: Number(fileId), exo: Number(exerciceId) }, type: db.Sequelize.QueryTypes.UPDATE }
+            );
+        }
+
+        return res.json({ state: true, id });
+    } catch (err) {
+        console.error('[IMMO][DETAILS][UPDATE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+exports.deleteDetailsImmo = async (req, res) => {
+    try {
+        const id = Number(req.params?.id);
+        const fileId = Number(req.query?.fileId);
+        const compteId = Number(req.query?.compteId);
+        const exerciceId = Number(req.query?.exerciceId);
+        if (!id || !fileId || !exerciceId) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        // Utiliser pc_id si compteId est fourni (car c'est l'ID du plan comptable)
+        // Sinon utiliser id_compte
+        const whereClause = compteId
+            ? 'AND pc_id = :compteId'
+            : 'AND id_compte = :compteId';
+
+        const sql = `DELETE FROM details_immo WHERE id = :id AND id_dossier = :fileId AND id_exercice = :exerciceId ${whereClause}`;
+        const result = await db.sequelize.query(sql, {
+            replacements: { id, fileId, compteId, exerciceId },
+            type: db.Sequelize.QueryTypes.DELETE,
+        });
+        return res.json({ state: true, id });
+    } catch (err) {
+        console.error('[IMMO][DETAILS][DELETE] error:', err);
+        return res.status(500).json({ state: false, msg: 'Erreur serveur' });
+    }
+};
+
+exports.importImmobilisations = async (req, res) => {
+    try {
+        const { data, id_dossier, id_compte, id_exercice } = req.body;
+
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            return res.status(400).json({ state: false, msg: 'Aucune donnée à importer' });
+        }
+        if (!id_dossier || !id_compte || !id_exercice) {
+            return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
+        }
+
+        // Récupérer les dates de l'exercice sélectionné
+        const exercice = await db.exercices.findByPk(Number(id_exercice));
+        if (!exercice) {
+            return res.status(404).json({ state: false, msg: 'Exercice introuvable' });
+        }
+        const dateDebutExercice = exercice.date_debut ? new Date(exercice.date_debut) : null;
+        const dateFinExercice = exercice.date_fin ? new Date(exercice.date_fin) : null;
+
+        // Récupérer tous les exercices du dossier pour vérifier l'existence d'exercices futurs
+        const tousLesExercices = await db.sequelize.query(
+            `SELECT id, date_debut, date_fin FROM exercices WHERE id_dossier = :id_dossier ORDER BY date_debut ASC`,
+            {
+                replacements: { id_dossier: Number(id_dossier) },
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        const anomalies = [];
+        const immobilisationsToInsert = [];
+
+        // Récupérer le plan comptable pour valider les comptes
+        const planComptable = await db.sequelize.query(
+            `SELECT id, compte FROM dossierplancomptables WHERE id_dossier = :id_dossier AND id_compte = :id_compte`,
+            {
+                replacements: { id_dossier: Number(id_dossier), id_compte: Number(id_compte) },
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        const pcMap = new Map();
+        planComptable.forEach(pc => {
+            pcMap.set(pc.compte.trim(), pc.id);
+        });
+
+        // Valider et préparer les données
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            const ligneNum = i + 1;
+
+            // Validation des champs obligatoires
+            if (!row.numero_compte || row.numero_compte.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le numéro de compte est obligatoire`);
+                continue;
+            }
+            if (!row.code || row.code.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le code est obligatoire`);
+                continue;
+            }
+            if (!row.intitule || row.intitule.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: L'intitulé est obligatoire`);
+                continue;
+            }
+            if (!row.date_acquisition || row.date_acquisition.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: La date d'acquisition est obligatoire`);
+                continue;
+            }
+            if (!row.duree_amort || row.duree_amort.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: La durée d'amortissement est obligatoire`);
+                continue;
+            }
+            if (!row.type_amort || row.type_amort.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le type d'amortissement est obligatoire`);
+                continue;
+            }
+            if (!row.montant_ht || row.montant_ht.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le montant HT est obligatoire`);
+                continue;
+            }
+
+            // Trouver l'exercice correspondant à la date d'acquisition
+            const dateAcq = new Date(row.date_acquisition.trim());
+            if (isNaN(dateAcq.getTime())) {
+                anomalies.push(`Ligne ${ligneNum}: La date d'acquisition est invalide`);
+                continue;
+            }
+
+            // Chercher l'exercice qui contient cette date
+            const exerciceCorrespondant = tousLesExercices.find(exo => {
+                const debut = exo.date_debut ? new Date(exo.date_debut) : null;
+                const fin = exo.date_fin ? new Date(exo.date_fin) : null;
+                return debut && fin && dateAcq >= debut && dateAcq <= fin;
+            });
+
+            if (!exerciceCorrespondant) {
+                // Aucun exercice trouvé pour cette date
+                const annee = dateAcq.getFullYear();
+                const dateStr = `${dateAcq.getDate().toString().padStart(2, '0')}/${(dateAcq.getMonth() + 1).toString().padStart(2, '0')}/${annee}`;
+                anomalies.push(`Ligne ${ligneNum}: Veuillez créer d'abord l'exercice ${annee} pour importer cette immobilisation (date d'acquisition: ${dateStr})`);
+                continue;
+            }
+
+            // Utiliser l'exercice trouvé pour cette immobilisation
+            const exerciceIdPourCetteLigne = exerciceCorrespondant.id;
+            const dateDebutExerciceTrouve = exerciceCorrespondant.date_debut ? new Date(exerciceCorrespondant.date_debut) : null;
+            const dateFinExerciceTrouve = exerciceCorrespondant.date_fin ? new Date(exerciceCorrespondant.date_fin) : null;
+
+            // Vérifier que le compte existe dans le plan comptable
+            const numeroCompte = row.numero_compte ? row.numero_compte.trim() : '';
+            if (!numeroCompte) {
+                anomalies.push(`Ligne ${ligneNum}: Le numéro de compte est vide`);
+                continue;
+            }
+            const pc_id = pcMap.get(numeroCompte);
+            if (!pc_id) {
+                anomalies.push(`Ligne ${ligneNum}: Le compte "${numeroCompte}" n'existe pas dans le plan comptable`);
+                continue;
+            }
+
+            // Calculer le compte d'amortissement (ajouter 8 après le premier chiffre et enlever le dernier)
+            const deriveCompteAmort = (compte) => {
+                if (!compte) return '';
+                const s = String(compte);
+                if (s.length < 3) return s;
+                return s[0] + '8' + s.substring(1, s.length - 1);
+            };
+
+            const compte_amortissement = deriveCompteAmort(numeroCompte);
+
+            // Déterminer si c'est une reprise en fonction de la position de la date d'acquisition
+            let isReprise = false;
+            let dateReprise = null;
+            let amortAnt = 0;
+
+            // Vérifier d'abord la position de la date d'acquisition par rapport à l'exercice
+            if (dateDebutExercice) {
+                const dateAcq = new Date(row.date_acquisition.trim());
+
+                if (!isNaN(dateAcq.getTime()) && dateAcq < dateDebutExercice) {
+                    // Date d'acquisition AVANT le début de l'exercice → REPRISE
+                    isReprise = true;
+
+                    // Si date_reprise est fournie dans le CSV, on l'utilise
+                    if (row.date_reprise && row.date_reprise.trim() !== '') {
+                        dateReprise = row.date_reprise.trim();
+
+                        // amort_ant est obligatoire si date_reprise est fournie
+                        if (!row.amort_ant || row.amort_ant.trim() === '') {
+                            anomalies.push(`Ligne ${ligneNum}: L'amortissement antérieur est obligatoire pour une reprise`);
+                            continue;
+                        }
+                        amortAnt = Number(row.amort_ant.replace(/,/g, '.'));
+                    } else {
+                        // Sinon, reprise automatique avec date_reprise = date début exercice trouvé
+                        const year = dateDebutExerciceTrouve.getFullYear();
+                        const month = String(dateDebutExerciceTrouve.getMonth() + 1).padStart(2, '0');
+                        const day = String(dateDebutExerciceTrouve.getDate()).padStart(2, '0');
+                        dateReprise = `${year}-${month}-${day}`;
+
+                        // Utiliser amort_ant du CSV s'il est fourni, sinon 0
+                        amortAnt = (row.amort_ant && row.amort_ant.trim() !== '')
+                            ? Number(row.amort_ant.replace(/,/g, '.'))
+                            : 0;
+                    }
+                }
+            }
+
+            // Préparer l'objet à insérer avec l'exercice trouvé automatiquement
+            const immobData = {
+                id_dossier: Number(id_dossier),
+                id_compte: Number(id_compte),
+                id_exercice: exerciceIdPourCetteLigne, // Utiliser l'exercice trouvé automatiquement
+                pc_id: pc_id,
+                code: row.code.trim(),
+                intitule: row.intitule.trim(),
+                fournisseur: row.fournisseur ? row.fournisseur.trim() : null,
+                date_acquisition: row.date_acquisition.trim(),
+                date_mise_service: row.date_acquisition.trim(), // Même date que l'acquisition
+                duree_amort_mois: Number(row.duree_amort),
+                type_amort: row.type_amort.trim(),
+                montant_ht: Number(row.montant_ht.replace(/,/g, '.')),
+                compte_amortissement: compte_amortissement,
+                reprise_immobilisation: isReprise,
+                date_reprise: dateReprise,
+                reprise_immobilisation_comp: isReprise,
+                date_reprise_comp: dateReprise,
+                reprise_immobilisation_fisc: isReprise,
+                date_reprise_fisc: dateReprise,
+                amort_ant_comp: amortAnt,
+                amort_ant_fisc: amortAnt,
+                date_sortie: row.date_sortie && row.date_sortie.trim() !== '' ? row.date_sortie.trim() : null,
+                duree_amort_mois_fisc: Number(row.duree_amort),
+                type_amort_fisc: row.type_amort.trim(),
+            };
+
+            immobilisationsToInsert.push(immobData);
+        }
+
+        // Si des anomalies, retourner les erreurs
+        if (anomalies.length > 0) {
+            return res.json({
+                state: false,
+                msg: `${anomalies.length} anomalie(s) détectée(s)`,
+                anomalies: anomalies
+            });
+        }
+
+        // Insérer les immobilisations
+        let insertedCount = 0;
+        for (const immobData of immobilisationsToInsert) {
+            await db.sequelize.query(
+                `INSERT INTO details_immo (
+                    id_dossier, id_compte, id_exercice, pc_id, code, intitule, fournisseur,
+                    date_acquisition, date_mise_service, duree_amort_mois, type_amort, montant_ht,
+                    compte_amortissement, reprise_immobilisation, date_reprise,
+                    reprise_immobilisation_comp, date_reprise_comp, reprise_immobilisation_fisc, date_reprise_fisc,
+                    amort_ant_comp, amort_ant_fisc, date_sortie, duree_amort_mois_fisc, type_amort_fisc,
+                    created_at, updated_at
+                ) VALUES (
+                    :id_dossier, :id_compte, :id_exercice, :pc_id, :code, :intitule, :fournisseur,
+                    :date_acquisition, :date_mise_service, :duree_amort_mois, :type_amort, :montant_ht,
+                    :compte_amortissement, :reprise_immobilisation, :date_reprise,
+                    :reprise_immobilisation_comp, :date_reprise_comp, :reprise_immobilisation_fisc, :date_reprise_fisc,
+                    :amort_ant_comp, :amort_ant_fisc, :date_sortie, :duree_amort_mois_fisc, :type_amort_fisc,
+                    NOW(), NOW()
+                )`,
+                {
+                    replacements: immobData,
+                    type: db.Sequelize.QueryTypes.INSERT
+                }
+            );
+            insertedCount++;
+        }
+
+        return res.json({
+            state: true,
+            msg: `${insertedCount} immobilisation(s) importée(s) avec succès`
+        });
+
+    } catch (err) {
+        console.error('[IMMO][IMPORT] error:', err);
+        return res.status(500).json({
+            state: false,
+            msg: 'Erreur serveur lors de l\'import',
+            error: err.message
+        });
+    }
+};
+
+exports.addJournal = async (req, res) => {
+    try {
+        const jsonData = JSON.parse(req.body.data);
+        const file = req.file;
+
+        if (!jsonData) {
+            return res.status(400).json({ message: "Données ou fichier manquant" });
+        }
+
+        const id_compte = Number(jsonData.id_compte);
+        const id_dossier = Number(jsonData.id_dossier);
+        const id_exercice = Number(jsonData.id_exercice);
+        const id_journal = Number(jsonData.valSelectCodeJnl);
+        const id_devise = Number(jsonData.id_devise);
+
+        const codeJournal = await codejournals.findByPk(id_journal);
+        if (!codeJournal) {
+            return res.status(404).json({ message: "Code journal introuvable" });
+        }
+
+        const typeCodeJournal = codeJournal.type;
+
+        const mois = jsonData.valSelectMois;
+        const annee = jsonData.valSelectAnnee;
+        const currency = jsonData.currency;
+        const devise = jsonData.choixDevise === 'MGA' ? jsonData.choixDevise : currency;
+        const tableRows = jsonData.tableRows;
+        const listCa = jsonData.listCa;
+        const taux = jsonData.taux;
+
+        let fichierCheminRelatif = null;
+
+        if (file) {
+            const dossierRelatif = path.join(
+                "public",
+                "ScanEcriture",
+                id_compte.toString(),
+                id_dossier.toString(),
+                id_exercice.toString(),
+                typeCodeJournal
+            );
+
+            const dossierAbsolu = path.resolve(dossierRelatif);
+            fs.mkdirSync(dossierAbsolu, { recursive: true });
+
+            const nomFichier = `journal_${Date.now()}${path.extname(file.originalname)}`;
+            const cheminComplet = path.join(dossierAbsolu, nomFichier);
+
+            fs.renameSync(file.path, cheminComplet);
+
+            fichierCheminRelatif = path.join(dossierRelatif, nomFichier).replace(/\\/g, '/');
+        }
+
+        const idEcritureCommun = getDateSaisieNow(id_compte);
+
+        const newTableRows = await Promise.all(tableRows.map(async (row) => {
+            const dossierPc = await dossierplancomptable.findByPk(row.compte);
+            const libellecompte = dossierPc?.libelle;
+            const comptegen = dossierPc?.compte;
+            const comptebaseaux = dossierPc?.baseaux_id;
+
+            let id_numcptcentralise = null;
+            let libelleaux = '';
+            let compteaux = null;
+            if (comptebaseaux) {
+                const cpt = await dossierplancomptable.findByPk(comptebaseaux);
+                id_numcptcentralise = cpt?.id || null;
+                compteaux = cpt?.compte;
+                libelleaux = cpt?.libelle;
+            }
+
+            const dateecriture = new Date(
+                annee,
+                mois - 1,
+                row.jour + 1
+            );
+
+            if (!isValidDate(dateecriture)) {
+                throw new Error(`Date invalide pour la ligne ${JSON.stringify(row)}`);
+            }
+
+            return {
+                id_temporaire: row.id,
+                id_compte,
+                id_dossier,
+                id_exercice,
+                id_numcpt: row.compte,
+                id_journal,
+                id_devise,
+                taux,
+                devise,
+                saisiepar: id_compte,
+                id_ecriture: idEcritureCommun,
+                debit: row.debit === "" ? 0 : row.debit,
+                num_facture: row.num_facture,
+                credit: row.credit === "" ? 0 : row.credit,
+                montant_devise: row.montant_devise || 0,
+                dateecriture: dateecriture,
+
+                id_numcptcentralise,
+                libelle: row.libelle || '',
+                piece: row.piece || '',
+                piecedate: row.piecedate || null,
+                fichier: fichierCheminRelatif,
+                comptegen: comptegen,
+                compteaux: compteaux,
+                libellecompte: libellecompte,
+                libelleaux: libelleaux
+            };
+        }));
+
+        let count = 0;
+        for (const row of newTableRows) {
+            const createdJournal = await journals.create({ ...row });
+            count++;
+
+            const journalId = createdJournal.id;
+
+            const relevantCa = listCa?.filter(item => item.id_ligne_ecriture === row.id_temporaire) || [];
+
+            if (relevantCa.length > 0) {
+                const listCaRows = relevantCa.map(item => ({
+                    id_compte,
+                    id_dossier,
+                    id_exercice,
+                    id_ligne_ecriture: journalId,
+                    id_axe: item.id_axe,
+                    id_section: item.id_section,
+                    debit: item.debit || 0,
+                    credit: item.credit || 0,
+                    pourcentage: item.pourcentage || 0
+                }));
+
+                await analytiques.bulkCreate(listCaRows);
+            }
+        }
+
+        return res.json({
+            message: `${count} ${pluralize(count, 'ligne')} ${pluralize(count, 'ajoutée')} avec succès`,
+            data: newTableRows,
+            state: true
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(400).json({ state: false, message: error.message });
+    }
+};
+
+exports.addEcriture = async (req, res) => {
+    const transaction = await sequelize.transaction();
+
+    try {
+        const {
+            id_dossier,
+            id_exercice,
+            id_compte,
+            id_plan_comptable,
+            id_contre_partie,
+            solde
+        } = req.body;
+
+        const id_ecriture = getDateSaisieNow(id_compte);
+        const isCrediteur = solde < 0;
+
+        let debit_pc = 0, credit_pc = 0, debit_cp = 0, credit_cp = 0;
+        let id_journal = null;
+        let id_devise = null;
+
+        const dossierPc_pc = await dossierplancomptable.findByPk(id_plan_comptable);
+        const comptegen_pc = dossierPc_cp?.compte;
+
+        const dossierPc_cp = await dossierplancomptable.findByPk(id_contre_partie);
+        const comptegen_cp = dossierPc_cp?.compte;
+
+        if (!dossierPc_pc || !dossierPc_cp) {
+            throw new Error("Compte ou contrepartie introuvable");
+        }
+
+        const comptebaseaux_pc = dossierPc_pc?.baseaux_id;
+        let libelleaux_pc = '';
+        let compteaux_pc = '';
+
+        const comptebaseaux_cp = dossierPc_cp?.baseaux_id;
+        let libelleaux_cp = '';
+        let compteaux_cp = '';
+
+        let id_numcptcentralise_pc = null;
+        if (comptebaseaux_pc) {
+            const cpt = await dossierplancomptable.findByPk(comptebaseaux_pc);
+            libelleaux_pc = cpt?.libelle;
+            compteaux_pc = cpt?.compte;
+            id_numcptcentralise_pc = cpt?.id || null;
+        }
+
+        let id_numcptcentralise_cp = null;
+        if (comptebaseaux_cp) {
+            const cpt = await dossierplancomptable.findByPk(comptebaseaux_cp);
+            libelleaux_cp = cpt?.libelle;
+            compteaux_pc = cpt?.compte;
+            id_numcptcentralise_cp = cpt?.id || null;
+        }
+
+        const libelle = `Ecart de lettrage du compte ${dossierPc_pc?.compte}`;
+
+        let codeOD = await codejournals.findOne({
+            where: { id_dossier, id_compte, code: 'OD' },
+            transaction
+        });
+
+        if (!codeOD) {
+            codeOD = await codejournals.create({
+                id_compte,
+                id_dossier,
+                code: 'OD',
+                libelle: 'Opérations diverses',
+                type: 'OD'
+            }, { transaction });
+        }
+
+        id_journal = codeOD.id;
+
+        let devise = await devises.findOne({
+            where: { id_dossier, id_compte, par_defaut: true },
+            transaction
+        });
+
+        if (!devise) {
+            devise = await devises.findOne({
+                where: { id_dossier, id_compte, code: 'MGA' },
+                transaction
+            });
+
+            if (!devise) {
+                devise = await devises.create({
+                    id_compte,
+                    id_dossier,
+                    code: 'MGA',
+                    libelle: 'Madagascar',
+                    par_defaut: true
+                }, { transaction });
+            }
+        }
+
+        id_devise = devise.id;
+
+        const montant = Math.abs(solde);
+
+        if (isCrediteur) {
+            debit_pc = montant;
+            credit_cp = montant;
+        } else {
+            credit_pc = montant;
+            debit_cp = montant;
+        }
+
+        await journals.create({
+            id_compte,
+            id_dossier,
+            id_exercice,
+            id_numcpt: id_plan_comptable,
+            id_ecriture,
+            id_journal,
+            id_devise,
+            debit: debit_pc,
+            credit: credit_pc,
+            libelle,
+            dateecriture: new Date(),
+            saisiepar: id_compte,
+            devise: 'MGA',
+            id_numcptcentralise: id_numcptcentralise_pc,
+            comptegen: comptegen_pc,
+            compteaux: compteaux_pc,
+            libelleaux: libelleaux_pc
+        }, { transaction });
+
+        await journals.create({
+            id_compte,
+            id_dossier,
+            id_exercice,
+            id_numcpt: id_contre_partie,
+            id_ecriture,
+            id_journal,
+            id_devise,
+            debit: debit_cp,
+            credit: credit_cp,
+            libelle,
+            dateecriture: new Date(),
+            saisiepar: id_compte,
+            devise: 'MGA',
+            id_numcptcentralise: id_numcptcentralise_cp,
+            comptegen: comptegen_cp,
+            compteaux: compteaux_cp,
+            libelleaux: libelleaux_cp
+        }, { transaction });
+
+        await transaction.commit();
+
+        return res.status(200).json({
+            state: true,
+            message: "Écriture comptable générée avec succès"
+        });
+
+    } catch (error) {
+        await transaction.rollback();
+        console.error(error);
+        return res.status(400).json({
+            state: false,
+            message: error.message
+        });
+    }
+};
+
+// Version SSE pour importImmobilisations
+const { withSSEProgress } = require('../../Middlewares/sseProgressMiddleware');
+
+const importImmobilisationsWithProgressLogic = async (req, res, progress) => {
+    try {
+        const { data, id_dossier, id_compte, id_exercice } = req.body;
+
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            progress.error('Aucune donnée à importer');
+            return;
+        }
+
+        const totalLines = data.length;
+        progress.update(0, totalLines, 'Démarrage...', 0);
+
+        progress.step('Récupération des données de référence...', 5);
+
+        const exercice = await db.exercices.findByPk(Number(id_exercice));
+        if (!exercice) {
+            progress.error('Exercice introuvable');
+            return;
+        }
+
+        const tousLesExercices = await db.sequelize.query(
+            `SELECT id, date_debut, date_fin FROM exercices WHERE id_dossier = :id_dossier ORDER BY date_debut ASC`,
+            {
+                replacements: { id_dossier: Number(id_dossier) },
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        const planComptable = await db.sequelize.query(
+            `SELECT id, compte FROM dossierplancomptables WHERE id_dossier = :id_dossier AND id_compte = :id_compte`,
+            {
+                replacements: { id_dossier: Number(id_dossier), id_compte: Number(id_compte) },
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        const pcMap = new Map();
+        planComptable.forEach(pc => {
+            pcMap.set(pc.compte.trim(), pc.id);
+        });
+
+        progress.step('Validation des données...', 10);
+
+        const anomalies = [];
+        const immobilisationsToInsert = [];
+        const deriveCompteAmort = (compte) => {
+            if (!compte) return '';
+            const s = String(compte);
+            if (s.length < 3) return s;
+            return s[0] + '8' + s.substring(1, s.length - 1);
+        };
+
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            const ligneNum = i + 1;
+
+            // Validation des champs obligatoires
+            if (!row.numero_compte || row.numero_compte.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le numéro de compte est obligatoire`);
+                continue;
+            }
+            if (!row.code || row.code.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le code est obligatoire`);
+                continue;
+            }
+            if (!row.intitule || row.intitule.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: L'intitulé est obligatoire`);
+                continue;
+            }
+            if (!row.date_acquisition || row.date_acquisition.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: La date d'acquisition est obligatoire`);
+                continue;
+            }
+            if (!row.duree_amort || row.duree_amort.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: La durée d'amortissement est obligatoire`);
+                continue;
+            }
+            if (!row.type_amort || row.type_amort.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le type d'amortissement est obligatoire`);
+                continue;
+            }
+            if (!row.montant_ht || row.montant_ht.trim() === '') {
+                anomalies.push(`Ligne ${ligneNum}: Le montant HT est obligatoire`);
+                continue;
+            }
+
+            const dateAcq = new Date(row.date_acquisition.trim());
+            if (isNaN(dateAcq.getTime())) {
+                anomalies.push(`Ligne ${ligneNum}: La date d'acquisition est invalide`);
+                continue;
+            }
+
+            const exerciceCorrespondant = tousLesExercices.find(exo => {
+                const debut = exo.date_debut ? new Date(exo.date_debut) : null;
+                const fin = exo.date_fin ? new Date(exo.date_fin) : null;
+                return debut && fin && dateAcq >= debut && dateAcq <= fin;
+            });
+
+            if (!exerciceCorrespondant) {
+                const annee = dateAcq.getFullYear();
+                const dateStr = `${dateAcq.getDate().toString().padStart(2, '0')}/${(dateAcq.getMonth() + 1).toString().padStart(2, '0')}/${annee}`;
+                anomalies.push(`Ligne ${ligneNum}: Veuillez créer d'abord l'exercice ${annee} pour importer cette immobilisation (date d'acquisition: ${dateStr})`);
+                continue;
+            }
+
+            const numeroCompte = row.numero_compte.trim();
+            const pc_id = pcMap.get(numeroCompte);
+            if (!pc_id) {
+                anomalies.push(`Ligne ${ligneNum}: Le compte ${numeroCompte} n'existe pas dans le plan comptable`);
+                continue;
+            }
+
+            const compte_amortissement = deriveCompteAmort(numeroCompte);
+            const dateSortie = (row.date_sortie && row.date_sortie.trim() !== '') ? row.date_sortie.trim() : null;
+
+            immobilisationsToInsert.push({
+                id_dossier: Number(id_dossier),
+                id_compte: Number(id_compte),
+                id_exercice: exerciceCorrespondant.id,
+                pc_id: pc_id,
+                code: row.code.trim(),
+                intitule: row.intitule.trim(),
+                fournisseur: row.fournisseur ? row.fournisseur.trim() : '',
+                date_acquisition: row.date_acquisition.trim(),
+                duree_amort: parseInt(row.duree_amort.trim(), 10) || 0,
+                type_amort: row.type_amort.trim(),
+                montant_ht: parseFloat(row.montant_ht.trim().replace(',', '.')) || 0,
+                compte_amortissement: compte_amortissement,
+                date_reprise: row.date_reprise || null,
+                amort_ant: parseFloat(row.amort_ant || 0),
+                date_sortie: dateSortie
+            });
+        }
+
+        if (anomalies.length > 0) {
+            progress.error(`${anomalies.length} anomalie(s) détectée(s):\n${anomalies.join('\n')}`);
+            return;
+        }
+
+        if (immobilisationsToInsert.length === 0) {
+            progress.error('Aucune immobilisation valide à importer');
+            return;
+        }
+
+        await progress.processBatch(
+            immobilisationsToInsert,
+            async (batch) => {
+                await detailsimmo.bulkCreate(batch);
+            },
+            10,
+            90,
+            'Importation des immobilisations...'
+        );
+
+        progress.step('Finalisation...', 95);
+
+        progress.complete(
+            `${immobilisationsToInsert.length} immobilisations ont été importées avec succès`,
+            { nbrligne: immobilisationsToInsert.length }
+        );
+
+    } catch (error) {
+        console.error("Erreur import immobilisations :", error);
+        progress.error("Erreur lors de l'import des immobilisations", error);
+    }
+};
+
+exports.importImmobilisationsWithProgress = withSSEProgress(importImmobilisationsWithProgressLogic, {
+    batchSize: 50
+});
