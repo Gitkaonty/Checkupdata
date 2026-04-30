@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Box, Typography, Stack, Divider, IconButton, 
   Paper, Tooltip, Chip 
 } from '@mui/material';
+
 import { 
   CheckCircleOutline, 
   ChatBubbleOutline, 
@@ -11,8 +12,112 @@ import {
   HistoryToggleOffOutlined
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
+import axios from '../../../config/axios';
+import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 
-const EcrituresSuspense = () => {
+const EcrituresSuspense = ({ id_exercice, id_periode }) => {
+  const axiosPrivate = useAxiosPrivate();
+
+  const {
+    selectedExerciceId,
+    selectedPeriodeId,
+    selectedPeriodeDates,
+    listePeriodes,
+    currentExerciceDates,
+  } = useExercicePeriode();
+
+  const effectiveExerciceId = id_exercice ?? selectedExerciceId;
+  const effectivePeriodeId = id_periode ?? selectedPeriodeId;
+
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const getIds = () => {
+    return {
+      id_compte: parseInt(sessionStorage.getItem('compteId')) || 1,
+      id_dossier: parseInt(sessionStorage.getItem('fileId')) || 1,
+      id_exercice: effectiveExerciceId || parseInt(sessionStorage.getItem('exerciceId')) || 1
+    };
+  };
+
+  const resolveDates = async () => {
+    if (selectedPeriodeDates?.date_debut && selectedPeriodeDates?.date_fin && String(effectivePeriodeId) === String(selectedPeriodeId)) {
+      return {
+        date_debut: selectedPeriodeDates.date_debut,
+        date_fin: selectedPeriodeDates.date_fin
+      };
+    }
+
+    if (effectivePeriodeId && effectivePeriodeId !== 'exercice') {
+      const periodeFromContext = (listePeriodes || []).find(p => String(p.id) === String(effectivePeriodeId));
+      if (periodeFromContext?.date_debut && periodeFromContext?.date_fin) {
+        return {
+          date_debut: periodeFromContext.date_debut,
+          date_fin: periodeFromContext.date_fin
+        };
+      }
+
+      if (effectiveExerciceId) {
+        const response = await axios.get(`/paramExercice/listePeriodes/${effectiveExerciceId}`);
+        if (response?.data?.state) {
+          const periode = (response.data.list || []).find(p => String(p.id) === String(effectivePeriodeId));
+          if (periode?.date_debut && periode?.date_fin) {
+            return {
+              date_debut: periode.date_debut,
+              date_fin: periode.date_fin
+            };
+          }
+        }
+      }
+    }
+
+    if (currentExerciceDates?.date_debut && currentExerciceDates?.date_fin) {
+      return {
+        date_debut: currentExerciceDates.date_debut,
+        date_fin: currentExerciceDates.date_fin
+      };
+    }
+
+    return null;
+  };
+
+  const fetchRows = async () => {
+    if (!effectiveExerciceId) {
+      setRows([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDates();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+
+      const queryString = params.toString();
+      const url = `/administration/ecrituresSuspense/${id_compte}/${id_dossier}/${id_exercice}${queryString ? `?${queryString}` : ''}`;
+
+      const response = await axiosPrivate.get(url);
+      if (response?.data?.state) {
+        setRows(response.data.data || []);
+      } else {
+        setRows([]);
+      }
+    } catch (error) {
+      console.error('Error fetching ecritures suspense:', error);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRows();
+  }, [effectiveExerciceId, effectivePeriodeId, selectedPeriodeDates, currentExerciceDates]);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
       
@@ -21,21 +126,8 @@ const EcrituresSuspense = () => {
         <Box>
           <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ÉCRITURES EN ATTENTE</Typography>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>09</Typography>
+            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{rows.length}</Typography>
             <HourglassEmptyOutlined sx={{ color: '#EF4444', fontSize: 18 }} />
-          </Stack>
-        </Box>
-        <Divider orientation="vertical" flexItem />
-        <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>RESTANT À VALIDER</Typography>
-          <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 900, lineHeight: 1 }}>05</Typography>
-        </Box>
-        <Divider orientation="vertical" flexItem />
-        <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>PLUS DE 30 JOURS</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#6366F1', fontWeight: 900, lineHeight: 1 }}>03</Typography>
-            <HistoryToggleOffOutlined sx={{ color: '#6366F1', fontSize: 18 }} />
           </Stack>
         </Box>
       </Stack>
@@ -45,7 +137,7 @@ const EcrituresSuspense = () => {
         {/* --- TABLEAU DES ÉCRITURES (Même style que Doublons) --- */}
         <Paper variant="outlined" sx={{ flexGrow: 1, borderRadius: '8px', overflow: 'hidden', bgcolor: '#FFFFFF' }}>
           <DataGrid
-            rows={[]} // Données des comptes 471, etc.
+            rows={rows} // Données des comptes 47*
             columns={[
               { field: 'compte', headerName: 'Compte', width: 100, cellClassName: 'font-bold' },
               { field: 'journal', headerName: 'Journal', width: 80 },
@@ -53,30 +145,11 @@ const EcrituresSuspense = () => {
               { field: 'libelle', headerName: 'Libellé', flex: 1 },
               { field: 'debit', headerName: 'Débit', width: 120, type: 'number' },
               { field: 'credit', headerName: 'Crédit', width: 120, type: 'number' },
-              {
-                field: 'actions',
-                headerName: 'Actions',
-                width: 120,
-                sortable: false,
-                renderCell: () => (
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title="Valider">
-                      <IconButton size="small" sx={{ color: '#10B981', bgcolor: 'rgba(16, 185, 129, 0.05)' }}>
-                        <CheckCircleOutline fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Commenter">
-                      <IconButton size="small" sx={{ color: '#64748B', bgcolor: '#F1F5F9' }}>
-                        <ChatBubbleOutline fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                )
-              }
             ]}
             density="compact"
             sx={dataGridStyle}
             disableRowSelectionOnClick
+            loading={loading}
           />
         </Paper>
       </Box>

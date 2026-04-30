@@ -8,14 +8,15 @@ import {
 import { 
   ChevronLeft, ChevronRight, AddOutlined, 
   DeleteOutline, CalendarMonthOutlined, NavigateNext,
-  RocketLaunchOutlined, CalendarTodayOutlined, InfoOutlined,
-  DashboardOutlined
+  RocketLaunchOutlined, CalendarTodayOutlined, InfoOutlined, DashboardOutlined
 } from '@mui/icons-material';
 
 import toast from 'react-hot-toast';
 import useAuth from '../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import { useParams, useNavigate } from 'react-router-dom';
+import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 
 // --- COMPOSANT INTERNE : POPUP INITIALISATION (1er EXERCICE) ---
 const InitPremierExercice = ({ open, onClose, values, setValues, onSubmit }) => {
@@ -122,12 +123,26 @@ const exercices = () => {
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded?.UserInfo?.compteId || null;
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  const fileId = useMemo(() => {
-    const raw = sessionStorage.getItem('fileId');
-    const id = Number(raw);
-    return Number.isFinite(id) ? id : null;
-  }, []);
+  const [fileId, setFileId] = useState(0);
+  const [noFile, setNoFile] = useState(false);
+
+  useEffect(() => {
+    const storedFileId = sessionStorage.getItem('fileId');
+    const currentId = id || storedFileId;
+    if (currentId && currentId !== '0' && currentId !== 0) {
+      setFileId(Number(currentId));
+      setNoFile(false);
+    } else {
+      setNoFile(true);
+    }
+  }, [id]);
+
+  const sendToHome = () => {
+    navigate('/home');
+  };
 
   const [openPeriode, setOpenPeriode] = useState(false);
   const [openInit, setOpenInit] = useState(false);
@@ -378,6 +393,10 @@ const exercices = () => {
       toast.error('Erreur serveur');
     }
   };
+
+  if (noFile) {
+    return <PopupTestSelectedFile confirmationState={sendToHome} />;
+  }
 
   return (
     <Box sx={{ p: 3, height: '100%', bgcolor: '#F8FAFC' }}>

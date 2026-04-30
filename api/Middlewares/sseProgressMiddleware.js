@@ -16,6 +16,9 @@ const withSSEProgress = (importFunction, options = {}) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    // CORS headers for SSE
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.flushHeaders();
 
     const { batchSize = 50, steps = [] } = options;

@@ -21,7 +21,8 @@ const ConfirmActionDialog = ({
   confirmText = "Confirmer",
   cancelText = "Annuler",
   loading = false,
-  color = "#6366F1" // Couleur par défaut : Indigo
+  color = "#06b6d4",
+  cancelColor = "#EF4444"
 }) => {
   return (
     <Dialog 
@@ -34,7 +35,7 @@ const ConfirmActionDialog = ({
       <DialogTitle sx={{ pb: 1 }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Box sx={{ 
-            bgcolor: `${color}15`, // Transparence de la couleur choisie
+            bgcolor: `${color}15`, 
             color: color, 
             p: 1, 
             borderRadius: '10px', 
@@ -59,7 +60,7 @@ const ConfirmActionDialog = ({
           onClick={onClose} 
           disabled={loading}
           sx={{ 
-            color: '#64748B', 
+            color: cancelColor, 
             textTransform: 'none', 
             fontWeight: 700 
           }}

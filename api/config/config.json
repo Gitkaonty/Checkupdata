@@ -1,22 +1,22 @@
 {
   "development": {
-    "username": "hc67254401",
-    "password": "RamDpxllkqTO",
-    "database": "kaonty",
+    "username": "postgres",
+    "password": "admin",
+    "database": "gesoecfm",
     "host": "127.0.0.1",
     "dialect": "postgresql"
   },
   "test": {
-    "username": "hc67254401",
-    "password": "RamDpxllkqTO",
-    "database": "kaonty",
+    "username": "postgres",
+    "password": "admin",
+    "database": "kaonti_test",
     "host": "127.0.0.1",
     "dialect": "postgresql"
   },
   "production": {
-    "username": "hc67254401",
-    "password": "RamDpxllkqTO",
-    "database": "kaonty",
+    "username": "postgres",
+    "password": "admin",
+    "database": "kaonti_production",
     "host": "127.0.0.1",
     "dialect": "postgresql"
   }

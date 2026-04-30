@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ExercicePeriodeProvider } from '../context/ExercicePeriodeContext';
 import {
   Box, Drawer, AppBar, Toolbar, List, Typography, Divider,
   Avatar, Badge, Stack, Menu, MenuItem, Collapse,
@@ -12,6 +13,7 @@ import {
   BusinessOutlined, HistoryOutlined
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
 
 const drawerWidth = 280;
 const closedDrawerWidth = 80;
@@ -19,6 +21,7 @@ const closedDrawerWidth = 80;
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const fileId = sessionStorage.getItem('fileId') || '0';
   
   const [isHovered, setIsHovered] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -33,24 +36,24 @@ const MainLayout = ({ children }) => {
 
   // --- CONFIGURATION DES MENUS ---
   const traitementItems = [
-    { label: 'Consultation', path: '/traitement/consultation' },
-    { label: 'Import journal', path: '/traitement/importjournal' },
-    { label: 'Dossier de révision', path: '/traitement/dossierrevision' },
+    { label: 'Consultation', path: `/traitement/consultation/${fileId}` },
+    { label: 'Import journal', path: `/traitement/importjournal/${fileId}` },
+    { label: 'Dossier de révision', path: `/traitement/dossierrevision/${fileId}` },
     { 
       label: 'Export', 
       isSubmenu: true, 
       children: [
-        { label: 'Balance', path: '/traitement/export/balance' },
-        { label: 'Grand Livre', path: '/traitement/export/grandlivre' },
-        { label: 'Journal', path: '/traitement/export/journal' },
+        { label: 'Balance', path: `/traitement/export/balance/${fileId}` },
+        { label: 'Grand Livre', path: `/traitement/export/grandlivre/${fileId}` },
+        { label: 'Journal', path: `/traitement/export/journal/${fileId}` },
       ]
     },
   ];
 
   const paramItems = [
-    { label: 'CRM', path: '/parametres/crm' },
-    { label: 'Exercice', path: '/parametres/exercice' },
-    { label: 'Portefeuille', path: '/parametres/portefeuille' },
+    { label: 'CRM', path: `/parametres/crm/${fileId}` },
+    { label: 'Exercice', path: `/parametres/exercice/${fileId}` },
+    { label: 'Portefeuille', path: `/parametres/portefeuille/${fileId}` },
     { label: 'Gestion des contrôles', path: '/parametres/gestioncontrole' },
   ];
 
@@ -72,7 +75,7 @@ const MainLayout = ({ children }) => {
           <ListItemText primary="Accueil" sx={{ opacity: isHovered ? 1 : 0 }} />
         </ListItemButton>
 
-        <ListItemButton onClick={() => navigate('/dashboard')} selected={location.pathname === '/dashboard'} sx={menuItemStyle}>
+        <ListItemButton onClick={() => navigate(`/tab/dashboard/${fileId}`)} selected={location.pathname.startsWith('/tab/dashboard')} sx={menuItemStyle}>
           <ListItemIcon sx={iconStyle}><DashboardOutlined /></ListItemIcon>
           <ListItemText primary="Dashboard" sx={{ opacity: isHovered ? 1 : 0 }} />
         </ListItemButton>
@@ -251,7 +254,9 @@ const MainLayout = ({ children }) => {
       </Box>
 
       <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
-        {children}
+        <ExercicePeriodeProvider>
+          {children}
+        </ExercicePeriodeProvider>
       </Box>
     </Box>
   );

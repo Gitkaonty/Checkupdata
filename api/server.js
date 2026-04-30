@@ -74,11 +74,39 @@ app.use('/api/membres-situation', require('./Routes/gestionMembre/membreSituatio
 //MENU PARAMETRES
 //-------------------------------------------------------------------------------------------------------------
 app.use('/api/exercices', require('./Routes/parametres/exerciceRoute'));
+app.use('/paramExercice', require('./Routes/parametres/exerciceRoute')); // alias
 app.use('/api/grille-tarifaire', require('./Routes/parametres/grilleTarifaireRoute'));
+
+app.use('/param/revisionControleMatrix', require('./Routes/parametres/revisionControleMatrixRoute'));
+
+// Codes Journaux
+app.use('/param/codejournals', require('./Routes/parametres/codejournalsRoute'));
+app.use('/paramCodeJournaux', require('./Routes/parametres/codejournalsRoute')); // alias
+
+// Comptabilité Analytique
+app.use('/param/analytique', require('./Routes/parametres/paramAnalytiqueRoute'));
+app.use('/paramCa', require('./Routes/parametres/paramAnalytiqueRoute')); // alias
 
 // Portefeuille
 app.use('/param/portefeuille', require('./Routes/Portefeuille/portefeuilleRoute'));
 
+// Comptabilité
+app.use('/param/comptabilite', require('./Routes/parametres/paramPCRoute'));
+
+// CRM
+app.use('/paramCrm', require('./Routes/parametres/crmRoute'));
+
+// Journal
+
+app.use('/traitement/ImportJournal', require('./Routes/traitement/importJournalRoute'));
+app.use('/traitement/ImportBalance', require('./Routes/traitement/importBalanceRoute'));
+app.use('/traitement/exportBalance', require('./Routes/traitement/exportBalanceRoute'));
+app.use('/administration/exportGrandLivre', require('./Routes/traitement/exportGrandLivreRoute'));
+app.use('/traitement/exportJournal', require('./Routes/traitement/exportJournalRoute'));
+
+app.use('/administration/revision', require('./Routes/revision/revisionRoutes'));
+app.use('/administration/dossierRevision', require('./Routes/traitement/dossierRevisionRoutes'));
+app.use('/administration/revisionControleAuto', require('./Routes/revision/revisionControleAutoRoutes'));
 
 //--------------------------------------------------------------------------------------------------------
 //MENU COTISATION
@@ -88,6 +116,32 @@ app.use('/api/paiements', require('./Routes/cotisation/paiementRoute'));
 
 //routes pour home
 app.use('/home', require('./Routes/Home/homeRoute'));
+
+app.use('/devises/devise', require('./Routes/parametres/Devises/deviseRoutes'));
+app.use('/administration/traitementSaisie', require('./Routes/traitement/saisieRoute'));
+
+app.use('/commentaireAnalytique', require('./Routes/Administration/Dashboard/commentaireAnalytiqueRoutes'));
+app.use('/commentaireAnalytiqueMensuelle', require('./Routes/dashboard/commentaireAnalytiqueMensuelleRoute'));
+
+app.use('/dashboard', require('./Routes/dashboard/revuAnalytiqueRoutes'));
+app.use('/revuAnalytiqueStats', require('./Routes/Administration/Dashboard/revuAnalytiqueStatsRoutes'));
+
+app.use('/dashboard', require('./Routes/dashboard/dashboardRoutes'));
+
+app.use('/administration/revisionFournisseurClient', require('./Routes/Administration/analyseFournisseurRoutes'));
+app.use('/administration/analyseFournisseurClient', require('./Routes/Administration/analyseFournisseurRoutes'));
+
+// Routes pour l'analyse client
+app.use('/administration/analyseClient', require('./Routes/Administration/analyseClientRoutes'));
+
+// Routes pour la recherche de doublons
+app.use('/administration/rechercheDoublon', require('./Routes/Administration/rechercheDoublonRoute'));
+
+// Routes pour les écritures en suspens
+app.use('/administration/ecrituresSuspense', require('./Routes/Administration/ecrituresSuspenseRoutes'));
+
+// Routes pour la révision analytique
+app.use('/administration/revisionAnalytique', require('./Routes/Administration/revisionAnalytiqueRoute'));
 
 /*app.all('*', (req,res) => {
     res.status(404);

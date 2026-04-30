@@ -4,8 +4,8 @@ const Sequelize = require('sequelize');
 const { Op } = require('sequelize');
 
 const exercice = db.exercices;
-// const revisionControleMatrix = db.revisionControleMatrix;
-// const revisionControle = db.revisionControle;
+const revisionControleMatrix = db.revisionControleMatrix;
+const revisionControle = db.revisionControle;
 
 const dossiers = db.dossiers;
 const periodes = db.periodes;
@@ -44,42 +44,54 @@ const getListeExercice = async (req, res) => {
 
 const getListeSituation = async (req, res) => {
   try {
-    const exerciceId = req.params.id;
-
-    let resData = {
-      state: false,
-      msg: '',
-      list: []
-    }
-
-    const list = await situations.findAll({
-      where: {
-        id_exercice: exerciceId
-      },
-      raw: true,
-      order: [['date_fin', 'DESC']]
+    return res.json({
+      state: true,
+      msg: 'Liste des situations non disponible (feature non implémentée sur ce back).',
+      list: [],
     });
-
-    if (list) {
-      resData.state = true;
-      resData.list = list;
-    } else {
-      resData.state = false;
-      resData.msg = 'une erreur est survenue lors du traitement.';
-    }
-
-    return res.json(resData);
   } catch (error) {
     console.log(error);
   }
 }
 
 const copydata = async (id_compte, id_dossier, createExercice, action) => {
-  // Fonction simplifiée - plus de copie de données complexes
-  // Les modèles revisionControleMatrix et revisionControle n'existent pas
-
   console.log(`Exercice créé avec succès - ID: ${createExercice.id}, Action: ${action}`);
-  // TODO: Implémenter la logique de copie si nécessaire
+
+  if (!revisionControleMatrix || !revisionControle) {
+    return;
+  }
+
+  const listeControleMatrix = await revisionControleMatrix.findAll({
+    where: { Valider: true },
+  });
+
+  const controlesCopiesIds = [];
+  for (const item of listeControleMatrix) {
+    await revisionControle.create({
+      id_compte: id_compte,
+      id_dossier: id_dossier,
+      id_exercice: createExercice.id,
+      id_controle: item.id_controle,
+      Type: item.Type,
+      compte: item.compte,
+      test: item.test,
+      description: item.description,
+      anomalies: item.anomalies,
+      details: item.details,
+      Valider: item.Valider,
+      Commentaire: item.Commentaire,
+      Affichage: item.Affichage,
+      paramUn: item.paramUn,
+    });
+    controlesCopiesIds.push(item.id);
+  }
+
+  if (controlesCopiesIds.length > 0) {
+    await revisionControleMatrix.update(
+      { Valider: false },
+      { where: { id: controlesCopiesIds } }
+    );
+  }
 };
 
 const createFirstExercice = async (req, res) => {

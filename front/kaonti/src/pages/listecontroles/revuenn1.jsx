@@ -1,158 +1,421 @@
-import React from 'react';
-import { Box, Typography, Stack, Chip, IconButton, Tooltip, Button, Divider } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Box, Typography, Stack, IconButton, Tooltip, Divider, Chip, Badge, alpha,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { 
-  CheckCircleOutline, 
-  ChatBubbleOutline, 
-  ErrorOutline, 
-  CheckCircle 
-} from '@mui/icons-material';
+import { CheckCircle, Cancel, ErrorOutline } from '@mui/icons-material';
+import CommentIcon from '@mui/icons-material/Comment';
+import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import CommentDialog from '../../components/commetDialog';
+import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 
-const RevueAnalytiqueTable = () => {
-  // Simulation de données
-  const rows = [
-    { id: 1, compte: '607000', libelle: 'Achats de marchandises', soldeN: 152400, soldeN1: 120000, valide: true },
-    { id: 2, compte: '613000', libelle: 'Locations immobilières', soldeN: 24000, soldeN1: 24000, valide: false },
-    { id: 3, compte: '622600', libelle: 'Honoraires', soldeN: 8500, soldeN1: 3200, valide: false },
-    { id: 4, compte: '626100', libelle: 'Frais postaux', soldeN: 450, soldeN1: 1200, valide: false },
-  ];
+const RevueAnalytiqueTable = ({ id_exercice, id_periode }) => {
+
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmDialogData, setConfirmDialogData] = useState({ row: null, checked: false });
+  const [openCommentDialog, setOpenCommentDialog] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const axiosPrivate = useAxiosPrivate();
+
+  const fetchRevuAnalytique = useCallback(async () => {
+    try {
+      setLoading(true);
+      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+
+      if (!id_exercice) {
+        setRows([]);
+        return;
+      }
+
+      let url = `/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}`;
+      if (id_periode) {
+        url += `?id_periode=${id_periode}`;
+      }
+
+      const response = await axiosPrivate.get(url);
+
+      if (response.data.state) {
+        const formattedRows = response.data.data.map((row, index) => ({
+          id: index,
+          compte: row.compte,
+          libelle: row.libelle,
+          soldeN: row.soldeN,
+          soldeN1: row.soldeN1,
+          var: row.var,
+          varPourcent: row.varPourcent,
+          anomalies: row.anomalies,
+          commentaire: row.commentaire,
+          valide_anomalie: row.valide_anomalie
+        }));
+        setRows(formattedRows);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [axiosPrivate, id_exercice, id_periode]);
+
+  useEffect(() => {
+    if (id_exercice) {
+      fetchRevuAnalytique();
+    } else {
+      setRows([]);
+    }
+  }, [fetchRevuAnalytique, id_exercice, id_periode]);
+
+  // === Validation toggle avec confirmation ===
+  const handleToggleValide = useCallback((row, checked) => {
+    setConfirmDialogData({ row, checked });
+    setConfirmDialogOpen(true);
+  }, []);
+
+  const handleConfirmValidation = async () => {
+    const { row, checked } = confirmDialogData;
+    if (!row) return;
+
+    try {
+      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+
+      await axiosPrivate.post('/revuAnalytiqueStats/validateAnomaly', {
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_periode: id_periode || null,
+        compte: row.compte,
+        type_revue: 'analytiqueNN1',
+        validated: checked
+      });
+
+      await axiosPrivate.post('/commentaireAnalytique/addOrUpdate', {
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_periode: id_periode || null,
+        compte: row.compte,
+        commentaire: row.commentaire || '',
+        valide_anomalie: checked
+      });
+
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, valide_anomalie: checked } : r)));
+    } catch (error) {
+      console.error('Erreur lors de la validation anomalie:', error);
+    } finally {
+      setConfirmDialogOpen(false);
+      setConfirmDialogData({ row: null, checked: false });
+    }
+  };
+
+  // === Commentaire ===
+  const handleSaveCommentaire = async (comment) => {
+    if (!selectedRow) return;
+    try {
+      setCommentLoading(true);
+      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+
+      const response = await axiosPrivate.post('/commentaireAnalytique/addOrUpdate', {
+        id_compte,
+        id_dossier,
+        id_exercice,
+        id_periode: id_periode || null,
+        compte: selectedRow.compte,
+        commentaire: comment,
+        valide_anomalie: selectedRow.valide_anomalie || false
+      });
+
+      if (response.data.state) {
+        setRows((prevRows) =>
+          prevRows.map((row) =>
+            row.compte === selectedRow.compte
+              ? { ...row, commentaire: comment }
+              : row
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du commentaire:', error);
+    } finally {
+      setCommentLoading(false);
+      setOpenCommentDialog(false);
+      setSelectedRow(null);
+    }
+  };
+
+  // === Statistiques calculées ===
+  const totalAnomalies = rows.filter(r => r.anomalies).length;
+  const restantAValider = rows.filter(r => r.anomalies && !r.valide_anomalie).length;
 
   const columns = [
-    { field: 'compte', headerName: 'Compte', width: 90, cellClassName: 'font-bold' },
-    { field: 'libelle', headerName: 'Libellé', flex: 1 },
-    { 
-      field: 'soldeN1', 
-      headerName: 'Solde N-1', 
-      width: 120, 
+    {
+      field: 'compte',
+      headerName: 'Compte',
+      width: 150,
+      cellClassName: 'font-bold'
+    },
+    {
+      field: 'libelle',
+      headerName: 'Libellé',
+      width: 350,
+    },
+    {
+      field: 'soldeN1',
+      headerName: 'Solde N-1',
+      width: 130,
       type: 'number',
-      renderCell: (params) => params.value.toLocaleString()
-    },
-    { 
-      field: 'soldeN', 
-      headerName: 'Solde N', 
-      width: 120, 
-      type: 'number',
-      renderCell: (params) => params.value.toLocaleString()
-    },
-    { 
-      field: 'variation', 
-      headerName: 'Var. Abs', 
-      width: 110,
-      valueGetter: (params) => params.row.soldeN - params.row.soldeN1,
-      renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 600, color: params.value >= 0 ? '#1e293b' : '#ef4444' }}>
-          {params.value > 0 ? `+${params.value.toLocaleString()}` : params.value.toLocaleString()}
-        </Typography>
-      )
-    },
-    { 
-      field: 'pourcentage', 
-      headerName: 'Var. %', 
-      width: 100,
-      valueGetter: (params) => {
-        if (params.row.soldeN1 === 0) return 0;
-        return ((params.row.soldeN - params.row.soldeN1) / params.row.soldeN1) * 100;
-      },
+      align: 'right',
+      headerAlign: 'right',
       renderCell: (params) => {
-        const val = Math.round(params.value);
-        const isHigh = Math.abs(val) > 20; // Seuil d'alerte à 20%
+        const value = params.value;
         return (
-          <Stack direction="row" alignItems="center" spacing={0.5}>
-            <Typography variant="body2" sx={{ fontWeight: 800, color: isHigh ? '#ef4444' : '#10b981' }}>
-              {val > 0 ? `+${val}%` : `${val}%`}
-            </Typography>
-            {isHigh && <ErrorOutline sx={{ fontSize: 14, color: '#ef4444' }} />}
-          </Stack>
+          <Typography variant="body2" sx={{
+            fontSize: '0.75rem', fontFamily: 'monospace',
+            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
+            fontWeight: value !== 0 ? 600 : 400, width: '100%', textAlign: 'right'
+          }}>
+            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+          </Typography>
         );
       }
     },
     {
-      field: 'valide',
-      headerName: 'État',
-      width: 80,
-      align: 'center',
-      renderCell: (params) => (
-        params.value ? 
-        <CheckCircle sx={{ color: '#10b981', fontSize: 20 }} /> : 
-        <Tooltip title="En attente de revue">
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f59e0b' }} />
-        </Tooltip>
-      )
+      field: 'soldeN',
+      headerName: 'Solde N',
+      width: 130,
+      type: 'number',
+      align: 'right',
+      headerAlign: 'right',
+      renderCell: (params) => {
+        const value = params.value;
+        return (
+          <Typography variant="body2" sx={{
+            fontSize: '0.75rem', fontFamily: 'monospace',
+            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
+            fontWeight: value !== 0 ? 600 : 400, width: '100%', textAlign: 'right'
+          }}>
+            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+          </Typography>
+        );
+      }
     },
     {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 150,
-      sortable: false,
+      field: 'var',
+      headerName: 'Variation',
+      width: 120,
+      type: 'number',
+      align: 'right',
+      headerAlign: 'right',
+      renderCell: (params) => {
+        const value = params.value;
+        return (
+          <Typography variant="body2" sx={{
+            fontSize: '0.75rem', fontFamily: 'monospace',
+            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
+            fontWeight: value !== 0 ? 600 : 400, width: '100%', textAlign: 'right'
+          }}>
+            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+          </Typography>
+        );
+      }
+    },
+    {
+      field: 'varPourcent',
+      headerName: 'Variation %',
+      width: 120,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const value = params.value;
+        if (value === null || value === undefined) {
+          return <Box sx={{ color: alpha('#64748B', 0.3), textAlign: 'center' }}>-</Box>;
+        }
+        return (
+          <Chip
+            label={`${value > 0 ? '+' : ''}${value}%`}
+            size="small"
+            variant="outlined"
+            sx={{
+              height: 22, minWidth: '55px', fontSize: '10px', fontWeight: 700, fontFamily: 'monospace',
+              color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
+              borderColor: value > 0 ? alpha('#2563eb', 0.5) : value < 0 ? alpha('#dc2626', 0.5) : alpha('#64748B', 0.3),
+              bgcolor: value > 0 ? alpha('#2563eb', 0.04) : value < 0 ? alpha('#dc2626', 0.04) : 'transparent',
+              '& .MuiChip-label': { px: 0.5, width: '100%', textAlign: 'center' }
+            }}
+          />
+        );
+      }
+    },
+    {
+      field: 'anomalies',
+      headerName: 'Anomalies',
+      width: 90,
+      align: 'center',
+      renderCell: (params) => {
+        const hasAnomaly = !!params.value;
+
+        return (
+          <Tooltip
+            title={
+              hasAnomaly
+                ? 'Anomalie détectée (variation ≥ seuil du dossier)'
+                : 'Aucune anomalie'
+            }
+            arrow
+          >
+            <IconButton
+              size="small"
+              disableRipple
+              sx={{
+                color: hasAnomaly ? '#16a34a' : '#EF4444', // rouge / vert
+                cursor: 'default'
+              }}
+            >
+              {hasAnomaly ? (
+                <CheckCircle fontSize="small" />
+              ) : (
+                <Cancel fontSize="small" />
+              )}
+            </IconButton>
+          </Tooltip>
+        );
+      }
+    },
+    {
+      field: 'valide_anomalie',
+      headerName: 'Validé',
+      width: 80,
+      align: 'center',
+      renderCell: (params) => {
+        const isValid = !!params.value;
+        return (
+          <Tooltip title={isValid ? 'Validé' : 'Non validé'} arrow>
+            <IconButton
+              size="small"
+              onClick={() => handleToggleValide(params.row, !isValid)}
+              color={isValid ? 'success' : 'error'}
+              sx={{ p: 0, transition: '0.2s', '&:hover': { transform: 'scale(1.1)' } }}
+            >
+              {isValid ? <CheckCircle fontSize="small" /> : <Cancel fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        );
+      }
+    },
+    {
+      field: 'commentaire',
+      headerName: 'Commentaire',
+      width: 200,
       renderCell: (params) => (
-        <Stack direction="row" spacing={1}>
-          <Tooltip title="Valider la ligne">
-            <IconButton size="small" sx={{ color: '#10b981', bgcolor: 'rgba(16, 185, 129, 0.05)' }}>
-              <CheckCircleOutline fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Ajouter un commentaire">
-            <IconButton size="small" sx={{ color: '#64748b', bgcolor: '#f1f5f9' }}>
-              <ChatBubbleOutline fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Badge
+            variant={params.value && String(params.value).trim() ? 'dot' : 'standard'}
+            overlap="circular"
+            sx={{ '& .MuiBadge-badge': { backgroundColor: 'orange', color: 'orange' } }}
+          >
+            <Tooltip
+              title={params.value || ''}
+              arrow
+              componentsProps={{
+                tooltip: { sx: { backgroundColor: 'white', color: '#334155', fontSize: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: 250 } },
+                arrow: { sx: { color: 'white' } }
+              }}
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => { setSelectedRow(params.row); setOpenCommentDialog(true); }}
+                >
+                  <CommentIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Badge>
+        </Box>
       )
     }
   ];
 
   return (
-    <Box sx={{ height: '100%', width: '100%' }}>
-      {/* STATISTIQUES INTERNES AU CONTRÔLE */}
-      <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+    <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* STATISTIQUES */}
+      <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700 }}>ANOMALIES DÉTECTÉES</Typography>
-          <Typography variant="h6" sx={{ color: '#ef4444', fontWeight: 900, lineHeight: 1 }}>12</Typography>
+          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ANOMALIES DÉTECTÉES</Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{totalAnomalies}</Typography>
+            <ErrorOutline sx={{ color: '#EF4444', fontSize: 16 }} />
+          </Stack>
         </Box>
         <Divider orientation="vertical" flexItem />
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700 }}>RESTANT À VALIDER</Typography>
-          <Typography variant="h6" sx={{ color: '#f59e0b', fontWeight: 900, lineHeight: 1 }}>05</Typography>
+          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>RESTANT À VALIDER</Typography>
+          <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 900, lineHeight: 1 }}>{restantAValider}</Typography>
         </Box>
+        <Divider orientation="vertical" flexItem />
+        {/* <Box>
+          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>PÉRIODE</Typography>
+          <Typography variant="h6" sx={{ color: '#3B82F6', fontWeight: 900, lineHeight: 1 }}>
+            {id_periode ? `P${id_periode}` : 'Global'}
+          </Typography>
+        </Box> */}
+        {/* <Divider orientation="vertical" flexItem />
+        <Box>
+          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>TOTAL LIGNES</Typography>
+          <Typography variant="h6" sx={{ color: '#6B7280', fontWeight: 900, lineHeight: 1 }}>{rows.length}</Typography>
+        </Box> */}
       </Stack>
 
       {/* TABLEAU */}
-      <Box sx={{ height: 500 }}>
-        <DataGrid 
-          rows={rows} 
-          columns={columns} 
-          sx={dataGridStyle} 
-          disableRowSelectionOnClick 
+      <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden' }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          loading={loading}
           density="compact"
+          disableRowSelectionOnClick
+          sx={{
+            border: 'none',
+            '& .MuiDataGrid-main': { overflow: 'auto' },
+            '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', color: '#64748B', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' },
+            '& .MuiDataGrid-cell': { fontSize: '0.8rem', borderBottom: '1px solid #F1F5F9' },
+            '& .font-bold': { fontWeight: 700 }
+          }}
         />
       </Box>
+
+      {/* Dialog de confirmation pour validation */}
+      <ConfirmActionDialog
+        open={confirmDialogOpen}
+        onClose={() => { setConfirmDialogOpen(false); setConfirmDialogData({ row: null, checked: false }); }}
+        onConfirm={handleConfirmValidation}
+        title={confirmDialogData.checked ? 'Valider l\'anomalie' : 'Annuler la validation'}
+        message={confirmDialogData.checked
+          ? `Voulez-vous valider l'anomalie du compte ${confirmDialogData.row?.compte} ?`
+          : `Voulez-vous annuler la validation du compte ${confirmDialogData.row?.compte} ?`}
+        confirmText="Confirmer"
+        cancelText="Annuler"
+      />
+
+      {/* Dialog commentaire */}
+      <CommentDialog
+        open={openCommentDialog}
+        onClose={() => { setOpenCommentDialog(false); setSelectedRow(null); }}
+        onSave={handleSaveCommentaire}
+        initialValue={selectedRow?.commentaire || ''}
+        title={`Commentaire - ${selectedRow?.compte || ''}`}
+        placeholder="Saisissez votre commentaire..."
+        loading={commentLoading}
+      />
     </Box>
   );
-};
-
-// Style harmonisé
-const dataGridStyle = {
-  border: 'none',
-  '& .MuiDataGrid-columnHeaders': {
-    bgcolor: '#ffffff',
-    color: '#64748b',
-    fontSize: '0.65rem',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontWeight: 700,
-    borderBottom: '1px solid #e2e8f0',
-  },
-  '& .MuiDataGrid-cell': {
-    borderBottom: '1px solid #f1f5f9',
-    fontSize: '0.85rem',
-    display: 'flex',
-    alignItems: 'center',
-    '&:focus': { outline: 'none' }
-  },
-  '& .font-bold': {
-    fontWeight: 700,
-    color: '#1e293b'
-  }
 };
 
 export default RevueAnalytiqueTable;
