@@ -32,6 +32,8 @@ db.users = require('./userModel')(sequelize, DataTypes);
 db.userscomptes = require('./compteModel')(sequelize, DataTypes);
 db.resetToken = require('./resetTokenModel')(sequelize, DataTypes);
 
+db.dossierPasswordAccess = require('./dossiersMotDePasseAcces')(sequelize, DataTypes);
+
 //Gsetion rôle et permission
 db.roles = require('./rolesModel')(sequelize, DataTypes);
 db.permissions = require('./permissionsModel')(sequelize, DataTypes);
@@ -46,6 +48,10 @@ db.membres_updates = require("./membreUpdateModel")(sequelize, Sequelize);
 db.exercices = require('./exerciceModel')(sequelize, DataTypes);
 db.periodes = require('./periodesModel')(sequelize, DataTypes);
 db.grille_tarifaires = require('./grilleTarifaire')(sequelize, Sequelize);
+
+// Compte
+db.compteDossiers = require('./compteDossierModel')(sequelize, DataTypes);
+db.comptePortefeuilles = require('./comptePortefeuilleModel')(sequelize, DataTypes);
 
 db.revision = require('./RevisionModel')(sequelize, DataTypes);
 db.revisionControle = require('./RevisionControleModel')(sequelize, DataTypes);
@@ -151,6 +157,20 @@ db.dossierRevisionSynthese = require('./dossierRevisionSyntheseModel')(sequelize
 db.dossierRevisionCommentaire = require('./dossierRevisionCommentaireModel')(sequelize, DataTypes);
 db.dossierRevisionAnalytique = require('./dossierRevisionAnalytiqueModel')(sequelize, DataTypes);
 
+// Compte dossier
+db.users.belongsToMany(db.dossiers, { through: db.compteDossiers, foreignKey: 'user_id', otherKey: 'id_dossier' });
+db.dossiers.belongsToMany(db.users, { through: db.compteDossiers, foreignKey: 'id_dossier', otherKey: 'user_id' });
+
+db.compteDossiers.belongsTo(db.users, { foreignKey: 'user_id' });
+db.compteDossiers.belongsTo(db.dossiers, { foreignKey: 'id_dossier' });
+
+// Compte portefeuille
+db.users.belongsToMany(db.portefeuille, { through: db.comptePortefeuilles, foreignKey: 'user_id', otherKey: 'id_portefeuille' });
+db.portefeuille.belongsToMany(db.users, { through: db.comptePortefeuilles, foreignKey: 'id_portefeuille', otherKey: 'user_id' });
+
+db.comptePortefeuilles.belongsTo(db.users, { foreignKey: 'user_id' });
+db.comptePortefeuilles.belongsTo(db.portefeuille, { foreignKey: 'id_portefeuille' });
+
 // Analyse Fournisseur/Client
 db.analyseFournisseurLignes = require('./analyseFournisseurLigneModel')(sequelize, DataTypes);
 db.analyseFournisseurAnomalies = require('./analyseFournisseurAnomalieModel')(sequelize, DataTypes);
@@ -178,6 +198,13 @@ db.userscomptes.hasMany(db.revisionAnalytiqueResultats, { foreignKey: 'id_compte
 db.revisionAnalytiqueResultats.belongsTo(db.journals, { foreignKey: 'id_jnl', targetKey: 'id' });
 db.journals.hasMany(db.revisionAnalytiqueResultats, { foreignKey: 'id_jnl', sourceKey: 'id' });
 
+// Dossier password access
+db.users.hasMany(db.dossierPasswordAccess, { foreignKey: 'user_id', sourceKey: 'id' });
+db.dossierPasswordAccess.belongsTo(db.users, { foreignKey: 'user_id', targetKey: 'id' });
+
+db.dossiers.hasMany(db.dossierPasswordAccess, { foreignKey: 'id_dossier', sourceKey: 'id' });
+db.dossierPasswordAccess.belongsTo(db.dossiers, { foreignKey: 'id_dossier', targetKey: 'id' });
+
 
 // --- DÉFINITION DES RELATIONS ---
 // Un exercice possède plusieurs tarifs
@@ -190,15 +217,15 @@ db.appels.belongsTo(db.exercices, { foreignKey: "exercice_id" });
 db.appels.belongsTo(db.membres, { foreignKey: "membre_id" });
 
 // L'appel appartient à un membre
-db.appels.belongsTo(db.membres, { 
-    foreignKey: 'membre_id', 
+db.appels.belongsTo(db.membres, {
+    foreignKey: 'membre_id',
     as: 'membre' // Cet alias DOIT être le même que dans ton include
 });
 
 // Un membre peut avoir plusieurs appels (optionnel mais recommandé)
-db.membres.hasMany(db.appels, { 
-    foreignKey: 'membre_id', 
-    as: 'appels' 
+db.membres.hasMany(db.appels, {
+    foreignKey: 'membre_id',
+    as: 'appels'
 });
 
 

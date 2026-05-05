@@ -12,18 +12,18 @@ const permissions = db.permissions;
 const rolePermissionMiddleware = require('../Middlewares/RolePermission/rolePermission');
 const createUserPermission = rolePermissionMiddleware.createUserPermission;
 
-// User.belongsTo(Userscomptes, { foreignKey: 'compte_id' });
-// Userscomptes.hasMany(User, { foreignKey: 'compte_id' });
+User.belongsTo(Userscomptes, { foreignKey: 'compte_id' });
+Userscomptes.hasMany(User, { foreignKey: 'compte_id' });
 
 const handleRefreshToken = async (req, res) => {
     const cookies = req.cookies;
-    if (!cookies?.jwt) return res.status(401).json({ message: 'TOken invalide' });
+    if (!cookies?.jwt) return res.sendStatus(401);
 
     const refreshToken = cookies.jwt;
 
     const foundUser = await User.findOne({
         where: { refresh_token: refreshToken },
-        // include: [{ model: Userscomptes, attributes: ['nom'] }]
+        include: [{ model: Userscomptes, attributes: ['nom'] }]
     });
 
     if (!foundUser) return res.sendStatus(403);
@@ -37,6 +37,7 @@ const handleRefreshToken = async (req, res) => {
         refreshToken,
         process.env.REFRESH_TOKEN_SECRET,
         async (err, decoded) => {
+
             if (err) {
                 await User.update(
                     { refresh_token: null },

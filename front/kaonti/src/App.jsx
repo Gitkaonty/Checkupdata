@@ -24,7 +24,8 @@ import GestionControles from './pages/parametres/GestionControle';
 import GestionRevisionCycles from './pages/traitement/DossierRevision';
 import ConsultationComptes from './pages/traitement/Consultation';
 // Importe ton hook d'auth pour remplacer "isAuthenticated" par une vraie valeur
-import useAuth from './hooks/useAuth'; 
+import useAuth from './hooks/useAuth';
+import RolePermission from './components/menuComponent/Parametrages/rolePermission';
 
 const ROLES = {
   'SuperAdmin': 3355,
@@ -43,28 +44,32 @@ export default function App() {
       <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<Layout />}>
-          
+
           {/* --- ROUTES PUBLIQUES --- */}
           <Route path='/' element={<Login />} />
           <Route path='/unauthorized' element={<Unauthorized />} />
 
           {/* --- ROUTES PROTEGEES --- */}
           <Route element={<PersistLogin />}>
+
+            <Route element={<RequireAuth allowedRoles={[ROLES.Admin, ROLES.SuperAdmin]} />} >
+              <Route path='/tab/parametrages/role-permission' element={<MainLayout><RolePermission /></MainLayout>} />
+            </Route>
             <Route element={<RequireAuth allowedRoles={[ROLES.Admin, ROLES.User, ROLES.Editor, ROLES.SuperAdmin]} />}>
-              
+
               {/* Le MainLayout entoure ici toutes les pages "Admin" DossiersPage*/}
               <Route path="/home" element={<MainLayout><DossiersPage /></MainLayout>} />
               <Route path="/tab/dashboard/:id" element={<MainLayout><DashboardHome /></MainLayout>} />
               <Route path="/controles/details" element={<MainLayout><DetailsControles /></MainLayout>} />
 
-               {/* menu Traitements */}
-               <Route path="/traitement/consultation/:id" element={<MainLayout><ConsultationComptes /></MainLayout>} />
+              {/* menu Traitements */}
+              <Route path="/traitement/consultation/:id" element={<MainLayout><ConsultationComptes /></MainLayout>} />
               <Route path="/traitement/importjournal/:id" element={<MainLayout><ImportJournal /></MainLayout>} />
               <Route path="/traitement/dossierrevision/:id" element={<MainLayout><GestionRevisionCycles /></MainLayout>} />
               <Route path="/traitement/export/journal/:id" element={<MainLayout><ExportJournal /></MainLayout>} />
               <Route path="/traitement/export/grandlivre/:id" element={<MainLayout><ExportGrandLivre /></MainLayout>} />
               <Route path="/traitement/export/balance/:id" element={<MainLayout><ExportBalance /></MainLayout>} />
-              
+
               {/* Sous-menu Parametres */}
               <Route path="/parametres/exercice/:id" element={<MainLayout><Exercices /></MainLayout>} />
               <Route path="/parametres/portefeuille/:id" element={<MainLayout><Portefeuille /></MainLayout>} />

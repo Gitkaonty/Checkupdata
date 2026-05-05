@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Box, Typography, Stack, Tabs, Tab, Paper,
   Divider, Button, Chip, Breadcrumbs, Link as MuiLink, TablePagination,
   Select,
   MenuItem
 } from '@mui/material';
+import ExercicePeriodeContext from '../context/ExercicePeriodeContext';
 import {
   CompareArrowsOutlined, CalendarMonthOutlined, AccountBalanceOutlined,
   PeopleAltOutlined, ContentCopyOutlined, HelpOutline,
@@ -23,10 +24,9 @@ import ControleAnalytique from './listecontroles/controleAnalytique';
 import ExercicePeriodeSelector from './ExercicePeriodeSelector';
 
 const DetailsControles = () => {
+  const { selectedExerciceId, selectedPeriodeId, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
   const [activeTab, setActiveTab] = useState(0);
   const navigate = useNavigate();
-  const [selectedExerciceId, setSelectedExerciceId] = useState('');
-  const [selectedPeriodeId, setSelectedPeriodeId] = useState('');
   const [loading, setLoading] = useState(false);
 
 

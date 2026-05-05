@@ -41,6 +41,16 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DOUBLE,
             allowNull: false,
             defaultValue: 30.0
+        },
+        retard_fourns: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 3
+        },
+        retard_clt: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 3
         }
     }, { timestamps: true },)
     return dossiers
