@@ -77,21 +77,22 @@ const getFournisseurEcritures = async (id_compte, id_dossier, id_exercice, date_
 };
 
 /**
- * Récupérer les factures ACHAT non réglées depuis plus de 90 jours
- * Règle: date_controle - date_facture >= 90j et lettrage vide
+ * Récupérer les factures ACHAT non réglées depuis plus de N jours
+ * Règle: date_controle - date_facture >= retard_jours et lettrage vide
+ * retard_jours provient du champ retard_fourns du dossier (par défaut 3 mois = 90j)
  */
-const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, date_fin, date_controle) => {
-  
+const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, date_fin, date_controle, retard_jours = 90) => {
+
   // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   const dateControleFormatted = date_controle ? new Date(date_controle).toISOString().split('T')[0] : null;
-  
+
   // console.log('[DEBUG] Dates formatées:', { dateDebutFormatted, dateFinFormatted, dateControleFormatted });
-  
-  // Calculer la date limite (date_controle - 90 jours)
+
+  // Calculer la date limite (date_controle - retard_jours)
   const dateLimite = new Date(date_controle);
-  dateLimite.setDate(dateLimite.getDate() - 90);
+  dateLimite.setDate(dateLimite.getDate() - retard_jours);
   const dateLimiteFormatted = dateLimite.toISOString().split('T')[0];
   
   // console.log('[DEBUG] Date limite (90j avant):', dateLimiteFormatted);
@@ -119,7 +120,7 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
       AND j.dateecriture <= '${dateFinFormatted}'
       AND cj.type = 'ACHAT'
       AND (j.lettrage IS NULL OR j.lettrage = '')
-      AND ('${dateControleFormatted}'::date - j.dateecriture) >= 90
+      AND ('${dateControleFormatted}'::date - j.dateecriture) >= ${retard_jours}
     ORDER BY j.compteaux, j.dateecriture
   `;
   
@@ -324,7 +325,7 @@ exports.executerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { date_debut, date_fin, id_periode } = req.query;
-    
+
     // console.log('[DEBUG] executerAnalyse - req.params:', req.params);
     // console.log('[DEBUG] executerAnalyse - req.query:', req.query);
 
@@ -337,6 +338,14 @@ exports.executerAnalyse = async (req, res) => {
       });
     }
 
+    // Récupérer le retard fournisseur configuré sur le dossier (en mois → converti en jours)
+    const dossier = await db.dossiers.findOne({
+      where: { id: id_dossier },
+      attributes: ['retard_fourns']
+    });
+    const retardMois = dossier?.retard_fourns || 3;
+    const retardJours = retardMois * 30;
+
     // console.log('[DEBUG] Nettoyage des anciennes données...');
     // Nettoyer les anciennes données
     await cleanupOldData(id_compte, id_dossier, id_exercice, id_periode || null);
@@ -344,22 +353,23 @@ exports.executerAnalyse = async (req, res) => {
     // ========== RÈGLE 1: Paiement sans facture (BANQUE sans lettrage) ==========
     // console.log('[DEBUG] === RÈGLE 1: Paiement sans facture ===');
     const ecrituresBanque = await getFournisseurEcritures(
-      id_compte, 
-      id_dossier, 
-      id_exercice, 
-      date_debut, 
+      id_compte,
+      id_dossier,
+      id_exercice,
+      date_debut,
       date_fin
     );
     // console.log('[DEBUG] BANQUE trouvées:', ecrituresBanque.length);
 
-    // ========== RÈGLE 2: Facture +3 mois non réglée ==========
-    // console.log('[DEBUG] === RÈGLE 2: Facture >3 mois non réglée ===');
+    // ========== RÈGLE 2: Facture +N mois non réglée ==========
+    // console.log('[DEBUG] === RÈGLE 2: Facture >' + retardMois + ' mois non réglée ===');
     const ecrituresAchat = await getFactures3MoisNonReglees(
-      id_dossier, 
-      id_exercice, 
-      date_debut, 
+      id_dossier,
+      id_exercice,
+      date_debut,
       date_fin,
-      date_fin  // date de contrôle = date fin période
+      date_fin,  // date de contrôle = date fin période
+      retardJours
     );
     // console.log('[DEBUG] ACHAT >90j trouvées:', ecrituresAchat.length);
 

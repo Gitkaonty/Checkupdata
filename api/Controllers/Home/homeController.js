@@ -6,6 +6,7 @@ const portefeuille = db.portefeuille;
 const compteDossiers = db.compteDossiers;
 const comptePortefeuilles = db.comptePortefeuilles;
 const dossierassocies = db.dossierassocies;
+const dossierPasswordAccess = db.dossierPasswordAccess;
 
 const dombancaires = db.dombancaires;
 const pays = db.pays;
@@ -233,6 +234,8 @@ const createNewFile = async (req, res) => {
         id_portefeuille: portefeuille,
         dossier: nomdossier,
         responsable: responsable,
+        retard_fourns: 3,
+        retard_clt: 3,
       });
 
       if (newFile) {

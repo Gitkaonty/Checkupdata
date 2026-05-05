@@ -130,7 +130,9 @@ const modifyingInfos = async (req, res) => {
       pays,
       avecMotDePasse,
       motDePasse,
-      seuil_revu_analytique
+      seuil_revu_analytique,
+      retard_fourns,
+      retard_clt
     } = req.body;
 
     const modify = await dossiers.update(
@@ -171,7 +173,9 @@ const modifyingInfos = async (req, res) => {
         pays,
         motdepasse: motDePasse,
         avecmotdepasse: avecMotDePasse,
-        seuil_revu_analytique
+        seuil_revu_analytique,
+        retard_fourns: Number(retard_fourns) || 3,
+        retard_clt: Number(retard_clt) || 3
       },
       {
         where: { id: idDossier }

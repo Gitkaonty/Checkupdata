@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Stack, Divider, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -233,6 +233,9 @@ const AnalyseTiers = ({ id_exercice, id_periode }) => {
     return null;
   };
 
+  const lastContextKeyRef = useRef('');
+  const handleAnalyserRef = useRef();
+
   const handleAnalyser = async () => {
     if (!effectiveExerciceId) return;
 
@@ -279,6 +282,18 @@ const AnalyseTiers = ({ id_exercice, id_periode }) => {
       setLoading(false);
     }
   };
+
+  handleAnalyserRef.current = handleAnalyser;
+
+  useEffect(() => {
+    const contextKey = `${effectiveExerciceId}-${effectivePeriodeId}`;
+    const contextChanged = contextKey !== lastContextKeyRef.current;
+
+    if (effectiveExerciceId && contextChanged) {
+      lastContextKeyRef.current = contextKey;
+      handleAnalyserRef.current();
+    }
+  }, [effectiveExerciceId, effectivePeriodeId]);
 
   const handleValiderAnomalie = async (anomalie, valider) => {
     if (!anomalie || !anomalie.id) {

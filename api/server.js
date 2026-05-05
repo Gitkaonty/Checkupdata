@@ -55,6 +55,10 @@ app.use('/refreshToken', require('./Routes/refreshRoute'));
 app.use('/logout', require('./Routes/logoutRoute'));
 
 
+app.use('/compte', require('./Routes/User/Compte/compteRoutes'));
+
+// Sous compte
+app.use('/sous-compte', require('./Routes/User/SousComptes/sousCompteRoutes'));
 
 //placer la vérification pour les routes qui ne nécessite pas de vérification
 // app.use(verifyJWT);

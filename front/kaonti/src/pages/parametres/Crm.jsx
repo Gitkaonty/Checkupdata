@@ -17,6 +17,7 @@ import {
   CheckCircleOutline as CheckIcon,
   Cancel as CancelIcon
 } from '@mui/icons-material';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
@@ -1623,6 +1624,8 @@ const CRM = () => {
   const [portefeuille, setPortefeuille] = useState([]);
   const [listePortefeuille, setListePortefeuille] = useState([]);
   const [seuilVariation, setSeuilVariation] = useState(15);
+  const [retardFourns, setRetardFourns] = useState(3);
+  const [retardClt, setRetardClt] = useState(3);
   const lastSavedSeuilRef = useRef(15);
   const [confirmSeuilOpen, setConfirmSeuilOpen] = useState(false);
   const [confirmSeuilLoading, setConfirmSeuilLoading] = useState(false);
@@ -1770,6 +1773,8 @@ const CRM = () => {
           setNomDossier(resData.list.dossier || '');
           setSeuilVariation(resData.list.seuil_revu_analytique || 15);
           lastSavedSeuilRef.current = resData.list.seuil_revu_analytique || 15;
+          setRetardFourns(resData.list.retard_fourns ?? 3);
+          setRetardClt(resData.list.retard_clt ?? 3);
           // Mapper le portefeuille si besoin
           if (resData.list.id_portefeuille) {
             const mapped = resData.list.id_portefeuille.map(id =>
@@ -1794,6 +1799,8 @@ const CRM = () => {
         nomdossier: nomDossier,
         portefeuille: portefeuille.map(p => p.id),
         seuil_revu_analytique: Number(newValue),
+        retard_fourns: Number(retardFourns),
+        retard_clt: Number(retardClt),
       });
       toast.success('Seuil mis à jour');
       lastSavedSeuilRef.current = Number(newValue);
@@ -1814,6 +1821,8 @@ const CRM = () => {
         nomdossier: nomDossier,
         portefeuille: portefeuille.map(p => p.id),
         seuil_revu_analytique: seuilVariation,
+        retard_fourns: Number(retardFourns),
+        retard_clt: Number(retardClt),
       });
       toast.success('Modifications enregistrées');
     } catch (error) {
@@ -2090,16 +2099,16 @@ const CRM = () => {
           <Grid item xs={12} md={6}>
             <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ListAltOutlined sx={{ color: '#6366F1' }} /> Délais de Paiement
+                <AccessTimeOutlined sx={{ color: '#6366F1' }} /> Paramètres de Retard
               </Typography>
               <Stack direction="row" spacing={3}>
                 <Box sx={{ flex: 1 }}>
                   <FieldLabel>Retard Fournisseurs (Mois)</FieldLabel>
-                  <TextField fullWidth type="number" defaultValue={3} size="small" />
+                  <TextField fullWidth type="number" value={retardFourns} onChange={(e) => setRetardFourns(e.target.value)} size="small" />
                 </Box>
                 <Box sx={{ flex: 1 }}>
                   <FieldLabel>Retard Clients (Mois)</FieldLabel>
-                  <TextField fullWidth type="number" defaultValue={3} size="small" />
+                  <TextField fullWidth type="number" value={retardClt} onChange={(e) => setRetardClt(e.target.value)} size="small" />
                 </Box>
               </Stack>
             </Paper>

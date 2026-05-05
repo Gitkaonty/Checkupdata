@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ExercicePeriodeProvider } from '../context/ExercicePeriodeContext';
 import {
   Box, Drawer, AppBar, Toolbar, List, Typography, Divider,
@@ -14,6 +14,10 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useLogout from '../hooks/useLogout';
+import { jwtDecode } from 'jwt-decode';
+import PopupPasswordChange from '../components/menuComponent/Compte/PopupPasswordChange';
+import PopupDisconnectCompte from '../components/menuComponent/Compte/PopupDisconnectCompte';
 
 const drawerWidth = 280;
 const closedDrawerWidth = 80;
@@ -22,10 +26,11 @@ const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const fileId = sessionStorage.getItem('fileId') || '0';
-  
+  const logout = useLogout();
+
   const [isHovered, setIsHovered] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  
+
   // États pour l'ouverture des dossiers
   const [openTraitement, setOpenTraitement] = useState(true);
   const [openExport, setOpenExport] = useState(false);
@@ -33,15 +38,64 @@ const MainLayout = ({ children }) => {
 
   const handleUserMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleUserMenuClose = () => setAnchorEl(null);
+  const [isButtonRolePermissionVisible, setIsButtonRolePermissionVisible] = useState(false);
+  const [isOpenPopupChangePassword, setOpenPopupChangePassword] = useState(false);
+  const [isOpenPopupDisconnect, setOpenPopupDisconnect] = useState(false);
+  const [userInfo, setUserInfo] = useState({ id: null, email: '' });
+  const { auth } = useAuth();
+
+  const decoded = jwtDecode(auth.accessToken);
+  const userId = decoded.UserInfo.userId;
+
+  const roles = decoded.UserInfo.roles;
+  useEffect(() => {
+    if ([5150, 3355].includes(roles)) {
+      setIsButtonRolePermissionVisible(true);
+    }
+  }, [roles])
+
+  useEffect(() => {
+    if (auth?.accessToken) {
+      try {
+        const decoded = jwtDecode(auth.accessToken);
+        setUserInfo({
+          id: decoded?.UserInfo?.userId || decoded?.userId || null,
+          email: decoded?.UserInfo?.email || decoded?.UserInfo?.username || decoded?.email || decoded?.username || ''
+        });
+      } catch (e) {
+        setUserInfo({ id: null, email: '' });
+      }
+    }
+  }, [auth?.accessToken]);
+
+  const setShowPopupChangePassword = (value) => {
+    setOpenPopupChangePassword(value);
+  }
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNavigateToRolePermission = () => {
+    handleUserMenuClose();
+    // TODO: créer la page /parametres/gestioncontrole ou ajouter une route dédiée
+    navigate('/tab/parametrages/role-permission');
+  };
+
+  const handleDisconnect = async () => {
+    setOpenPopupDisconnect(false);
+    await logout();
+    navigate('/', { replace: true });
+  };
 
   // --- CONFIGURATION DES MENUS ---
   const traitementItems = [
     { label: 'Consultation', path: `/traitement/consultation/${fileId}` },
     { label: 'Import journal', path: `/traitement/importjournal/${fileId}` },
     { label: 'Dossier de révision', path: `/traitement/dossierrevision/${fileId}` },
-    { 
-      label: 'Export', 
-      isSubmenu: true, 
+    {
+      label: 'Export',
+      isSubmenu: true,
       children: [
         { label: 'Balance', path: `/traitement/export/balance/${fileId}` },
         { label: 'Grand Livre', path: `/traitement/export/grandlivre/${fileId}` },
@@ -64,7 +118,7 @@ const MainLayout = ({ children }) => {
     >
       <Box sx={{ p: 3, display: 'flex', alignItems: 'center', height: 64 }}>
         <Avatar sx={{ width: 32, height: 32, bgcolor: '#10B981', fontWeight: 'bold', fontSize: 14 }}>Cd</Avatar>
-        {isHovered && <Typography variant="h6" sx={{ml:1, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
+        {isHovered && <Typography variant="h6" sx={{ ml: 1, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
           Checkup<span style={{ color: '#10B981' }}>Data</span>
         </Typography>}
       </Box>
@@ -102,9 +156,9 @@ const MainLayout = ({ children }) => {
                       <Collapse in={openExport} timeout="auto">
                         <Box sx={{ ml: 1, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
                           {item.children.map((child) => (
-                            <ListItemButton 
-                              key={child.label} 
-                              component={Link} 
+                            <ListItemButton
+                              key={child.label}
+                              component={Link}
                               to={child.path}
                               selected={location.pathname === child.path}
                               sx={subItemStyle}
@@ -116,9 +170,9 @@ const MainLayout = ({ children }) => {
                       </Collapse>
                     </>
                   ) : (
-                    <ListItemButton 
-                      component={Link} 
-                      to={item.path} 
+                    <ListItemButton
+                      component={Link}
+                      to={item.path}
                       selected={location.pathname === item.path}
                       sx={subItemStyle}
                     >
@@ -140,17 +194,17 @@ const MainLayout = ({ children }) => {
 
           <Collapse in={openParams && isHovered} timeout="auto" unmountOnExit>
             <Box sx={{ ml: 2.5, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-                {paramItems.map((item) => (
+              {paramItems.map((item) => (
                 <ListItemButton
-                    key={item.label}
-                    component={Link}
-                    to={item.path}
-                    selected={location.pathname === item.path}
-                    sx={subItemStyle}
+                  key={item.label}
+                  component={Link}
+                  to={item.path}
+                  selected={location.pathname === item.path}
+                  sx={subItemStyle}
                 >
-                    <ListItemText primary={item.label} />
+                  <ListItemText primary={item.label} />
                 </ListItemButton>
-                ))}
+              ))}
             </Box>
           </Collapse>
         </Box>
@@ -160,92 +214,94 @@ const MainLayout = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', bgcolor: '#ffffff', minHeight: '100vh' }}>
-        <AppBar
-            position="fixed"
-            elevation={0}
-            sx={{
-                width: { sm: `calc(100% - ${isHovered ? drawerWidth : closedDrawerWidth}px)` },
-                ml: { sm: `${isHovered ? drawerWidth : closedDrawerWidth}px` },
-                bgcolor: 'rgba(15, 23, 42, 0.9)',
-                backdropFilter: 'blur(12px)',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                transition: 'all 0.3s ease',
-                zIndex: (theme) => theme.zIndex.drawer + 1,
-            }}
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          width: { sm: `calc(100% - ${isHovered ? drawerWidth : closedDrawerWidth}px)` },
+          ml: { sm: `${isHovered ? drawerWidth : closedDrawerWidth}px` },
+          bgcolor: 'rgba(15, 23, 42, 0.9)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          transition: 'all 0.3s ease',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between', px: 3 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center' }}>
+              <BusinessOutlined sx={{ color: '#10B981', fontSize: 20 }} />
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: '#64748B', display: 'block', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                Espace Client
+              </Typography>
+              <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 700 }}>
+                Cabinet Randria & Associés
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Stack direction="row" spacing={3} alignItems="center">
+            <IconButton sx={{ color: '#64748B' }}>
+              <Badge badgeContent={4} color="error"><NotificationsOutlined /></Badge>
+            </IconButton>
+
+            {/* --- BOUTON PROFILE --- */}
+            <ButtonBase onClick={handleUserMenuOpen} sx={{ p: 0.5, pr: 1.5, borderRadius: '12px', transition: '0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>DR</Avatar>
+                <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'left' }}>
+                  <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 600 }}>Daniela Randria</Typography>
+                  <Typography variant="caption" sx={{ color: '#64748B' }}>Administrateur</Typography>
+                </Box>
+                <ExpandMore sx={{ color: '#64748B', fontSize: 18, transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
+              </Stack>
+            </ButtonBase>
+
+            {/* --- MENU DEROULANT REINSTAURÉ --- */}
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleUserMenuClose}
+              PaperProps={{
+                sx: {
+                  mt: 1.5,
+                  width: 200,
+                  borderRadius: '12px',
+                  bgcolor: '#0F172A',
+                  color: '#F8FAFC',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                  '& .MuiMenuItem-root': {
+                    fontSize: '0.85rem',
+                    py: 1.2,
+                    px: 2,
+                    gap: 1.5,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                    '& .MuiSvgIcon-root': { fontSize: 18, color: '#64748B' }
+                  }
+                }
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
-            <Toolbar sx={{ justifyContent: 'space-between', px: 3 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                    <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center' }}>
-                        <BusinessOutlined sx={{ color: '#10B981', fontSize: 20 }} />
-                    </Box>
-                    <Box>
-                        <Typography variant="caption" sx={{ color: '#64748B', display: 'block', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>
-                            Espace Client
-                        </Typography>
-                        <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 700 }}>
-                            Cabinet Randria & Associés
-                        </Typography>
-                    </Box>
-                </Stack>
-
-                <Stack direction="row" spacing={3} alignItems="center">
-                    <IconButton sx={{ color: '#64748B' }}>
-                        <Badge badgeContent={4} color="error"><NotificationsOutlined /></Badge>
-                    </IconButton>
-                    
-                    {/* --- BOUTON PROFILE --- */}
-                    <ButtonBase onClick={handleUserMenuOpen} sx={{ p: 0.5, pr: 1.5, borderRadius: '12px', transition: '0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                            <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>DR</Avatar>
-                            <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'left' }}>
-                                <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 600 }}>Daniela Randria</Typography>
-                                <Typography variant="caption" sx={{ color: '#64748B' }}>Administrateur</Typography>
-                            </Box>
-                            <ExpandMore sx={{ color: '#64748B', fontSize: 18, transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
-                        </Stack>
-                    </ButtonBase>
-
-                    {/* --- MENU DEROULANT REINSTAURÉ --- */}
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleUserMenuClose}
-                      PaperProps={{
-                        sx: {
-                          mt: 1.5,
-                          width: 200,
-                          borderRadius: '12px',
-                          bgcolor: '#0F172A',
-                          color: '#F8FAFC',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
-                          '& .MuiMenuItem-root': {
-                            fontSize: '0.85rem',
-                            py: 1.2,
-                            px: 2,
-                            gap: 1.5,
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                            '& .MuiSvgIcon-root': { fontSize: 18, color: '#64748B' }
-                          }
-                        }
-                      }}
-                      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    >
-                      <MenuItem onClick={handleUserMenuClose}>
-                        <PersonOutline /> Mon profil
-                      </MenuItem>
-                      <MenuItem onClick={handleUserMenuClose}>
-                        <SettingsOutlined /> Paramètres
-                      </MenuItem>
-                      <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
-                      <MenuItem onClick={() => { handleUserMenuClose(); navigate('/login'); }} sx={{ color: '#EF4444' }}>
-                        <LogoutOutlined sx={{ color: '#EF4444 !important' }} /> Se déconnecter
-                      </MenuItem>
-                    </Menu>
-                </Stack>
-            </Toolbar>
-        </AppBar>
+              {isButtonRolePermissionVisible && (
+                <MenuItem onClick={handleNavigateToRolePermission}>
+                  <PersonOutline /> Gestion de compte
+                </MenuItem>
+              )}
+              <MenuItem onClick={() => { handleClose(); setOpenPopupChangePassword(true); }} >
+                <SettingsOutlined /> Nouveau mot de passe
+              </MenuItem>
+              <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
+              <MenuItem onClick={() => { handleUserMenuClose(); setOpenPopupDisconnect(true); }} sx={{ color: '#EF4444' }}>
+                <LogoutOutlined sx={{ color: '#EF4444 !important' }} /> Se déconnecter
+              </MenuItem>
+            </Menu>
+          </Stack>
+        </Toolbar>
+      </AppBar>
 
       <Box component="nav" sx={{ width: { sm: isHovered ? drawerWidth : closedDrawerWidth }, transition: '0.3s' }}>
         <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': { width: isHovered ? drawerWidth : closedDrawerWidth, bgcolor: '#0F172A', transition: '0.3s', overflowX: 'hidden', borderRight: '1px solid rgba(255,255,255,0.05)' } }} open>
@@ -258,6 +314,18 @@ const MainLayout = ({ children }) => {
           {children}
         </ExercicePeriodeProvider>
       </Box>
+
+      <PopupPasswordChange
+        open={isOpenPopupChangePassword}
+        onClose={() => setOpenPopupChangePassword(false)}
+        id_compte={userId}
+      />
+
+      <PopupDisconnectCompte
+        open={isOpenPopupDisconnect}
+        handleClose={() => setOpenPopupDisconnect(false)}
+        handleDisconnect={handleDisconnect}
+      />
     </Box>
   );
 };
