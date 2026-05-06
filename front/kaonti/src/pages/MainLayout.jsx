@@ -18,6 +18,7 @@ import useLogout from '../hooks/useLogout';
 import { jwtDecode } from 'jwt-decode';
 import PopupPasswordChange from '../components/menuComponent/Compte/PopupPasswordChange';
 import PopupDisconnectCompte from '../components/menuComponent/Compte/PopupDisconnectCompte';
+import roleMapping from '../../config/rolesMappin';
 
 const drawerWidth = 280;
 const closedDrawerWidth = 80;
@@ -41,11 +42,16 @@ const MainLayout = ({ children }) => {
   const [isButtonRolePermissionVisible, setIsButtonRolePermissionVisible] = useState(false);
   const [isOpenPopupChangePassword, setOpenPopupChangePassword] = useState(false);
   const [isOpenPopupDisconnect, setOpenPopupDisconnect] = useState(false);
-  const [userInfo, setUserInfo] = useState({ id: null, email: '' });
+  const [userInfo, setUserInfo] = useState({ id: null, email: '', compte: '' });
   const { auth } = useAuth();
 
   const decoded = jwtDecode(auth.accessToken);
   const userId = decoded.UserInfo.userId;
+  const compteId = decoded.UserInfo.compteId || null;
+  const comptename = decoded.UserInfo.compte || 'Compte';
+  const username = decoded.UserInfo.username || decoded.UserInfo.email || 'Utilisateur';
+  const userInitials = username.split(/[\s.@]+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const roleName = Object.entries(roleMapping).find(([, id]) => id === decoded.UserInfo.roles)?.[0] || 'Utilisateur';
 
   const roles = decoded.UserInfo.roles;
   useEffect(() => {
@@ -237,7 +243,7 @@ const MainLayout = ({ children }) => {
                 Espace Client
               </Typography>
               <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 700 }}>
-                Cabinet Randria & Associés
+                {comptename}
               </Typography>
             </Box>
           </Stack>
@@ -250,16 +256,14 @@ const MainLayout = ({ children }) => {
             {/* --- BOUTON PROFILE --- */}
             <ButtonBase onClick={handleUserMenuOpen} sx={{ p: 0.5, pr: 1.5, borderRadius: '12px', transition: '0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
               <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>DR</Avatar>
+                <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{userInitials}</Avatar>
                 <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'left' }}>
-                  <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 600 }}>Daniela Randria</Typography>
-                  <Typography variant="caption" sx={{ color: '#64748B' }}>Administrateur</Typography>
+                  <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 600 }}>{username}</Typography>
+                  <Typography variant="caption" sx={{ color: '#64748B' }}>{roleName}</Typography>
                 </Box>
                 <ExpandMore sx={{ color: '#64748B', fontSize: 18, transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
               </Stack>
             </ButtonBase>
-
-            {/* --- MENU DEROULANT REINSTAURÉ --- */}
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
