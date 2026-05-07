@@ -18,4 +18,8 @@ router.get('/revuAnalytiqueNN1/:id_compte/:id_dossier/:id_exercice', revuAnalyti
 // Revu analytique mensuelle
 router.get('/revuAnalytiqueMensuelle/:id_compte/:id_dossier/:id_exercice', revuAnalytiqueMensuelleController.getRevuAnalytiqueMensuelle);
 
+// Export revu analytique mensuelle
+router.get('/revuAnalytiqueMensuelle/:id_compte/:id_dossier/:id_exercice/export/pdf', revuAnalytiqueMensuelleController.exportPdf);
+router.get('/revuAnalytiqueMensuelle/:id_compte/:id_dossier/:id_exercice/export/excel', revuAnalytiqueMensuelleController.exportExcel);
+
 module.exports = router;

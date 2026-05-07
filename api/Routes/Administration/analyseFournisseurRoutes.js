@@ -21,4 +21,8 @@ router.patch('/:id_compte/:id_dossier/:id_exercice/anomalies/:id', analyseFourni
 // Route pour supprimer les résultats d'analyse
 router.delete('/:id_compte/:id_dossier/:id_exercice', analyseFournisseurController.supprimerAnalyse);
 
+// Routes pour l'export
+router.get('/:id_compte/:id_dossier/:id_exercice/export/pdf', analyseFournisseurController.exportPdf);
+router.get('/:id_compte/:id_dossier/:id_exercice/export/excel', analyseFournisseurController.exportExcel);
+
 module.exports = router;

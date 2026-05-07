@@ -1,5 +1,9 @@
 const db = require('../../Models');
 const { QueryTypes } = require('sequelize');
+const PdfPrinter = require('pdfmake');
+const ExcelJS = require('exceljs');
+const fs = require('fs');
+const path = require('path');
 
 // ==========================================
 // SECTION 1: Extraction des critères
@@ -630,4 +634,195 @@ exports.validerGroupeDoublon = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// Helper functions
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+const formatMontant = (val) => {
+  if (val === null || val === undefined) return '0,00';
+  return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const tryReadLogo = () => {
+  try {
+    const logoPath = path.join(__dirname, '../../../public/logo.png');
+    if (fs.existsSync(logoPath)) {
+      const logoData = fs.readFileSync(logoPath);
+      return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
+    }
+  } catch (err) {
+    console.log('Logo not found:', err.message);
+  }
+  return null;
+};
+
+/**
+ * Export PDF for Recherche Doublons
+ */
+exports.exportPdf = async (req, res) => {
+  try {
+    const { id_compte, id_dossier, id_exercice } = req.params;
+    const { id_periode } = req.query;
+
+    const whereClause = { id_dossier, id_exercice };
+    if (id_periode) whereClause.id_periode = id_periode;
+
+    const resultats = await db.rechercheDoublons.findAll({
+      where: whereClause,
+      order: [['id_doublon', 'ASC'], ['id', 'ASC']]
+    });
+
+    const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
+    const printer = new PdfPrinter(fonts);
+    const logo = tryReadLogo();
+
+    const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+    const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
+
+    const headerColumns = [];
+    if (logo?.dataUrl) headerColumns.push({ image: logo.dataUrl, width: 90 });
+    headerColumns.push({
+      width: '*',
+      stack: [
+        { text: 'RECHERCHE DE DOUBLONS', style: 'header', alignment: 'center' },
+        { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
+        { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+      ]
+    });
+
+    // Group by id_doublon
+    const grouped = {};
+    resultats.forEach(item => {
+      if (!grouped[item.id_doublon]) {
+        grouped[item.id_doublon] = [];
+      }
+      grouped[item.id_doublon].push(item);
+    });
+
+    const tableBody = [
+      [{ text: 'Groupe', style: 'tableHeader', alignment: 'center' }, { text: 'Compte', style: 'tableHeader', alignment: 'center' }, { text: 'Date', style: 'tableHeader', alignment: 'center' }, { text: 'Journal', style: 'tableHeader', alignment: 'center' }, { text: 'Pièce', style: 'tableHeader', alignment: 'center' }, { text: 'Libellé', style: 'tableHeader', alignment: 'center' }, { text: 'Débit', style: 'tableHeader', alignment: 'center' }, { text: 'Crédit', style: 'tableHeader', alignment: 'center' }, { text: 'Statut', style: 'tableHeader', alignment: 'center' }]
+    ];
+
+    let rowCounter = 1;
+    Object.keys(grouped).sort((a, b) => parseInt(a) - parseInt(b)).forEach(groupId => {
+      const group = grouped[groupId];
+      group.forEach((item, idx) => {
+        const rowColor = rowCounter % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+        tableBody.push([
+          idx === 0 ? { text: `GRP-${groupId}`, rowSpan: group.length, style: 'cell', alignment: 'center', fillColor: rowColor } : {},
+          { text: item.compte || '', style: 'cell', fillColor: rowColor },
+          { text: formatDate(item.date), style: 'cell', fillColor: rowColor },
+          { text: item.journal || '', style: 'cell', fillColor: rowColor },
+          { text: item.piece || '', style: 'cell', fillColor: rowColor },
+          { text: item.libelle || '', style: 'cell', fillColor: rowColor },
+          { text: formatMontant(item.debit), alignment: 'right', style: 'cell', fillColor: rowColor },
+          { text: formatMontant(item.credit), alignment: 'right', style: 'cell', fillColor: rowColor },
+          { text: item.statut === 'VALIDE' ? 'Validé' : 'Non validé', alignment: 'center', style: 'cell', fillColor: rowColor }
+        ]);
+        rowCounter++;
+      });
+    });
+
+    const docDefinition = {
+      pageSize: 'A4',
+      pageOrientation: 'landscape',
+      pageMargins: [15, 15, 15, 25],
+      defaultStyle: { font: 'Helvetica', fontSize: 8 },
+      content: [
+        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+        { table: { headerRows: 1, widths: ['8%', '10%', '10%', '10%', '12%', '25%', '10%', '10%', '5%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } }
+      ],
+      styles: {
+        header: { fontSize: 16, bold: true, color: '#2C3E50' },
+        subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
+        subheader2: { fontSize: 9, color: '#566573' },
+        tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+        cell: { fontSize: 7, color: '#2C3E50' }
+      }
+    };
+
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Recherche_Doublons_${id_dossier}_${id_exercice}.pdf`);
+    pdfDoc.pipe(res);
+    pdfDoc.end();
+  } catch (error) {
+    console.error('Erreur export PDF recherche doublons:', error);
+    return res.status(500).json({ state: false, message: 'Erreur serveur', error: error.message });
+  }
+};
+
+/**
+ * Export Excel for Recherche Doublons
+ */
+exports.exportExcel = async (req, res) => {
+  try {
+    const { id_compte, id_dossier, id_exercice } = req.params;
+    const { id_periode } = req.query;
+
+    const whereClause = { id_dossier, id_exercice };
+    if (id_periode) whereClause.id_periode = id_periode;
+
+    const resultats = await db.rechercheDoublons.findAll({
+      where: whereClause,
+      order: [['id_doublon', 'ASC'], ['id', 'ASC']]
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Doublons');
+
+    worksheet.columns = [
+      { header: 'Groupe', key: 'groupe', width: 10 },
+      { header: 'Compte', key: 'compte', width: 12 },
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Journal', key: 'journal', width: 12 },
+      { header: 'Pièce', key: 'piece', width: 15 },
+      { header: 'Libellé', key: 'libelle', width: 35 },
+      { header: 'Débit', key: 'debit', width: 12 },
+      { header: 'Crédit', key: 'credit', width: 12 },
+      { header: 'Statut', key: 'statut', width: 12 }
+    ];
+
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+    worksheet.getRow(1).alignment = { horizontal: 'center' };
+
+    resultats.forEach(item => {
+      worksheet.addRow({
+        groupe: `GRP-${item.id_doublon}`,
+        compte: item.compte || '',
+        date: formatDate(item.date),
+        journal: item.journal || '',
+        piece: item.piece || '',
+        libelle: item.libelle || '',
+        debit: item.debit || 0,
+        credit: item.credit || 0,
+        statut: item.statut === 'VALIDE' ? 'Validé' : 'Non validé'
+      });
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.getCell(7).numFmt = '#,##0.00';
+        row.getCell(8).numFmt = '#,##0.00';
+      }
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Recherche_Doublons_${id_dossier}_${id_exercice}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Erreur export Excel recherche doublons:', error);
+    return res.status(500).json({ state: false, message: 'Erreur serveur', error: error.message });
+  }
 };

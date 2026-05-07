@@ -81,6 +81,7 @@ module.exports = (sequelize) => {
     });
     AnalyseClientLigne.hasMany(models.AnalyseClientAnomalie, {
       foreignKey: 'id_ligne',
+      sourceKey: 'id_ligne',
       as: 'anomalies'
     });
   };

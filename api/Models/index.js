@@ -179,6 +179,14 @@ db.analyseFournisseurAnomalies = require('./analyseFournisseurAnomalieModel')(se
 db.analyseClientLignes = require('./analyseClientLigneModel')(sequelize, DataTypes);
 db.analyseClientAnomalies = require('./analyseClientAnomalieModel')(sequelize, DataTypes);
 
+// Analyse Fournisseur associations
+db.analyseFournisseurLignes.hasMany(db.analyseFournisseurAnomalies, { foreignKey: 'id_ligne', sourceKey: 'id_ligne', as: 'anomalies' });
+db.analyseFournisseurAnomalies.belongsTo(db.analyseFournisseurLignes, { foreignKey: 'id_ligne', targetKey: 'id_ligne', as: 'ligne' });
+
+// Analyse Client associations
+db.analyseClientLignes.hasMany(db.analyseClientAnomalies, { foreignKey: 'id_ligne', sourceKey: 'id_ligne', as: 'anomalies' });
+db.analyseClientAnomalies.belongsTo(db.analyseClientLignes, { foreignKey: 'id_ligne', targetKey: 'id_ligne', as: 'ligne' });
+
 //Doublon
 db.rechercheDoublons = require('./rechercheDoublonModel')(sequelize, DataTypes);
 

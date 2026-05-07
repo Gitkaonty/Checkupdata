@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { 
   Box, Typography, Stack, Divider, IconButton, 
   Paper, Tooltip, Chip 
@@ -16,7 +16,7 @@ import axios from '../../../config/axios';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 
-const EcrituresSuspense = ({ id_exercice, id_periode }) => {
+const EcrituresSuspense = forwardRef(({ id_exercice, id_periode }, ref) => {
   const axiosPrivate = useAxiosPrivate();
 
   const {
@@ -114,6 +114,57 @@ const EcrituresSuspense = ({ id_exercice, id_periode }) => {
     }
   };
 
+  const handleExportExcel = async () => {
+    if (!effectiveExerciceId) return;
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDates();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+      const url = `/administration/ecrituresSuspense/${id_compte}/${id_dossier}/${id_exercice}/export/excel?${params.toString()}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Ecritures_Suspense_${id_dossier}_${id_exercice}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!effectiveExerciceId) return;
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDates();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+      const url = `/administration/ecrituresSuspense/${id_compte}/${id_dossier}/${id_exercice}/export/pdf?${params.toString()}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Ecritures_Suspense_${id_dossier}_${id_exercice}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportExcel: handleExportExcel,
+    exportPdf: handleExportPdf
+  }), [effectiveExerciceId, effectivePeriodeId]);
+
   useEffect(() => {
     fetchRows();
   }, [effectiveExerciceId, effectivePeriodeId, selectedPeriodeDates, currentExerciceDates]);
@@ -155,7 +206,7 @@ const EcrituresSuspense = ({ id_exercice, id_periode }) => {
       </Box>
     </Box>
   );
-};
+});
 
 const dataGridStyle = {
   border: 'none',

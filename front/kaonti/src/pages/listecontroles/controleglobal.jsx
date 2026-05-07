@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
     Box,
@@ -58,7 +58,7 @@ const formatDateYYYYMMDD = (dateString) => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-export default function Revision({ id_exercice, id_periode }) {
+const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) {
     let initial = init[0];
     const axiosPrivate = useAxiosPrivate();
     const navigate = useNavigate();
@@ -455,6 +455,12 @@ export default function Revision({ id_exercice, id_periode }) {
         }
     };
 
+    // Expose export functions to parent via ref
+    useImperativeHandle(ref, () => ({
+        exportExcel: handleExportGlobalExcel,
+        exportPdf: handleExportGlobalPdf
+    }));
+
     const handleControler = () => {
         if (!effectiveExerciceId) return;
 
@@ -645,26 +651,6 @@ export default function Revision({ id_exercice, id_periode }) {
                         >
                             Réviser
                         </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<PictureAsPdf />}
-                            onClick={handleExportGlobalPdf}
-                            disabled={!effectiveExerciceId || controlesGrouped.length === 0}
-                            sx={{ height: '25px', color: '#d32f2f', borderColor: '#d32f2f', textTransform: 'none', fontWeight: 700, fontSize: '0.7rem' }}
-                        >
-                            Export PDF
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<TableChart />}
-                            onClick={handleExportGlobalExcel}
-                            disabled={!effectiveExerciceId || controlesGrouped.length === 0}
-                            sx={{ height: '25px', color: '#2e7d32', borderColor: '#2e7d32', textTransform: 'none', fontWeight: 700, fontSize: '0.7rem' }}
-                        >
-                            Export Excel
-                        </Button>
                     </Stack>
                     {/* {controlesGrouped.length > 0 && (
                         <Chip
@@ -852,4 +838,11 @@ export default function Revision({ id_exercice, id_periode }) {
             />
         </Box>
     );
-}
+});
+
+// GlobalBalance.propTypes = {
+//     id_exercice: PropTypes.string.isRequired,
+//     id_periode: PropTypes.string.isRequired
+// };
+
+export default Revision;

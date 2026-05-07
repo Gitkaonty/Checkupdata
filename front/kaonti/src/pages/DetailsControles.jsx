@@ -1,16 +1,17 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
   Box, Typography, Stack, Tabs, Tab, Paper,
   Divider, Button, Chip, Breadcrumbs, Link as MuiLink, TablePagination,
   Select,
-  MenuItem
+  MenuItem,
+  Menu
 } from '@mui/material';
 import ExercicePeriodeContext from '../context/ExercicePeriodeContext';
 import {
   CompareArrowsOutlined, CalendarMonthOutlined, AccountBalanceOutlined,
   PeopleAltOutlined, ContentCopyOutlined, HelpOutline,
   LabelOutlined, ChevronRight, FileDownloadOutlined, FilterListOutlined,
-  DashboardOutlined
+  DashboardOutlined, PictureAsPdf, TableChart, ArrowDropDown
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Link, useNavigate } from 'react-router-dom';
@@ -28,7 +29,14 @@ const DetailsControles = () => {
   const [activeTab, setActiveTab] = useState(0);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
+  const [exportAnchorEl, setExportAnchorEl] = useState(null);
+  const revueAnalytiqueRef = useRef(null);
+  const revueMensuelleRef = useRef(null);
+  const globalBalanceRef = useRef(null);
+  const analyseTiersRef = useRef(null);
+  const rechercheDoublonRef = useRef(null);
+  const ecrituresSuspenseRef = useRef(null);
+  const controleAnalytiqueRef = useRef(null);
 
   const handleChangeExercice = (exerciceId) => {
     setSelectedExerciceId(exerciceId);
@@ -39,6 +47,28 @@ const DetailsControles = () => {
   };
 
   const handleTabChange = (event, newValue) => setActiveTab(newValue);
+
+  const handleExportExcel = () => {
+    if (activeTab === 0) revueAnalytiqueRef.current?.exportExcel();
+    else if (activeTab === 1) revueMensuelleRef.current?.exportExcel();
+    else if (activeTab === 2) globalBalanceRef.current?.exportExcel();
+    else if (activeTab === 3) analyseTiersRef.current?.exportExcel();
+    else if (activeTab === 4) rechercheDoublonRef.current?.exportExcel();
+    else if (activeTab === 5) ecrituresSuspenseRef.current?.exportExcel();
+    else if (activeTab === 6) controleAnalytiqueRef.current?.exportExcel();
+    setExportAnchorEl(null);
+  };
+
+  const handleExportPdf = () => {
+    if (activeTab === 0) revueAnalytiqueRef.current?.exportPdf();
+    else if (activeTab === 1) revueMensuelleRef.current?.exportPdf();
+    else if (activeTab === 2) globalBalanceRef.current?.exportPdf();
+    else if (activeTab === 3) analyseTiersRef.current?.exportPdf();
+    else if (activeTab === 4) rechercheDoublonRef.current?.exportPdf();
+    else if (activeTab === 5) ecrituresSuspenseRef.current?.exportPdf();
+    else if (activeTab === 6) controleAnalytiqueRef.current?.exportPdf();
+    setExportAnchorEl(null);
+  };
 
   const menuControles = [
     { label: 'Revue Analytique N/N-1', icon: <CompareArrowsOutlined sx={{ fontSize: 20 }} /> },
@@ -80,7 +110,6 @@ const DetailsControles = () => {
         Détails des contrôles
       </Typography>
 
-
       <Box>
         <ExercicePeriodeSelector
           selectedExerciceId={selectedExerciceId}
@@ -91,7 +120,6 @@ const DetailsControles = () => {
           size="small"
         />
       </Box>
-
 
       {/* --- ZONE PRINCIPALE : SIDEBAR + CONTENU --- */}
       <Box sx={{ display: 'flex', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden', height: '90vh' }}>
@@ -145,7 +173,28 @@ const DetailsControles = () => {
             </Typography>
             <Stack direction="row" spacing={1}>
               <Button size="small" startIcon={<FilterListOutlined />} sx={{ color: '#64748B', textTransform: 'none' }}>Filtres</Button>
-              <Button size="small" startIcon={<FileDownloadOutlined />} sx={{ color: '#10B981', textTransform: 'none' }}>Export</Button>
+              <Button
+                size="small"
+                startIcon={<FileDownloadOutlined />}
+                endIcon={<ArrowDropDown />}
+                onClick={(e) => setExportAnchorEl(e.currentTarget)}
+                sx={{ color: '#10B981', textTransform: 'none', fontWeight: 600 }}
+              >
+                Export
+              </Button>
+              <Menu
+                anchorEl={exportAnchorEl}
+                open={Boolean(exportAnchorEl)}
+                onClose={() => setExportAnchorEl(null)}
+                PaperProps={{ sx: { mt: 1, borderRadius: '10px', minWidth: 160, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' } }}
+              >
+                <MenuItem onClick={handleExportExcel} sx={{ gap: 1.5, py: 1 }}>
+                  <TableChart sx={{ fontSize: 18, color: '#2e7d32' }} /> Export Excel
+                </MenuItem>
+                <MenuItem onClick={handleExportPdf} sx={{ gap: 1.5, py: 1 }}>
+                  <PictureAsPdf sx={{ fontSize: 18, color: '#d32f2f' }} /> Export PDF
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
 
@@ -159,15 +208,18 @@ const DetailsControles = () => {
             overflow: 'auto'
           }}>
             {activeTab === 0 && <RevueAnalytiqueTable
+              ref={revueAnalytiqueRef}
               id_exercice={selectedExerciceId}
               id_periode={selectedPeriodeId}
             />}
             {activeTab === 1 && <RevueMensuelleTable
+              ref={revueMensuelleRef}
               id_exercice={selectedExerciceId}
               id_periode={selectedPeriodeId}
             />}
             {activeTab === 2 && (
               <GlobalBalance
+                ref={globalBalanceRef}
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
@@ -175,24 +227,28 @@ const DetailsControles = () => {
 
             {activeTab === 3 && (
               <AnalyseTiers
+                ref={analyseTiersRef}
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
             )}
             {activeTab === 4 && (
               <RechercheDoublons
+                ref={rechercheDoublonRef}
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
             )}
             {activeTab === 5 && (
               <EcrituresSuspense
+                ref={ecrituresSuspenseRef}
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
             )}
             {activeTab === 6 && (
               <ControleAnalytique
+                ref={controleAnalytiqueRef}
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />

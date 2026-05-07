@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -74,7 +74,7 @@ const parseNumber = (value) => {
   return Number.isFinite(num) ? num : null;
 };
 
-const RechercheDoublons = ({ id_exercice, id_periode }) => {
+const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
   let initial = init[0];
 
   // État pour gérer l'expansion des groupes
@@ -383,6 +383,67 @@ const RechercheDoublons = ({ id_exercice, id_periode }) => {
       montant: !allChecked,
     });
   };
+
+  const handleExportExcel = async () => {
+    if (!effectiveExerciceId) return;
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDatesForSearch();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+      Object.entries(criteres).forEach(([key, value]) => {
+        if (value) {
+          params.append(`critere_${key}`, 'true');
+        }
+      });
+      const url = `/administration/rechercheDoublon/${id_compte}/${id_dossier}/${id_exercice}/export/excel?${params.toString()}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Recherche_Doublons_${id_dossier}_${id_exercice}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!effectiveExerciceId) return;
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDatesForSearch();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+      Object.entries(criteres).forEach(([key, value]) => {
+        if (value) {
+          params.append(`critere_${key}`, 'true');
+        }
+      });
+      const url = `/administration/rechercheDoublon/${id_compte}/${id_dossier}/${id_exercice}/export/pdf?${params.toString()}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Recherche_Doublons_${id_dossier}_${id_exercice}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportExcel: handleExportExcel,
+    exportPdf: handleExportPdf
+  }), [effectiveExerciceId, effectivePeriodeId, criteres]);
 
   const groupsRows = doublonsGroups.map((g) => ({
     ...g,
@@ -883,7 +944,7 @@ const RechercheDoublons = ({ id_exercice, id_periode }) => {
       </Box>
     </Box>
   );
-};
+});
 
 const dataGridStyle = {
   border: 'none',

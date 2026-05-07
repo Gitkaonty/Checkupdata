@@ -7,4 +7,8 @@ router.use(verifyJWT);
 
 router.get('/:id_compte/:id_dossier/:id_exercice', ecrituresSuspenseController.getLignes);
 
+// Routes pour l'export
+router.get('/:id_compte/:id_dossier/:id_exercice/export/pdf', ecrituresSuspenseController.exportPdf);
+router.get('/:id_compte/:id_dossier/:id_exercice/export/excel', ecrituresSuspenseController.exportExcel);
+
 module.exports = router;

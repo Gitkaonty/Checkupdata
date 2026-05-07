@@ -81,6 +81,7 @@ module.exports = (sequelize) => {
     });
     AnalyseFournisseurLigne.hasMany(models.AnalyseFournisseurAnomalie, {
       foreignKey: 'id_ligne',
+      sourceKey: 'id_ligne',
       as: 'anomalies'
     });
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import {
   Box, Typography, Stack, IconButton, Tooltip, Divider, Chip, Badge, alpha,
 } from '@mui/material';
@@ -9,7 +9,7 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import CommentDialog from '../../components/commetDialog';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 
-const RevueAnalytiqueTable = ({ id_exercice, id_periode }) => {
+const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exercice, id_periode }, ref) {
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,51 @@ const RevueAnalytiqueTable = ({ id_exercice, id_periode }) => {
   const [commentLoading, setCommentLoading] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const axiosPrivate = useAxiosPrivate();
+
+  const handleExportExcel = async () => {
+    if (!id_exercice) return;
+    try {
+      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+      let url = `/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}/export/excel`;
+      if (id_periode) url += `?id_periode=${id_periode}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Revue_Analytique_${id_dossier}_${id_exercice}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!id_exercice) return;
+    try {
+      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+      let url = `/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}/export/pdf`;
+      if (id_periode) url += `?id_periode=${id_periode}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Revue_Analytique_${id_dossier}_${id_exercice}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportExcel: handleExportExcel,
+    exportPdf: handleExportPdf
+  }));
 
   const fetchRevuAnalytique = useCallback(async () => {
     try {
@@ -416,6 +461,6 @@ const RevueAnalytiqueTable = ({ id_exercice, id_periode }) => {
       />
     </Box>
   );
-};
+});
 
 export default RevueAnalytiqueTable;

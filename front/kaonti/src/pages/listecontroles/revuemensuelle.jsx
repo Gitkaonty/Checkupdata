@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -54,13 +54,57 @@ const formatDate = (dateString) => {
   return `${dd}/${mm}/${yy}`;
 };
 
-const RevueMensuelleTable = ({ id_exercice: id_exercice_prop, id_periode: id_periode_prop }) => {
+const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercice: id_exercice_prop, id_periode: id_periode_prop }, ref) {
   const NAV_DARK = '#0B1120';
   const BG_SOFT = '#F8FAFC';
   const axiosPrivate = useAxiosPrivate();
   const navigate = useNavigate();
   const { id_compte, id_dossier } = useParams();
   const [searchParams] = useSearchParams();
+
+  const id_compte_val = parseInt(id_compte) || parseInt(sessionStorage.getItem('compteId')) || 1;
+  const id_dossier_val = parseInt(id_dossier) || parseInt(sessionStorage.getItem('fileId')) || 1;
+
+  const handleExportExcel = async () => {
+    if (!id_exercice_prop) return;
+    try {
+      let url = `/dashboard/revuAnalytiqueMensuelle/${id_compte_val}/${id_dossier_val}/${id_exercice_prop}/export/excel`;
+      if (id_periode_prop) url += `?id_periode=${id_periode_prop}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Revue_Mensuelle_${id_dossier_val}_${id_exercice_prop}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!id_exercice_prop) return;
+    try {
+      let url = `/dashboard/revuAnalytiqueMensuelle/${id_compte_val}/${id_dossier_val}/${id_exercice_prop}/export/pdf`;
+      if (id_periode_prop) url += `?id_periode=${id_periode_prop}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Revue_Mensuelle_${id_dossier_val}_${id_exercice_prop}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportExcel: handleExportExcel,
+    exportPdf: handleExportPdf
+  }));
 
   // Récupérer les paramètres d'URL si présents
   const urlDateDebut = searchParams.get('date_debut');
@@ -443,6 +487,18 @@ const RevueMensuelleTable = ({ id_exercice: id_exercice_prop, id_periode: id_per
       headerClassName: 'sticky-header',
       cellClassName: 'sticky-cell'
     },
+    {
+      field: 'total_exercice',
+      headerName: 'TOTAL',
+      width: 110,
+      type: 'number',
+      cellClassName: 'total-cell',
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontWeight: 800, fontFamily: 'monospace' }}>
+          {params.value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+        </Typography>
+      )
+    },
     ...moisColumns.map((mois) => ({
       field: mois.nom,
       headerName: mois.nomAffiche,
@@ -462,18 +518,6 @@ const RevueMensuelleTable = ({ id_exercice: id_exercice_prop, id_periode: id_per
         );
       }
     })),
-    {
-      field: 'total_exercice',
-      headerName: 'TOTAL',
-      width: 110,
-      type: 'number',
-      cellClassName: 'total-cell',
-      renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 800, fontFamily: 'monospace' }}>
-          {params.value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-        </Typography>
-      )
-    },
     {
       field: 'anomalies',
       headerName: 'Anomalies',
@@ -704,6 +748,6 @@ const RevueMensuelleTable = ({ id_exercice: id_exercice_prop, id_periode: id_per
       />
     </>
   );
-};
+});
 
 export default RevueMensuelleTable;

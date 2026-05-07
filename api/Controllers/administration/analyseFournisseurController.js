@@ -1,5 +1,9 @@
 const db = require('../../Models');
 const { Op, Sequelize } = require('sequelize');
+const PdfPrinter = require('pdfmake');
+const ExcelJS = require('exceljs');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Analyse Fournisseur/Client Controller
@@ -783,5 +787,250 @@ exports.getStats = async (req, res) => {
       message: 'Erreur lors de la récupération des statistiques',
       error: error.message
     });
+  }
+};
+
+// Helper functions
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+const formatMontant = (val) => {
+  if (val === null || val === undefined) return '0,00';
+  return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const tryReadLogo = () => {
+  try {
+    const logoPath = path.join(__dirname, '../../../public/logo.png');
+    if (fs.existsSync(logoPath)) {
+      const logoData = fs.readFileSync(logoPath);
+      return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
+    }
+  } catch (err) {
+    console.log('Logo not found:', err.message);
+  }
+  return null;
+};
+
+const getAnalyseTiersData = async (id_compte, id_dossier, id_exercice, id_periode, type) => {
+  const whereLignes = {
+    id_compte,
+    id_dossier,
+    id_exercice,
+    ...(id_periode ? { id_periode } : {})
+  };
+
+  const Model = type === 'fournisseur' ? db.analyseFournisseurLignes : db.analyseClientLignes;
+  const AnomalieModel = type === 'fournisseur' ? db.analyseFournisseurAnomalies : db.analyseClientAnomalies;
+
+  const lignes = await Model.findAll({
+    where: whereLignes,
+    include: [{
+      model: AnomalieModel,
+      as: 'anomalies',
+      required: false,
+      attributes: ['id', 'type_anomalie', 'commentaire', 'commentaire_validation', 'valider']
+    }],
+    order: [['compte', 'ASC'], ['date_ecriture', 'ASC']]
+  });
+
+  const groupedByCompte = {};
+  for (const ligne of lignes) {
+    const compte = ligne.compte;
+    if (!groupedByCompte[compte]) {
+      groupedByCompte[compte] = { compte, lignes: [] };
+    }
+    groupedByCompte[compte].lignes.push({
+      id: ligne.id,
+      date_ecriture: ligne.date_ecriture,
+      piece: ligne.piece,
+      libelle: ligne.libelle,
+      debit: ligne.debit,
+      credit: ligne.credit,
+      lettrage: ligne.lettrage,
+      code_journal: ligne.code_journal,
+      anomalies: (ligne.anomalies || []).map(a => ({
+        id: a.id,
+        type: a.type_anomalie,
+        commentaire: a.commentaire,
+        commentaire_validation: a.commentaire_validation,
+        valider: a.valider
+      }))
+    });
+  }
+
+  return Object.values(groupedByCompte);
+};
+
+const ANOMALIE_LABELS = {
+  'paiement_sans_facture': 'Paiement sans facture',
+  'facture_3mois_non_reglee': 'Factures > 3 mois non réglées',
+  'ajustement_non_traite': 'Ajustements non traité',
+  'solde_suspens': 'Solde en suspens'
+};
+
+/**
+ * Export PDF for Analyse Tiers
+ */
+exports.exportPdf = async (req, res) => {
+  try {
+    const { id_compte, id_dossier, id_exercice } = req.params;
+    const { id_periode } = req.query;
+
+    const fournisseurData = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'fournisseur');
+    const clientData = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'client');
+
+    const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
+    const printer = new PdfPrinter(fonts);
+    const logo = tryReadLogo();
+
+    const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+    const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
+
+    const headerColumns = [];
+    if (logo?.dataUrl) headerColumns.push({ image: logo.dataUrl, width: 90 });
+    headerColumns.push({
+      width: '*',
+      stack: [
+        { text: 'ANALYSE TIERS (FOURNISSEURS & CLIENTS)', style: 'header', alignment: 'center' },
+        { text: `Dossier: ${dossier?.nom || id_dossier}`, style: 'subheader', alignment: 'center' },
+        { text: `Exercice: ${exercice?.libelle || id_exercice}`, style: 'subheader', alignment: 'center' }
+      ]
+    });
+
+    const buildTableBody = (data, title) => {
+      const tableBody = [
+        [{ text: title, colSpan: 9, style: 'sectionHeader', alignment: 'center' }, '', '', '', '', '', '', '', ''],
+        [{ text: 'Compte', style: 'tableHeader', alignment: 'center' }, { text: 'Date', style: 'tableHeader', alignment: 'center' }, { text: 'Pièce', style: 'tableHeader', alignment: 'center' }, { text: 'Libellé', style: 'tableHeader', alignment: 'center' }, { text: 'Débit', style: 'tableHeader', alignment: 'center' }, { text: 'Crédit', style: 'tableHeader', alignment: 'center' }, { text: 'Let.', style: 'tableHeader', alignment: 'center' }, { text: 'Type anomalie', style: 'tableHeader', alignment: 'center' }, { text: 'Commentaire', style: 'tableHeader', alignment: 'center' }]
+      ];
+
+      data.forEach((compte) => {
+        compte.lignes.forEach((ligne) => {
+          ligne.anomalies.forEach((anomalie) => {
+            tableBody.push([
+              { text: compte.compte, style: 'cell' },
+              { text: formatDate(ligne.date_ecriture), style: 'cell' },
+              { text: ligne.piece || '', style: 'cell' },
+              { text: ligne.libelle || '', style: 'cell' },
+              { text: formatMontant(ligne.debit), alignment: 'right', style: 'cell' },
+              { text: formatMontant(ligne.credit), alignment: 'right', style: 'cell' },
+              { text: ligne.lettrage || '-', alignment: 'center', style: 'cell' },
+              { text: ANOMALIE_LABELS[anomalie.type] || anomalie.type, style: 'cell' },
+              { text: anomalie.commentaire_validation || '', style: 'cell' }
+            ]);
+          });
+        });
+      });
+
+      return tableBody;
+    };
+
+    const fournisseurTable = buildTableBody(fournisseurData, 'FOURNISSEURS');
+    const clientTable = buildTableBody(clientData, 'CLIENTS');
+
+    const docDefinition = {
+      pageSize: 'A4',
+      pageOrientation: 'landscape',
+      pageMargins: [15, 15, 15, 25],
+      defaultStyle: { font: 'Helvetica', fontSize: 8 },
+      content: [
+        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+        { table: { headerRows: 2, widths: ['10%', '10%', '12%', '25%', '10%', '10%', '6%', '12%', '5%'], body: fournisseurTable }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri === 1 ? '#D1E8FF' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3 } },
+        { text: '', margin: [0, 10, 0, 0] },
+        { table: { headerRows: 2, widths: ['10%', '10%', '12%', '25%', '10%', '10%', '6%', '12%', '5%'], body: clientTable }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri === 1 ? '#D1E8FF' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3 } }
+      ],
+      styles: {
+        header: { fontSize: 14, bold: true, color: '#2C3E50' },
+        subheader: { fontSize: 10, color: '#64748B' },
+        tableHeader: { fontSize: 9, bold: true, color: '#1E293B', fillColor: '#F1F5F9' },
+        sectionHeader: { fontSize: 11, bold: true, color: '#0F172A', fillColor: '#DBEAFE' },
+        cell: { fontSize: 8 }
+      }
+    };
+
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Analyse_Tiers_${id_dossier}_${id_exercice}.pdf`);
+    pdfDoc.pipe(res);
+    pdfDoc.end();
+  } catch (error) {
+    console.error('Erreur export PDF analyse tiers:', error);
+    return res.status(500).json({ state: false, message: 'Erreur serveur', error: error.message });
+  }
+};
+
+/**
+ * Export Excel for Analyse Tiers
+ */
+exports.exportExcel = async (req, res) => {
+  try {
+    const { id_compte, id_dossier, id_exercice } = req.params;
+    const { id_periode } = req.query;
+
+    const fournisseurData = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'fournisseur');
+    const clientData = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'client');
+
+    const workbook = new ExcelJS.Workbook();
+    
+    const addWorksheet = (data, title) => {
+      const worksheet = workbook.addWorksheet(title);
+      worksheet.columns = [
+        { header: 'Compte', key: 'compte', width: 12 },
+        { header: 'Date', key: 'date', width: 12 },
+        { header: 'Pièce', key: 'piece', width: 15 },
+        { header: 'Libellé', key: 'libelle', width: 35 },
+        { header: 'Débit', key: 'debit', width: 12 },
+        { header: 'Crédit', key: 'credit', width: 12 },
+        { header: 'Lettrage', key: 'lettrage', width: 10 },
+        { header: 'Type anomalie', key: 'type_anomalie', width: 25 },
+        { header: 'Commentaire', key: 'commentaire', width: 30 }
+      ];
+
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+
+      data.forEach((compte) => {
+        compte.lignes.forEach((ligne) => {
+          ligne.anomalies.forEach((anomalie) => {
+            worksheet.addRow({
+              compte: compte.compte,
+              date: formatDate(ligne.date_ecriture),
+              piece: ligne.piece || '',
+              libelle: ligne.libelle || '',
+              debit: ligne.debit || 0,
+              credit: ligne.credit || 0,
+              lettrage: ligne.lettrage || '-',
+              type_anomalie: ANOMALIE_LABELS[anomalie.type] || anomalie.type,
+              commentaire: anomalie.commentaire_validation || ''
+            });
+          });
+        });
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          row.getCell(5).numFmt = '#,##0.00';
+          row.getCell(6).numFmt = '#,##0.00';
+        }
+      });
+    };
+
+    addWorksheet(fournisseurData, 'Fournisseurs');
+    addWorksheet(clientData, 'Clients');
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Analyse_Tiers_${id_dossier}_${id_exercice}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Erreur export Excel analyse tiers:', error);
+    return res.status(500).json({ state: false, message: 'Erreur serveur', error: error.message });
   }
 };

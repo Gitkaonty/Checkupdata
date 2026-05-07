@@ -16,4 +16,8 @@ router.get('/:id_dossier/:id_exercice', rechercheDoublonController.getResultats)
 // DELETE - Supprimer les résultats
 router.delete('/:id_dossier/:id_exercice', rechercheDoublonController.supprimerResultats);
 
+// Routes pour l'export
+router.get('/:id_compte/:id_dossier/:id_exercice/export/pdf', rechercheDoublonController.exportPdf);
+router.get('/:id_compte/:id_dossier/:id_exercice/export/excel', rechercheDoublonController.exportExcel);
+
 module.exports = router;

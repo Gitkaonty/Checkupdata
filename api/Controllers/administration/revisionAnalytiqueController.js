@@ -1,5 +1,57 @@
 const db = require('../../Models');
 const { QueryTypes } = require('sequelize');
+const PdfPrinter = require('pdfmake');
+const ExcelJS = require('exceljs');
+const fs = require('fs');
+const path = require('path');
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+const formatMontant = (val) => {
+  if (val === null || val === undefined) return '0,00';
+  return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const tryReadLogo = () => {
+  try {
+    const logoPath = path.join(__dirname, '../../../public/logo.png');
+    if (fs.existsSync(logoPath)) {
+      const logoData = fs.readFileSync(logoPath);
+      return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
+    }
+  } catch (err) {
+    console.log('Logo not found:', err.message);
+  }
+  return null;
+};
+
+const getAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_periode) => {
+  const whereClause = { id_compte, id_dossier, id_exercice };
+  if (id_periode) whereClause.id_periode = id_periode;
+
+  const resultats = await db.revisionAnalytiqueResultats.findAll({
+    where: whereClause,
+    order: [['date', 'ASC'], ['compte', 'ASC']]
+  });
+
+  return resultats.map((item, index) => ({
+    id: index + 1,
+    date: item.date,
+    compte: item.compte,
+    libelle: item.libelle,
+    debit: item.debit,
+    credit: item.credit,
+    total_analytiques: item.total_analytiques
+  }));
+};
 
 /**
  * POST /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
@@ -301,5 +353,157 @@ exports.supprimerResultats = async (req, res) => {
             message: 'Erreur lors de la suppression des résultats',
             error: error.message
         });
+    }
+};
+
+exports.exportPdf = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice } = req.params;
+        const { id_periode } = req.query;
+
+        if (!id_compte || !id_dossier || !id_exercice) {
+            return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+        }
+
+        const data = await getAnalytiqueData(id_compte, id_dossier, id_exercice, id_periode);
+
+        const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
+        const printer = new PdfPrinter(fonts);
+        const logo = tryReadLogo();
+
+        const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+        const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
+
+        const headerColumns = [];
+        if (logo?.dataUrl) headerColumns.push({ image: logo.dataUrl, width: 90 });
+        headerColumns.push({
+          width: '*',
+          stack: [
+            { text: 'CONTRÔLE CODES ANALYTIQUES', style: 'header', alignment: 'center' },
+            { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
+            { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+          ]
+        });
+
+        const tableBody = [
+          ['Date', 'Compte', 'Libellé', 'Débit', 'Crédit', 'Total Analytiques'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
+        ];
+
+        let totalDebit = 0, totalCredit = 0, totalAnalytiques = 0;
+        data.forEach((row, i) => {
+          const debit = parseFloat(row.debit) || 0;
+          const credit = parseFloat(row.credit) || 0;
+          const analytiques = parseFloat(row.total_analytiques) || 0;
+          totalDebit += debit;
+          totalCredit += credit;
+          totalAnalytiques += analytiques;
+          const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+          tableBody.push([
+            { text: formatDate(row.date), style: 'cell', fillColor: rowColor },
+            { text: row.compte || '', style: 'cell', fillColor: rowColor },
+            { text: row.libelle || '', style: 'cell', fillColor: rowColor },
+            { text: formatMontant(debit), alignment: 'right', style: 'cell', fillColor: rowColor },
+            { text: formatMontant(credit), alignment: 'right', style: 'cell', fillColor: rowColor },
+            { text: formatMontant(analytiques), alignment: 'right', style: 'cell', fillColor: rowColor }
+          ]);
+        });
+
+        tableBody.push([
+          { text: 'Total', colSpan: 3, alignment: 'right', style: 'totalRow' }, {}, {},
+          { text: formatMontant(totalDebit), alignment: 'right', style: 'totalRow' },
+          { text: formatMontant(totalCredit), alignment: 'right', style: 'totalRow' },
+          { text: formatMontant(totalAnalytiques), alignment: 'right', style: 'totalRow' }
+        ]);
+
+        const docDefinition = {
+            pageSize: 'A4',
+            pageOrientation: 'landscape',
+            pageMargins: [15, 15, 15, 25],
+            defaultStyle: { font: 'Helvetica', fontSize: 8 },
+            content: [
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+                { table: { headerRows: 1, widths: ['10%', '10%', '*', '12%', '12%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } },
+                { text: `Total : ${data.length} écriture(s) sans analytiques`, style: 'noData', margin: [0, 10, 0, 0] }
+            ],
+            styles: {
+                header: { fontSize: 16, bold: true, color: '#2C3E50' },
+                subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
+                subheader2: { fontSize: 9, color: '#566573' },
+                tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+                cell: { fontSize: 7, color: '#2C3E50' },
+                totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#D6EAF8' },
+                noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+            }
+        };
+
+        const pdfDoc = printer.createPdfKitDocument(docDefinition);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Controle_Analytique_${id_dossier}_${id_exercice}.pdf`);
+        pdfDoc.pipe(res);
+        pdfDoc.end();
+
+    } catch (error) {
+        console.error('[REVISION_ANALYTIQUE] export PDF error:', error);
+        return res.status(500).json({ state: false, message: 'Erreur export PDF', error: error.message });
+    }
+};
+
+exports.exportExcel = async (req, res) => {
+    try {
+        const { id_compte, id_dossier, id_exercice } = req.params;
+        const { id_periode } = req.query;
+
+        if (!id_compte || !id_dossier || !id_exercice) {
+            return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+        }
+
+        const data = await getAnalytiqueData(id_compte, id_dossier, id_exercice, id_periode);
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Contrôle Analytique');
+
+        worksheet.columns = [
+            { header: 'Date', key: 'date', width: 14 },
+            { header: 'Compte', key: 'compte', width: 14 },
+            { header: 'Libellé', key: 'libelle', width: 40 },
+            { header: 'Débit', key: 'debit', width: 14 },
+            { header: 'Crédit', key: 'credit', width: 14 },
+            { header: 'Total Analytiques', key: 'total_analytiques', width: 18 }
+        ];
+
+        // Style header
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        worksheet.getRow(1).alignment = { horizontal: 'center' };
+
+        data.forEach(row => {
+            worksheet.addRow({
+                date: row.date || '',
+                compte: row.compte || '',
+                libelle: row.libelle || '',
+                debit: Number(row.debit) || 0,
+                credit: Number(row.credit) || 0,
+                total_analytiques: Number(row.total_analytiques) || 0
+            });
+        });
+
+        // Format numeric columns
+        const lastRow = worksheet.rowCount;
+        for (let i = 2; i <= lastRow; i++) {
+            const row = worksheet.getRow(i);
+            row.getCell(4).numFmt = '#,##0.00';
+            row.getCell(5).numFmt = '#,##0.00';
+            row.getCell(6).numFmt = '#,##0.00';
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Controle_Analytique_${id_dossier}_${id_exercice}.xlsx`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error) {
+        console.error('[REVISION_ANALYTIQUE] export Excel error:', error);
+        return res.status(500).json({ state: false, message: 'Erreur export Excel', error: error.message });
     }
 };

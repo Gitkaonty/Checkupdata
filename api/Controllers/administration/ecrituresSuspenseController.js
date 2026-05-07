@@ -1,8 +1,83 @@
 const db = require('../../Models');
 const { Op, fn, col, where } = require('sequelize');
+const PdfPrinter = require('pdfmake');
+const ExcelJS = require('exceljs');
+const fs = require('fs');
+const path = require('path');
 
 const journals = db.journals;
 const codejournals = db.codejournals;
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+const formatMontant = (val) => {
+  if (val === null || val === undefined) return '0,00';
+  return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const tryReadLogo = () => {
+  try {
+    const logoPath = path.join(__dirname, '../../../public/logo.png');
+    if (fs.existsSync(logoPath)) {
+      const logoData = fs.readFileSync(logoPath);
+      return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
+    }
+  } catch (err) {
+    console.log('Logo not found:', err.message);
+  }
+  return null;
+};
+
+const getSuspenseData = async (id_compte, id_dossier, id_exercice, date_debut, date_fin) => {
+  const whereClause = {
+    id_compte: parseInt(id_compte),
+    id_dossier: parseInt(id_dossier),
+    id_exercice: parseInt(id_exercice),
+    comptegen: { [Op.iLike]: '47%' }
+  };
+
+  if (date_debut || date_fin) {
+    const andConditions = [];
+    if (date_debut && date_fin) {
+      andConditions.push(where(fn('DATE', col('dateecriture')), { [Op.between]: [date_debut, date_fin] }));
+    } else if (date_debut) {
+      andConditions.push(where(fn('DATE', col('dateecriture')), { [Op.gte]: date_debut }));
+    } else if (date_fin) {
+      andConditions.push(where(fn('DATE', col('dateecriture')), { [Op.lte]: date_fin }));
+    }
+    if (andConditions.length) {
+      whereClause[Op.and] = andConditions;
+    }
+  }
+
+  const result = await journals.findAndCountAll({
+    where: whereClause,
+    include: [{ model: codejournals, attributes: ['code'], required: false }],
+    order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+    attributes: ['id', 'comptegen', 'piece', 'libelle', 'debit', 'credit', 'dateecriture'],
+    raw: true,
+    nest: true
+  });
+
+  return (result.rows || []).map((row) => ({
+    id: row.id,
+    compte: row.comptegen,
+    journal: row.codejournal?.code ?? row.codejournals?.code ?? null,
+    piece: row.piece,
+    libelle: row.libelle,
+    debit: row.debit,
+    credit: row.credit,
+    date_ecriture: row.dateecriture
+  }));
+};
 
 module.exports = {
     getLignes: async (req, res) => {
@@ -70,6 +145,154 @@ module.exports = {
         } catch (error) {
             console.error('[ECRITURES_SUSPENSE] error:', error);
             return res.status(500).json({ state: false, message: 'Erreur serveur', error: error.message });
+        }
+    },
+
+    exportPdf: async (req, res) => {
+        try {
+            const { id_compte, id_dossier, id_exercice } = req.params;
+            const { date_debut, date_fin } = req.query;
+
+            if (!id_compte || !id_dossier || !id_exercice) {
+                return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+            }
+
+            const data = await getSuspenseData(id_compte, id_dossier, id_exercice, date_debut, date_fin);
+
+            const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
+            const printer = new PdfPrinter(fonts);
+            const logo = tryReadLogo();
+
+            const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+            const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
+
+            const headerColumns = [];
+            if (logo?.dataUrl) headerColumns.push({ image: logo.dataUrl, width: 90 });
+            headerColumns.push({
+              width: '*',
+              stack: [
+                { text: 'ÉCRITURES EN SUSPENS', style: 'header', alignment: 'center' },
+                { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
+                { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+              ]
+            });
+
+            const tableBody = [
+              ['Compte', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
+            ];
+
+            let totalDebit = 0, totalCredit = 0;
+            data.forEach((row, i) => {
+              const debit = parseFloat(row.debit) || 0;
+              const credit = parseFloat(row.credit) || 0;
+              totalDebit += debit;
+              totalCredit += credit;
+              const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+              tableBody.push([
+                { text: row.compte || '', style: 'cell', fillColor: rowColor },
+                { text: row.journal || '', style: 'cell', fillColor: rowColor },
+                { text: row.piece || '', style: 'cell', fillColor: rowColor },
+                { text: row.libelle || '', style: 'cell', fillColor: rowColor },
+                { text: formatMontant(debit), alignment: 'right', style: 'cell', fillColor: rowColor },
+                { text: formatMontant(credit), alignment: 'right', style: 'cell', fillColor: rowColor }
+              ]);
+            });
+
+            tableBody.push([
+              { text: 'Total', colSpan: 4, alignment: 'right', style: 'totalRow' }, {}, {}, {},
+              { text: formatMontant(totalDebit), alignment: 'right', style: 'totalRow' },
+              { text: formatMontant(totalCredit), alignment: 'right', style: 'totalRow' }
+            ]);
+
+            const docDefinition = {
+                pageSize: 'A4',
+                pageOrientation: 'landscape',
+                pageMargins: [15, 15, 15, 25],
+                defaultStyle: { font: 'Helvetica', fontSize: 8 },
+                content: [
+                    { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+                    { table: { headerRows: 1, widths: ['10%', '10%', '12%', '*', '12%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } },
+                    { text: `Total : ${data.length} écriture(s)`, style: 'noData', margin: [0, 10, 0, 0] }
+                ],
+                styles: {
+                    header: { fontSize: 16, bold: true, color: '#2C3E50' },
+                    subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
+                    subheader2: { fontSize: 9, color: '#566573' },
+                    tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+                    cell: { fontSize: 7, color: '#2C3E50' },
+                    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#D6EAF8' },
+                    noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+                }
+            };
+
+            const pdfDoc = printer.createPdfKitDocument(docDefinition);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=Ecritures_Suspense_${id_dossier}_${id_exercice}.pdf`);
+            pdfDoc.pipe(res);
+            pdfDoc.end();
+
+        } catch (error) {
+            console.error('[ECRITURES_SUSPENSE] export PDF error:', error);
+            return res.status(500).json({ state: false, message: 'Erreur export PDF', error: error.message });
+        }
+    },
+
+    exportExcel: async (req, res) => {
+        try {
+            const { id_compte, id_dossier, id_exercice } = req.params;
+            const { date_debut, date_fin } = req.query;
+
+            if (!id_compte || !id_dossier || !id_exercice) {
+                return res.status(400).json({ state: false, message: 'Paramètres manquants' });
+            }
+
+            const data = await getSuspenseData(id_compte, id_dossier, id_exercice, date_debut, date_fin);
+
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Écritures en suspens');
+
+            worksheet.columns = [
+                { header: 'Compte', key: 'compte', width: 14 },
+                { header: 'Journal', key: 'journal', width: 12 },
+                { header: 'Pièce', key: 'piece', width: 12 },
+                { header: 'Libellé', key: 'libelle', width: 40 },
+                { header: 'Débit', key: 'debit', width: 14 },
+                { header: 'Crédit', key: 'credit', width: 14 }
+            ];
+
+            // Style header
+            worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+            worksheet.getRow(1).alignment = { horizontal: 'center' };
+
+            data.forEach(row => {
+                worksheet.addRow({
+                    compte: row.compte || '',
+                    journal: row.journal || '',
+                    piece: row.piece || '',
+                    libelle: row.libelle || '',
+                    debit: Number(row.debit) || 0,
+                    credit: Number(row.credit) || 0
+                });
+            });
+
+            // Format debit/credit columns
+            const lastRow = worksheet.rowCount;
+            for (let i = 2; i <= lastRow; i++) {
+                const row = worksheet.getRow(i);
+                row.getCell(5).numFmt = '#,##0.00';
+                row.getCell(6).numFmt = '#,##0.00';
+            }
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename=Ecritures_Suspense_${id_dossier}_${id_exercice}.xlsx`);
+
+            await workbook.xlsx.write(res);
+            res.end();
+
+        } catch (error) {
+            console.error('[ECRITURES_SUSPENSE] export Excel error:', error);
+            return res.status(500).json({ state: false, message: 'Erreur export Excel', error: error.message });
         }
     }
 };

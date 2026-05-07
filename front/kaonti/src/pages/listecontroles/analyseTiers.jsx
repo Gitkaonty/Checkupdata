@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Stack, Divider, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -55,7 +55,7 @@ const ANOMALIE_TYPES = {
   }
 };
 
-const AnalyseTiers = ({ id_exercice, id_periode }) => {
+const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
   const axiosPrivate = useAxiosPrivate();
   const navigate = useNavigate();
 
@@ -235,6 +235,57 @@ const AnalyseTiers = ({ id_exercice, id_periode }) => {
 
   const lastContextKeyRef = useRef('');
   const handleAnalyserRef = useRef();
+
+  const handleExportExcel = async () => {
+    if (!effectiveExerciceId) return;
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDatesForAnalysis();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+      const url = `/administration/analyseFournisseurClient/${id_compte}/${id_dossier}/${id_exercice}/export/excel?${params.toString()}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Analyse_Tiers_${id_dossier}_${id_exercice}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!effectiveExerciceId) return;
+    try {
+      const { id_compte, id_dossier, id_exercice } = getIds();
+      const resolvedDates = await resolveDatesForAnalysis();
+      const params = new URLSearchParams();
+      if (resolvedDates?.date_debut) params.append('date_debut', resolvedDates.date_debut);
+      if (resolvedDates?.date_fin) params.append('date_fin', resolvedDates.date_fin);
+      if (effectivePeriodeId) params.append('id_periode', effectivePeriodeId);
+      const url = `/administration/analyseFournisseurClient/${id_compte}/${id_dossier}/${id_exercice}/export/pdf?${params.toString()}`;
+      const response = await axiosPrivate.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Analyse_Tiers_${id_dossier}_${id_exercice}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportExcel: handleExportExcel,
+    exportPdf: handleExportPdf
+  }), [effectiveExerciceId, effectivePeriodeId]);
 
   const handleAnalyser = async () => {
     if (!effectiveExerciceId) return;
@@ -551,7 +602,7 @@ const AnalyseTiers = ({ id_exercice, id_periode }) => {
       </Box>
     </Box>
   );
-};
+});
 
 // --- COMPOSANT DE SECTION UNIQUE (SANS ONGLETS) ---
 const SectionTiersUnique = ({ title, icon, stats, rows, type, handleValiderAnomalie, handleRequestValidationChange, handleOpenCommentDialog }) => {
