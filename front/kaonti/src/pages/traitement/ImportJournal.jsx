@@ -88,6 +88,7 @@ const ImportJournal = () => {
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded.UserInfo.compteId || null;
   const userId = decoded.UserInfo.userId || null;
+  const compteName = decoded.UserInfo.compte || 'Espace Client';
   const navigate = useNavigate();
 
   // Hook SSE pour la progression en temps réel
@@ -1199,14 +1200,14 @@ const ImportJournal = () => {
         px: 3,
         py: 2,
         bgcolor: '#F8FAFC',
-        height: '100vh',
+        height: 'calc(100vh - 120px)',
+        width: 'calc(100vw - 120px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         boxSizing: 'border-box',
-        width: 'calc(100% - 72px)', // Adaptez cette valeur à la largeur de votre sidebar
         position: 'absolute',
-        left: '72px', // Décale le bloc pour qu'il commence après la sidebar
+        // left: '72px', // Décale le bloc pour qu'il commence après la sidebar
       }}
     >
 
@@ -1214,7 +1215,7 @@ const ImportJournal = () => {
       <Box sx={{ mb: 2, flexShrink: 0 }}>
         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
           <Chip
-            label="Cabinet Randria & Associés"
+            label={compteName}
             sx={{
               borderRadius: '4px',
               bgcolor: '#F1F5F9',
@@ -1499,7 +1500,7 @@ const ImportJournal = () => {
           </Button>
         </Box>
 
-        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <DataGrid
             rows={journalData}
             columns={columnsTable.map(col => ({
@@ -1516,7 +1517,7 @@ const ImportJournal = () => {
               row.id || row.EcritureNum || row.RefInterne || Math.random().toString(36).substr(2, 9)
             }
             density="compact"
-            hideFooter
+            // hideFooter
             disableColumnMenu
             sx={{
               border: 'none',

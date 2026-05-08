@@ -17,6 +17,7 @@ import { jwtDecode } from 'jwt-decode';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { useParams, useNavigate } from 'react-router-dom';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
+import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 
 // --- COMPOSANT INTERNE : POPUP INITIALISATION (1er EXERCICE) ---
 const InitPremierExercice = ({ open, onClose, values, setValues, onSubmit }) => {
@@ -123,6 +124,7 @@ const exercices = () => {
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded?.UserInfo?.compteId || null;
+  const compteName = decoded?.UserInfo?.compte || 'Espace Client';
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -145,6 +147,8 @@ const exercices = () => {
   };
 
   const [openPeriode, setOpenPeriode] = useState(false);
+  const [deletePeriodeDialogOpen, setDeletePeriodeDialogOpen] = useState(false);
+  const [periodeToDelete, setPeriodeToDelete] = useState(null);
   const [openInit, setOpenInit] = useState(false);
   const [openNewExercice, setOpenNewExercice] = useState(false);
   const [newExerciceType, setNewExerciceType] = useState(null); // 'NEXT' ou 'PREV'
@@ -342,6 +346,7 @@ const exercices = () => {
   };
 
   const handleCreatePeriode = async () => {
+    console.log('[handleCreatePeriode] Starting...', { selectedExercice, compteId, fileId, newPeriodeValues });
     if (!selectedExercice?.id || !compteId || !fileId) {
       toast.error('Exercice/compte/dossier manquant');
       return;
@@ -377,9 +382,12 @@ const exercices = () => {
       date_fin: newPeriodeValues.date_fin,
     };
 
+    console.log('[handleCreatePeriode] Sending payload:', payload);
+
     try {
       const response = await axiosPrivate.post('/api/exercices/createPeriode', payload);
       const resData = response?.data;
+      console.log('[handleCreatePeriode] Response:', resData);
       if (resData?.state) {
         toast.success('Période créée');
         setOpenPeriode(false);
@@ -389,7 +397,7 @@ const exercices = () => {
         toast.error(resData?.msg || 'Création échouée');
       }
     } catch (err) {
-      console.error(err);
+      console.error('[handleCreatePeriode] Error:', err);
       toast.error('Erreur serveur');
     }
   };
@@ -404,7 +412,7 @@ const exercices = () => {
       {/* --- BREADCRUMBS NAVIGATION --- */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
         <Chip 
-          label="Cabinet Randria & Associés" 
+          label={compteName} 
           sx={{ 
             borderRadius: '4px', // Rectangulaire comme demandé
             bgcolor: '#F1F5F9', 
@@ -485,7 +493,7 @@ const exercices = () => {
               </Typography>
               <Divider sx={{ mb: 1.5 }} />
               <Stack direction="row" justifyContent="flex-end">
-                <IconButton size="small" sx={{ color: '#EF4444', '&:hover': { bgcolor: '#FEF2F2' } }}>
+                <IconButton size="small" sx={{ color: '#EF4444', '&:hover': { bgcolor: '#FEF2F2' } }} onClick={() => { setPeriodeToDelete(p.id); setDeletePeriodeDialogOpen(true); }}>
                   <DeleteOutline fontSize="small" />
                 </IconButton>
               </Stack>
@@ -493,6 +501,33 @@ const exercices = () => {
           </Grid>
         ))}
       </Grid>
+
+      {/* --- POPUP SUPPRESSION DE PÉRIODE --- */}
+      <ConfirmDeleteDialog
+        open={deletePeriodeDialogOpen}
+        onClose={() => { setDeletePeriodeDialogOpen(false); setPeriodeToDelete(null); }}
+        onConfirm={async () => {
+          if (!periodeToDelete) return;
+          try {
+            const response = await axiosPrivate.post('/api/exercices/deletePeriode', { id_periode: periodeToDelete });
+            const resData = response?.data;
+            if (resData?.state) {
+              toast.success('Période supprimée');
+              await refreshPeriodes(selectedExercice?.id);
+            } else {
+              toast.error(resData?.msg || 'Erreur lors de la suppression');
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error('Erreur serveur');
+          } finally {
+            setDeletePeriodeDialogOpen(false);
+            setPeriodeToDelete(null);
+          }
+        }}
+        title="Confirmer la suppression"
+        message="Êtes-vous sûr de vouloir supprimer cette période ? Cette action est irréversible."
+      />
 
       {/* --- POPUP CRÉATION DE PÉRIODE --- */}
       <Dialog open={openPeriode} onClose={() => setOpenPeriode(false)} PaperProps={{ sx: { borderRadius: '16px', width: 400 } }}>

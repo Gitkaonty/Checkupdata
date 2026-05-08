@@ -351,7 +351,7 @@ const DossiersPage = () => {
           :
           null
       }
-      <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#FFFFFF', minHeight: '100%' }}>
+      <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#F8FAFC', height: 'calc(100vh - 120px)', width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* HEADER DE LA PAGE */}
         <Stack direction="row" justifyContent="space-between" alignItems="flex-end" sx={{ mb: 4 }}>
@@ -385,11 +385,14 @@ const DossiersPage = () => {
 
         {/* TABLEAU DATAGRID */}
         <Paper elevation={0} sx={{
-          height: 600,
+          flex: 1,
+          minHeight: 0,
           width: '100%',
           borderRadius: '16px',
           border: '1px solid #E2E8F0',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           <DataGrid
             rows={finalListeDossier}
@@ -403,6 +406,8 @@ const DossiersPage = () => {
             rowHeight={60}
             sx={{
               border: 'none',
+              flex: 1,
+              minHeight: 0,
               '& .MuiDataGrid-columnHeaders': {
                 bgcolor: '#F8FAFC',
                 color: '#475569',

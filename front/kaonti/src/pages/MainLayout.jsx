@@ -224,8 +224,8 @@ const MainLayout = ({ children }) => {
         position="fixed"
         elevation={0}
         sx={{
-          width: { sm: `calc(100% - ${isHovered ? drawerWidth : closedDrawerWidth}px)` },
-          ml: { sm: `${isHovered ? drawerWidth : closedDrawerWidth}px` },
+          width: { sm: `calc(100% - ${closedDrawerWidth}px)` },
+          ml: { sm: `${closedDrawerWidth}px` },
           bgcolor: 'rgba(15, 23, 42, 0.9)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -307,8 +307,8 @@ const MainLayout = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { sm: isHovered ? drawerWidth : closedDrawerWidth }, transition: '0.3s' }}>
-        <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': { width: isHovered ? drawerWidth : closedDrawerWidth, bgcolor: '#0F172A', transition: '0.3s', overflowX: 'hidden', borderRight: '1px solid rgba(255,255,255,0.05)' } }} open>
+      <Box component="nav" sx={{ width: { sm: closedDrawerWidth }, flexShrink: 0 }}>
+        <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': { width: isHovered ? drawerWidth : closedDrawerWidth, bgcolor: '#0F172A', transition: 'width 0.3s ease', overflowX: 'hidden', borderRight: '1px solid rgba(255,255,255,0.05)', position: 'fixed', height: '100vh' } }} open>
           {drawer}
         </Drawer>
       </Box>

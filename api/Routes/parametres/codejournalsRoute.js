@@ -16,4 +16,7 @@ router.post('/add', verifyJWT, verifyPermission('ADD', 'EDIT'), paramCodeJournau
 // Supprimer un code journal
 router.post('/delete', verifyJWT, verifyPermission('DELETE'), paramCodeJournauxController.codeJournauxDelete);
 
+// Importer des codes journaux via fichier CSV
+router.post('/import', verifyJWT, paramCodeJournauxController.importCodeJournaux);
+
 module.exports = router;

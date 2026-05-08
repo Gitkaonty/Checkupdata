@@ -23,6 +23,7 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import {
   DataGrid,
@@ -41,6 +42,7 @@ import axios from '../../../config/axios';
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
+import PopupImportCodeJournaux from '../../components/PopupImportCodeJournaux';
 
 // Composant DataGrid pour Codes Journaux
 const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
@@ -49,6 +51,7 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
   const [rowModesModel, setRowModesModel] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState(null);
+  const [openImportDialog, setOpenImportDialog] = useState(false);
 
   const typeOptions = [
     { value: 'ACHAT', label: 'ACHAT' },
@@ -163,7 +166,10 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
         const resData = response.data;
         if (resData.state) {
           toast.success(resData.msg || "Sauvegardé avec succès");
-          const updatedRow = { ...newRow, isNew: false };
+          // Si c'est une nouvelle ligne, mettre à jour l'ID avec l'ID réel du backend
+          const updatedRow = isNew
+            ? { ...newRow, isNew: false, id: resData.id }
+            : { ...newRow, isNew: false };
           setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
           return updatedRow;
         } else {
@@ -330,19 +336,28 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
   ];
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF' }}>
+    <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>REGISTRE DES JOURNAUX</Typography>
-        <Button
-          onClick={handleAddNewRow}
-          startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
-          sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }}
-        >
-          Nouveau Journal
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            onClick={handleAddNewRow}
+            startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
+            sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }}
+          >
+            Nouveau Journal
+          </Button>
+          <Button
+            onClick={() => setOpenImportDialog(true)}
+            startIcon={<FileUploadIcon sx={{ color: '#3B82F6' }} />}
+            sx={{ bgcolor: '#EFF6FF', color: '#3B82F6', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }}
+          >
+            Importer
+          </Button>
+        </Stack>
       </Stack>
 
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', height: 400, mr: 2, ml: 2 }}>
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, display: 'flex', flexDirection: 'column' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -358,6 +373,8 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
           hideFooterPagination={rows.length <= 10}
           sx={{
             border: 'none',
+            flex: 1,
+            minHeight: 0,
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#F8FAFC',
               borderBottom: '1px solid #E2E8F0',
@@ -385,6 +402,13 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
         onConfirm={handleConfirmDelete}
         title="Confirmer la suppression"
         message="Êtes-vous sûr de vouloir supprimer ce code journal ? Cette action est irréversible."
+      />
+      <PopupImportCodeJournaux
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        fileId={fileId}
+        compteId={compteId}
+        onImportSuccess={fetchCodeJournaux}
       />
     </Paper>
   );
@@ -522,7 +546,9 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
         const resData = response.data;
         if (resData.state) {
           toast.success(resData.msg || "Axe sauvegardé avec succès");
-          const updatedRow = { ...newRow, isNew: false };
+          const updatedRow = isNew
+            ? { ...newRow, isNew: false, id: resData.id }
+            : { ...newRow, isNew: false };
           setAxes(axes.map((row) => (row.id === newRow.id ? updatedRow : row)));
           return updatedRow;
         } else {
@@ -605,7 +631,9 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
         const resData = response.data;
         if (resData.state) {
           toast.success(resData.msg || "Section sauvegardée avec succès");
-          const updatedRow = { ...newRow, isNew: false };
+          const updatedRow = isNew
+            ? { ...newRow, isNew: false, id: resData.id }
+            : { ...newRow, isNew: false };
           setSections(sections.map((row) => (row.id === newRow.id ? updatedRow : row)));
           return updatedRow;
         } else {
@@ -685,15 +713,15 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   ];
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={3} sx={{ flex: 1, minHeight: 0, height: '100%' }}>
       {/* AXES */}
-      <Grid item xs={12} md={5}>
-        <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF' }}>
+      <Grid item xs={12} md={5} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>AXES</Typography>
             <Button onClick={handleAddNewAxe} startIcon={<AddOutlined sx={{ color: '#10B981' }} />} sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }}>Ajouter</Button>
           </Stack>
-          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', height: 400, mr: 2, ml: 2, mb: 2 }}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, mb: 2, display: 'flex', flexDirection: 'column' }}>
             <DataGrid
               rows={axes}
               columns={axeColumns}
@@ -706,7 +734,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               disableRowSelectionOnClick
               getRowId={(row) => row.id}
               density="compact"
-              hideFooterPagination={axes.length <= 10}
+              //hideFooterPagination={axes.length <= 10}
               onRowSelectionModelChange={(ids) => {
                 const selectedId = ids[0];
                 const selectedRow = axes.find((row) => row.id === selectedId);
@@ -714,6 +742,8 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               }}
               sx={{
                 border: 'none',
+                flex: 1,
+                minHeight: 0,
                 '& .Mui-selected': { bgcolor: '#EEF2FF !important' },
                 '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', '& .MuiDataGrid-columnHeaderTitle': { fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' } },
                 '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F5F9', '&:focus': { outline: 'none' } },
@@ -732,13 +762,13 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
       </Grid>
 
       {/* SECTIONS */}
-      <Grid item xs={12} md={7}>
-        <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', borderLeft: '4px solid #6366F1' }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF' }}>
+      <Grid item xs={12} md={7} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{selectedAxe ? `SECTIONS - ${selectedAxe.code}` : 'SECTIONS ASSOCIÉES'}</Typography>
             <Button onClick={handleAddNewSection} startIcon={<AddOutlined sx={{ color: '#10B981' }} />} sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }} disabled={!selectedAxe}>Ajouter Section</Button>
           </Stack>
-          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', height: 400, mr: 2, ml: 2, mb: 2 }}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, mb: 2, display: 'flex', flexDirection: 'column' }}>
             <DataGrid
               rows={sections}
               columns={sectionColumns}
@@ -751,9 +781,11 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               disableRowSelectionOnClick
               getRowId={(row) => row.id}
               density="compact"
-              hideFooterPagination={sections.length <= 10}
+              //hideFooterPagination={sections.length <= 10}
               sx={{
                 border: 'none',
+                flex: 1,
+                minHeight: 0,
                 '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', '& .MuiDataGrid-columnHeaderTitle': { fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' } },
                 '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F5F9', '&:focus': { outline: 'none' } },
                 '& .MuiDataGrid-row:hover': { bgcolor: '#F1F5F930' }
@@ -1502,12 +1534,12 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   ];
 
   return (
-    <Paper sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+    <Paper sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Stack
         direction="row"
         justifyContent="space-between"
         alignItems="center"
-        sx={{ p: 2.5 }}
+        sx={{ p: 2.5, flexShrink: 0 }}
       >
         <Typography sx={{ fontWeight: 900 }}>
           RÉFÉRENTIEL PLAN COMPTABLE
@@ -1527,7 +1559,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
         </Button>
       </Stack>
 
-      <div style={{ height: 520 }}>
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <DataGrid
           rows={filteredPc}
           columns={columns}
@@ -1546,6 +1578,8 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           density="compact"
           getRowId={(row) => row.id}
           sx={{
+            flex: 1,
+            minHeight: 0,
             border: 'none',
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#F8FAFC',
@@ -1566,7 +1600,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
             }
           }}
         />
-      </div>
+      </Box>
       <ConfirmDeleteDialog
         open={pcDeleteDialogOpen}
         onClose={handleClosePcDeleteDialog}
@@ -1589,6 +1623,7 @@ const CRM = () => {
   // ... (rest of the code remains the same)
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded?.UserInfo?.compteId || null;
+  const compteName = decoded?.UserInfo?.compte || 'Espace Client';
   const [fileId, setFileId] = useState(sessionStorage.getItem('fileId') || id || '0');
   const [noFile, setNoFile] = useState(!fileId || fileId === '0' || fileId === 0);
 
@@ -1903,7 +1938,11 @@ const CRM = () => {
   };
 
   const handleDeleteRow = () => {
-    axiosPrivate.delete(`/param/codejournals/delete/${rowToDelete}`)
+    axiosPrivate.post('/param/codejournals/delete', {
+      fileId,
+      compteId,
+      idToDelete: rowToDelete
+    })
       .then((response) => {
         const resData = response.data;
         if (resData.state) {
@@ -1954,11 +1993,14 @@ const CRM = () => {
   }
 
   return (
-    <Box sx={{ p: 2, height: '100%', bgcolor: '#F8FAFC' }}>
+    <Box sx={{
+      p: 2, height: 'calc(100vh - 120px)',
+      width: 'calc(100vw - 130px)', bgcolor: '#F8FAFC', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+    }}>
       {/* --- BREADCRUMBS --- */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
         <Chip
-          label="Cabinet Randria & Associés"
+          label={compteName}
           sx={{
             borderRadius: '4px', // Rectangulaire comme demandé
             bgcolor: '#F1F5F9',
@@ -2079,69 +2121,77 @@ const CRM = () => {
 
       {/* ONGLET 0 : SEUILS */}
       {activeTab === 0 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AnalyticsOutlined sx={{ color: '#6366F1' }} /> Paramètres d'Anomalies
-              </Typography>
-              <FieldLabel>Seuil de variation analytique N/N-1 (%)</FieldLabel>
-              <TextField
-                value={seuilVariation}
-                onChange={(e) => setSeuilVariation(e.target.value)}
-                onBlur={(e) => handleSeuilBlur(e.target.value)}
-                fullWidth
-                type="number"
-                size="small"
-              />
-            </Paper>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Grid container spacing={3} sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            <Grid item xs={12} md={6}>
+              <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AnalyticsOutlined sx={{ color: '#6366F1' }} /> Paramètres d'Anomalies
+                </Typography>
+                <FieldLabel>Seuil de variation analytique N/N-1 (%)</FieldLabel>
+                <TextField
+                  value={seuilVariation}
+                  onChange={(e) => setSeuilVariation(e.target.value)}
+                  onBlur={(e) => handleSeuilBlur(e.target.value)}
+                  fullWidth
+                  type="number"
+                  size="small"
+                />
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AccessTimeOutlined sx={{ color: '#6366F1' }} /> Paramètres de Retard
+                </Typography>
+                <Stack direction="row" spacing={3}>
+                  <Box sx={{ flex: 1 }}>
+                    <FieldLabel>Retard Fournisseurs (Mois)</FieldLabel>
+                    <TextField fullWidth type="number" value={retardFourns} onChange={(e) => setRetardFourns(e.target.value)} size="small" />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <FieldLabel>Retard Clients (Mois)</FieldLabel>
+                    <TextField fullWidth type="number" value={retardClt} onChange={(e) => setRetardClt(e.target.value)} size="small" />
+                  </Box>
+                </Stack>
+              </Paper>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AccessTimeOutlined sx={{ color: '#6366F1' }} /> Paramètres de Retard
-              </Typography>
-              <Stack direction="row" spacing={3}>
-                <Box sx={{ flex: 1 }}>
-                  <FieldLabel>Retard Fournisseurs (Mois)</FieldLabel>
-                  <TextField fullWidth type="number" value={retardFourns} onChange={(e) => setRetardFourns(e.target.value)} size="small" />
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <FieldLabel>Retard Clients (Mois)</FieldLabel>
-                  <TextField fullWidth type="number" value={retardClt} onChange={(e) => setRetardClt(e.target.value)} size="small" />
-                </Box>
-              </Stack>
-            </Paper>
-          </Grid>
-        </Grid>
+        </Box>
       )}
 
       {/* ONGLET 1 : PLAN COMPTABLE */}
       {activeTab === 1 && (
-        <PlanComptableDataGrid
-          fileId={fileId}
-          compteId={compteId}
-          axiosPrivate={axiosPrivate}
-        />
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <PlanComptableDataGrid
+            fileId={fileId}
+            compteId={compteId}
+            axiosPrivate={axiosPrivate}
+          />
+        </Box>
       )}
 
       {/* ONGLET 2 : CODES JOURNAUX */}
       {activeTab === 2 && (
-        <CodesJournauxDataGrid
-          fileId={fileId}
-          compteId={compteId}
-          axiosPrivate={axiosPrivate}
-          pc={pc}
-        />
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <CodesJournauxDataGrid
+            fileId={fileId}
+            compteId={compteId}
+            axiosPrivate={axiosPrivate}
+            pc={pc}
+          />
+        </Box>
       )}
 
       {/* ONGLET 3 : ANALYTIQUE */}
       {activeTab === 3 && (
-        <AnalytiqueDataGrid
-          fileId={fileId}
-          compteId={compteId}
-          axiosPrivate={axiosPrivate}
-        />
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <AnalytiqueDataGrid
+            fileId={fileId}
+            compteId={compteId}
+            axiosPrivate={axiosPrivate}
+          />
+        </Box>
       )}
 
     </Box>

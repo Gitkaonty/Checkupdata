@@ -116,7 +116,7 @@ const GestionControles = () => {
         id_controle: newRow.controle,
         Type: newRow.Type || 'GENERAL',
         compte: newRow.compte || '*',
-        test: newRow.test || 'TRUE',
+        test: newRow.test || 'EXISTE',
         description: newRow.description || '',
         anomalies: newRow.anomalies || '',
         Valider: Boolean(newRow.etat),
@@ -160,7 +160,7 @@ const GestionControles = () => {
       controle: '',
       Type: 'GENERAL',
       compte: '*',
-      test: 'TRUE',
+      test: 'EXISTE',
       description: '',
       anomalies: '',
       param: '',
@@ -277,7 +277,10 @@ const GestionControles = () => {
   ];
 
   return (
-    <Box sx={{ p: 3, bgcolor: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{
+      p: 3, bgcolor: '#F8FAFC', height: 'calc(100vh - 120px)',
+      width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+    }}>
 
       {/* --- HEADER --- */}
       <Box sx={{ mb: 3 }}>
@@ -339,7 +342,7 @@ const GestionControles = () => {
           <Typography>{error}</Typography>
         </Box>
       )}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', height: 550 }}>
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -354,6 +357,8 @@ const GestionControles = () => {
 
           sx={{
             border: 'none',
+            flex: 1,
+            minHeight: 0,
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#F8FAFC',
               borderBottom: '1px solid #E2E8F0',

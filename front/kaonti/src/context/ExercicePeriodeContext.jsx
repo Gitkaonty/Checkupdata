@@ -87,7 +87,7 @@ export const ExercicePeriodeProvider = ({ children }) => {
     const handleChangePeriode = useCallback((periodeId) => {
         setSelectedPeriodeId(periodeId);
         setSelectedPeriodeDates(null);
-        
+
         if (periodeId && periodeId !== 'exercice') {
             const periode = listePeriodes.find(p => p.id === periodeId);
             if (periode) {
@@ -115,7 +115,7 @@ export const ExercicePeriodeProvider = ({ children }) => {
     // Obtenir les paramètres pour les API
     const getApiParams = useCallback(() => {
         const params = new URLSearchParams();
-        
+
         if (selectedPeriodeDates) {
             params.append('date_debut', selectedPeriodeDates.date_debut);
             params.append('date_fin', selectedPeriodeDates.date_fin);
@@ -123,11 +123,11 @@ export const ExercicePeriodeProvider = ({ children }) => {
             params.append('date_debut', currentExerciceDates.date_debut);
             params.append('date_fin', currentExerciceDates.date_fin);
         }
-        
+
         if (selectedPeriodeId) {
             params.append('id_periode', selectedPeriodeId);
         }
-        
+
         return params;
     }, [selectedPeriodeDates, currentExerciceDates, selectedPeriodeId]);
 
@@ -154,13 +154,13 @@ export const ExercicePeriodeProvider = ({ children }) => {
         listePeriodes,
         loading,
         currentExerciceDates,
-        
+
         // Actions
         handleChangeExercice,
         handleChangePeriode,
         setSelectedExerciceId,
         setSelectedPeriodeId,
-        
+
         // Utilitaires
         formatDate,
         getApiParams,

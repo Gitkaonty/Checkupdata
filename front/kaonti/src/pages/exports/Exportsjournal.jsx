@@ -3,7 +3,7 @@ import {
   Box, Typography, Stack, Button, Paper, Grid,
   Breadcrumbs, Link, MenuItem, Select, Divider,
   TextField, InputAdornment, Autocomplete,
-  Chip, Checkbox, Tooltip 
+  Chip, Checkbox, Tooltip
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -65,6 +65,8 @@ const ExportJournal = () => {
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded?.UserInfo?.compteId || null;
+  const compteName = decoded?.UserInfo?.compte || 'Espace Client';
+
   const navigate = useNavigate();
 
   const GetInfosIdDossier = (id) => {
@@ -281,13 +283,13 @@ const ExportJournal = () => {
   }, [fileId, compteId]);
 
   return (
-    <Box sx={{ p: 3, bgcolor: '#F8FAFC', minHeight: '100vh' }}>
+    <Box sx={{ p: 3, bgcolor: '#F8FAFC', minHeight: '85vh' }}>
 
       {/* --- HEADER --- */}
       <Box sx={{ mb: 4 }}>
         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
           <Chip
-            label="Cabinet Randria & Associés"
+            label={compteName}
             sx={{
               borderRadius: '4px', // Rectangulaire comme demandé
               bgcolor: '#F1F5F9',

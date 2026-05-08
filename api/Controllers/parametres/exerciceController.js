@@ -656,6 +656,41 @@ const deletePeriode = async (req, res) => {
       fileInfos: []
     };
 
+    // Supprimer en cascade toutes les données liées à cette période
+    const analyseClientAnomalie = db.analyseClientAnomalies;
+    const commentaireAnalytiqueMensuelle = db.commentaireAnalytiqueMensuelle;
+    const dossierRevisionCommentaire = db.dossierRevisionCommentaire;
+    const dossierRevision = db.dossierRevision;
+    const dossierRevisionSynthese = db.dossierRevisionSynthese;
+    const rechercheDoublon = db.rechercheDoublons;
+    const revisionCommentaireAnomalies = db.revisionCommentaireAnomalies;
+    const revisionAnalytiqueResultat = db.revisionAnalytiqueResultats;
+    const tableControleAnomalies = db.tableControleAnomalies;
+    const revuAnalytique = db.revuAnalytique;
+    const dossierRevisionAnalytique = db.dossierRevisionAnalytique;
+    const commentaireAnalytique = db.commentaireAnalytique;
+    const analyseFournisseurLigne = db.analyseFournisseurLignes;
+    const analyseFournisseurAnomalie = db.analyseFournisseurAnomalies;
+    const analyseClientLigne = db.analyseClientLignes;
+
+    // Supprimer les données liées
+    if (analyseClientAnomalie) await analyseClientAnomalie.destroy({ where: { id_periode } });
+    if (commentaireAnalytiqueMensuelle) await commentaireAnalytiqueMensuelle.destroy({ where: { id_periode } });
+    if (dossierRevisionCommentaire) await dossierRevisionCommentaire.destroy({ where: { id_periode } });
+    if (dossierRevision) await dossierRevision.destroy({ where: { id_periode } });
+    if (dossierRevisionSynthese) await dossierRevisionSynthese.destroy({ where: { id_periode } });
+    if (rechercheDoublon) await rechercheDoublon.destroy({ where: { id_periode } });
+    if (revisionCommentaireAnomalies) await revisionCommentaireAnomalies.destroy({ where: { id_periode } });
+    if (revisionAnalytiqueResultat) await revisionAnalytiqueResultat.destroy({ where: { id_periode } });
+    if (tableControleAnomalies) await tableControleAnomalies.destroy({ where: { id_periode } });
+    if (revuAnalytique) await revuAnalytique.destroy({ where: { id_periode } });
+    if (dossierRevisionAnalytique) await dossierRevisionAnalytique.destroy({ where: { id_periode } });
+    if (commentaireAnalytique) await commentaireAnalytique.destroy({ where: { id_periode } });
+    if (analyseFournisseurLigne) await analyseFournisseurLigne.destroy({ where: { id_periode } });
+    if (analyseFournisseurAnomalie) await analyseFournisseurAnomalie.destroy({ where: { id_periode } });
+    if (analyseClientLigne) await analyseClientLigne.destroy({ where: { id_periode } });
+
+    // Supprimer la période
     const deleted = await periodes.destroy({
       where: { id: id_periode }
     });

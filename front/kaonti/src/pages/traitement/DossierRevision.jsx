@@ -20,6 +20,8 @@ import {
 } from '@mui/icons-material';
 import SaveOutlined from '@mui/icons-material/SaveOutlined';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import axios from '../../../config/axios';
 import { alpha } from '@mui/material/styles';
 import ExercicePeriodeSelector from '../ExercicePeriodeSelector';
@@ -29,6 +31,9 @@ import CommentDialog from '../../components/commetDialog';
 
 const GestionRevisionCycles = () => {
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
+  const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
+  const compteName = decoded?.UserInfo?.compte || 'Espace Client';
 
   const [activeCycle, setActiveCycle] = useState("etat d'avancement");
   const [activeTab, setActiveTab] = useState(0);
@@ -1100,9 +1105,9 @@ const GestionRevisionCycles = () => {
     }));
 
     return (
-      <Box sx={{ p: 3, height: 'calc(100vh - 250px)' }}>
-        <Paper variant="outlined" sx={{ height: '50%', borderRadius: '12px', overflow: 'hidden' }}>
-          <DataGrid rows={rows} columns={columns} density="compact" disableSelectionOnClick sx={dataGridStyle} />
+      <Box sx={{ p: 3, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <DataGrid rows={rows} columns={columns} density="compact" disableSelectionOnClick sx={{ ...dataGridStyle, flex: 1, minHeight: 0 }} />
         </Paper>
       </Box>
     );
@@ -1237,15 +1242,15 @@ const GestionRevisionCycles = () => {
     }));
 
     return (
-      <Box sx={{ p: 3, height: 'calc(100vh - 250px)' }}>
-        <Paper variant="outlined" sx={{ height: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+      <Box sx={{ p: 3, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <DataGrid
             rows={rows}
             columns={columns}
             loading={loadingEcritures}
             density="compact"
             disableSelectionOnClick
-            sx={dataGridStyle}
+            sx={{ ...dataGridStyle, flex: 1, minHeight: 0 }}
             localeText={{
               noRowsLabel:
                 compteAssocieSaved.length === 0
@@ -1259,7 +1264,16 @@ const GestionRevisionCycles = () => {
   };
 
   return (
-    <Box sx={{ width: '97%', height: '100vh', bgcolor: '#F8FAFC', p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{
+      height: 'calc(100vh - 120px)',
+      width: 'calc(100vw - 130px)',
+      bgcolor: '#F8FAFC',
+      p: 3,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2,
+      overflow: 'hidden'
+    }}>
 
       <CommentDialog
         open={drawerOpen}
@@ -1308,7 +1322,7 @@ const GestionRevisionCycles = () => {
 
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
         <Chip
-          label="Cabinet Randria & Associés"
+          label={compteName}
           sx={{
             borderRadius: '4px', // Rectangulaire comme demandé
             bgcolor: '#F1F5F9',

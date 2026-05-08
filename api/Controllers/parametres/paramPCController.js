@@ -940,7 +940,7 @@ const recupPcIdLibelle = async (req, res) => {
           attributes: ['dossier'],
         }
       ],
-      order: [['compte', 'ASC']],
+      order: [['baseaux', 'ASC']],
       attributes: ['libelle', 'id', 'id_dossier', 'compteautre', 'libelleautre', 'compte']
     });
 
@@ -953,11 +953,11 @@ const recupPcIdLibelle = async (req, res) => {
       dossier: item?.dossier.dossier || null,
     }));
 
-    mappedListe.sort((a, b) => {
-      const compteA = parseInt(a.compte?.replace(/\D/g, '') || '0', 10);
-      const compteB = parseInt(b.compte?.replace(/\D/g, '') || '0', 10);
-      return compteA - compteB;
-    });
+    // mappedListe.sort((a, b) => {
+    //   const compteA = parseInt(a.compte?.replace(/\D/g, '') || '0', 10);
+    //   const compteB = parseInt(b.compte?.replace(/\D/g, '') || '0', 10);
+    //   return compteA - compteB;
+    // });
 
     const uniqueListe = [];
     const seen = new Set();

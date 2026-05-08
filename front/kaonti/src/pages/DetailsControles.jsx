@@ -15,6 +15,8 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Link, useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import RevueAnalytiqueTable from './listecontroles/revuenn1';
 import RevueMensuelleTable from './listecontroles/revuemensuelle';
 import GlobalBalance from './listecontroles/controleglobal';
@@ -26,6 +28,9 @@ import ExercicePeriodeSelector from './ExercicePeriodeSelector';
 
 const DetailsControles = () => {
   const { selectedExerciceId, selectedPeriodeId, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
+  const { auth } = useAuth();
+  const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
+  const compteName = decoded?.UserInfo?.compte || 'Espace Client';
   const [activeTab, setActiveTab] = useState(0);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -81,12 +86,15 @@ const DetailsControles = () => {
   ];
 
   return (
-    <Box sx={{ p: 0.5, bgcolor: '#FFFFFF', minHeight: '100vh', maxWidth: '92vw' }}>
+    <Box sx={{
+      p: 0.5, bgcolor: '#FFFFFF', height: 'calc(100vh - 120px)',
+      width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+    }}>
 
       {/* --- HEADER CONTEXTUEL (Identique au Dashboard) --- */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
         <Chip
-          label="Cabinet Randria & Associés"
+          label={compteName}
           sx={{
             borderRadius: '4px',
             bgcolor: '#F1F5F9',

@@ -162,6 +162,7 @@ exports.addOrUpdateAxes = async (req, res) => {
             if (axeAdded) {
                 resData.state = true;
                 resData.msg = "Nouvelle ligne sauvegardée avec succès.";
+                resData.id = axeAdded.id; // Retourner l'ID créé
             } else {
                 resData.state = false;
                 resData.msg = "Une erreur est survenue au moment du traitement des données";
@@ -320,6 +321,7 @@ exports.addOrUpdateSections = async (req, res) => {
             if (sectionAdded) {
                 resData.state = true;
                 resData.msg = "Nouvelle ligne sauvegardée avec succès.";
+                resData.id = sectionAdded.id; // Retourner l'ID créé
             } else {
                 resData.state = false;
                 resData.msg = "Une erreur est survenue au moment du traitement des données";

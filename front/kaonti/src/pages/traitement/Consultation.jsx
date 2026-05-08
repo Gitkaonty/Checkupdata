@@ -86,6 +86,7 @@ const ConsultationComptes = () => {
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded?.UserInfo?.compteId || null;
+  const compteName = decoded?.UserInfo?.compte || 'Espace Client';
 
   //récupération infos de connexion
   const navigate = useNavigate();
@@ -817,10 +818,10 @@ const ConsultationComptes = () => {
 
 
   return (
-    <Box sx={{ p: 2, bgcolor: '#F8FAFC', minHeight: '100vh' }}>
+    <Box sx={{ p: 2, bgcolor: '#F8FAFC', height: 'calc(100vh - 120px)', width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
         <Chip
-          label="Cabinet Randria & Associés"
+          label={compteName}
           sx={{
             borderRadius: '4px', // Rectangulaire comme demandé
             bgcolor: '#F1F5F9',
@@ -972,7 +973,7 @@ const ConsultationComptes = () => {
       </Paper>
 
       {/* --- TABLEAU DES ÉCRITURES --- */}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', height: 'calc(100vh - 350px)' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <DataGrid
           disableRowSelectionOnClick
           disableSelectionOnClick={true}
@@ -1022,6 +1023,8 @@ const ConsultationComptes = () => {
           }}
           sx={{
             border: 'none',
+            flex: 1,
+            minHeight: 0,
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#F8FAFC',
               borderBottom: '1px solid #E2E8F0',

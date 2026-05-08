@@ -36,9 +36,9 @@ import axios from '../../../config/axios'
 import CommentIcon from '@mui/icons-material/Comment';
 
 // Helper pour créer un DataGrid standardisé
-const StandardDataGrid = ({ rows, columns, height = 300, pageSize = 10, ...props }) => {
+const StandardDataGrid = ({ rows, columns, pageSize = 10, ...props }) => {
     return (
-        <Box sx={{ height: height, width: '100%' }}>
+        <Box sx={{ width: '100%', bgcolor: '#ffffffff' }}>
             <DataGrid
                 rows={rows}
                 columns={columns}
@@ -49,6 +49,7 @@ const StandardDataGrid = ({ rows, columns, height = 300, pageSize = 10, ...props
                 density="compact"
                 sx={{
                     border: 'none',
+                    height: '40vh',
                     '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', color: '#64748B', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' },
                     '& .MuiDataGrid-cell': { fontSize: '0.8rem', borderBottom: '1px solid #F1F5F9' },
                     '& .font-bold': { fontWeight: 700 }
@@ -1257,10 +1258,10 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
     };
 
     return (
-        <Paper sx={{ mt: 2, p: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <Paper sx={{ mt: -2, p: 1.5, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             {/* HEADER - FIGÉ */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, flexShrink: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f5f5f5' }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, flexShrink: 0 , mt: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f5f5f5ff' }}>
                     <Typography variant="h7" sx={{ fontWeight: 700, color: "#2c3e50" }}>
                         Détails - compte : {currentItem.compte && currentItem.compte !== '0' && currentItem.compte !== 0 ? currentItem.compte : 'n/a'}
                     </Typography>
@@ -1302,13 +1303,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
             </Box>
 
 
-            {/* MAIN CONTENT - ZONE SCROLLABLE */}
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-            <Grid container spacing={3} alignItems="flex-start">
-                {/* LEFT SIDE - INFOS + TABLE */}
-                <Grid item xs={12} md={12}>
-                    {/* INFO */}
-                    <Box sx={{ mb: 2 }}>
+            {/* NAVIGATEUR - FIXÉ */}
+            <Box sx={{ flexShrink: 0 }}>
 
                         {/* Navigation TVA par écriture (Autocomplete) */}
                         {currentItem?.Type === 'UTIL_CPT_TVA' && tvaFilteredAnomalies.length > 1 && (
@@ -1317,9 +1313,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 alignItems="center"
                                 justifyContent="space-between"
                                 sx={{
-                                    mb: 3,
+                                    mb: 1,
                                     bgcolor: '#F8FAFC',
-                                    p: 1.5,
+                                    p: 1,
                                     borderRadius: '8px',
                                     border: '1px solid #E2E8F0'
                                 }}
@@ -1422,9 +1418,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 alignItems="center"
                                 justifyContent="space-between"
                                 sx={{
-                                    mb: 3,
+                                    mb: 1,
                                     bgcolor: '#F8FAFC',
-                                    p: 1.5,
+                                    p: 1,
                                     borderRadius: '8px',
                                     border: '1px solid #E2E8F0'
                                 }}
@@ -1530,9 +1526,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 alignItems="center"
                                 justifyContent="space-between"
                                 sx={{
-                                    mb: 3,
+                                    mb: 1,
                                     bgcolor: '#F8FAFC',
-                                    p: 1.5,
+                                    p: 1,
                                     borderRadius: '8px',
                                     border: '1px solid #E2E8F0'
                                 }}
@@ -1644,9 +1640,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                     alignItems="center"
                                     justifyContent="space-between"
                                     sx={{
-                                        mb: 3,
+                                        mb: 1,
                                         bgcolor: '#F8FAFC',
-                                        p: 1.5,
+                                        p: 1,
                                         borderRadius: '8px',
                                         border: '1px solid #E2E8F0'
                                     }}
@@ -1751,9 +1747,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 alignItems="center"
                                 justifyContent="space-between"
                                 sx={{
-                                    mb: 3,
+                                    mb: 1,
                                     bgcolor: '#F8FAFC',
-                                    p: 1.5,
+                                    p: 1,
                                     borderRadius: '8px',
                                     border: '1px solid #E2E8F0'
                                 }}
@@ -1852,7 +1848,13 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
 
                             </Stack>
                         )}
-                    </Box>
+            </Box>
+
+            {/* MAIN CONTENT - DATAGRID GÈRE SON PROPRE SCROLL */}
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <Grid container spacing={3} alignItems="flex-start">
+                {/* LEFT SIDE - INFOS + TABLE */}
+                <Grid item xs={12} md={12}>
 
                     {anomaliesLoading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
@@ -2065,9 +2067,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                         return params.value;
                                                                     }
                                                                 },
-                                                                { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
-                                                                { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
+                                                                { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                                { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                                 {
                                                                     field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
                                                                         params.value !== null && params.value !== undefined
@@ -2202,9 +2204,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                         return params.value;
                                                                     }
                                                                 },
-                                                                { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
-                                                                { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
+                                                                { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                                { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                                 {
                                                                     field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
                                                                         params.value !== null && params.value !== undefined
@@ -2292,8 +2294,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                 </Box>
                                                             )
                                                         },
-                                                        { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
-                                                        { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
+                                                        { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                        { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                         {
                                                             field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
                                                                 params.value !== null && params.value !== undefined
@@ -2399,9 +2401,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                 }))}
                                                                 columns={[
                                                                     { field: 'dateecriture', headerName: 'Date', width: 110, valueGetter: p => p.row.dateecriture ? new Date(p.row.dateecriture).toLocaleDateString('fr-FR') : '-' },
-                                                                    { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                    { field: 'piece', headerName: 'Pièce', width: 110, valueGetter: p => p.row.piece || '-' },
-                                                                    { field: 'libelle', headerName: 'Libellé', width: 200, valueGetter: p => p.row.libelle || '-' },
+                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                    { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                                    { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                                     { field: 'debit', headerName: 'Débit', width: 110, align: 'right', valueGetter: p => p.row.debit ? formatMontant(p.row.debit) : '-' },
                                                                     { field: 'credit', headerName: 'Crédit', width: 110, align: 'right', valueGetter: p => p.row.credit ? formatMontant(p.row.credit) : '-' },
                                                                     { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
@@ -2555,18 +2557,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                     </Box>
                                                 );
                                             })()}
-
-                                            {/* Tableau unique avec toutes les lignes du compte courant */}
-                                            {/* {(() => {
-                                                // console.log('🔍 ATYPIQUE MONTANTS DEBUG');
-                                                // console.log(' - allLines count:', atypiqueCurrentData.allLines?.length);
-                                                if (atypiqueCurrentData.allLines?.length > 0) {
-                                                    console.log(' - Sample line:', atypiqueCurrentData.allLines[0]);
-                                                    console.log(' - debit value:', atypiqueCurrentData.allLines[0]?.debit);
-                                                    console.log(' - credit value:', atypiqueCurrentData.allLines[0]?.credit);
-                                                }
-                                                return null;
-                                            })()} */}
+                                        
                                             {atypiqueCurrentData.allLines?.length > 0 ? (
                                                 <StandardDataGrid
                                                     height={350}
@@ -2582,9 +2573,9 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
                                                                     : '-'
                                                         },
-                                                        { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                        { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
-                                                        { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
+                                                        { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                        { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                        { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                         {
                                                             field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
                                                                 params.value !== null && params.value !== undefined

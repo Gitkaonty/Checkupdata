@@ -19,8 +19,7 @@ import {
     AccordionSummary,
     AccordionDetails,
     CircularProgress,
-    Drawer,
-    IconButton
+    Drawer
 } from '@mui/material';
 
 import { init } from '../../../init';
@@ -28,11 +27,10 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import RevisionDetails from './RevisionDetails';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 // import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
-import { ErrorOutline, CheckCircle, KeyboardArrowDown, KeyboardArrowUp, WarningAmber, CheckCircleOutline, PictureAsPdf, TableChart, Close } from '@mui/icons-material';
+import { ErrorOutline, CheckCircle, KeyboardArrowDown, KeyboardArrowUp, WarningAmber, CheckCircleOutline, PictureAsPdf, TableChart } from '@mui/icons-material';
 import ExercicePeriodeSelector from '../ExercicePeriodeSelector';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import CloseIcon from '@mui/icons-material/Close';
 import axios from '../../../config/axios';
 
 // Format date as dd-mm-yy
@@ -351,7 +349,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
     }, [fetchInitialTotals]);
 
     const [expandedType, setExpandedType] = useState('');
-    
+
     // État pour le drawer
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedItemForDrawer, setSelectedItemForDrawer] = useState(null);
@@ -700,26 +698,25 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                             // console.log(`[Chip] Type: ${item.Type}, totalInitial: ${totalInitial}, restant: ${restant}, stored: ${initialTotals[item.Type]}`);
 
                             return (
-                                <Paper
+                                <Accordion
                                     key={item.Type}
+                                    disableGutters
                                     elevation={0}
-                                    onClick={() => handleOpenDrawer(item)}
+                                    expanded={expandedType === item.Type}
+                                    onChange={() => setExpandedType(expandedType === item.Type ? '' : item.Type)}
+                                    TransitionProps={{ unmountOnExit: true }}
                                     sx={{
                                         border: '1px solid #E2E8F0',
                                         borderRadius: '10px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        '&:hover': {
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                            borderColor: '#CBD5E1'
-                                        }
+                                        '&:before': { display: 'none' }
                                     }}
                                 >
-                                    <Box
+                                    <AccordionSummary
+                                        expandIcon={<ExpandMoreIcon />}
                                         sx={{
                                             position: 'relative',
                                             bgcolor: 'white',
-                                            p: 2,
+                                            '&.Mui-expanded': { bgcolor: '#F8FAFC' },
                                             display: 'flex',
                                             alignItems: 'center'
                                         }}
@@ -747,6 +744,9 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                                                 <Typography sx={{ fontWeight: 800, color: '#0F172A' }}>
                                                     {item.description}
                                                 </Typography>
+                                                {/* <Typography variant="body2" sx={{ color: '#64748B' }}>
+                                                        {item.Type}
+                                                    </Typography> */}
                                             </Box>
 
                                             <Stack direction="row" spacing={2} alignItems="center">
@@ -765,12 +765,31 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                                                     <Chip
                                                         label={`${restant} restant`}
                                                         sx={{ bgcolor: '#FFFBEB', color: '#F59E0B', fontWeight: 800, fontSize: '0.65rem', height: 20 }}
+
                                                     />
                                                 )}
                                             </Stack>
                                         </Stack>
-                                    </Box>
-                                </Paper>
+                                    </AccordionSummary>
+
+                                    <AccordionDetails sx={{ bgcolor: '#F8FAFC', maxHeight: '70vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                        <Divider sx={{ mb: 2 }} />
+
+                                        <RevisionDetails
+                                            type={item.Type}
+                                            controles={controlesByType.get(item.Type) || []}
+                                            onClose={() => { }}
+                                            idCompte={ids.id_compte}
+                                            idDossier={ids.id_dossier}
+                                            idExercice={effectiveExerciceId}
+                                            idPeriode={effectivePeriodeId}
+                                            dateDebut={formatDateYYYYMMDD(resolvedPeriodeDates?.date_debut)}
+                                            dateFin={formatDateYYYYMMDD(resolvedPeriodeDates?.date_fin)}
+                                            isPeriodeSelected={!!resolvedPeriodeDates && !!effectivePeriodeId && effectivePeriodeId !== 'exercice'}
+                                            onValidationChange={() => fetchControles(false, true)}
+                                        />
+                                    </AccordionDetails>
+                                </Accordion>
                             );
                         })}
                     </Stack>
@@ -832,49 +851,6 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                 color={reviserPopup.success ? '#10B981' : '#EF4444'}
                 icon={reviserPopup.success ? <CheckCircleOutline /> : <ErrorOutline />}
             />
-
-            {/* DRAWER POUR LES DÉTAILS */}
-            <Drawer
-                anchor="bottom"
-                open={drawerOpen}
-                onClose={handleCloseDrawer}
-                sx={{
-                    '& .MuiDrawer-paper': {
-                        height: '80vh',
-                        borderTopLeftRadius: '16px',
-                        borderTopRightRadius: '16px'
-                    }
-                }}
-            >
-                {selectedItemForDrawer && (
-                    <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                                {selectedItemForDrawer.description}
-                            </Typography>
-                            <IconButton onClick={handleCloseDrawer}>
-                                <CloseIcon />
-                            </IconButton>
-                        </Stack>
-                        <Divider sx={{ mb: 2 }} />
-                        <Box sx={{ flex: 1, overflow: 'auto' }}>
-                            <RevisionDetails
-                                type={selectedItemForDrawer.Type}
-                                controles={controlesByType.get(selectedItemForDrawer.Type) || []}
-                                onClose={handleCloseDrawer}
-                                idCompte={ids.id_compte}
-                                idDossier={ids.id_dossier}
-                                idExercice={effectiveExerciceId}
-                                idPeriode={effectivePeriodeId}
-                                dateDebut={formatDateYYYYMMDD(resolvedPeriodeDates?.date_debut)}
-                                dateFin={formatDateYYYYMMDD(resolvedPeriodeDates?.date_fin)}
-                                isPeriodeSelected={!!resolvedPeriodeDates && !!effectivePeriodeId && effectivePeriodeId !== 'exercice'}
-                                onValidationChange={() => fetchControles(false, true)}
-                            />
-                        </Box>
-                    </Box>
-                )}
-            </Drawer>
         </Box>
     );
 });
