@@ -52,6 +52,7 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState(null);
   const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
 
   const typeOptions = [
     { value: 'ACHAT', label: 'ACHAT' },
@@ -343,7 +344,16 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
           <Button
             onClick={handleAddNewRow}
             startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
-            sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }}
+            sx={{
+              bgcolor: '#000',
+              color: '#FFF',
+              textTransform: 'none',
+              borderRadius: '8px',
+
+              '&:hover': {
+                bgcolor: '#000'
+              }
+            }}
           >
             Nouveau Journal
           </Button>
@@ -357,7 +367,7 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
         </Stack>
       </Stack>
 
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, display: 'flex', flexDirection: 'column' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, display: 'flex', flexDirection: 'column', mt: -1 }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -370,14 +380,32 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
           checkboxSelection
           disableRowSelectionOnClick
           density="compact"
-          hideFooterPagination={rows.length <= 10}
+          // hideFooterPagination={rows.length <= 10}
+
+          // 🔥 sélection contrôlée (1 seule ligne)
+          rowSelectionModel={selectedRow ? [selectedRow.id] : []}
+
+          onRowSelectionModelChange={(ids) => {
+            const selectedId = ids.at(-1);
+
+            if (!selectedId) {
+              setSelectedRow(null);
+              return;
+            }
+
+            const row = rows.find((r) => r.id === selectedId);
+            setSelectedRow(row || null);
+          }}
+
           sx={{
             border: 'none',
             flex: 1,
             minHeight: 0,
+
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#F8FAFC',
               borderBottom: '1px solid #E2E8F0',
+
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontSize: '0.7rem',
                 fontWeight: 800,
@@ -385,10 +413,12 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
                 textTransform: 'uppercase',
               }
             },
+
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #F1F5F9',
               '&:focus': { outline: 'none' }
             },
+
             '& .MuiDataGrid-row:hover': {
               bgcolor: '#F1F5F930'
             }
@@ -427,6 +457,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   const [deleteSectionDialogOpen, setDeleteSectionDialogOpen] = useState(false);
   const [axeToDelete, setAxeToDelete] = useState(null);
   const [sectionToDelete, setSectionToDelete] = useState(null);
+  const [selectedSection, setSelectedSection] = useState(null);
 
   // Charger les axes
   const fetchAxes = () => {
@@ -719,9 +750,18 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
         <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>AXES</Typography>
-            <Button onClick={handleAddNewAxe} startIcon={<AddOutlined sx={{ color: '#10B981' }} />} sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }}>Ajouter</Button>
+            <Button onClick={handleAddNewAxe} startIcon={<AddOutlined sx={{ color: '#10B981' }} />} sx={{
+              bgcolor: '#000',
+              color: '#FFF',
+              textTransform: 'none',
+              borderRadius: '8px',
+
+              '&:hover': {
+                bgcolor: '#000'
+              }
+            }}>Ajouter</Button>
           </Stack>
-          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, mb: 2, display: 'flex', flexDirection: 'column' }}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, display: 'flex', flexDirection: 'column', mt: -1 }}>
             <DataGrid
               rows={axes}
               columns={axeColumns}
@@ -734,20 +774,55 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               disableRowSelectionOnClick
               getRowId={(row) => row.id}
               density="compact"
-              //hideFooterPagination={axes.length <= 10}
+
+              // Sélection contrôlée (une seule ligne)
+              rowSelectionModel={selectedAxe ? [selectedAxe.id] : []}
+
               onRowSelectionModelChange={(ids) => {
-                const selectedId = ids[0];
+                const selectedId = ids.at(-1); // garde uniquement le dernier sélectionné
+
+                if (!selectedId) {
+                  setSelectedAxe(null);
+                  return;
+                }
+
                 const selectedRow = axes.find((row) => row.id === selectedId);
+
                 setSelectedAxe(selectedRow || null);
               }}
+
               sx={{
                 border: 'none',
                 flex: 1,
                 minHeight: 0,
-                '& .Mui-selected': { bgcolor: '#EEF2FF !important' },
-                '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', '& .MuiDataGrid-columnHeaderTitle': { fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' } },
-                '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F5F9', '&:focus': { outline: 'none' } },
-                '& .MuiDataGrid-row:hover': { bgcolor: '#F1F5F930' }
+
+                '& .Mui-selected': {
+                  bgcolor: '#EEF2FF !important',
+                },
+
+                '& .MuiDataGrid-columnHeaders': {
+                  bgcolor: '#F8FAFC',
+                  borderBottom: '1px solid #E2E8F0',
+
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                  },
+                },
+
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid #F1F5F9',
+
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                },
+
+                '& .MuiDataGrid-row:hover': {
+                  bgcolor: '#F1F5F930',
+                },
               }}
             />
           </Paper>
@@ -766,9 +841,31 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
         <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{selectedAxe ? `SECTIONS - ${selectedAxe.code}` : 'SECTIONS ASSOCIÉES'}</Typography>
-            <Button onClick={handleAddNewSection} startIcon={<AddOutlined sx={{ color: '#10B981' }} />} sx={{ bgcolor: '#000', color: '#FFF', textTransform: 'none', px: 2, borderRadius: '8px', fontWeight: 700 }} disabled={!selectedAxe}>Ajouter Section</Button>
+            <Button
+              onClick={handleAddNewSection}
+              startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
+              disabled={!selectedAxe}
+              sx={{
+                bgcolor: '#000',
+                color: '#FFF',
+                textTransform: 'none',
+                borderRadius: '8px',
+
+                '&:hover': {
+                  bgcolor: '#000',
+                },
+
+                '&.Mui-disabled': {
+                  bgcolor: '#111',
+                  color: '#FFF',
+                  opacity: 0.6,
+                }
+              }}
+            >
+              Ajouter Section
+            </Button>
           </Stack>
-          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, mb: 2, display: 'flex', flexDirection: 'column' }}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, display: 'flex', flexDirection: 'column', mt: -1 }}>
             <DataGrid
               rows={sections}
               columns={sectionColumns}
@@ -781,14 +878,51 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               disableRowSelectionOnClick
               getRowId={(row) => row.id}
               density="compact"
-              //hideFooterPagination={sections.length <= 10}
+
+              // Sélection contrôlée (une seule ligne)
+              rowSelectionModel={selectedSection ? [selectedSection.id] : []}
+
+              onRowSelectionModelChange={(ids) => {
+                const selectedId = ids.at(-1);
+
+                if (!selectedId) {
+                  setSelectedSection(null);
+                  return;
+                }
+
+                const selectedRow = sections.find((row) => row.id === selectedId);
+
+                setSelectedSection(selectedRow || null);
+              }}
+
               sx={{
                 border: 'none',
                 flex: 1,
                 minHeight: 0,
-                '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', '& .MuiDataGrid-columnHeaderTitle': { fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' } },
-                '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F5F9', '&:focus': { outline: 'none' } },
-                '& .MuiDataGrid-row:hover': { bgcolor: '#F1F5F930' }
+
+                '& .MuiDataGrid-columnHeaders': {
+                  bgcolor: '#F8FAFC',
+                  borderBottom: '1px solid #E2E8F0',
+
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                  },
+                },
+
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid #F1F5F9',
+
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                },
+
+                '& .MuiDataGrid-row:hover': {
+                  bgcolor: '#F1F5F930',
+                },
               }}
             />
           </Paper>
@@ -837,6 +971,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   const [pcDeleteDialogOpen, setPcDeleteDialogOpen] = useState(false);
   const [pcToDelete, setPcToDelete] = useState(null);
   const [pcDeleteLoading, setPcDeleteLoading] = useState(false);
+  const [selectedPc, setSelectedPc] = useState(null);
 
   useEffect(() => {
     setFilteredPc(pc);
@@ -1534,7 +1669,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   ];
 
   return (
-    <Paper sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <Paper sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: 1 }}>
       <Stack
         direction="row"
         justifyContent="space-between"
@@ -1552,14 +1687,18 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
             bgcolor: '#000',
             color: '#FFF',
             textTransform: 'none',
-            borderRadius: '8px'
+            borderRadius: '8px',
+
+            '&:hover': {
+              bgcolor: '#000' // 👈 même couleur au hover
+            }
           }}
         >
           Ajouter un compte
         </Button>
       </Stack>
 
-      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, mr: 2, ml: 2, display: 'flex', flexDirection: 'column', mt: -1 }}>
         <DataGrid
           rows={filteredPc}
           columns={columns}
@@ -1567,40 +1706,63 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           editMode="row"
           rowModesModel={pcRowModesModel}
           onRowModesModelChange={setPcRowModesModel}
+
           onRowEditStop={(params, event) => {
             if (params.reason === GridRowEditStopReasons.rowFocusOut) {
               event.defaultMuiPrevented = true;
             }
           }}
+
           processRowUpdate={processPcRowUpdate}
           checkboxSelection
           disableRowSelectionOnClick
           density="compact"
           getRowId={(row) => row.id}
+
+          // 🔥 sélection contrôlée (1 seule ligne)
+          rowSelectionModel={selectedPc ? [selectedPc.id] : []}
+
+          onRowSelectionModelChange={(ids) => {
+            const selectedId = ids.at(-1);
+
+            if (!selectedId) {
+              setSelectedPc(null);
+              return;
+            }
+
+            const row = filteredPc.find((r) => r.id === selectedId);
+            setSelectedPc(row || null);
+          }}
+
           sx={{
             flex: 1,
             minHeight: 0,
             border: 'none',
+
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#F8FAFC',
               fontSize: 12,
               fontWeight: 800
             },
+
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #F1F5F9'
             },
+
             '& .MuiDataGrid-cell--editing': {
               bgcolor: '#fff !important',
             },
+
             '& .MuiDataGrid-cell--editing .MuiInputBase-root': {
               bgcolor: 'transparent !important',
             },
+
             '& .MuiDataGrid-row:hover': {
               bgcolor: '#F1F5F930'
             }
           }}
         />
-      </Box>
+      </Paper>
       <ConfirmDeleteDialog
         open={pcDeleteDialogOpen}
         onClose={handleClosePcDeleteDialog}
@@ -2038,20 +2200,32 @@ const CRM = () => {
       </Box>
 
       {/* --- HEADER ÉDITABLE --- */}
-      <Paper elevation={0} sx={{ p: 3, borderRadius: '16px', mb: 4, border: '1px solid #E2E8F0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-        <Grid container spacing={10} alignItems="flex-end">
-          <Grid item xs={5} md={2.7}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: '16px',
+          mb: 1,
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+        }}
+      >
+        <Grid container spacing={4} alignItems="flex-end">
+
+          {/* NOM DOSSIER */}
+          <Grid item xs={12} md={3}>
             <FieldLabel>Nom complet du dossier</FieldLabel>
             <TextField
               value={nomDossier}
               onChange={(e) => setNomDossier(e.target.value)}
-              sx={{ width: 350 }}
               fullWidth
               size="small"
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} md={2.3}>
+
+          {/* PORTEFEUILLE */}
+          <Grid item xs={12} md={3}>
             <FieldLabel>Portefeuille associé</FieldLabel>
             <Autocomplete
               multiple
@@ -2059,18 +2233,28 @@ const CRM = () => {
               getOptionLabel={(option) => option.nom || ''}
               value={portefeuille}
               onChange={(e, newValue) => setPortefeuille(newValue)}
-              sx={{ width: 300 }}
               size="small"
-              renderInput={(params) => <TextField {...params} placeholder="Sélectionner" />}
+              renderInput={(params) => (
+                <TextField {...params} placeholder="Sélectionner" />
+              )}
             />
           </Grid>
-          <Grid item xs={12} md={1}>
+
+          {/* BOUTON */}
+          <Grid
+            item
+            xs={12}
+            md={2}
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              pl: 1 // 👈 espace à gauche pour éviter effet collé
+            }}
+          >
             <Button
               variant="contained"
               startIcon={<SaveOutlined />}
-              fullWidth
-              sx=
-              {{
+              sx={{
                 width: '150px',
                 bgcolor: '#1E293B',
                 textTransform: 'none',
@@ -2078,18 +2262,22 @@ const CRM = () => {
                 height: '40px',
                 fontWeight: 700,
                 boxShadow: 'none',
-                '&:hover': { bgcolor: '#000' }
+
+                '&:hover': {
+                  bgcolor: '#000'
+                }
               }}
               onClick={handleSaveHeader}
             >
               Enregistrer
             </Button>
           </Grid>
+
         </Grid>
       </Paper>
 
       {/* --- NAVIGATION --- */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 2 }}>
         <Tabs
           value={activeTab}
           onChange={(e, v) => setActiveTab(v)}

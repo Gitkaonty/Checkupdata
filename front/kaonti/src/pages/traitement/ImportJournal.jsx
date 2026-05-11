@@ -26,6 +26,7 @@ import Papa from 'papaparse';
 import axios from '../../../config/axios';
 import toast from 'react-hot-toast';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
+import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 
 const ImportJournal = () => {
   const [importMode, setImportMode] = useState('update');
@@ -82,6 +83,7 @@ const ImportJournal = () => {
   const [importLaunched, setImportLaunched] = useState(false);
   const [nbrImported, setNbrImported] = useState(0);
   const [nbrTotalLines, setNbrTotalLines] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   //récupération infos de connexion
   const { auth } = useAuth();
@@ -452,8 +454,7 @@ const ImportJournal = () => {
       setImportLaunched(true);
       setNbrTotalLines(journalData.length); // Stocker le nombre total de lignes
 
-      const confirmed = window.confirm('Voulez-vous vraiment importer le journal en cours ?');
-      handleImportJournal(confirmed);
+      setOpenDialogConfirmImport(true);
     },
   });
 
@@ -585,8 +586,12 @@ const ImportJournal = () => {
 
   const handleFileSelect = async (event) => {
     const file = event.target.files[0];
+    await processFile(file);
+  };
 
-    if (file) {
+  const processFile = async (file) => {
+    if (!file) return;
+
       const ranExist = await testIfRanExist();
       if (!ranExist) {
         setOpenPopupCodeJournal(true);
@@ -766,11 +771,11 @@ const ImportJournal = () => {
               setCouleurBoutonAnomalie(couleurAnom);
             }
 
-            // Anomalies devises vides (par défaut EUR)
+            // Anomalies devises vides (par défaut MGA)
             if (numberOfEmptyDevises > 0) {
-              const hasMGA = listeDevisesParams.includes('EUR') || devisesNotInParamsFiltered.includes('EUR');
-              const suffix = hasMGA ? '' : " (EUR sera créé au besoin)";
-              msg.push(`Certaines lignes n'ont pas de devise : elles utiliseront la devise par défaut 'EUR'${suffix}.`);
+              const hasMGA = listeDevisesParams.includes('MGA') || devisesNotInParamsFiltered.includes('MGA');
+              const suffix = hasMGA ? '' : " (MGA sera créé au besoin)";
+              msg.push(`Certaines lignes n'ont pas de devise : elles utiliseront la devise par défaut 'MGA'${suffix}.`);
               nbrAnom = nbrAnom + 1;
               setNbrAnomalie(nbrAnom);
               setCouleurBoutonAnomalie(couleurAnom);
@@ -934,8 +939,28 @@ const ImportJournal = () => {
         header: true,
         skipEmptyLines: true,
       });
-    }
-  }
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files[0];
+    await processFile(file);
+  };
 
   //afficher ou non les détails des anomalies de l'import
   const handleOpenAnomalieDetails = () => {
@@ -1245,7 +1270,10 @@ const ImportJournal = () => {
         <Stack direction="column" spacing={1.5} sx={{ mt: 2 }}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <FileUploadOutlined sx={{ color: '#6366F1', fontSize: 24 }} />
-            <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px' }}>
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px' }}
+            >
               Import Journal
             </Typography>
           </Stack>
@@ -1316,16 +1344,20 @@ const ImportJournal = () => {
         <Grid item xs={12} md={7}>
           <Paper
             variant="outlined"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             sx={{
               p: 2,
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               gap: 3,
-              border: '1px dashed #6366F1',
-              bgcolor: 'rgba(99, 102, 241, 0.02)',
+              border: isDragging ? '2px dashed #6366F1' : '1px dashed #6366F1',
+              bgcolor: isDragging ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.02)',
               height: '100%',
               boxSizing: 'border-box',
+              transition: 'all 0.2s ease',
             }}
           >
             <CloudUploadOutlined sx={{ fontSize: 32, color: '#6366F1', flexShrink: 0 }} />
@@ -1607,6 +1639,18 @@ const ImportJournal = () => {
           </Button>
         </Box>
       </Dialog>
+
+      {/* --- POPUP DE CONFIRMATION D'IMPORT --- */}
+      <ConfirmActionDialog
+        open={openDialogConfirmImport}
+        onClose={() => handleCloseDialogConfirmImport()}
+        onConfirm={() => handleImportJournal(true)}
+        title="Confirmer l'import"
+        message="Voulez-vous vraiment importer le journal en cours ?"
+        confirmText="Importer"
+        cancelText="Annuler"
+        color="#06b6d4"
+      />
 
     </Box>
   );

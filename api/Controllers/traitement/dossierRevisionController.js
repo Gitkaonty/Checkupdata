@@ -416,6 +416,8 @@ exports.getEcrituresByComptes = async (req, res) => {
     const { id_compte, id_dossier, id_exercice, id_periode } = req.params;
     const { comptes } = req.query; // Format: "401,101,53"
 
+    console.log('[DEBUG] getEcrituresByComptes params:', { id_compte, id_dossier, id_exercice, id_periode, comptes });
+
     if (!id_compte || !id_dossier || !id_exercice || !id_periode) {
       return res.status(400).json({
         state: false,

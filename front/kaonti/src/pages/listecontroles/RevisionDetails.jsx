@@ -1260,7 +1260,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
     return (
         <Paper sx={{ mt: -2, p: 1.5, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             {/* HEADER - FIGÉ */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, flexShrink: 0 , mt: 2 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, flexShrink: 0, mt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f5f5f5ff' }}>
                     <Typography variant="h7" sx={{ fontWeight: 700, color: "#2c3e50" }}>
                         Détails - compte : {currentItem.compte && currentItem.compte !== '0' && currentItem.compte !== 0 ? currentItem.compte : 'n/a'}
@@ -1306,318 +1306,318 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
             {/* NAVIGATEUR - FIXÉ */}
             <Box sx={{ flexShrink: 0 }}>
 
-                        {/* Navigation TVA par écriture (Autocomplete) */}
-                        {currentItem?.Type === 'UTIL_CPT_TVA' && tvaFilteredAnomalies.length > 1 && (
-                            <Stack
-                                direction="row"
-                                alignItems="center"
-                                justifyContent="space-between"
-                                sx={{
-                                    mb: 1,
-                                    bgcolor: '#F8FAFC',
-                                    p: 1,
-                                    borderRadius: '8px',
-                                    border: '1px solid #E2E8F0'
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
-                                    <Stack direction="row" spacing={3} alignItems="center">
-                                        <Autocomplete
-                                            size="small"
-                                            options={tvaFilteredAnomalies}
-                                            value={tvaCurrentEcriture}
+                {/* Navigation TVA par écriture (Autocomplete) */}
+                {currentItem?.Type === 'UTIL_CPT_TVA' && tvaFilteredAnomalies.length > 1 && (
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                            mb: 1,
+                            bgcolor: '#F8FAFC',
+                            p: 1,
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0'
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
+                            <Stack direction="row" spacing={3} alignItems="center">
+                                <Autocomplete
+                                    size="small"
+                                    options={tvaFilteredAnomalies}
+                                    value={tvaCurrentEcriture}
 
-                                            onChange={(e, newValue) => {
-                                                if (newValue) {
-                                                    const idx = tvaFilteredAnomalies.findIndex(a => a.id === newValue.id);
-                                                    if (idx >= 0) setTvaEcritureIndex(idx);
-                                                }
-                                            }}
-                                            getOptionLabel={(option) =>
-                                                `Écriture ${tvaFilteredAnomalies.findIndex(e => e.id === option.id) + 1}`
-                                            }
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    placeholder="Écriture"
-                                                    variant="outlined"
-                                                    sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
-                                                />
-                                            )}
-                                            sx={{
-                                                width: 200,
-                                                bgcolor: 'white',
-                                                borderRadius: '8px',
-                                                '& .MuiOutlinedInput-root': {
-                                                    fontWeight: 800,
-                                                    color: '#1976d2'
-                                                }
-                                            }}
+                                    onChange={(e, newValue) => {
+                                        if (newValue) {
+                                            const idx = tvaFilteredAnomalies.findIndex(a => a.id === newValue.id);
+                                            if (idx >= 0) setTvaEcritureIndex(idx);
+                                        }
+                                    }}
+                                    getOptionLabel={(option) =>
+                                        `Écriture ${tvaFilteredAnomalies.findIndex(e => e.id === option.id) + 1}`
+                                    }
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            placeholder="Écriture"
+                                            variant="outlined"
+                                            sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
                                         />
+                                    )}
+                                    sx={{
+                                        width: 200,
+                                        bgcolor: 'white',
+                                        borderRadius: '8px',
+                                        '& .MuiOutlinedInput-root': {
+                                            fontWeight: 800,
+                                            color: '#1976d2'
+                                        }
+                                    }}
+                                />
 
-                                        <Stack direction="row" spacing={0.5}>
-                                            <IconButton
-                                                size="small"
-                                                disabled={tvaSafeEcritureIndex === 0}
-                                                onClick={handlePrevTvaEcriture}
-                                                sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                <Stack direction="row" spacing={0.5}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={tvaSafeEcritureIndex === 0}
+                                        onClick={handlePrevTvaEcriture}
+                                        sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
 
-                                            >
-                                                <ChevronLeft fontSize="small" />
-                                            </IconButton>
+                                    >
+                                        <ChevronLeft fontSize="small" />
+                                    </IconButton>
 
-                                            <IconButton
-                                                size="small"
-                                                disabled={tvaSafeEcritureIndex >= tvaFilteredAnomalies.length - 1}
-                                                onClick={handleNextTvaEcriture}
-                                                sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                    <IconButton
+                                        size="small"
+                                        disabled={tvaSafeEcritureIndex >= tvaFilteredAnomalies.length - 1}
+                                        onClick={handleNextTvaEcriture}
+                                        sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
 
-                                            >
-                                                <ChevronRight fontSize="small" />
-                                            </IconButton>
-                                        </Stack>
-                                        {(() => {
-                                            const allValidated = tvaCurrentEcriture && tvaCurrentEcriture.valide;
-                                            const hasAnomalies = !!tvaCurrentEcriture;
+                                    >
+                                        <ChevronRight fontSize="small" />
+                                    </IconButton>
+                                </Stack>
+                                {(() => {
+                                    const allValidated = tvaCurrentEcriture && tvaCurrentEcriture.valide;
+                                    const hasAnomalies = !!tvaCurrentEcriture;
 
-                                            return hasAnomalies && (
-                                                <Button
-                                                    variant="contained"
-                                                    size="small"
-                                                    startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
+                                    return hasAnomalies && (
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
 
-                                                    sx={{
-                                                        bgcolor: allValidated ? '#d32f2f' : '#10B981',
-                                                        textTransform: 'none',
-                                                        fontWeight: 700,
-                                                        ml: 1,
-                                                        height: 32
-                                                    }}
-                                                    onClick={() => handleOpenBatchConfirm([tvaCurrentEcriture], !tvaCurrentEcriture.valide)}                                                >
-                                                    {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
-                                                </Button>
-                                            );
-                                        })()}
-                                    </Stack>
-                                </Box>
+                                            sx={{
+                                                bgcolor: allValidated ? '#d32f2f' : '#10B981',
+                                                textTransform: 'none',
+                                                fontWeight: 700,
+                                                ml: 1,
+                                                height: 32
+                                            }}
+                                            onClick={() => handleOpenBatchConfirm([tvaCurrentEcriture], !tvaCurrentEcriture.valide)}                                                >
+                                            {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
+                                        </Button>
+                                    );
+                                })()}
+                            </Stack>
+                        </Box>
 
-                                {/* <Typography
+                        {/* <Typography
                                     variant="body2"
                                     sx={{ color: '#64748B', fontWeight: 800 }}
                                 >
                                     {tvaSafeEcritureIndex + 1} / {tvaFilteredAnomalies.length} ÉCRITURES
                                 </Typography> */}
 
-                            </Stack>
-                        )}
-                        {/* Navigation compte SENS_SOLDE */}
-                        {currentItem?.Type === 'SENS_SOLDE' && soldeComptesList.length > 0 && (
-                            <Stack
-                                direction="row"
-                                alignItems="center"
-                                justifyContent="space-between"
-                                sx={{
-                                    mb: 1,
-                                    bgcolor: '#F8FAFC',
-                                    p: 1,
-                                    borderRadius: '8px',
-                                    border: '1px solid #E2E8F0'
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
+                    </Stack>
+                )}
+                {/* Navigation compte SENS_SOLDE */}
+                {currentItem?.Type === 'SENS_SOLDE' && soldeComptesList.length > 0 && (
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                            mb: 1,
+                            bgcolor: '#F8FAFC',
+                            p: 1,
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0'
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
 
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Autocomplete
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Autocomplete
+                                    size="small"
+                                    value={soldeCurrentCompte || null}
+                                    onChange={(event, newValue) => {
+                                        const index = soldeComptesList.findIndex(c => c === newValue);
+                                        if (index !== -1) setSoldeCompteIndex(index);
+                                    }}
+                                    options={soldeComptesList}
+                                    sx={{
+                                        width: 220,
+                                        '& .MuiOutlinedInput-root': {
+                                            fontWeight: 700,
+                                            color: '#1976d2'
+                                        }
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            placeholder="Choisir un compte"
                                             size="small"
-                                            value={soldeCurrentCompte || null}
-                                            onChange={(event, newValue) => {
-                                                const index = soldeComptesList.findIndex(c => c === newValue);
-                                                if (index !== -1) setSoldeCompteIndex(index);
-                                            }}
-                                            options={soldeComptesList}
-                                            sx={{
-                                                width: 220,
-                                                '& .MuiOutlinedInput-root': {
-                                                    fontWeight: 700,
-                                                    color: '#1976d2'
-                                                }
-                                            }}
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    placeholder="Choisir un compte"
-                                                    size="small"
-                                                    sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
-                                                />
-                                            )}
+                                            sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
                                         />
-
-                                        {soldeComptesList.length > 1 && (
-                                            <Stack direction="row" spacing={0.5}>
-                                                <IconButton
-                                                    size="small"
-                                                    disabled={soldeSafeCompteIndex === 0}
-                                                    onClick={() =>
-                                                        setSoldeCompteIndex(prev => Math.max(0, prev - 1))
-                                                    }
-                                                    sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                                >
-                                                    <ChevronLeft fontSize="small" />
-                                                </IconButton>
-
-                                                <IconButton
-                                                    size="small"
-                                                    disabled={soldeSafeCompteIndex === soldeComptesList.length - 1}
-                                                    onClick={() =>
-                                                        setSoldeCompteIndex(prev =>
-                                                            Math.min(soldeComptesList.length - 1, prev + 1)
-                                                        )
-                                                    }
-                                                    sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                                >
-                                                    <ChevronRight fontSize="small" />
-                                                </IconButton>
-                                            </Stack>
-                                        )}
-                                        {(() => {
-                                            const compteAnomalies = anomalies.filter(a =>
-                                                a.journalLines?.some(l => (l.comptegen || l.compteaux) === soldeCurrentCompte)
-                                            );
-                                            const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
-                                            const hasAnomalies = compteAnomalies.length > 0;
-                                            return hasAnomalies && (
-                                                <Button
-                                                    variant="contained"
-                                                    size="small"
-                                                    startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
-                                                    sx={{
-                                                        bgcolor: allValidated ? '#d32f2f' : '#10B981',
-                                                        textTransform: 'none',
-                                                        fontWeight: 700,
-                                                        ml: 1,
-                                                        height: 32
-                                                    }}
-                                                    onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
-                                                >
-                                                    {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
-                                                </Button>
-                                            );
-                                        })()}
-                                    </Stack>
-                                </Box>
+                                    )}
+                                />
 
                                 {soldeComptesList.length > 1 && (
-                                    <Typography
-                                        variant="body2"
-                                        sx={{ color: '#64748B', fontWeight: 800 }}
-                                    >
-                                        {soldeSafeCompteIndex + 1} / {soldeComptesList.length} COMPTES
-                                    </Typography>
-                                )}
-
-                            </Stack>
-                        )}
-                        {/* Navigation compte SENS_ECRITURE */}
-                        {currentItem?.Type === 'SENS_ECRITURE' && ecritureComptesList.length > 1 && (
-                            <Stack
-                                direction="row"
-                                alignItems="center"
-                                justifyContent="space-between"
-                                sx={{
-                                    mb: 1,
-                                    bgcolor: '#F8FAFC',
-                                    p: 1,
-                                    borderRadius: '8px',
-                                    border: '1px solid #E2E8F0'
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
-
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Autocomplete
+                                    <Stack direction="row" spacing={0.5}>
+                                        <IconButton
                                             size="small"
-                                            value={ecritureCurrentCompte || null}
-                                            options={ecritureComptesList}
-                                            onChange={(event, newValue) => {
-                                                const index = ecritureComptesList.findIndex(c => c === newValue);
-                                                if (index !== -1) setEcritureCompteIndex(index);
-                                            }}
-                                            sx={{
-                                                width: 220,
-                                                bgcolor: 'white',
-                                                borderRadius: '8px',
-                                                '& .MuiOutlinedInput-root': {
-                                                    fontWeight: 800,
-                                                    color: '#1976d2'
-                                                }
-                                            }}
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    size="small"
-                                                    placeholder="Compte écriture"
-                                                    sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
+                                            disabled={soldeSafeCompteIndex === 0}
+                                            onClick={() =>
+                                                setSoldeCompteIndex(prev => Math.max(0, prev - 1))
+                                            }
+                                            sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                        >
+                                            <ChevronLeft fontSize="small" />
+                                        </IconButton>
 
-                                                />
-                                            )}
-                                        />
-
-                                        <Stack direction="row" spacing={0.5}>
-                                            <IconButton
-                                                size="small"
-                                                disabled={ecritureSafeCompteIndex === 0}
-                                                onClick={() =>
-                                                    setEcritureCompteIndex(prev => Math.max(0, prev - 1))
-                                                }
-                                                sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                            >
-                                                <ChevronLeft fontSize="small" />
-                                            </IconButton>
-
-                                            <IconButton
-                                                size="small"
-                                                disabled={ecritureSafeCompteIndex === ecritureComptesList.length - 1}
-                                                onClick={() =>
-                                                    setEcritureCompteIndex(prev =>
-                                                        Math.min(ecritureComptesList.length - 1, prev + 1)
-                                                    )
-                                                }
-                                                sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                            >
-                                                <ChevronRight fontSize="small" />
-                                            </IconButton>
-                                        </Stack>
-                                        {(() => {
-                                            const compteAnomalies = anomalies.filter(a =>
-                                                a.journalLines?.some(l => (l.comptegen || l.compteaux) === ecritureCurrentCompte)
-                                            );
-                                            const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
-                                            const hasAnomalies = compteAnomalies.length > 0;
-                                            return hasAnomalies && (
-                                                <Button
-                                                    variant="contained"
-                                                    size="small"
-                                                    startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
-
-                                                    sx={{
-                                                        bgcolor: allValidated ? '#d32f2f' : '#10B981',
-                                                        textTransform: 'none',
-                                                        fontWeight: 700,
-                                                        ml: 1,
-                                                        height: 32
-                                                    }}
-                                                    onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
-                                                >
-                                                    {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
-                                                </Button>
-                                            );
-                                        })()}
+                                        <IconButton
+                                            size="small"
+                                            disabled={soldeSafeCompteIndex === soldeComptesList.length - 1}
+                                            onClick={() =>
+                                                setSoldeCompteIndex(prev =>
+                                                    Math.min(soldeComptesList.length - 1, prev + 1)
+                                                )
+                                            }
+                                            sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                        >
+                                            <ChevronRight fontSize="small" />
+                                        </IconButton>
                                     </Stack>
-                                </Box>
-                                {/* 
+                                )}
+                                {(() => {
+                                    const compteAnomalies = anomalies.filter(a =>
+                                        a.journalLines?.some(l => (l.comptegen || l.compteaux) === soldeCurrentCompte)
+                                    );
+                                    const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
+                                    const hasAnomalies = compteAnomalies.length > 0;
+                                    return hasAnomalies && (
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
+                                            sx={{
+                                                bgcolor: allValidated ? '#d32f2f' : '#10B981',
+                                                textTransform: 'none',
+                                                fontWeight: 700,
+                                                ml: 1,
+                                                height: 32
+                                            }}
+                                            onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
+                                        >
+                                            {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
+                                        </Button>
+                                    );
+                                })()}
+                            </Stack>
+                        </Box>
+
+                        {soldeComptesList.length > 1 && (
+                            <Typography
+                                variant="body2"
+                                sx={{ color: '#64748B', fontWeight: 800 }}
+                            >
+                                {soldeSafeCompteIndex + 1} / {soldeComptesList.length} COMPTES
+                            </Typography>
+                        )}
+
+                    </Stack>
+                )}
+                {/* Navigation compte SENS_ECRITURE */}
+                {currentItem?.Type === 'SENS_ECRITURE' && ecritureComptesList.length > 1 && (
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                            mb: 1,
+                            bgcolor: '#F8FAFC',
+                            p: 1,
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0'
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
+
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Autocomplete
+                                    size="small"
+                                    value={ecritureCurrentCompte || null}
+                                    options={ecritureComptesList}
+                                    onChange={(event, newValue) => {
+                                        const index = ecritureComptesList.findIndex(c => c === newValue);
+                                        if (index !== -1) setEcritureCompteIndex(index);
+                                    }}
+                                    sx={{
+                                        width: 220,
+                                        bgcolor: 'white',
+                                        borderRadius: '8px',
+                                        '& .MuiOutlinedInput-root': {
+                                            fontWeight: 800,
+                                            color: '#1976d2'
+                                        }
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            size="small"
+                                            placeholder="Compte écriture"
+                                            sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
+
+                                        />
+                                    )}
+                                />
+
+                                <Stack direction="row" spacing={0.5}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={ecritureSafeCompteIndex === 0}
+                                        onClick={() =>
+                                            setEcritureCompteIndex(prev => Math.max(0, prev - 1))
+                                        }
+                                        sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                    >
+                                        <ChevronLeft fontSize="small" />
+                                    </IconButton>
+
+                                    <IconButton
+                                        size="small"
+                                        disabled={ecritureSafeCompteIndex === ecritureComptesList.length - 1}
+                                        onClick={() =>
+                                            setEcritureCompteIndex(prev =>
+                                                Math.min(ecritureComptesList.length - 1, prev + 1)
+                                            )
+                                        }
+                                        sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                    >
+                                        <ChevronRight fontSize="small" />
+                                    </IconButton>
+                                </Stack>
+                                {(() => {
+                                    const compteAnomalies = anomalies.filter(a =>
+                                        a.journalLines?.some(l => (l.comptegen || l.compteaux) === ecritureCurrentCompte)
+                                    );
+                                    const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
+                                    const hasAnomalies = compteAnomalies.length > 0;
+                                    return hasAnomalies && (
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
+
+                                            sx={{
+                                                bgcolor: allValidated ? '#d32f2f' : '#10B981',
+                                                textTransform: 'none',
+                                                fontWeight: 700,
+                                                ml: 1,
+                                                height: 32
+                                            }}
+                                            onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
+                                        >
+                                            {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
+                                        </Button>
+                                    );
+                                })()}
+                            </Stack>
+                        </Box>
+                        {/* 
                                 <Typography
                                     variant="body2"
                                     sx={{ color: '#64748B', fontWeight: 800 }}
@@ -1625,256 +1625,1044 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                     {ecritureSafeCompteIndex + 1} / {ecritureComptesList.length} COMPTES
                                 </Typography> */}
 
-                            </Stack>
-                        )}
-                        {/* Navigation compte ATYPIQUE - centrée au milieu (cachée pour IMMO, SENS_SOLDE et UTIL_CPT_TVA) */}
-                        {atypiqueComptesList.length > 1 &&
-                            !(currentItem?.Type && String(currentItem.Type).toUpperCase().includes('IMMO')) &&
-                            currentItem?.Type !== 'UTIL_CPT_TVA' &&
-                            currentItem?.Type !== 'SENS_SOLDE' &&
-                            currentItem?.Type !== 'SENS_ECRITURE' && (
+                    </Stack>
+                )}
+                {/* Navigation compte ATYPIQUE - centrée au milieu (cachée pour IMMO, SENS_SOLDE et UTIL_CPT_TVA) */}
+                {atypiqueComptesList.length > 1 &&
+                    !(currentItem?.Type && String(currentItem.Type).toUpperCase().includes('IMMO')) &&
+                    currentItem?.Type !== 'UTIL_CPT_TVA' &&
+                    currentItem?.Type !== 'SENS_SOLDE' &&
+                    currentItem?.Type !== 'SENS_ECRITURE' && (
 
 
-                                <Stack
-                                    direction="row"
-                                    alignItems="center"
-                                    justifyContent="space-between"
-                                    sx={{
-                                        mb: 1,
-                                        bgcolor: '#F8FAFC',
-                                        p: 1,
-                                        borderRadius: '8px',
-                                        border: '1px solid #E2E8F0'
-                                    }}
-                                >
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
-                                        <Stack direction="row" spacing={3} alignItems="center">
+                        <Stack
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            sx={{
+                                mb: 1,
+                                bgcolor: '#F8FAFC',
+                                p: 1,
+                                borderRadius: '8px',
+                                border: '1px solid #E2E8F0'
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
+                                <Stack direction="row" spacing={3} alignItems="center">
 
-                                            <Autocomplete
+                                    <Autocomplete
+                                        size="small"
+                                        value={atypiqueCurrentCompte || null}
+                                        options={atypiqueComptesList}
+                                        onChange={(event, newValue) => {
+                                            const index = atypiqueComptesList.findIndex(c => c === newValue);
+                                            if (index !== -1) setAtypiqueCompteIndex(index);
+                                        }}
+                                        sx={{
+                                            width: 200,
+                                            bgcolor: 'white',
+                                            borderRadius: '8px',
+                                            '& .MuiOutlinedInput-root': {
+                                                fontWeight: 800,
+                                                color: '#1976d2'
+                                            }
+                                        }}
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
                                                 size="small"
-                                                value={atypiqueCurrentCompte || null}
-                                                options={atypiqueComptesList}
-                                                onChange={(event, newValue) => {
-                                                    const index = atypiqueComptesList.findIndex(c => c === newValue);
-                                                    if (index !== -1) setAtypiqueCompteIndex(index);
-                                                }}
-                                                sx={{
-                                                    width: 200,
-                                                    bgcolor: 'white',
-                                                    borderRadius: '8px',
-                                                    '& .MuiOutlinedInput-root': {
-                                                        fontWeight: 800,
-                                                        color: '#1976d2'
-                                                    }
-                                                }}
-                                                renderInput={(params) => (
-                                                    <TextField
-                                                        {...params}
-                                                        size="small"
-                                                        placeholder="Compte"
-                                                        sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
-                                                    />
-                                                )}
+                                                placeholder="Compte"
+                                                sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
                                             />
+                                        )}
+                                    />
 
-                                            <Stack direction="row" spacing={0.5}>
-                                                <IconButton
-                                                    size="small"
-                                                    disabled={atypiqueSafeCompteIndex === 0}
-                                                    onClick={() =>
-                                                        setAtypiqueCompteIndex(prev => Math.max(0, prev - 1))
-                                                    }
-                                                    sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                                >
-                                                    <ChevronLeft fontSize="small" />
-                                                </IconButton>
-
-                                                <IconButton
-                                                    size="small"
-                                                    disabled={atypiqueSafeCompteIndex === atypiqueComptesList.length - 1}
-                                                    onClick={() =>
-                                                        setAtypiqueCompteIndex(prev =>
-                                                            Math.min(atypiqueComptesList.length - 1, prev + 1)
-                                                        )
-                                                    }
-                                                    sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                                >
-                                                    <ChevronRight fontSize="small" />
-                                                </IconButton>
-                                            </Stack>
-                                            {(() => {
-                                                const compteAnomalies = anomalies.filter(a =>
-                                                    a.journalLines?.some(l => (l.comptegen || l.compteaux) === atypiqueCurrentCompte)
-                                                );
-                                                const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
-                                                const hasAnomalies = compteAnomalies.length > 0;
-                                                return hasAnomalies && (
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
-                                                        sx={{
-                                                            bgcolor: allValidated ? '#d32f2f' : '#10B981',
-                                                            textTransform: 'none',
-                                                            fontWeight: 700,
-                                                            ml: 1,
-                                                            height: 32
-                                                        }}
-                                                        onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
-                                                    >
-                                                        {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
-                                                    </Button>
-                                                );
-                                            })()}
-                                        </Stack>
-                                    </Box>
-                                </Stack>
-
-                                // <Typography
-                                //     variant="body2"
-                                //     sx={{ color: '#64748B', fontWeight: 800 }}
-                                // >
-                                //     {atypiqueSafeCompteIndex + 1} / {atypiqueComptesList.length} COMPTES
-                                // </Typography>
-
-
-                            )}
-                        {/* Navigation compte IMMO */}
-                        {currentItem?.Type && String(currentItem.Type).toUpperCase().includes('IMMO') && immobComptesList.length > 1 && (
-                            <Stack
-                                direction="row"
-                                alignItems="center"
-                                justifyContent="space-between"
-                                sx={{
-                                    mb: 1,
-                                    bgcolor: '#F8FAFC',
-                                    p: 1,
-                                    borderRadius: '8px',
-                                    border: '1px solid #E2E8F0'
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
-
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Autocomplete
+                                    <Stack direction="row" spacing={0.5}>
+                                        <IconButton
                                             size="small"
-                                            value={immobCurrentCompte || null}
-                                            options={immobComptesList}
-                                            onChange={(event, newValue) => {
-                                                const index = immobComptesList.findIndex(c => c === newValue);
-                                                if (index !== -1) setImmobCompteIndex(index);
-                                            }}
-                                            sx={{
-                                                width: 220,
-                                                bgcolor: 'white',
-                                                borderRadius: '8px',
-                                                '& .MuiOutlinedInput-root': {
-                                                    fontWeight: 800,
-                                                    color: '#1976d2',
-                                                    px: 1
-                                                }
-                                            }}
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    size="small"
-                                                    placeholder="Compte immobilisation"
-                                                    sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
+                                            disabled={atypiqueSafeCompteIndex === 0}
+                                            onClick={() =>
+                                                setAtypiqueCompteIndex(prev => Math.max(0, prev - 1))
+                                            }
+                                            sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                        >
+                                            <ChevronLeft fontSize="small" />
+                                        </IconButton>
 
-                                                />
-                                            )}
-                                        />
-
-                                        <Stack direction="row" spacing={0.5}>
-                                            <IconButton
-                                                size="small"
-                                                disabled={immobSafeCompteIndex === 0}
-                                                onClick={() =>
-                                                    setImmobCompteIndex(prev => Math.max(0, prev - 1))
-                                                }
-                                                sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                            >
-                                                <ChevronLeft fontSize="small" />
-                                            </IconButton>
-
-                                            <IconButton
-                                                size="small"
-                                                disabled={immobSafeCompteIndex === immobComptesList.length - 1}
-                                                onClick={() =>
-                                                    setImmobCompteIndex(prev =>
-                                                        Math.min(immobComptesList.length - 1, prev + 1)
-                                                    )
-                                                }
-                                                sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
-                                            >
-                                                <ChevronRight fontSize="small" />
-                                            </IconButton>
-                                        </Stack>
-                                        {(() => {
-                                            const compteAnomalies = anomalies.filter(a =>
-                                                a.journalLines?.some(l => (l.comptegen || l.compteaux) === immobCurrentCompte)
-                                            );
-                                            const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
-                                            const hasAnomalies = compteAnomalies.length > 0;
-                                            return hasAnomalies && (
-                                                <Button
-                                                    variant="contained"
-                                                    size="small"
-                                                    startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
-                                                    sx={{
-                                                        bgcolor: allValidated ? '#d32f2f' : '#10B981',
-                                                        textTransform: 'none',
-                                                        fontWeight: 700,
-                                                        ml: 1,
-                                                        height: 32
-                                                    }}
-                                                    onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
-                                                >
-                                                    {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
-                                                </Button>
-                                            );
-                                        })()}
+                                        <IconButton
+                                            size="small"
+                                            disabled={atypiqueSafeCompteIndex === atypiqueComptesList.length - 1}
+                                            onClick={() =>
+                                                setAtypiqueCompteIndex(prev =>
+                                                    Math.min(atypiqueComptesList.length - 1, prev + 1)
+                                                )
+                                            }
+                                            sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                        >
+                                            <ChevronRight fontSize="small" />
+                                        </IconButton>
                                     </Stack>
-                                </Box>
+                                    {(() => {
+                                        const compteAnomalies = anomalies.filter(a =>
+                                            a.journalLines?.some(l => (l.comptegen || l.compteaux) === atypiqueCurrentCompte)
+                                        );
+                                        const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
+                                        const hasAnomalies = compteAnomalies.length > 0;
+                                        return hasAnomalies && (
+                                            <Button
+                                                variant="contained"
+                                                size="small"
+                                                startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
+                                                sx={{
+                                                    bgcolor: allValidated ? '#d32f2f' : '#10B981',
+                                                    textTransform: 'none',
+                                                    fontWeight: 700,
+                                                    ml: 1,
+                                                    height: 32
+                                                }}
+                                                onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
+                                            >
+                                                {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
+                                            </Button>
+                                        );
+                                    })()}
+                                </Stack>
+                            </Box>
+                        </Stack>
 
-                                {/* <Typography
+                        // <Typography
+                        //     variant="body2"
+                        //     sx={{ color: '#64748B', fontWeight: 800 }}
+                        // >
+                        //     {atypiqueSafeCompteIndex + 1} / {atypiqueComptesList.length} COMPTES
+                        // </Typography>
+
+
+                    )}
+                {/* Navigation compte IMMO */}
+                {currentItem?.Type && String(currentItem.Type).toUpperCase().includes('IMMO') && immobComptesList.length > 1 && (
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                            mb: 1,
+                            bgcolor: '#F8FAFC',
+                            p: 1,
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0'
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', mr: 1 }}>NAVIGATEUR :</Typography>
+
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Autocomplete
+                                    size="small"
+                                    value={immobCurrentCompte || null}
+                                    options={immobComptesList}
+                                    onChange={(event, newValue) => {
+                                        const index = immobComptesList.findIndex(c => c === newValue);
+                                        if (index !== -1) setImmobCompteIndex(index);
+                                    }}
+                                    sx={{
+                                        width: 220,
+                                        bgcolor: 'white',
+                                        borderRadius: '8px',
+                                        '& .MuiOutlinedInput-root': {
+                                            fontWeight: 800,
+                                            color: '#1976d2',
+                                            px: 1
+                                        }
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            size="small"
+                                            placeholder="Compte immobilisation"
+                                            sx={{ width: 220, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 32 } }}
+
+                                        />
+                                    )}
+                                />
+
+                                <Stack direction="row" spacing={0.5}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={immobSafeCompteIndex === 0}
+                                        onClick={() =>
+                                            setImmobCompteIndex(prev => Math.max(0, prev - 1))
+                                        }
+                                        sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                    >
+                                        <ChevronLeft fontSize="small" />
+                                    </IconButton>
+
+                                    <IconButton
+                                        size="small"
+                                        disabled={immobSafeCompteIndex === immobComptesList.length - 1}
+                                        onClick={() =>
+                                            setImmobCompteIndex(prev =>
+                                                Math.min(immobComptesList.length - 1, prev + 1)
+                                            )
+                                        }
+                                        sx={{ border: '1px solid #E2E8F0', borderRadius: '4px' }}
+                                    >
+                                        <ChevronRight fontSize="small" />
+                                    </IconButton>
+                                </Stack>
+                                {(() => {
+                                    const compteAnomalies = anomalies.filter(a =>
+                                        a.journalLines?.some(l => (l.comptegen || l.compteaux) === immobCurrentCompte)
+                                    );
+                                    const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
+                                    const hasAnomalies = compteAnomalies.length > 0;
+                                    return hasAnomalies && (
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            startIcon={allValidated ? <CloseIcon /> : <DoneAllIcon />}
+                                            sx={{
+                                                bgcolor: allValidated ? '#d32f2f' : '#10B981',
+                                                textTransform: 'none',
+                                                fontWeight: 700,
+                                                ml: 1,
+                                                height: 32
+                                            }}
+                                            onClick={() => handleOpenBatchConfirm(allValidated ? compteAnomalies : compteAnomalies.filter(a => !a.valide), !allValidated)}
+                                        >
+                                            {allValidated ? 'Tout annuler le compte' : 'Tout valider le compte'}
+                                        </Button>
+                                    );
+                                })()}
+                            </Stack>
+                        </Box>
+
+                        {/* <Typography
                                     variant="body2"
                                     sx={{ color: '#64748B', fontWeight: 800 }}
                                 >
                                     {immobSafeCompteIndex + 1} / {immobComptesList.length} COMPTES
                                 </Typography> */}
 
-                            </Stack>
-                        )}
+                    </Stack>
+                )}
             </Box>
 
             {/* MAIN CONTENT - DATAGRID GÈRE SON PROPRE SCROLL */}
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <Grid container spacing={3} alignItems="flex-start">
-                {/* LEFT SIDE - INFOS + TABLE */}
-                <Grid item xs={12} md={12}>
+                <Grid container spacing={3} alignItems="flex-start">
+                    {/* LEFT SIDE - INFOS + TABLE */}
+                    <Grid item xs={12} md={12}>
 
-                    {anomaliesLoading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                            <CircularProgress size={24} />
-                        </Box>
-                    ) : currentItem?.Type === 'EXISTENCE' ? (
-                        // Mode EXISTENCE - avec filtre par compte
-                        anomalies.length > 0 ? (
-                            <Box>
-                                {paginatedAnomalies
-                                    .filter(a => !atypiqueCurrentCompte ||
-                                        (a.journalLines?.[0]?.comptegen === atypiqueCurrentCompte ||
-                                            a.journalLines?.[0]?.compteaux === atypiqueCurrentCompte))
-                                    .map((anomalie, idx) => (
-                                        <Box key={idx} sx={{ mb: 3 }}>
+                        {anomaliesLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                                <CircularProgress size={24} />
+                            </Box>
+                        ) : currentItem?.Type === 'EXISTENCE' ? (
+                            // Mode EXISTENCE - avec filtre par compte
+                            anomalies.length > 0 ? (
+                                <Box>
+                                    {paginatedAnomalies
+                                        .filter(a => !atypiqueCurrentCompte ||
+                                            (a.journalLines?.[0]?.comptegen === atypiqueCurrentCompte ||
+                                                a.journalLines?.[0]?.compteaux === atypiqueCurrentCompte))
+                                        .map((anomalie, idx) => (
+                                            <Box key={idx} sx={{ mb: 3 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                    <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
+                                                        {anomalie.message || 'Anomalie d\'existence'}
+                                                    </Alert>
+                                                </Box>
+                                                {anomalie.journalLines?.length > 0 ? (
+                                                    <StandardDataGrid
+                                                        height={350}
+                                                        rows={anomalie.journalLines.map((line, idx) => ({
+                                                            id: line?.id || idx,
+                                                            ...line,
+                                                            _anomalie: anomalie
+                                                        }))}
+                                                        columns={[
+                                                            {
+                                                                field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => params.value || '-'
+                                                            },
+                                                            { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                            { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
+                                                            { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
+                                                            {
+                                                                field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                    params.value !== null && params.value !== undefined
+                                                                        ? formatMontant(params.value)
+                                                                        : '-'
+                                                            },
+                                                            {
+                                                                field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                    params.value !== null && params.value !== undefined
+                                                                        ? formatMontant(params.value)
+                                                                        : '-'
+                                                            },
+                                                            { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
+                                                            { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
+                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie?.valide ? 'Oui' : 'Non'} color={p.row._anomalie?.valide ? 'success' : 'error'} size="small" /> },
+                                                            {
+                                                                field: 'commentaire',
+                                                                headerName: 'Commentaire',
+                                                                width: 140,
+                                                                valueGetter: p => p.row._anomalie?.commentaire || '-'
+                                                            },
+                                                            {
+                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
+                                                                        <Tooltip title="Ajouter/Modifier commentaire">
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color="primary"
+                                                                                onClick={() => handleCommentAnomaly(p.row._anomalie)} >
+                                                                                <CommentIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+
+                                                                        <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                onClick={() => handleValidateLine(p.row, p.row._anomalie)}
+                                                                                sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}
+                                                                            >
+                                                                                {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </Box>
+                                                                )
+                                                            },
+                                                        ]}
+                                                    />
+                                                ) : (
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Aucune ligne de journal pour ce compte
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        ))}
+                                </Box>
+                            ) : (
+                                // Fallback: afficher depuis details si pas d'anomalies dans table_controle_anomalies
+                                (() => {
+                                    let details = [];
+                                    if (currentItem?.details) {
+                                        try {
+                                            details = JSON.parse(currentItem.details);
+                                        } catch (e) {
+                                            // Not JSON
+                                        }
+                                    }
+                                    const anomalie = details.find(d => d.anomalie || d.message?.includes('Absence'));
+                                    if (anomalie?.anomalie) {
+                                        return <Alert severity="warning">{anomalie.anomalie}</Alert>;
+                                    } else if (anomalie?.message) {
+                                        return <Alert severity="success">{anomalie.message}</Alert>;
+                                    }
+                                    return <Alert severity="info">Aucune information</Alert>;
+                                })()
+                            )) : currentItem?.Type === 'SENS_SOLDE' ? (
+                                // Mode SENS_SOLDE - Regroupé par compte avec navigation
+                                anomalies.length > 0 && soldeCurrentCompte ? (
+                                    <Box>
+                                        {(() => {
+                                            // Regrouper les anomalies par compte (depuis journalLines)
+                                            const groupedByCompte = {};
+                                            anomalies.forEach(anomalie => {
+                                                if (!Array.isArray(anomalie.journalLines)) return;
+
+                                                anomalie.journalLines.forEach(line => {
+                                                    const compte = line?.comptegen || line?.compteaux;
+                                                    if (!compte) return;
+
+                                                    if (!groupedByCompte[compte]) {
+                                                        groupedByCompte[compte] = {
+                                                            anomalies: [],
+                                                            allLines: [],
+                                                            allValidated: true
+                                                        };
+                                                    }
+                                                    // Ajouter l'anomalie une seule fois par compte
+                                                    if (!groupedByCompte[compte].anomalies.includes(anomalie)) {
+                                                        groupedByCompte[compte].anomalies.push(anomalie);
+                                                    }
+                                                    // Ajouter cette ligne
+                                                    groupedByCompte[compte].allLines.push(line);
+                                                });
+
+                                                // Mettre à jour allValidated
+                                                Object.keys(groupedByCompte).forEach(compte => {
+                                                    if (groupedByCompte[compte].anomalies.includes(anomalie) && !anomalie.valide) {
+                                                        groupedByCompte[compte].allValidated = false;
+                                                    }
+                                                });
+                                            });
+
+                                            const testType = currentItem?.test?.toUpperCase();
+                                            const data = groupedByCompte[soldeCurrentCompte];
+
+                                            if (!data) return <Alert severity="info">Aucune anomalie pour le compte {soldeCurrentCompte}</Alert>;
+
+                                            const lines = data.allLines;
+                                            const anomaliesForCompte = data.anomalies;
+                                            const allValidated = data.allValidated;
+
+                                            const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+                                            const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+                                            const solde = totalDebit - totalCredit;
+                                            const soldeNormalise = Math.abs(solde) < 0.01 ? 0 : solde;
+
+                                            let detailMessage = `Le compte "${soldeCurrentCompte}" doit avoir un solde `;
+                                            if (testType === 'DEBITEUR') {
+                                                detailMessage += 'débiteur';
+                                            } else if (testType === 'CREDITEUR') {
+                                                detailMessage += 'créditeur';
+                                            } else if (testType === 'NULL') {
+                                                detailMessage += 'nul';
+                                            } else {
+                                                detailMessage = `Anomalie de sens de solde pour le compte "${soldeCurrentCompte}"`;
+                                            }
+
+                                            const anomaliesToProcess = allValidated
+                                                ? anomaliesForCompte
+                                                : anomaliesForCompte.filter(a => !a.valide);
+
+                                            return (
+                                                <Box sx={{ mb: 3 }}>
+                                                    {/* Boutons et message */}
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                        <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
+                                                            {detailMessage}
+                                                        </Alert>
+                                                    </Box>
+
+                                                    {lines.length > 0 ? (
+                                                        <Box>
+                                                            <StandardDataGrid
+                                                                height={350}
+                                                                rows={lines.map((line, idx) => ({
+                                                                    id: line?.id || idx,
+                                                                    ...line,
+                                                                    _anomalies: anomaliesForCompte
+                                                                }))}
+                                                                columns={[
+                                                                    {
+                                                                        field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => {
+                                                                            if (!params.value) return '-';
+
+                                                                            const parts = params.value.split('/'); // "21/04/2025"
+
+                                                                            if (parts.length === 3) {
+                                                                                const [day, month, year] = parts;
+                                                                                const date = new Date(`${day}-${month}-${year}`);
+
+                                                                                return isNaN(date.getTime())
+                                                                                    ? params.value
+                                                                                    : date.toLocaleDateString('fr-FR');
+                                                                            }
+
+                                                                            return params.value;
+                                                                        }
+                                                                    },
+                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                    { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                                    { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
+                                                                    {
+                                                                        field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                            params.value !== null && params.value !== undefined
+                                                                                ? formatMontant(params.value)
+                                                                                : '-'
+                                                                    },
+                                                                    {
+                                                                        field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                            params.value !== null && params.value !== undefined
+                                                                                ? formatMontant(params.value)
+                                                                                : '-'
+                                                                    },
+                                                                    { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
+                                                                    { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
+                                                                    { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={getAnomalyForLine(p.row)?.valide ? 'Oui' : 'Non'} color={getAnomalyForLine(p.row)?.valide ? 'success' : 'error'} size="small" /> },
+                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => getAnomalyForLine(p.row)?.commentaire || '-' },
+                                                                    {
+                                                                        field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => {
+                                                                            const lineAnomaly = getAnomalyForLine(p.row);
+                                                                            return (
+                                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
+                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
+                                                                                        <IconButton size="small" color="primary" onClick={() => handleCommentLine(p.row, lineAnomaly || p.row._anomalies[0])} ><CommentIcon fontSize="small" /></IconButton>
+
+                                                                                    </Tooltip>
+                                                                                    <Tooltip title={lineAnomaly?.valide ? 'Annuler la validation' : 'Valider'}>
+                                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, lineAnomaly || p.row._anomalies[0])} sx={{ color: lineAnomaly?.valide ? '#d32f2f' : '#10B981' }}>
+                                                                                            {lineAnomaly?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                </Box>
+                                                                            );
+                                                                        }
+                                                                    },
+                                                                ]}
+                                                            />
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, p: 1, backgroundColor: '#e3f2fd' }}>
+                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Débit: {totalDebit.toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
+                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Crédit: {totalCredit.toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
+                                                            </Box>
+                                                            <Box sx={{ p: 1, backgroundColor: '#fff3e0' }}>
+                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Solde: {soldeNormalise > 0 ? `Débiteur: ${soldeNormalise.toFixed(2)}` : soldeNormalise < 0 ? `Créditeur: ${Math.abs(soldeNormalise).toFixed(2)}` : 'Solde nul'}</Typography>
+                                                            </Box>
+                                                        </Box>
+                                                    ) : (
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            Aucune ligne pour ce compte
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            );
+                                        })()}
+                                    </Box>
+                                ) : (
+                                    <Alert severity="success">Aucun compte avec anomalie de sens de solde</Alert>
+                                )
+                            ) : currentItem?.Type === 'SENS_ECRITURE' ? (
+                                // Mode SENS_ECRITURE - Regroupé par compte avec navigation
+                                anomalies.length > 0 && ecritureCurrentCompte ? (
+                                    <Box>
+                                        {(() => {
+                                            const groupedByCompte = {};
+                                            anomalies.forEach(anomalie => {
+                                                if (!Array.isArray(anomalie.journalLines)) return;
+                                                anomalie.journalLines.forEach(line => {
+                                                    const compte = line?.comptegen || line?.compteaux;
+                                                    if (!compte) return;
+                                                    if (!groupedByCompte[compte]) {
+                                                        groupedByCompte[compte] = { anomalies: [], allLines: [], allValidated: true };
+                                                    }
+                                                    if (!groupedByCompte[compte].anomalies.includes(anomalie)) {
+                                                        groupedByCompte[compte].anomalies.push(anomalie);
+                                                    }
+                                                    groupedByCompte[compte].allLines.push(line);
+                                                });
+                                                Object.keys(groupedByCompte).forEach(compte => {
+                                                    if (groupedByCompte[compte].anomalies.includes(anomalie) && !anomalie.valide) {
+                                                        groupedByCompte[compte].allValidated = false;
+                                                    }
+                                                });
+                                            });
+
+                                            const testType = currentItem?.test?.toUpperCase();
+                                            const data = groupedByCompte[ecritureCurrentCompte];
+                                            if (!data) return <Alert severity="info">Aucune anomalie pour le compte {ecritureCurrentCompte}</Alert>;
+
+                                            const lines = data.allLines.filter(line => {
+                                                const debit = parseFloat(line.debit) || 0;
+                                                const credit = parseFloat(line.credit) || 0;
+                                                if (testType === 'CREDIT') return credit > 0;
+                                                if (testType === 'DEBIT') return debit > 0;
+                                                return true;
+                                            });
+
+                                            const anomaliesForCompte = data.anomalies;
+                                            const allValidated = data.allValidated;
+                                            const anomaliesToProcess = allValidated ? anomaliesForCompte : anomaliesForCompte.filter(a => !a.valide);
+
+                                            return (
+                                                <Box sx={{ mb: 3 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                        <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
+                                                            Anomalie de sens d&apos;écriture pour le compte &quot;{ecritureCurrentCompte}&quot;
+                                                        </Alert>
+                                                    </Box>
+
+                                                    {lines.length > 0 ? (
+                                                        <Box>
+                                                            <StandardDataGrid
+                                                                height={350}
+                                                                rows={lines.map((line, idx) => ({
+                                                                    id: line?.id ? `${line.id}-${idx}` : idx,
+                                                                    ...line,
+                                                                    _anomalie: anomalies
+                                                                }))}
+                                                                columns={[
+                                                                    {
+                                                                        field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => {
+                                                                            if (!params.value) return '-';
+
+                                                                            const parts = params.value.split('/'); // "21/04/2025"
+
+                                                                            if (parts.length === 3) {
+                                                                                const [day, month, year] = parts;
+                                                                                const date = new Date(`${day}-${month}-${year}`);
+
+                                                                                return isNaN(date.getTime())
+                                                                                    ? params.value
+                                                                                    : date.toLocaleDateString('fr-FR');
+                                                                            }
+
+                                                                            return params.value;
+                                                                        }
+                                                                    },
+                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                    { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                                    { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
+                                                                    {
+                                                                        field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                            params.value !== null && params.value !== undefined
+                                                                                ? formatMontant(params.value)
+                                                                                : '-'
+                                                                    },
+                                                                    {
+                                                                        field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                            params.value !== null && params.value !== undefined
+                                                                                ? formatMontant(params.value)
+                                                                                : '-'
+                                                                    },
+                                                                    { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
+                                                                    { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
+                                                                    { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={getAnomalyForLine(p.row)?.valide ? 'Oui' : 'Non'} color={getAnomalyForLine(p.row)?.valide ? 'success' : 'error'} size="small" /> },
+                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => getAnomalyForLine(p.row)?.commentaire || '-' },
+                                                                    {
+                                                                        field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => {
+                                                                            const lineAnomaly = getAnomalyForLine(p.row);
+                                                                            return (
+                                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
+                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
+                                                                                        <IconButton size="small" color="primary" onClick={() => handleCommentLine(p.row, lineAnomaly || p.row._anomalies[0])} ><CommentIcon fontSize="small" /></IconButton>
+
+                                                                                    </Tooltip>
+                                                                                    <Tooltip title={lineAnomaly?.valide ? 'Annuler la validation' : 'Valider'}>
+                                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, lineAnomaly || p.row._anomalies[0])} sx={{ color: lineAnomaly?.valide ? '#d32f2f' : '#10B981' }}>
+                                                                                            {lineAnomaly?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                </Box>
+                                                                            );
+                                                                        }
+                                                                    },
+                                                                ]}
+                                                            />
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, p: 1, backgroundColor: '#e3f2fd' }}>
+                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Débit: {lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
+                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Crédit: {lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
+                                                            </Box>
+                                                        </Box>
+                                                    ) : (
+                                                        <Typography variant="caption" color="text.secondary">Aucune ligne de journal pour ce compte</Typography>
+                                                    )}
+                                                </Box>
+                                            );
+                                        })()}
+                                    </Box>
+                                ) : (
+                                    <Alert severity="success">Aucun compte avec anomalie de sens d&apos;écriture</Alert>
+                                )
+                            ) : currentItem?.Type === 'UTIL_CPT_TVA' ? (
+                                // Mode UTIL_CPT_TVA - Affichage par écriture avec navigation, exclure compte 28
+                                tvaFilteredAnomalies.length > 0 ? (
+                                    <Box>
+                                        {/* Afficher uniquement l'écriture courante */}
+                                        {(() => {
+                                            const anomalie = tvaCurrentEcriture;
+                                            if (!anomalie) return null;
+                                            const lines = anomalie.journalLines || [];
+                                            return (
+                                                <Box sx={{ mb: 3 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                                        <Alert severity="warning" sx={{ flex: 1 }}>
+                                                            <strong>Écriture</strong> - {anomalie.message}
+                                                        </Alert>
+                                                    </Box>
+
+                                                    <StandardDataGrid
+                                                        height={350}
+                                                        rows={lines.map((line, idx) => ({
+                                                            id: line?.id || idx,
+                                                            ...line,
+                                                            _anomalie: anomalie
+                                                        }))}
+                                                        columns={[
+                                                            {
+                                                                field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => params.value || '-'
+                                                            },
+                                                            {
+                                                                field: 'comptegen', headerName: 'Compte', width: 120, renderCell: p => (
+                                                                    <Box sx={{ fontWeight: (p.row.comptegen?.startsWith('2') || p.row.compteaux?.startsWith('2')) ? 700 : 400, color: (p.row.comptegen?.startsWith('2') || p.row.compteaux?.startsWith('2')) ? 'primary.main' : 'inherit' }}>
+                                                                        {p.row.comptegen || p.row.compteaux || '-'}
+                                                                        {((p.row.comptegen?.startsWith('4456') || p.row.compteaux?.startsWith('4456')) && <Chip label="TVA" size="small" color="info" sx={{ ml: 1, fontSize: '0.7rem' }} />)}
+                                                                    </Box>
+                                                                )
+                                                            },
+                                                            { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                            { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
+                                                            {
+                                                                field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                    params.value !== null && params.value !== undefined
+                                                                        ? formatMontant(params.value)
+                                                                        : '-'
+                                                            },
+                                                            {
+                                                                field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                    params.value !== null && params.value !== undefined
+                                                                        ? formatMontant(params.value)
+                                                                        : '-'
+                                                            },
+                                                            { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
+                                                            { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
+                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
+                                                            { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
+                                                            {
+                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
+                                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                                        <Tooltip title="Ajouter/Modifier commentaire">
+                                                                            <IconButton size="small" color="primary" onClick={() => handleCommentAnomaly(p.row._anomalie)} ><CommentIcon fontSize="small" /></IconButton>
+                                                                        </Tooltip>
+                                                                        <Tooltip title={p.row._anomalie.valide ? "Annuler la validation" : "Valider l'anomalie"}>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                onClick={() => handleToggleValidateAnomaly(p.row._anomalie)}
+                                                                                color={p.row._anomalie.valide ? "error" : "success"}
+                                                                            >
+                                                                                {p.row._anomalie.valide ? (
+                                                                                    <Cancel fontSize="small" />
+                                                                                ) : (
+                                                                                    <CheckCircle fontSize="small" />
+                                                                                )}
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </Stack>
+                                                                )
+                                                            },
+                                                        ]}
+                                                    />
+                                                </Box>
+                                            );
+                                        })()}
+                                    </Box>
+                                ) : (
+                                    <Alert severity="success">Aucune anomalie de TVA détectée</Alert>
+                                )
+                            ) : (currentItem?.Type && String(currentItem.Type).toUpperCase().includes('IMMO')) ? (
+                                // Mode IMMO (IMMOB, IMMO_CHARGE, etc.) - Afficher une seule anomalie par compte avec navigation
+                                anomalies.length > 0 ? (
+                                    <Box>
+                                        {(() => {
+                                            // Récupérer toutes les anomalies pour le compte courant
+                                            const currentCompte = immobComptesList[immobSafeCompteIndex];
+                                            const currentAnomalies = anomalies.filter(a =>
+                                                a.compteNum === currentCompte ||
+                                                a.journalLines?.[0]?.comptegen === currentCompte ||
+                                                a.compte === currentCompte
+                                            );
+
+                                            if (currentAnomalies.length === 0) return <Alert severity="info">Aucune anomalie pour le compte {currentCompte}</Alert>;
+
+                                            const isImmoCharge = String(currentItem?.Type).toUpperCase() === 'IMMO_CHARGE';
+                                            const allValidatedForCompte = currentAnomalies.every(a => a.valide);
+
+                                            return (
+                                                <Box>
+
+                                                    {isImmoCharge && (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                                            <Alert severity="warning" sx={{ flex: 1, fontSize: '0.85rem', py: 0.5 }}>
+                                                                Actions pour le compte {currentCompte}
+                                                            </Alert>
+                                                        </Box>
+                                                    )}
+
+                                                    {isImmoCharge ? (
+                                                        // Mode IMMO_CHARGE - Un seul tableau avec toutes les lignes comme ATYPIQUE
+                                                        (() => {
+                                                            // Construire la liste de toutes les lignes avec leur anomalie associée
+                                                            const allLinesWithAnomaly = [];
+                                                            currentAnomalies.forEach(anomaly => {
+                                                                if (Array.isArray(anomaly.journalLines)) {
+                                                                    anomaly.journalLines.forEach(line => {
+                                                                        allLinesWithAnomaly.push({
+                                                                            ...line,
+                                                                            _anomaly: anomaly
+                                                                        });
+                                                                    });
+                                                                }
+                                                            });
+
+                                                            if (allLinesWithAnomaly.length === 0) {
+                                                                return <Alert severity="info">Aucune ligne pour ce compte</Alert>;
+                                                            }
+
+                                                            return (
+                                                                <StandardDataGrid
+                                                                    rows={allLinesWithAnomaly.map((line, idx) => ({
+                                                                        id: line?.id || idx,
+                                                                        ...line,
+                                                                        _anomaly: line._anomaly
+                                                                    }))}
+                                                                    columns={[
+                                                                        { field: 'dateecriture', headerName: 'Date', width: 110, valueGetter: p => p.row.dateecriture ? new Date(p.row.dateecriture).toLocaleDateString('fr-FR') : '-' },
+                                                                        { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                        { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                                        { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
+                                                                        { field: 'debit', headerName: 'Débit', width: 110, align: 'right', valueGetter: p => p.row.debit ? formatMontant(p.row.debit) : '-' },
+                                                                        { field: 'credit', headerName: 'Crédit', width: 110, align: 'right', valueGetter: p => p.row.credit ? formatMontant(p.row.credit) : '-' },
+                                                                        { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
+                                                                        { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
+                                                                        { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomaly?.valide ? 'Oui' : 'Non'} color={p.row._anomaly?.valide ? 'success' : 'error'} size="small" /> },
+                                                                        { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomaly?.commentaire || '-' },
+                                                                        {
+                                                                            field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
+                                                                                <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
+                                                                                        <IconButton size="small" color="primary" onClick={() => p.row._anomaly && handleCommentAnomaly(p.row._anomaly)} ><CommentIcon fontSize="small" /></IconButton>
+                                                                                    </Tooltip>
+                                                                                    <Tooltip title={p.row._anomaly?.valide ? "Annuler la validation" : "Valider l'anomalie"}>
+                                                                                        <IconButton
+                                                                                            size="small"
+                                                                                            onClick={() => p.row._anomaly && handleToggleValidateAnomaly(p.row._anomaly)}
+                                                                                            color={p.row._anomaly?.valide ? "error" : "success"}
+                                                                                        >
+                                                                                            {p.row._anomaly?.valide ? (
+                                                                                                <Cancel fontSize="small" />
+                                                                                            ) : (
+                                                                                                <CheckCircle fontSize="small" />
+                                                                                            )}
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                </Stack>
+                                                                            )
+                                                                        },
+                                                                    ]}
+                                                                />
+                                                            );
+                                                        })()
+                                                    ) : (
+                                                        // Mode IMMO standard - Affichage par anomalie
+                                                        currentAnomalies.map((currentAnomaly, idx) => (
+                                                            <Box key={currentAnomaly.id || idx} sx={{ mb: 3 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                                                    <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
+                                                                        {currentAnomaly.message || 'Anomalie'}
+                                                                    </Alert>
+                                                                    <>
+                                                                        <Tooltip title={currentAnomaly.valide ? "Annuler la validation" : "Valider"}>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                onClick={() => handleToggleValidateAnomaly(currentAnomaly)}
+                                                                                color={currentAnomaly.valide ? "error" : "success"}
+                                                                            >
+                                                                                {currentAnomaly.valide ? (
+                                                                                    <Cancel fontSize="small" />
+                                                                                ) : (
+                                                                                    <CheckCircle fontSize="small" />
+                                                                                )}
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                        <Tooltip title="Ajouter/Modifier commentaire">
+                                                                            <IconButton
+                                                                                variant="outlined"
+                                                                                size="small"
+                                                                                onClick={() => handleCommentAnomaly(currentAnomaly)}
+                                                                                color="primary"
+                                                                            >
+                                                                                <CommentIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </>
+                                                                </Box>
+
+                                                                {/* Tableau des lignes de l'anomalie courante */}
+                                                                {currentAnomaly.journalLines?.length > 0 ? (
+                                                                    <StandardDataGrid
+                                                                        height={350}
+                                                                        rows={currentAnomaly.journalLines.map((line, idx) => ({
+                                                                            id: line?.id || idx,
+                                                                            ...line,
+                                                                            _anomalie: currentAnomaly
+                                                                        }))}
+                                                                        columns={[
+                                                                            {
+                                                                                field: 'dateecriture', headerName: 'Date', width: 100, renderCell: (params) =>
+                                                                                    params.row?.dateecriture
+                                                                                        ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
+                                                                                        : '-'
+                                                                            },
+                                                                            { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                            { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
+                                                                            { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
+                                                                            {
+                                                                                field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                                    params.value !== null && params.value !== undefined
+                                                                                        ? formatMontant(params.value)
+                                                                                        : '-'
+                                                                            },
+                                                                            {
+                                                                                field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                                    params.value !== null && params.value !== undefined
+                                                                                        ? formatMontant(params.value)
+                                                                                        : '-'
+                                                                            },
+                                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
+                                                                            { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
+                                                                            {
+                                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
+                                                                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
+                                                                                        <Tooltip title="Ajouter/Modifier commentaire">
+                                                                                            <IconButton
+                                                                                                size="small" color="primary"
+                                                                                                onClick={() => handleCommentAnomaly(p.row._anomalie)} >
+                                                                                                <CommentIcon fontSize="small" />
+                                                                                            </IconButton>
+                                                                                        </Tooltip>
+                                                                                        <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
+                                                                                            <IconButton size="small" onClick={() => handleValidateLine(p.row, p.row._anomalie)} sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}>
+                                                                                                {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
+                                                                                            </IconButton>
+                                                                                        </Tooltip>
+                                                                                    </Box>
+                                                                                )
+                                                                            },
+                                                                        ]}
+                                                                    />
+                                                                ) : (
+                                                                    <Alert severity="info">Aucune ligne pour cette anomalie</Alert>
+                                                                )}
+                                                            </Box>
+                                                        ))
+                                                    )}
+                                                </Box>
+                                            );
+                                        })()}
+                                    </Box>
+                                ) : (
+                                    <Alert severity="success">Aucune anomalie détectée pour ce contrôle</Alert>
+                                )
+                            ) : String(currentItem?.Type || '').trim().toUpperCase() === 'ATYPIQUE' ? (
+                                // Mode ATYPIQUE - Affichage paginé par compte avec tableau unique
+                                anomalies.length > 0 ? (
+                                    <Box>
+                                        {!atypiqueCurrentData ? (
+                                            <Alert severity="info">Aucune donnée à afficher pour ce contrôle</Alert>
+                                        ) : (
+                                            <Box>
+                                                {(() => {
+                                                    const globalAnomaly = atypiqueCurrentData.anomalies?.[0];
+                                                    if (!globalAnomaly) return null;
+                                                    return (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                            <Alert severity="warning" sx={{ flex: 1, fontSize: '0.85rem', py: 0.5 }}>
+                                                                {globalAnomaly.message || `Anomalie atypique (${atypiqueCurrentData.anomalies.length})`}
+                                                            </Alert>
+
+                                                        </Box>
+                                                    );
+                                                })()}
+
+                                                {atypiqueCurrentData.allLines?.length > 0 ? (
+                                                    <StandardDataGrid
+                                                        height={350}
+                                                        rows={atypiqueCurrentData.allLines.map((line, idx) => ({
+                                                            id: line?.id !== undefined ? `${line.id}-${idx}` : idx,
+                                                            ...line,
+                                                            _relatedAnomaly: atypiqueCurrentData.anomalies.find(a => a.journalLines?.some(jl => jl.id === line.id))
+                                                        }))}
+                                                        columns={[
+                                                            {
+                                                                field: 'dateecriture', headerName: 'Date', width: 100, renderCell: (params) =>
+                                                                    params.row?.dateecriture
+                                                                        ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
+                                                                        : '-'
+                                                            },
+                                                            { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                            { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
+                                                            { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
+                                                            {
+                                                                field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                    params.value !== null && params.value !== undefined
+                                                                        ? formatMontant(params.value)
+                                                                        : '-'
+                                                            },
+                                                            {
+                                                                field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
+                                                                    params.value !== null && params.value !== undefined
+                                                                        ? formatMontant(params.value)
+                                                                        : '-'
+                                                            },
+                                                            { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
+                                                            { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
+                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._relatedAnomaly?.valide ? 'Oui' : 'Non'} color={p.row._relatedAnomaly?.valide ? 'success' : 'error'} size="small" /> },
+                                                            { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._relatedAnomaly?.commentaire || '-' },
+                                                            {
+                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
+                                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                                        <Tooltip title="Ajouter/Modifier commentaire">
+                                                                            <IconButton size="small" color="primary" disabled={!p.row._relatedAnomaly} onClick={() => p.row._relatedAnomaly && handleCommentAnomaly(p.row._relatedAnomaly)} ><CommentIcon fontSize="small" /></IconButton>
+                                                                        </Tooltip>
+                                                                        <Tooltip
+                                                                            title={
+                                                                                !p.row._relatedAnomaly
+                                                                                    ? "Aucune anomalie liée"
+                                                                                    : p.row._relatedAnomaly?.valide
+                                                                                        ? "Annuler la validation"
+                                                                                        : "Valider"
+                                                                            }
+                                                                        >
+                                                                            <span>
+                                                                                {/* span obligatoire pour que Tooltip fonctionne avec disabled */}
+                                                                                <Tooltip
+                                                                                    title={
+                                                                                        !p.row._relatedAnomaly
+                                                                                            ? "Aucune anomalie liée"
+                                                                                            : p.row._relatedAnomaly?.valide
+                                                                                                ? "Annuler la validation"
+                                                                                                : "Valider"
+                                                                                    }
+                                                                                >
+                                                                                    <span>
+                                                                                        <IconButton
+                                                                                            size="small"
+                                                                                            color={p.row._relatedAnomaly?.valide ? "error" : "success"}
+                                                                                            disabled={!p.row._relatedAnomaly}
+                                                                                            onClick={() =>
+                                                                                                p.row._relatedAnomaly &&
+                                                                                                handleToggleValidateAnomaly(p.row._relatedAnomaly)
+                                                                                            }
+                                                                                        >
+                                                                                            {p.row._relatedAnomaly?.valide ? (
+                                                                                                <Cancel fontSize="small" />
+                                                                                            ) : (
+                                                                                                <CheckCircle fontSize="small" />
+                                                                                            )}
+                                                                                        </IconButton>
+                                                                                    </span>
+                                                                                </Tooltip>
+                                                                            </span>
+                                                                        </Tooltip>
+                                                                    </Stack>
+                                                                )
+                                                            },
+                                                        ]}
+                                                    />
+                                                ) : (
+                                                    <Alert severity="info">Aucune ligne pour ce compte</Alert>
+                                                )}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                ) : (
+                                    <Alert severity="success">Aucun montant atypique détecté</Alert>
+                                )
+                            ) : anomalies.length > 0 ? (
+                                // Mode par défaut (autres types)
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    {anomalies.map((anomalie) => (
+                                        <Box key={anomalie.id}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                                                 <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
-                                                    {anomalie.message || 'Anomalie d\'existence'}
+                                                    {anomalie.message || 'Anomalie'}
                                                 </Alert>
                                             </Box>
+
                                             {anomalie.journalLines?.length > 0 ? (
                                                 <StandardDataGrid
                                                     height={350}
@@ -1885,7 +2673,10 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                     }))}
                                                     columns={[
                                                         {
-                                                            field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => params.value || '-'
+                                                            field: 'dateecriture', headerName: 'Date', width: 100, renderCell: (params) =>
+                                                                params.row?.dateecriture
+                                                                    ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
+                                                                    : '-'
                                                         },
                                                         { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
                                                         { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
@@ -1902,824 +2693,33 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     ? formatMontant(params.value)
                                                                     : '-'
                                                         },
-                                                        { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
-                                                        { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                        { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie?.valide ? 'Oui' : 'Non'} color={p.row._anomalie?.valide ? 'success' : 'error'} size="small" /> },
-                                                        {
-                                                            field: 'commentaire',
-                                                            headerName: 'Commentaire',
-                                                            width: 140,
-                                                            valueGetter: p => p.row._anomalie?.commentaire || '-'
-                                                        },
-                                                        {
-                                                            field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            color="primary"
-                                                                            onClick={() => handleCommentAnomaly(p.row._anomalie)} >
-                                                                            <CommentIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-
-                                                                    <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            onClick={() => handleValidateLine(p.row, p.row._anomalie)}
-                                                                            sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}
-                                                                        >
-                                                                            {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                </Box>
-                                                            )
-                                                        },
-                                                    ]}
-                                                />
-                                            ) : (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Aucune ligne de journal pour ce compte
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    ))}
-                            </Box>
-                        ) : (
-                            // Fallback: afficher depuis details si pas d'anomalies dans table_controle_anomalies
-                            (() => {
-                                let details = [];
-                                if (currentItem?.details) {
-                                    try {
-                                        details = JSON.parse(currentItem.details);
-                                    } catch (e) {
-                                        // Not JSON
-                                    }
-                                }
-                                const anomalie = details.find(d => d.anomalie || d.message?.includes('Absence'));
-                                if (anomalie?.anomalie) {
-                                    return <Alert severity="warning">{anomalie.anomalie}</Alert>;
-                                } else if (anomalie?.message) {
-                                    return <Alert severity="success">{anomalie.message}</Alert>;
-                                }
-                                return <Alert severity="info">Aucune information</Alert>;
-                            })()
-                        )) : currentItem?.Type === 'SENS_SOLDE' ? (
-                            // Mode SENS_SOLDE - Regroupé par compte avec navigation
-                            anomalies.length > 0 && soldeCurrentCompte ? (
-                                <Box>
-                                    {(() => {
-                                        // Regrouper les anomalies par compte (depuis journalLines)
-                                        const groupedByCompte = {};
-                                        anomalies.forEach(anomalie => {
-                                            if (!Array.isArray(anomalie.journalLines)) return;
-
-                                            anomalie.journalLines.forEach(line => {
-                                                const compte = line?.comptegen || line?.compteaux;
-                                                if (!compte) return;
-
-                                                if (!groupedByCompte[compte]) {
-                                                    groupedByCompte[compte] = {
-                                                        anomalies: [],
-                                                        allLines: [],
-                                                        allValidated: true
-                                                    };
-                                                }
-                                                // Ajouter l'anomalie une seule fois par compte
-                                                if (!groupedByCompte[compte].anomalies.includes(anomalie)) {
-                                                    groupedByCompte[compte].anomalies.push(anomalie);
-                                                }
-                                                // Ajouter cette ligne
-                                                groupedByCompte[compte].allLines.push(line);
-                                            });
-
-                                            // Mettre à jour allValidated
-                                            Object.keys(groupedByCompte).forEach(compte => {
-                                                if (groupedByCompte[compte].anomalies.includes(anomalie) && !anomalie.valide) {
-                                                    groupedByCompte[compte].allValidated = false;
-                                                }
-                                            });
-                                        });
-
-                                        const testType = currentItem?.test?.toUpperCase();
-                                        const data = groupedByCompte[soldeCurrentCompte];
-
-                                        if (!data) return <Alert severity="info">Aucune anomalie pour le compte {soldeCurrentCompte}</Alert>;
-
-                                        const lines = data.allLines;
-                                        const anomaliesForCompte = data.anomalies;
-                                        const allValidated = data.allValidated;
-
-                                        const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
-                                        const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
-                                        const solde = totalDebit - totalCredit;
-                                        const soldeNormalise = Math.abs(solde) < 0.01 ? 0 : solde;
-
-                                        let detailMessage = `Le compte "${soldeCurrentCompte}" doit avoir un solde `;
-                                        if (testType === 'DEBITEUR') {
-                                            detailMessage += 'débiteur';
-                                        } else if (testType === 'CREDITEUR') {
-                                            detailMessage += 'créditeur';
-                                        } else if (testType === 'NULL') {
-                                            detailMessage += 'nul';
-                                        } else {
-                                            detailMessage = `Anomalie de sens de solde pour le compte "${soldeCurrentCompte}"`;
-                                        }
-
-                                        const anomaliesToProcess = allValidated
-                                            ? anomaliesForCompte
-                                            : anomaliesForCompte.filter(a => !a.valide);
-
-                                        return (
-                                            <Box sx={{ mb: 3 }}>
-                                                {/* Boutons et message */}
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                                    <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
-                                                        {detailMessage}
-                                                    </Alert>
-                                                </Box>
-
-                                                {lines.length > 0 ? (
-                                                    <Box>
-                                                        <StandardDataGrid
-                                                            height={350}
-                                                            rows={lines.map((line, idx) => ({
-                                                                id: line?.id || idx,
-                                                                ...line,
-                                                                _anomalies: anomaliesForCompte
-                                                            }))}
-                                                            columns={[
-                                                                {
-                                                                    field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => {
-                                                                        if (!params.value) return '-';
-
-                                                                        const parts = params.value.split('/'); // "21/04/2025"
-
-                                                                        if (parts.length === 3) {
-                                                                            const [day, month, year] = parts;
-                                                                            const date = new Date(`${day}-${month}-${year}`);
-
-                                                                            return isNaN(date.getTime())
-                                                                                ? params.value
-                                                                                : date.toLocaleDateString('fr-FR');
-                                                                        }
-
-                                                                        return params.value;
-                                                                    }
-                                                                },
-                                                                { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
-                                                                { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
-                                                                {
-                                                                    field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                        params.value !== null && params.value !== undefined
-                                                                            ? formatMontant(params.value)
-                                                                            : '-'
-                                                                },
-                                                                {
-                                                                    field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                        params.value !== null && params.value !== undefined
-                                                                            ? formatMontant(params.value)
-                                                                            : '-'
-                                                                },
-                                                                { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
-                                                                { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                                { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={getAnomalyForLine(p.row)?.valide ? 'Oui' : 'Non'} color={getAnomalyForLine(p.row)?.valide ? 'success' : 'error'} size="small" /> },
-                                                                { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => getAnomalyForLine(p.row)?.commentaire || '-' },
-                                                                {
-                                                                    field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => {
-                                                                        const lineAnomaly = getAnomalyForLine(p.row);
-                                                                        return (
-                                                                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                                <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                    <IconButton size="small" color="primary" onClick={() => handleCommentLine(p.row, lineAnomaly || p.row._anomalies[0])} ><CommentIcon fontSize="small" /></IconButton>
-
-                                                                                </Tooltip>
-                                                                                <Tooltip title={lineAnomaly?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                            <IconButton size="small" onClick={() => handleValidateLine(p.row, lineAnomaly || p.row._anomalies[0])} sx={{ color: lineAnomaly?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                                {lineAnomaly?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                            </Box>
-                                                                        );
-                                                                    }
-                                                                },
-                                                            ]}
-                                                        />
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, p: 1, backgroundColor: '#e3f2fd' }}>
-                                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Débit: {totalDebit.toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
-                                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Crédit: {totalCredit.toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
-                                                        </Box>
-                                                        <Box sx={{ p: 1, backgroundColor: '#fff3e0' }}>
-                                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>Solde: {soldeNormalise > 0 ? `Débiteur: ${soldeNormalise.toFixed(2)}` : soldeNormalise < 0 ? `Créditeur: ${Math.abs(soldeNormalise).toFixed(2)}` : 'Solde nul'}</Typography>
-                                                        </Box>
-                                                    </Box>
-                                                ) : (
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        Aucune ligne pour ce compte
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        );
-                                    })()}
-                                </Box>
-                            ) : (
-                                <Alert severity="success">Aucun compte avec anomalie de sens de solde</Alert>
-                            )
-                        ) : currentItem?.Type === 'SENS_ECRITURE' ? (
-                            // Mode SENS_ECRITURE - Regroupé par compte avec navigation
-                            anomalies.length > 0 && ecritureCurrentCompte ? (
-                                <Box>
-                                    {(() => {
-                                        const groupedByCompte = {};
-                                        anomalies.forEach(anomalie => {
-                                            if (!Array.isArray(anomalie.journalLines)) return;
-                                            anomalie.journalLines.forEach(line => {
-                                                const compte = line?.comptegen || line?.compteaux;
-                                                if (!compte) return;
-                                                if (!groupedByCompte[compte]) {
-                                                    groupedByCompte[compte] = { anomalies: [], allLines: [], allValidated: true };
-                                                }
-                                                if (!groupedByCompte[compte].anomalies.includes(anomalie)) {
-                                                    groupedByCompte[compte].anomalies.push(anomalie);
-                                                }
-                                                groupedByCompte[compte].allLines.push(line);
-                                            });
-                                            Object.keys(groupedByCompte).forEach(compte => {
-                                                if (groupedByCompte[compte].anomalies.includes(anomalie) && !anomalie.valide) {
-                                                    groupedByCompte[compte].allValidated = false;
-                                                }
-                                            });
-                                        });
-
-                                        const testType = currentItem?.test?.toUpperCase();
-                                        const data = groupedByCompte[ecritureCurrentCompte];
-                                        if (!data) return <Alert severity="info">Aucune anomalie pour le compte {ecritureCurrentCompte}</Alert>;
-
-                                        const lines = data.allLines.filter(line => {
-                                            const debit = parseFloat(line.debit) || 0;
-                                            const credit = parseFloat(line.credit) || 0;
-                                            if (testType === 'CREDIT') return credit > 0;
-                                            if (testType === 'DEBIT') return debit > 0;
-                                            return true;
-                                        });
-
-                                        const anomaliesForCompte = data.anomalies;
-                                        const allValidated = data.allValidated;
-                                        const anomaliesToProcess = allValidated ? anomaliesForCompte : anomaliesForCompte.filter(a => !a.valide);
-
-                                        return (
-                                            <Box sx={{ mb: 3 }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                                    <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
-                                                        Anomalie de sens d&apos;écriture pour le compte &quot;{ecritureCurrentCompte}&quot;
-                                                    </Alert>
-                                                </Box>
-
-                                                {lines.length > 0 ? (
-                                                    <Box>
-                                                        <StandardDataGrid
-                                                            height={350}
-                                                            rows={lines.map((line, idx) => ({
-                                                                id: line?.id ? `${line.id}-${idx}` : idx,
-                                                                ...line,
-                                                                _anomalie: anomalies
-                                                            }))}
-                                                            columns={[
-                                                                {
-                                                                    field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => {
-                                                                        if (!params.value) return '-';
-
-                                                                        const parts = params.value.split('/'); // "21/04/2025"
-
-                                                                        if (parts.length === 3) {
-                                                                            const [day, month, year] = parts;
-                                                                            const date = new Date(`${day}-${month}-${year}`);
-
-                                                                            return isNaN(date.getTime())
-                                                                                ? params.value
-                                                                                : date.toLocaleDateString('fr-FR');
-                                                                        }
-
-                                                                        return params.value;
-                                                                    }
-                                                                },
-                                                                { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
-                                                                { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
-                                                                {
-                                                                    field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                        params.value !== null && params.value !== undefined
-                                                                            ? formatMontant(params.value)
-                                                                            : '-'
-                                                                },
-                                                                {
-                                                                    field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                        params.value !== null && params.value !== undefined
-                                                                            ? formatMontant(params.value)
-                                                                            : '-'
-                                                                },
-                                                                { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
-                                                                { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                                { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={getAnomalyForLine(p.row)?.valide ? 'Oui' : 'Non'} color={getAnomalyForLine(p.row)?.valide ? 'success' : 'error'} size="small" /> },
-                                                                { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => getAnomalyForLine(p.row)?.commentaire || '-' },
-                                                                {
-                                                                    field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => {
-                                                                        const lineAnomaly = getAnomalyForLine(p.row);
-                                                                        return (
-                                                                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                                <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                    <IconButton size="small" color="primary" onClick={() => handleCommentLine(p.row, lineAnomaly || p.row._anomalies[0])} ><CommentIcon fontSize="small" /></IconButton>
-
-                                                                                </Tooltip>
-                                                                                <Tooltip title={lineAnomaly?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                            <IconButton size="small" onClick={() => handleValidateLine(p.row, lineAnomaly || p.row._anomalies[0])} sx={{ color: lineAnomaly?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                                {lineAnomaly?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                            </Box>
-                                                                        );
-                                                                    }
-                                                                },
-                                                            ]}
-                                                        />
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, p: 1, backgroundColor: '#e3f2fd' }}>
-                                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Débit: {lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
-                                                            <Typography variant="caption" sx={{ fontWeight: 600 }}>Total Crédit: {lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }).replace(/\u00A0/g, ' ')}</Typography>
-                                                        </Box>
-                                                    </Box>
-                                                ) : (
-                                                    <Typography variant="caption" color="text.secondary">Aucune ligne de journal pour ce compte</Typography>
-                                                )}
-                                            </Box>
-                                        );
-                                    })()}
-                                </Box>
-                            ) : (
-                                <Alert severity="success">Aucun compte avec anomalie de sens d&apos;écriture</Alert>
-                            )
-                        ) : currentItem?.Type === 'UTIL_CPT_TVA' ? (
-                            // Mode UTIL_CPT_TVA - Affichage par écriture avec navigation, exclure compte 28
-                            tvaFilteredAnomalies.length > 0 ? (
-                                <Box>
-                                    {/* Afficher uniquement l'écriture courante */}
-                                    {(() => {
-                                        const anomalie = tvaCurrentEcriture;
-                                        if (!anomalie) return null;
-                                        const lines = anomalie.journalLines || [];
-                                        return (
-                                            <Box sx={{ mb: 3 }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                                                    <Alert severity="warning" sx={{ flex: 1 }}>
-                                                        <strong>Écriture</strong> - {anomalie.message}
-                                                    </Alert>
-                                                </Box>
-
-                                                <StandardDataGrid
-                                                    height={350}
-                                                    rows={lines.map((line, idx) => ({
-                                                        id: line?.id || idx,
-                                                        ...line,
-                                                        _anomalie: anomalie
-                                                    }))}
-                                                    columns={[
-                                                        {
-                                                            field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => params.value || '-'
-                                                        },
-                                                        {
-                                                            field: 'comptegen', headerName: 'Compte', width: 120, renderCell: p => (
-                                                                <Box sx={{ fontWeight: (p.row.comptegen?.startsWith('2') || p.row.compteaux?.startsWith('2')) ? 700 : 400, color: (p.row.comptegen?.startsWith('2') || p.row.compteaux?.startsWith('2')) ? 'primary.main' : 'inherit' }}>
-                                                                    {p.row.comptegen || p.row.compteaux || '-'}
-                                                                    {((p.row.comptegen?.startsWith('4456') || p.row.compteaux?.startsWith('4456')) && <Chip label="TVA" size="small" color="info" sx={{ ml: 1, fontSize: '0.7rem' }} />)}
-                                                                </Box>
-                                                            )
-                                                        },
-                                                        { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
-                                                        { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
-                                                        {
-                                                            field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                params.value !== null && params.value !== undefined
-                                                                    ? formatMontant(params.value)
-                                                                    : '-'
-                                                        },
-                                                        {
-                                                            field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                params.value !== null && params.value !== undefined
-                                                                    ? formatMontant(params.value)
-                                                                    : '-'
-                                                        },
-                                                        { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
-                                                        { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
                                                         { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
                                                         { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
                                                         {
                                                             field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
+                                                                    <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
+                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, p.row._anomalie)} sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}>
+                                                                            {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
+                                                                        </IconButton>
+                                                                    </Tooltip>
                                                                     <Tooltip title="Ajouter/Modifier commentaire">
                                                                         <IconButton size="small" color="primary" onClick={() => handleCommentAnomaly(p.row._anomalie)} ><CommentIcon fontSize="small" /></IconButton>
                                                                     </Tooltip>
-                                                                    <Tooltip title={p.row._anomalie.valide ? "Annuler la validation" : "Valider l'anomalie"}>
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            onClick={() => handleToggleValidateAnomaly(p.row._anomalie)}
-                                                                            color={p.row._anomalie.valide ? "error" : "success"}
-                                                                        >
-                                                                            {p.row._anomalie.valide ? (
-                                                                                <Cancel fontSize="small" />
-                                                                            ) : (
-                                                                                <CheckCircle fontSize="small" />
-                                                                            )}
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                </Stack>
+                                                                </Box>
                                                             )
                                                         },
                                                     ]}
                                                 />
-                                            </Box>
-                                        );
-                                    })()}
-                                </Box>
-                            ) : (
-                                <Alert severity="success">Aucune anomalie de TVA détectée</Alert>
-                            )
-                        ) : (currentItem?.Type && String(currentItem.Type).toUpperCase().includes('IMMO')) ? (
-                            // Mode IMMO (IMMOB, IMMO_CHARGE, etc.) - Afficher une seule anomalie par compte avec navigation
-                            anomalies.length > 0 ? (
-                                <Box>
-                                    {(() => {
-                                        // Récupérer toutes les anomalies pour le compte courant
-                                        const currentCompte = immobComptesList[immobSafeCompteIndex];
-                                        const currentAnomalies = anomalies.filter(a =>
-                                            a.compteNum === currentCompte ||
-                                            a.journalLines?.[0]?.comptegen === currentCompte ||
-                                            a.compte === currentCompte
-                                        );
-
-                                        if (currentAnomalies.length === 0) return <Alert severity="info">Aucune anomalie pour le compte {currentCompte}</Alert>;
-
-                                        const isImmoCharge = String(currentItem?.Type).toUpperCase() === 'IMMO_CHARGE';
-                                        const allValidatedForCompte = currentAnomalies.every(a => a.valide);
-
-                                        return (
-                                            <Box>
-
-                                                {isImmoCharge && (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                                                        <Alert severity="warning" sx={{ flex: 1, fontSize: '0.85rem', py: 0.5 }}>
-                                                            Actions pour le compte {currentCompte}
-                                                        </Alert>
-                                                    </Box>
-                                                )}
-
-                                                {isImmoCharge ? (
-                                                    // Mode IMMO_CHARGE - Un seul tableau avec toutes les lignes comme ATYPIQUE
-                                                    (() => {
-                                                        // Construire la liste de toutes les lignes avec leur anomalie associée
-                                                        const allLinesWithAnomaly = [];
-                                                        currentAnomalies.forEach(anomaly => {
-                                                            if (Array.isArray(anomaly.journalLines)) {
-                                                                anomaly.journalLines.forEach(line => {
-                                                                    allLinesWithAnomaly.push({
-                                                                        ...line,
-                                                                        _anomaly: anomaly
-                                                                    });
-                                                                });
-                                                            }
-                                                        });
-
-                                                        if (allLinesWithAnomaly.length === 0) {
-                                                            return <Alert severity="info">Aucune ligne pour ce compte</Alert>;
-                                                        }
-
-                                                        return (
-                                                            <StandardDataGrid
-                                                                rows={allLinesWithAnomaly.map((line, idx) => ({
-                                                                    id: line?.id || idx,
-                                                                    ...line,
-                                                                    _anomaly: line._anomaly
-                                                                }))}
-                                                                columns={[
-                                                                    { field: 'dateecriture', headerName: 'Date', width: 110, valueGetter: p => p.row.dateecriture ? new Date(p.row.dateecriture).toLocaleDateString('fr-FR') : '-' },
-                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                    { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
-                                                                    { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
-                                                                    { field: 'debit', headerName: 'Débit', width: 110, align: 'right', valueGetter: p => p.row.debit ? formatMontant(p.row.debit) : '-' },
-                                                                    { field: 'credit', headerName: 'Crédit', width: 110, align: 'right', valueGetter: p => p.row.credit ? formatMontant(p.row.credit) : '-' },
-                                                                    { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
-                                                                    { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                                    { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomaly?.valide ? 'Oui' : 'Non'} color={p.row._anomaly?.valide ? 'success' : 'error'} size="small" /> },
-                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomaly?.commentaire || '-' },
-                                                                    {
-                                                                        field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                            <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                                                <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                    <IconButton size="small" color="primary" onClick={() => p.row._anomaly && handleCommentAnomaly(p.row._anomaly)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                                </Tooltip>
-                                                                                <Tooltip title={p.row._anomaly?.valide ? "Annuler la validation" : "Valider l'anomalie"}>
-                                                                                    <IconButton
-                                                                                        size="small"
-                                                                                        onClick={() => p.row._anomaly && handleToggleValidateAnomaly(p.row._anomaly)}
-                                                                                        color={p.row._anomaly?.valide ? "error" : "success"}
-                                                                                    >
-                                                                                        {p.row._anomaly?.valide ? (
-                                                                                            <Cancel fontSize="small" />
-                                                                                        ) : (
-                                                                                            <CheckCircle fontSize="small" />
-                                                                                        )}
-                                                                                    </IconButton>
-                                                                                </Tooltip>
-                                                                            </Stack>
-                                                                        )
-                                                                    },
-                                                                ]}
-                                                            />
-                                                        );
-                                                    })()
-                                                ) : (
-                                                    // Mode IMMO standard - Affichage par anomalie
-                                                    currentAnomalies.map((currentAnomaly, idx) => (
-                                                        <Box key={currentAnomaly.id || idx} sx={{ mb: 3 }}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                                                                <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
-                                                                    {currentAnomaly.message || 'Anomalie'}
-                                                                </Alert>
-                                                                <>
-                                                                    <Tooltip title={currentAnomaly.valide ? "Annuler la validation" : "Valider"}>
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            onClick={() => handleToggleValidateAnomaly(currentAnomaly)}
-                                                                            color={currentAnomaly.valide ? "error" : "success"}
-                                                                        >
-                                                                            {currentAnomaly.valide ? (
-                                                                                <Cancel fontSize="small" />
-                                                                            ) : (
-                                                                                <CheckCircle fontSize="small" />
-                                                                            )}
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                        <IconButton
-                                                                            variant="outlined"
-                                                                            size="small"
-                                                                            onClick={() => handleCommentAnomaly(currentAnomaly)}
-                                                                            color="primary"
-                                                                        >
-                                                                            <CommentIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                </>
-                                                            </Box>
-
-                                                            {/* Tableau des lignes de l'anomalie courante */}
-                                                            {currentAnomaly.journalLines?.length > 0 ? (
-                                                                <StandardDataGrid
-                                                                    height={350}
-                                                                    rows={currentAnomaly.journalLines.map((line, idx) => ({
-                                                                        id: line?.id || idx,
-                                                                        ...line,
-                                                                        _anomalie: currentAnomaly
-                                                                    }))}
-                                                                    columns={[
-                                                                        {
-                                                                            field: 'dateecriture', headerName: 'Date', width: 100, renderCell: (params) =>
-                                                                                params.row?.dateecriture
-                                                                                    ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
-                                                                                    : '-'
-                                                                        },
-                                                                        { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                                        { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
-                                                                        { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
-                                                                        {
-                                                                            field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                                params.value !== null && params.value !== undefined
-                                                                                    ? formatMontant(params.value)
-                                                                                    : '-'
-                                                                        },
-                                                                        {
-                                                                            field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                                params.value !== null && params.value !== undefined
-                                                                                    ? formatMontant(params.value)
-                                                                                    : '-'
-                                                                        },
-                                                                        { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
-                                                                        { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
-                                                                        {
-                                                                            field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                        <IconButton
-                                                                                            size="small" color="primary"
-                                                                                            onClick={() => handleCommentAnomaly(p.row._anomalie)} >
-                                                                                            <CommentIcon fontSize="small" />
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                    <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, p.row._anomalie)} sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                                            {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                </Box>
-                                                                            )
-                                                                        },
-                                                                    ]}
-                                                                />
-                                                            ) : (
-                                                                <Alert severity="info">Aucune ligne pour cette anomalie</Alert>
-                                                            )}
-                                                        </Box>
-                                                    ))
-                                                )}
-                                            </Box>
-                                        );
-                                    })()}
-                                </Box>
-                            ) : (
-                                <Alert severity="success">Aucune anomalie détectée pour ce contrôle</Alert>
-                            )
-                        ) : String(currentItem?.Type || '').trim().toUpperCase() === 'ATYPIQUE' ? (
-                            // Mode ATYPIQUE - Affichage paginé par compte avec tableau unique
-                            anomalies.length > 0 ? (
-                                <Box>
-                                    {!atypiqueCurrentData ? (
-                                        <Alert severity="info">Aucune donnée à afficher pour ce contrôle</Alert>
-                                    ) : (
-                                        <Box>
-                                            {(() => {
-                                                const globalAnomaly = atypiqueCurrentData.anomalies?.[0];
-                                                if (!globalAnomaly) return null;
-                                                return (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                                        <Alert severity="warning" sx={{ flex: 1, fontSize: '0.85rem', py: 0.5 }}>
-                                                            {globalAnomaly.message || `Anomalie atypique (${atypiqueCurrentData.anomalies.length})`}
-                                                        </Alert>
-
-                                                    </Box>
-                                                );
-                                            })()}
-                                        
-                                            {atypiqueCurrentData.allLines?.length > 0 ? (
-                                                <StandardDataGrid
-                                                    height={350}
-                                                    rows={atypiqueCurrentData.allLines.map((line, idx) => ({
-                                                        id: line?.id !== undefined ? `${line.id}-${idx}` : idx,
-                                                        ...line,
-                                                        _relatedAnomaly: atypiqueCurrentData.anomalies.find(a => a.journalLines?.some(jl => jl.id === line.id))
-                                                    }))}
-                                                    columns={[
-                                                        {
-                                                            field: 'dateecriture', headerName: 'Date', width: 100, renderCell: (params) =>
-                                                                params.row?.dateecriture
-                                                                    ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
-                                                                    : '-'
-                                                        },
-                                                        { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                        { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
-                                                        { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
-                                                        {
-                                                            field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                params.value !== null && params.value !== undefined
-                                                                    ? formatMontant(params.value)
-                                                                    : '-'
-                                                        },
-                                                        {
-                                                            field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                                params.value !== null && params.value !== undefined
-                                                                    ? formatMontant(params.value)
-                                                                    : '-'
-                                                        },
-                                                        { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
-                                                        { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                        { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._relatedAnomaly?.valide ? 'Oui' : 'Non'} color={p.row._relatedAnomaly?.valide ? 'success' : 'error'} size="small" /> },
-                                                        { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._relatedAnomaly?.commentaire || '-' },
-                                                        {
-                                                            field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                        <IconButton size="small" color="primary" disabled={!p.row._relatedAnomaly} onClick={() => p.row._relatedAnomaly && handleCommentAnomaly(p.row._relatedAnomaly)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                    </Tooltip>
-                                                                    <Tooltip
-                                                                        title={
-                                                                            !p.row._relatedAnomaly
-                                                                                ? "Aucune anomalie liée"
-                                                                                : p.row._relatedAnomaly?.valide
-                                                                                    ? "Annuler la validation"
-                                                                                    : "Valider"
-                                                                        }
-                                                                    >
-                                                                        <span>
-                                                                            {/* span obligatoire pour que Tooltip fonctionne avec disabled */}
-                                                                            <Tooltip
-                                                                                title={
-                                                                                    !p.row._relatedAnomaly
-                                                                                        ? "Aucune anomalie liée"
-                                                                                        : p.row._relatedAnomaly?.valide
-                                                                                            ? "Annuler la validation"
-                                                                                            : "Valider"
-                                                                                }
-                                                                            >
-                                                                                <span>
-                                                                                    <IconButton
-                                                                                        size="small"
-                                                                                        color={p.row._relatedAnomaly?.valide ? "error" : "success"}
-                                                                                        disabled={!p.row._relatedAnomaly}
-                                                                                        onClick={() =>
-                                                                                            p.row._relatedAnomaly &&
-                                                                                            handleToggleValidateAnomaly(p.row._relatedAnomaly)
-                                                                                        }
-                                                                                    >
-                                                                                        {p.row._relatedAnomaly?.valide ? (
-                                                                                            <Cancel fontSize="small" />
-                                                                                        ) : (
-                                                                                            <CheckCircle fontSize="small" />
-                                                                                        )}
-                                                                                    </IconButton>
-                                                                                </span>
-                                                                            </Tooltip>
-                                                                        </span>
-                                                                    </Tooltip>
-                                                                </Stack>
-                                                            )
-                                                        },
-                                                    ]}
-                                                />
-                                            ) : (
-                                                <Alert severity="info">Aucune ligne pour ce compte</Alert>
-                                            )}
+                                            ) : null}
                                         </Box>
-                                    )}
+                                    ))}
                                 </Box>
                             ) : (
-                                <Alert severity="success">Aucun montant atypique détecté</Alert>
-                            )
-                        ) : anomalies.length > 0 ? (
-                            // Mode par défaut (autres types)
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                {anomalies.map((anomalie) => (
-                                    <Box key={anomalie.id}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                            <Alert severity="warning" sx={{ flex: 1, fontSize: '0.9rem' }}>
-                                                {anomalie.message || 'Anomalie'}
-                                            </Alert>
-                                        </Box>
-
-                                        {anomalie.journalLines?.length > 0 ? (
-                                            <StandardDataGrid
-                                                height={350}
-                                                rows={anomalie.journalLines.map((line, idx) => ({
-                                                    id: line?.id || idx,
-                                                    ...line,
-                                                    _anomalie: anomalie
-                                                }))}
-                                                columns={[
-                                                    {
-                                                        field: 'dateecriture', headerName: 'Date', width: 100, renderCell: (params) =>
-                                                            params.row?.dateecriture
-                                                                ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
-                                                                : '-'
-                                                    },
-                                                    { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
-                                                    { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
-                                                    { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
-                                                    {
-                                                        field: 'debit', headerName: 'Débit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                            params.value !== null && params.value !== undefined
-                                                                ? formatMontant(params.value)
-                                                                : '-'
-                                                    },
-                                                    {
-                                                        field: 'credit', headerName: 'Crédit', width: 110, type: 'number', headerAlign: 'right', align: 'right', valueFormatter: (params) =>
-                                                            params.value !== null && params.value !== undefined
-                                                                ? formatMontant(params.value)
-                                                                : '-'
-                                                    },
-                                                    { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
-                                                    { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
-                                                    {
-                                                        field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                <IconButton size="small" onClick={() => handleValidateLine(p.row, p.row._anomalie)} sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                    {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                                <Tooltip title="Ajouter/Modifier commentaire">
-                                                                    <IconButton size="small" color="primary" onClick={() => handleCommentAnomaly(p.row._anomalie)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                </Tooltip>
-                                                            </Box>
-                                                        )
-                                                    },
-                                                ]}
-                                            />
-                                        ) : null}
-                                    </Box>
-                                ))}
-                            </Box>
-                        ) : (
-                        <Alert severity="success">Aucune anomalie détectée pour ce contrôle</Alert>
-                    )}
+                            <Alert severity="success">Aucune anomalie détectée pour ce contrôle</Alert>
+                        )}
+                    </Grid>
                 </Grid>
-            </Grid>
             </Box>
 
             {/* POPUP DE CONFIRMATION POUR VALIDATION */}

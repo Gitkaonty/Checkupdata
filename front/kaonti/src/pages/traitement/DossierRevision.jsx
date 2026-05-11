@@ -25,6 +25,7 @@ import { jwtDecode } from 'jwt-decode';
 import axios from '../../../config/axios';
 import { alpha } from '@mui/material/styles';
 import ExercicePeriodeSelector from '../ExercicePeriodeSelector';
+import toast from 'react-hot-toast';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 import CommentDialog from '../../components/commetDialog';
@@ -34,6 +35,7 @@ const GestionRevisionCycles = () => {
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteName = decoded?.UserInfo?.compte || 'Espace Client';
+  const compteId = decoded?.UserInfo?.compteId || null;
 
   const [activeCycle, setActiveCycle] = useState("etat d'avancement");
   const [activeTab, setActiveTab] = useState(0);
@@ -97,10 +99,10 @@ const GestionRevisionCycles = () => {
   };
 
   const getIds = useCallback(() => {
-    const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
-    const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+    const id_compte = parseInt(compteId) || 0;
+    const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 0;
     return { id_compte, id_dossier };
-  }, []);
+  }, [compteId]);
 
   const fetchValidationsAnalytique = useCallback(async () => {
     if (!selectedExerciceId || !selectedPeriodeId || activeCycle === "etat d'avancement" || !activeCycle) {
@@ -182,7 +184,7 @@ const GestionRevisionCycles = () => {
 
   // Sauvegarder le statut (OUI/NON/NA)
   const handleStatutChange = async (code, statut) => {
-    const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+    const id_compte = parseInt(compteId) || 0;
     const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
     const id_exercice = parseInt(selectedExerciceId) || 0;
     const id_periode = parseInt(selectedPeriodeId) || 0;
@@ -218,7 +220,7 @@ const GestionRevisionCycles = () => {
     const commentaire = commentaireRaw.trim();
     if (!selectedPoint) return;
 
-    const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+    const id_compte = parseInt(compteId) || 0;
     const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
     const id_exercice = parseInt(selectedExerciceId) || 0;
     const id_periode = parseInt(selectedPeriodeId) || 0;
@@ -284,7 +286,7 @@ const GestionRevisionCycles = () => {
     const texte = String(nouveauCommentaireRef.current || '').trim();
     if (!texte) return;
 
-    const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+    const id_compte = parseInt(compteId) || 0;
     const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
     const id_exercice = parseInt(selectedExerciceId) || 0;
     const id_periode = parseInt(selectedPeriodeId) || 0;
@@ -495,7 +497,7 @@ const GestionRevisionCycles = () => {
         return;
       }
 
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(compteId) || 0;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
 
       try {
@@ -536,7 +538,7 @@ const GestionRevisionCycles = () => {
         return;
       }
 
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(compteId) || 0;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
       const cycle = activeCycle.toUpperCase();
 
@@ -577,7 +579,7 @@ const GestionRevisionCycles = () => {
         return;
       }
 
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(compteId) || 0;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
       const cycle = activeCycle.toUpperCase();
 
@@ -614,10 +616,10 @@ const GestionRevisionCycles = () => {
     let mounted = true;
 
     const fetchPlanComptable = async () => {
-      const compteId = parseInt(sessionStorage.getItem('compteId')) || 0;
+      const id_compte = parseInt(compteId) || 0;
       const fileId = parseInt(sessionStorage.getItem('fileId')) || 0;
 
-      if (!compteId || !fileId) {
+      if (!id_compte || !fileId) {
         if (mounted) {
           setPlanComptable([]);
         }
@@ -626,7 +628,7 @@ const GestionRevisionCycles = () => {
 
       try {
         setLoadingPlanComptable(true);
-        const res = await axiosPrivate.get(`/paramPlanComptable/PcIdLibelle/${compteId}/${fileId}`);
+        const res = await axiosPrivate.get(`/paramPlanComptable/PcIdLibelle/${id_compte}/${fileId}`);
         const liste = res?.data?.state ? res?.data?.liste : [];
 
         if (mounted) {
@@ -659,7 +661,7 @@ const GestionRevisionCycles = () => {
         return;
       }
 
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(compteId) || 0;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
       const cycle = activeCycle.toUpperCase();
 
@@ -704,8 +706,9 @@ const GestionRevisionCycles = () => {
         return;
       }
 
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
-      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
+      const id_compte = parseInt(compteId) || 0;
+      const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 0;
+      console.log('[DEBUG] compteId from JWT:', compteId, '-> id_compte:', id_compte, '| id_dossier:', id_dossier, '| exercice:', selectedExerciceId, '| periode:', selectedPeriodeId);
 
       // Si pas de comptes associés sélectionnés, on ne charge rien
       if (!compteAssocieSaved || compteAssocieSaved.length === 0) {
@@ -716,14 +719,15 @@ const GestionRevisionCycles = () => {
       try {
         setLoadingEcritures(true);
 
-        // Construire la liste des préfixes de comptes
         const comptesQuery = compteAssocieSaved.join(',');
+        const url = `/administration/dossierRevision/ecritures/${id_compte}/${id_dossier}/${selectedExerciceId}/${selectedPeriodeId}?comptes=${comptesQuery}`;
+        console.log('[DEBUG] fetchEcrituresJournal URL:', url, '| comptes:', compteAssocieSaved);
 
-        const res = await axiosPrivate.get(
-          `/administration/dossierRevision/ecritures/${id_compte}/${id_dossier}/${selectedExerciceId}/${selectedPeriodeId}?comptes=${comptesQuery}`
-        );
+        const res = await axiosPrivate.get(url);
 
+        console.log('[DEBUG] fetchEcrituresJournal response:', res?.data);
         const ecritures = res?.data?.ecritures || [];
+        console.log('[DEBUG] ecritures count:', ecritures.length, ecritures.slice(0, 2));
 
         if (mounted) {
           setEcrituresJournal(ecritures);
@@ -747,19 +751,21 @@ const GestionRevisionCycles = () => {
   }, [activeCycle, selectedExerciceId, selectedPeriodeId, compteAssocieSaved, axiosPrivate]);
 
   const handleSaveCompteAssocie = async () => {
-    const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+    const id_compte = parseInt(compteId) || 0;
     const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
     const id_exercice = parseInt(selectedExerciceId) || 0;
     const id_periode = parseInt(selectedPeriodeId) || 0;
 
     if (!id_exercice || !id_periode || activeCycle === "etat d'avancement") {
       console.warn('Exercice, période ou cycle non sélectionné');
+      toast.error('Veuillez sélectionner un exercice et une période');
       return;
     }
 
     const payloadValue = compteAssocieSelection.length ? compteAssocieSelection.join(';') : null;
     if (payloadValue !== null && String(payloadValue).length > 1000) {
       console.warn('compte_associe trop long (max 1000 caractères)');
+      toast.error('La liste des comptes est trop longue');
       return;
     }
 
@@ -774,17 +780,24 @@ const GestionRevisionCycles = () => {
         compte_associe: payloadValue
       });
 
-      const raw = res?.data?.compte_associe;
-      const parsed = raw
-        ? String(raw)
-          .split(';')
-          .map(s => s.trim())
-          .filter(Boolean)
-        : [];
+      if (res.status === 200) {
+        const raw = res?.data?.compte_associe;
+        const parsed = raw
+          ? String(raw)
+            .split(';')
+            .map(s => s.trim())
+            .filter(Boolean)
+          : [];
 
-      setCompteAssocieSaved(parsed);
+        setCompteAssocieSaved(parsed);
+        toast.success('Comptes associés sauvegardés avec succès');
+      } else {
+        console.error('Erreur sauvegarde compte_associe:', res);
+        toast.error('Erreur lors de la sauvegarde des comptes associés');
+      }
     } catch (e) {
       console.error('Erreur sauvegarde compte_associe:', e);
+      toast.error('Erreur lors de la sauvegarde des comptes associés');
     } finally {
       setSavingCompteAssocie(false);
     }
@@ -830,7 +843,7 @@ const GestionRevisionCycles = () => {
     return { total, verified, percent };
   }, [ecrituresJournal, validatedRows]);
 
-  const historiqueNotes = useMemo(() => {
+  const historiqueNotes = () => {
     if (loadingCommentaires) {
       return (
         <Typography sx={{ fontSize: '0.75rem', color: K_THEME.slate, textAlign: 'center', py: 2 }}>
@@ -916,18 +929,8 @@ const GestionRevisionCycles = () => {
         ))}
       </Stack>
     );
-  }, [
-    loadingCommentaires,
-    commentairesSynthese,
-    editingCommentaire,
-    editCommentaireText,
-    savingEdit,
-    deletingId,
-    K_THEME.border,
-    K_THEME.cyan,
-    K_THEME.slate,
-    K_THEME.navy,
-  ]);
+  };
+
   // --- RENDU SYNTHÈSE (STYLE ÉPURÉ) ---
   const RenderSynthese = () => (
 
@@ -1025,7 +1028,7 @@ const GestionRevisionCycles = () => {
               {/* <Typography sx={{ color: K_THEME.navy, fontWeight: 900, fontSize: '0.75rem', mb: 2 }}>
                 HISTORIQUE DES NOTES
               </Typography> */}
-              {historiqueNotes}
+              {historiqueNotes()}
             </Box>
           </Paper>
         </Grid>
@@ -1039,7 +1042,7 @@ const GestionRevisionCycles = () => {
       {
         field: 'questionnaire',
         headerName: 'QUESTION DE CONTRÔLE',
-        flex: 2,
+        flex: 1,
         renderCell: (params) =>
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
             {params.value}
@@ -1105,10 +1108,59 @@ const GestionRevisionCycles = () => {
     }));
 
     return (
-      <Box sx={{ p: 3, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <DataGrid rows={rows} columns={columns} density="compact" disableSelectionOnClick sx={{ ...dataGridStyle, flex: 1, minHeight: 0 }} />
-        </Paper>
+      // <Box sx={{ p: 3, minHeight: 0, minWidth: 0, flexDirection: 'column', overflow: 'hidden' }}>
+      //   <Paper variant="outlined" sx={{  minHeight: 0, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      //     <DataGrid
+      //       rows={rows}
+      //       columns={columns}
+      //       density="compact"
+      //       disableSelectionOnClick
+      //       sx={{ ...dataGridStyle, minHeight: 0 }}
+      //     />
+      //   </Paper>
+
+      // </Box>
+
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          p: 2      
+        }}
+      >
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          density="compact"
+          disableSelectionOnClick
+          sx={{
+            border: 'none',
+            flex: 1,
+            '& .MuiDataGrid-columnHeaders': {
+              bgcolor: '#FCFDFF',
+              borderBottom: '1px solid #E2E8F0',
+
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                color: '#94A3B8',
+                letterSpacing: '0.05rem',
+              }
+            },
+
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #F1F5F9',
+            },
+
+            '& .MuiDataGrid-virtualScroller': {
+              bgcolor: '#FFF',
+            }
+          }}
+        />
       </Box>
     );
   };
@@ -1242,23 +1294,71 @@ const GestionRevisionCycles = () => {
     }));
 
     return (
-      <Box sx={{ p: 3, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            loading={loadingEcritures}
-            density="compact"
-            disableSelectionOnClick
-            sx={{ ...dataGridStyle, flex: 1, minHeight: 0 }}
-            localeText={{
-              noRowsLabel:
-                compteAssocieSaved.length === 0
-                  ? 'Aucun compte associé défini. Veuillez saisir des comptes.'
-                  : 'Aucune écriture trouvée pour les comptes associés.'
-            }}
-          />
-        </Paper>
+      // <Box sx={{ p: 3, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      //   <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      //     <DataGrid
+      //       rows={rows}
+      //       columns={columns}
+      //       loading={loadingEcritures}
+      //       density="compact"
+      //       disableSelectionOnClick
+      //       sx={{ ...dataGridStyle, flex: 1, minHeight: 0 }}
+      //       localeText={{
+      //         noRowsLabel:
+      //           compteAssocieSaved.length === 0
+      //             ? 'Aucun compte associé défini. Veuillez saisir des comptes.'
+      //             : 'Aucune écriture trouvée pour les comptes associés.'
+      //       }}
+      //     />
+      //   </Paper>
+      // </Box>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          p: 2
+        }}
+      >
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          loading={loadingEcritures}
+          density="compact"
+          disableSelectionOnClick
+          sx={{
+            border: 'none',
+            flex: 1,
+            '& .MuiDataGrid-columnHeaders': {
+              bgcolor: '#FCFDFF',
+              borderBottom: '1px solid #E2E8F0',
+
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                color: '#94A3B8',
+                letterSpacing: '0.05rem',
+              }
+            },
+
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #F1F5F9',
+            },
+
+            '& .MuiDataGrid-virtualScroller': {
+              bgcolor: '#FFF',
+            }
+          }}
+          localeText={{
+            noRowsLabel:
+              compteAssocieSaved.length === 0
+                ? 'Aucun compte associé défini. Veuillez saisir des comptes.'
+                : 'Aucune écriture trouvée pour les comptes associés.'
+          }}
+        />
       </Box>
     );
   };
@@ -1470,7 +1570,7 @@ const GestionRevisionCycles = () => {
 
       <Divider sx={{ my: 1, bgcolor: K_THEME.navy, height: 2 }} />
 
-      <Box sx={{ display: 'flex', gap: 3, flexGrow: 1, overflow: 'hidden' }}>
+      <Stack direction={"row"} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <Box
           sx={{
             width: 260,
@@ -1513,28 +1613,27 @@ const GestionRevisionCycles = () => {
           </List>
         </Box>
 
-        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
 
-          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Stack sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
             {/* ONGLETS DES RUBRIQUES */}
             <Box sx={{ bgcolor: '#FFF', borderBottom: '1px solid #E2E8F0', px: 2 }}>
               <Tabs value={tabValue} onChange={(e, val) => setTabValue(val)} sx={{ minHeight: 48 }}>
-                {/* <Tabs sx={{ minHeight: 48 }}>  */}
                 <Tab icon={<AnalyticsOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Synthèse" sx={tabStyle} />
                 <Tab icon={<AssignmentOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Questionnaire" sx={tabStyle} />
                 <Tab icon={<HistoryOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Revue Analytique" sx={tabStyle} />
               </Tabs>
             </Box>
 
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', bgcolor: '#F8FAFC' }}>
-              {tabValue === 0 && <RenderSynthese />}
-              {tabValue === 1 && <RenderQuestionnaire />}
-              {tabValue === 2 && <RenderRevue />}
-            </Box>
-          </Box>
+            <Stack sx={{ flex: 1, minHeight: 0, overflow: 'hidden', bgcolor: '#F8FAFC' }}>
+              {tabValue === 0 && RenderSynthese()}
+              {tabValue === 1 && RenderQuestionnaire()}
+              {tabValue === 2 && RenderRevue()}
+            </Stack>
+          </Stack>
         </Box>
 
-      </Box>
+      </Stack>
 
     </Box>
   );

@@ -219,7 +219,7 @@ const DossiersPage = () => {
       listeDomBank: [],
       immo_amort_base_jours: 365,
       typecomptabilite: 'Français',
-      devisepardefaut: 'EUR',
+      devisepardefaut: 'MGA',
       consolidation: false,
       listeConsolidation: [],
       pays: '',
@@ -428,7 +428,7 @@ const DossiersPage = () => {
           />
         </Paper>
 
-        {/* MODAL DE CRÉATION (Dialog) */}
+        {/* MODAL DE CRÉATION */}
         <Dialog
           open={open}
           onClose={handleClose}
