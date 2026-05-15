@@ -17,6 +17,8 @@ import {
 } from '@mui/material';
 import { init } from '../../../../../init';
 import useAxiosPrivate from '../../../../hooks/useAxiosPrivate';
+import useAuth from '../../../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import { InfoFileStyle } from '../../../componentsTools/InfosFileStyle';
 import PopupTestSelectedFile from '../../../componentsTools/popupTestSelectedFile';
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -122,6 +124,7 @@ export default function AuditDashboard() {
     let initial = init[0];
     const axiosPrivate = useAxiosPrivate();
     const navigate = useNavigate();
+    const { auth } = useAuth();
     const { id: routeDossierId } = useParams();
 
     const [listeExercice, setListeExercice] = useState([]);
@@ -270,7 +273,7 @@ export default function AuditDashboard() {
         const dossierFromRoute = parseInt(routeDossierId, 10);
         const dossierFromSession = parseInt(sessionStorage.getItem('fileId'), 10);
         return {
-            id_compte: parseInt(sessionStorage.getItem('compteId'), 10) || 1,
+            id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId'), 10) || 1,
             id_dossier: Number.isFinite(dossierFromSession)
                 ? dossierFromSession
                 : (Number.isFinite(dossierFromRoute) ? dossierFromRoute : 1),

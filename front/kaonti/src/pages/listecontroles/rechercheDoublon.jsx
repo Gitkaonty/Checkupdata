@@ -50,6 +50,8 @@ import {
 import { init } from '../../../init';
 import axios from '../../../config/axios';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 import ExercicePeriodeSelector from '../ExercicePeriodeSelector';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
@@ -81,6 +83,7 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
   const [expandedId, setExpandedId] = useState(null);
   const axiosPrivate = useAxiosPrivate();
   const navigate = useNavigate();
+  const { auth } = useAuth();
 
   const [validatingGroup, setValidatingGroup] = useState(null);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
@@ -235,7 +238,7 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
     const pathParts = window.location.pathname.split('/');
     const idIndex = pathParts.indexOf('rechercheDoublon') + 1;
     return {
-      id_compte: parseInt(sessionStorage.getItem('compteId')) || 1,
+      id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1,
       id_dossier: parseInt(sessionStorage.getItem('fileId')) || parseInt(pathParts[idIndex]) || 1,
       id_exercice: effectiveExerciceId || parseInt(sessionStorage.getItem('exerciceId')) || 1
     };

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  Box, Grid, Typography, TextField, Button, IconButton, 
-  InputAdornment, Link, Stack, Fade, Divider, InputLabel, FormControl 
+import {
+  Box, Grid, Typography, TextField, Button, IconButton,
+  InputAdornment, Link, Stack, Fade, Divider, InputLabel, FormControl
 } from '@mui/material';
-import { 
-  Visibility, VisibilityOff, LockOutlined, EmailOutlined, 
-  CheckCircleOutline, AnalyticsOutlined, AssessmentOutlined 
+import {
+  Visibility, VisibilityOff, LockOutlined, EmailOutlined,
+  CheckCircleOutline, AnalyticsOutlined, AssessmentOutlined
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../config/axios';
@@ -50,19 +50,32 @@ const LoginPage = () => {
 
   return (
     <Grid container sx={{ minHeight: '100vh', bgcolor: '#0F172A' }}>
-      
+
       {/* GAUCHE : FORMULAIRE D'AUTHENTIFICATION */}
       <Grid item xs={12} md={5} lg={4} sx={{ display: 'flex', alignItems: 'center', bgcolor: '#1E293B', borderRight: '1px solid #334155' }}>
         <Fade in timeout={800}>
           <Box sx={{ p: { xs: 4, sm: 8 }, width: '100%' }}>
-            <Box sx={{ mb: 6 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <CheckCircleOutline sx={{ color: '#10B981', fontSize: 40 }} />
-                <Typography variant="h4" sx={{ fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
-                  Checkup<span style={{ color: '#10B981' }}>Data</span>
-                </Typography>
+            <Box sx={{ mb: 4 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  mb: -8,
+                }}
+              >
+                <img
+                  src="/7.png"
+                  alt="CheckupData"
+                  style={{
+                    height: 210,
+                    width: 'auto',
+                    maxWidth: '100%',
+                    objectFit: 'contain',
+                  }}
+                />
               </Box>
-              <Typography variant="body1" sx={{ color: '#94A3B8' }}>
+              <Typography variant="body1" sx={{ color: '#94A3B8', textAlign: 'center' }}>
                 Plateforme de révision comptable et d'audit.
               </Typography>
             </Box>
@@ -155,7 +168,7 @@ const LoginPage = () => {
                 type="submit"
                 variant="contained"
                 size="large"
-                sx={{ 
+                sx={{
                   mt: 4, py: 1.8, fontWeight: 700,
                   bgcolor: '#10B981',
                   '&:hover': { bgcolor: '#059669', transform: 'translateY(-1px)' },
@@ -181,11 +194,11 @@ const LoginPage = () => {
       </Grid>
 
       {/* DROITE : MESSAGES DE RÉVISION */}
-      <Grid 
-        item md={7} lg={8} 
-        sx={{ 
-          display: { xs: 'none', md: 'flex' }, 
-          alignItems: 'center', 
+      <Grid
+        item md={7} lg={8}
+        sx={{
+          display: { xs: 'none', md: 'flex' },
+          alignItems: 'center',
           justifyContent: 'center',
           position: 'relative',
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(16, 185, 129, 0.1) 100%), url(https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=1920)',
@@ -205,7 +218,7 @@ const LoginPage = () => {
                 Automatisez la vérification des soldes, le sens des écritures et appliquez les meilleures pratiques comptables en un clic.
               </Typography>
             </Box>
-            
+
             <Grid container spacing={3}>
               {[
                 { icon: <AnalyticsOutlined />, title: "Analyse des Soldes", desc: "Détection automatique des soldes anormaux." },

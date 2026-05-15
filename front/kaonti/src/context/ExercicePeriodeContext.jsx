@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from '../../config/axios';
+import useAuth from '../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 
 const ExercicePeriodeContext = createContext();
 
@@ -19,10 +21,12 @@ export const ExercicePeriodeProvider = ({ children }) => {
     const [listePeriodes, setListePeriodes] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // Récupérer les IDs depuis sessionStorage
+    // Récupérer les IDs depuis JWT token (priorité) et sessionStorage (fallback)
+    const { auth } = useAuth();
     const getIds = () => {
+        const decodedCompteId = auth?.accessToken ? jwtDecode(auth.accessToken)?.UserInfo?.compteId : null;
         return {
-            id_compte: parseInt(sessionStorage.getItem('compteId')) || 1,
+            id_compte: parseInt(decodedCompteId) || parseInt(sessionStorage.getItem('compteId')) || 1,
             id_dossier: parseInt(sessionStorage.getItem('fileId')) || 1
         };
     };

@@ -38,6 +38,8 @@ import {
   ErrorOutline
 } from '@mui/icons-material';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 import CommentDialog from '../../components/commetDialog';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
@@ -59,10 +61,11 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
   const BG_SOFT = '#F8FAFC';
   const axiosPrivate = useAxiosPrivate();
   const navigate = useNavigate();
+  const { auth } = useAuth();
   const { id_compte, id_dossier } = useParams();
   const [searchParams] = useSearchParams();
 
-  const id_compte_val = parseInt(id_compte) || parseInt(sessionStorage.getItem('compteId')) || 1;
+  const id_compte_val = parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(id_compte) || parseInt(sessionStorage.getItem('compteId')) || 1;
   const id_dossier_val = parseInt(id_dossier) || parseInt(sessionStorage.getItem('fileId')) || 1;
 
   const handleExportExcel = async () => {
@@ -162,7 +165,7 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
 
   const getIds = useCallback(() => {
     return {
-      id_compte: parseInt(id_compte) || parseInt(sessionStorage.getItem('compteId')) || 1,
+      id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(id_compte) || parseInt(sessionStorage.getItem('compteId')) || 1,
       id_dossier: parseInt(id_dossier) || fileId || parseInt(sessionStorage.getItem('fileId')) || 1,
       id_exercice: effectiveExerciceId || parseInt(sessionStorage.getItem('exerciceId')) || 1
     };

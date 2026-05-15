@@ -10,12 +10,16 @@ import {
   ErrorOutline, PeopleOutline, ShoppingCartOutlined
 } from '@mui/icons-material';
 
-import { Cancel, CheckCircle, Search } from '@mui/icons-material';
+import {
+  Cancel, CheckCircle, Search
+} from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { DataGrid } from '@mui/x-data-grid';
 import axios from '../../../config/axios';
 
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 import ExercicePeriodeSelector from '../ExercicePeriodeSelector';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
@@ -58,6 +62,7 @@ const ANOMALIE_TYPES = {
 const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
   const axiosPrivate = useAxiosPrivate();
   const navigate = useNavigate();
+  const { auth } = useAuth();
 
   // Utiliser le contexte global pour exercice et période
   const {
@@ -163,7 +168,7 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
     const pathParts = window.location.pathname.split('/');
     const idIndex = pathParts.indexOf('revisionFournisseurClient') + 1;
     return {
-      id_compte: parseInt(sessionStorage.getItem('compteId')) || 1,
+      id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1,
       id_dossier: parseInt(sessionStorage.getItem('fileId')) || parseInt(pathParts[idIndex]) || 1,
       id_exercice: effectiveExerciceId || parseInt(sessionStorage.getItem('exerciceId')) || 1
     };

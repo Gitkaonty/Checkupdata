@@ -662,7 +662,7 @@ export default function DashboardComponent() {
     const dossierFromRoute = parseInt(routeDossierId, 10);
     const dossierFromSession = parseInt(sessionStorage.getItem('fileId'), 10);
     return {
-      id_compte: parseInt(sessionStorage.getItem('compteId'), 10) || 1,
+      id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId'), 10) || 1,
       id_dossier: Number.isFinite(dossierFromSession)
         ? dossierFromSession
         : (Number.isFinite(dossierFromRoute) ? dossierFromRoute : 1),

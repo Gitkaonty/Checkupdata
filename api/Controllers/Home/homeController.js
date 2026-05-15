@@ -486,5 +486,6 @@ module.exports = {
   checkAccessDossier,
   getAllDossierByCompte,
   getCompteDossier,
-  verifyFilePassword
+  verifyFilePassword,
+  deleteDossierPasswordAccess
 };

@@ -6,6 +6,8 @@ import { DataGrid } from '@mui/x-data-grid';
 import { CheckCircle, Cancel, ErrorOutline } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import CommentDialog from '../../components/commetDialog';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 
@@ -19,11 +21,12 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
   const [commentLoading, setCommentLoading] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
 
   const handleExportExcel = async () => {
     if (!id_exercice) return;
     try {
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
       let url = `/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}/export/excel`;
       if (id_periode) url += `?id_periode=${id_periode}`;
@@ -43,7 +46,7 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
   const handleExportPdf = async () => {
     if (!id_exercice) return;
     try {
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
       let url = `/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}/export/pdf`;
       if (id_periode) url += `?id_periode=${id_periode}`;
@@ -68,7 +71,7 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
   const fetchRevuAnalytique = useCallback(async () => {
     try {
       setLoading(true);
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
 
       if (!id_exercice) {
@@ -125,7 +128,7 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
     if (!row) return;
 
     try {
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
 
       await axiosPrivate.post('/revuAnalytiqueStats/validateAnomaly', {
@@ -162,7 +165,7 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
     if (!selectedRow) return;
     try {
       setCommentLoading(true);
-      const id_compte = parseInt(sessionStorage.getItem('compteId')) || 1;
+      const id_compte = parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1;
       const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
 
       const response = await axiosPrivate.post('/commentaireAnalytique/addOrUpdate', {

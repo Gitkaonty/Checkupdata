@@ -33,7 +33,7 @@ router.get('/getCompteDossier/:userId', homeController.getCompteDossier);
 // Vérification du mot de passe du dossier
 router.post('/verifyFilePassword', homeController.verifyFilePassword);
 
-// // Suppréssion de password access dossier par utilisateur
-// router.post('/deleteDossierPasswordAccess', homeController.deleteDossierPasswordAccess);
+// Suppréssion de password access dossier par utilisateur
+router.post('/deleteDossierPasswordAccess', homeController.deleteDossierPasswordAccess);
 
 module.exports = router;

@@ -34,6 +34,8 @@ import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloseIcon from '@mui/icons-material/Close';
 import axios from '../../../config/axios';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 
 // Format date as dd-mm-yy
 const formatDate = (dateString) => {
@@ -65,6 +67,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
     let initial = init[0];
     const axiosPrivate = useAxiosPrivate();
     const navigate = useNavigate();
+    const { auth } = useAuth();
 
     // Utiliser le contexte global pour exercice et période
     const {
@@ -210,11 +213,11 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
         const dossierFromUrl = parseInt(pathParts[idIndex]);
         const exerciceFromUrl = parseInt(pathParts[idIndex + 1]);
         return {
-            id_compte: parseInt(sessionStorage.getItem('compteId')) || 1,
+            id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1,
             id_dossier: dossierFromUrl || parseInt(sessionStorage.getItem('fileId')) || 1,
             id_exercice: exerciceFromUrl || effectiveExerciceId || parseInt(sessionStorage.getItem('exerciceId')) || 1
         };
-    }, [effectiveExerciceId]);
+    }, [effectiveExerciceId, auth]);
 
     const getIds = useCallback(() => ids, [ids]);
 

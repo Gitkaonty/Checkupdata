@@ -14,10 +14,13 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import axios from '../../../config/axios';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 
 const EcrituresSuspense = forwardRef(({ id_exercice, id_periode }, ref) => {
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
 
   const {
     selectedExerciceId,
@@ -35,7 +38,7 @@ const EcrituresSuspense = forwardRef(({ id_exercice, id_periode }, ref) => {
 
   const getIds = () => {
     return {
-      id_compte: parseInt(sessionStorage.getItem('compteId')) || 1,
+      id_compte: parseInt(jwtDecode(auth?.accessToken)?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1,
       id_dossier: parseInt(sessionStorage.getItem('fileId')) || 1,
       id_exercice: effectiveExerciceId || parseInt(sessionStorage.getItem('exerciceId')) || 1
     };
