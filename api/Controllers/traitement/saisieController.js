@@ -2236,87 +2236,114 @@ exports.getAllJournal = async (req, res) => {
         if (!id_exercice) return res.status(400).json({ state: false, message: 'Exercice non trouvé' });
         if (!id_compte) return res.status(400).json({ state: false, message: 'Compte non trouvé' });
 
-        const dossierData = await dossiers.findByPk(id_dossier);
-        const exerciceData = await exercices.findByPk(id_exercice);
+        // const dossierData = await dossiers.findByPk(id_dossier);
+        // const exerciceData = await exercices.findByPk(id_exercice);
 
-        if (!exerciceData || !exerciceData.date_debut || !exerciceData.date_fin) {
-            return res.status(400).json({ state: false, message: 'Exercice invalide ou dates manquantes' });
-        }
+        // if (!exerciceData || !exerciceData.date_debut || !exerciceData.date_fin) {
+        //     return res.status(400).json({ state: false, message: 'Exercice invalide ou dates manquantes' });
+        // }
 
-        const consolidation = dossierData?.consolidation || false;
-        const date_debut_exercice = new Date(exerciceData.date_debut);
-        const date_fin_exercice = new Date(exerciceData.date_fin);
+        // const consolidation = dossierData?.consolidation || false;
+        // const date_debut_exercice = new Date(exerciceData.date_debut);
+        // const date_fin_exercice = new Date(exerciceData.date_fin);
 
-        if (isNaN(date_debut_exercice.getTime()) || isNaN(date_fin_exercice.getTime())) {
-            return res.status(400).json({ state: false, message: 'Dates d\'exercice invalides' });
-        }
+        // if (isNaN(date_debut_exercice.getTime()) || isNaN(date_fin_exercice.getTime())) {
+        //     return res.status(400).json({ state: false, message: 'Dates d\'exercice invalides' });
+        // }
 
-        let id_dossiers_a_utiliser = [Number(id_dossier)];
+        // let id_dossiers_a_utiliser = [Number(id_dossier)];
 
-        if (consolidation) {
-            const consolidationDossierData = await consolidationDossier.findAll({
-                where: {
-                    id_dossier,
-                    id_compte
-                }
-            });
+        // if (consolidation) {
+        //     const consolidationDossierData = await consolidationDossier.findAll({
+        //         where: {
+        //             id_dossier,
+        //             id_compte
+        //         }
+        //     });
 
-            if (!consolidationDossierData.length) {
-                return res.json({
-                    state: true,
-                    msg: "Consolidation de dossier vide",
-                    liste: []
-                });
-            }
+        //     if (!consolidationDossierData.length) {
+        //         return res.json({
+        //             state: true,
+        //             msg: "Consolidation de dossier vide",
+        //             liste: []
+        //         });
+        //     }
 
-            id_dossiers_a_utiliser = [...new Set(
-                consolidationDossierData.map(val => Number(val.id_dossier_autre))
-            ), Number(id_dossier)];
-        }
+        //     id_dossiers_a_utiliser = [...new Set(
+        //         consolidationDossierData.map(val => Number(val.id_dossier_autre))
+        //     ), Number(id_dossier)];
+        // }
 
-        const exerciceDataToUse = await exercices.findAll({
-            where: {
+        // const exerciceDataToUse = await exercices.findAll({
+        //     where: {
+        //         id_compte,
+        //         id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+        //         [Op.and]: [
+        //             { date_debut: { [Op.lte]: date_fin_exercice } },
+        //             { date_fin: { [Op.gte]: date_debut_exercice } }
+        //         ]
+        //     }
+        // })
+
+        // const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
+
+        // const whereClause = {
+        //     id_compte,
+        //     id_dossier: { [Op.in]: id_dossiers_a_utiliser },
+        //     id_exercice: { [Op.in]: id_exercices_a_utiliser }
+        // };
+
+        // const journalData = await journals.findAll({
+        //     where: whereClause,
+        //     include: [
+        //         { model: dossierplancomptable, attributes: ['compte'] },
+        //         { model: codejournals, attributes: ['code'] },
+        //         { model: dossiers, attributes: ['dossier'] },
+        //     ],
+        //     order: [
+        //         // ['id_ecriture', 'ASC'],
+        //         // ['dateecriture', 'ASC'],
+        //         // ['id', 'ASC']
+        //         ['createdAt', 'DESC']
+        //     ]
+        // });
+
+        // const mappedData = journalData.map(journal => {
+        //     const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
+        //     return {
+        //         ...rest,
+        //         compte: dossierplancomptable?.compte || null,
+        //         journal: codejournal?.code || null,
+        //         dossier: dossier?.dossier || null
+        //     };
+        // });
+
+        const query = `
+            SELECT
+                J.*,
+                PC.COMPTE,
+                D.DOSSIER
+            FROM
+                JOURNALS J
+                LEFT JOIN DOSSIERPLANCOMPTABLES PC ON PC.ID = J.ID_NUMCPT
+                LEFT JOIN DOSSIERS D ON D.ID = J.ID_DOSSIER
+            WHERE
+                J.ID_DOSSIER = :id_dossier
+                AND J.ID_COMPTE = :id_compte
+                AND J.ID_EXERCICE = :id_exercice
+                AND PC.NATURE <> 'Collectif'
+            ORDER BY
+                J.DATEECRITURE ASC
+        `;
+
+        const mappedData = await db.sequelize.query(query,{
+            type : db.sequelize.QueryTypes.SELECT,
+            replacements:{
                 id_compte,
-                id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-                [Op.and]: [
-                    { date_debut: { [Op.lte]: date_fin_exercice } },
-                    { date_fin: { [Op.gte]: date_debut_exercice } }
-                ]
+                id_dossier,
+                id_exercice
             }
         })
-
-        const id_exercices_a_utiliser = [...new Set(exerciceDataToUse.map(val => Number(val.id)))];
-
-        const whereClause = {
-            id_compte,
-            id_dossier: { [Op.in]: id_dossiers_a_utiliser },
-            id_exercice: { [Op.in]: id_exercices_a_utiliser }
-        };
-
-        const journalData = await journals.findAll({
-            where: whereClause,
-            include: [
-                { model: dossierplancomptable, attributes: ['compte'] },
-                { model: codejournals, attributes: ['code'] },
-                { model: dossiers, attributes: ['dossier'] },
-            ],
-            order: [
-                // ['id_ecriture', 'ASC'],
-                // ['dateecriture', 'ASC'],
-                // ['id', 'ASC']
-                ['createdAt', 'DESC']
-            ]
-        });
-
-        const mappedData = journalData.map(journal => {
-            const { dossierplancomptable, codejournal, dossier, ...rest } = journal.toJSON();
-            return {
-                ...rest,
-                compte: dossierplancomptable?.compte || null,
-                journal: codejournal?.code || null,
-                dossier: dossier?.dossier || null
-            };
-        });
 
         return res.json(mappedData);
 

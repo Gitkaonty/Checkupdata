@@ -896,7 +896,8 @@ const ImportJournal = () => {
               if (compteNotInParamsGen.includes(compteGen) && !mapGen.has(compteGen)) {
                 mapGen.set(compteGen, {
                   CompteNum: compteGen,
-                  CompteLib: item.CompteLib,
+                  // CompteLib: item.CompteLib,
+                  CompteLib: item.CompteLib || item.EcritureLib || `Compte général ${compteGen}`,
                   CompAuxNum: compteAux
                 });
               }
@@ -912,7 +913,8 @@ const ImportJournal = () => {
               if (compteNotInParamsAux.includes(compte) && !mapAux.has(compte)) {
                 mapAux.set(compte, {
                   CompAuxNum: compte,
-                  CompAuxLib: item.EcritureLib,
+                  // CompAuxLib: item.EcritureLib,
+                  CompAuxLib: item.EcritureLib || item.CompteLib || `Compte auxiliaire ${compte}`,
                   CompteNum: String(item.CompteNum || '').trim() || ''
                 });
               }

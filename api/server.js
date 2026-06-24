@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const errorHandler = require('./Middlewares/errorHandler');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -17,6 +18,7 @@ const PORT = process.env.NODE_API_PORT || 5100;
 
 //Définition du moteur d'affichage
 const app = express();
+app.use(compression()); // compresse les réponses (gzip) — réduit fortement les gros payloads JSON
 app.use(credentials);
 app.use(cors(corsOptions));
 

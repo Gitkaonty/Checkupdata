@@ -100,6 +100,31 @@ const insertLineAnomaly = async ({
   }
 };
 
+// Version groupée : insère N anomalies de ligne en UN SEUL INSERT multi-lignes.
+// Produit exactement les mêmes valeurs/échappements que insertLineAnomaly (l'id retourné
+// n'étant utilisé nulle part). Réduit des centaines d'allers-retours à une seule requête.
+const insertLineAnomaliesBatch = async (anomalies) => {
+  if (!anomalies || anomalies.length === 0) return;
+
+  const valuesSql = anomalies.map(({
+    id_compte, id_dossier, id_exercice, line, type, id_controle, message, idPeriode = null
+  }) => {
+    const lineId = line.id;
+    const numCompte = line.comptegen || line.compteaux || '';
+    const finalPeriodeId = idPeriode || 'NULL';
+    return `(${id_compte}, ${id_dossier}, ${id_exercice}, '${lineId}', '${numCompte.replace(/'/g, "''")}', '${type}', '${id_controle}', '${message.replace(/'/g, "''")}', ${finalPeriodeId}, NOW(), NOW())`;
+  }).join(',\n');
+
+  const insertQuery = `
+    INSERT INTO table_controle_anomalies (
+      id_compte, id_dossier, id_exercice, id_jnl, id_num_compte, "codeCtrl", id_controle, message,
+      id_periode, "createdAt", "updatedAt"
+    ) VALUES ${valuesSql}
+  `;
+
+  await db.sequelize.query(insertQuery, { type: db.Sequelize.QueryTypes.INSERT });
+};
+
 // Récupérer les contrôles de révision pour un exercice, et les créer s'ils n'existent pas
 exports.getOrCreateRevisionControles = async (req, res) => {
   try {
@@ -741,24 +766,44 @@ exports.executeAll = async (req, res) => {
 
       // ===== CONTRÔLE EXISTENCE =====
       if (type === 'EXISTENCE') {
-        for (const controle of controles) {
-          const comptePrefix = controle.compte ? controle.compte.substring(0, 3) : null;
+        // Préfixes (3 car.) à vérifier, rattachés à leur contrôle
+        const prefixInfos = controles
+          .map(c => ({ controle: c, prefix: c.compte ? c.compte.substring(0, 3) : null }))
+          .filter(x => x.prefix);
 
-          if (!comptePrefix) continue;
+        const distinctPrefixes = [...new Set(prefixInfos.map(x => x.prefix))];
 
-          // Vérifier si des écritures existent pour ce compte (SQL)
-          const ecrituresExistQuery = `
-            SELECT 1 FROM journals
-            WHERE id_compte = ${id_compte}
-              AND id_dossier = ${id_dossier}
-              AND id_exercice = ${id_exercice}
-              AND (comptegen LIKE '${comptePrefix}%' OR compteaux LIKE '${comptePrefix}%')
-              ${dateCondition}
-            LIMIT 1
+        // UNE seule requête : quels préfixes ont au moins une écriture (au lieu d'un SELECT par contrôle)
+        let existsPrefixes = new Set();
+        if (distinctPrefixes.length > 0) {
+          const valuesList = distinctPrefixes.map(p => `('${p.replace(/'/g, "''")}')`).join(',');
+          const existQuery = `
+            WITH prefixes(p) AS (VALUES ${valuesList})
+            SELECT pr.p AS p
+            FROM prefixes pr
+            WHERE EXISTS (
+              SELECT 1 FROM journals
+              WHERE id_compte = ${id_compte}
+                AND id_dossier = ${id_dossier}
+                AND id_exercice = ${id_exercice}
+                AND (comptegen LIKE pr.p || '%' OR compteaux LIKE pr.p || '%')
+                ${dateCondition}
+            )
           `;
-          const ecrituresExist = await db.sequelize.query(ecrituresExistQuery, { type: db.Sequelize.QueryTypes.SELECT });
+          const rows = await db.sequelize.query(existQuery, { type: db.Sequelize.QueryTypes.SELECT });
+          existsPrefixes = new Set(rows.map(r => r.p));
+        }
 
-          if (ecrituresExist.length === 0) {
+        const existenceAnomalies = [];   // insertion groupée
+        const commentairesToCopy = [];    // recopie conditionnelle
+        const updateTuples = [];          // mise à jour groupée des contrôles
+
+        for (const { controle, prefix } of prefixInfos) {
+          if (existsPrefixes.has(prefix)) {
+            // Compte existant : pas d'anomalie
+            const detailsJson = JSON.stringify([{ message: 'Compte existant - pas d\'anomalie' }]).replace(/'/g, "''");
+            updateTuples.push(`(${controle.id}, 0, '${detailsJson}')`);
+          } else {
             const messageAnomalie = `Le compte ${controle.compte} n'existe pas - Aucune écriture trouvée`;
             anomaliesDetectees.push({
               controleId: controle.id,
@@ -766,59 +811,61 @@ exports.executeAll = async (req, res) => {
               message: messageAnomalie
             });
 
-            // Récupérer les données sauvegardées si elles existent
             const key = `${idPeriode || 'NULL'}_${controle.compte}_${controle.id_controle}`;
             const savedData = anomaliesMap[key] || {};
 
-            // Insérer dans table_controle_anomalies pour EXISTENCE
-            const insertExistenceQuery = `
-              INSERT INTO table_controle_anomalies (
-                id_compte, id_dossier, id_exercice, id_jnl, id_num_compte, "codeCtrl", id_controle, message, 
-                id_periode, "createdAt", "updatedAt"
-              ) VALUES (
-                ${id_compte}, ${id_dossier}, ${id_exercice}, '${controle.compte}', '${controle.compte.replace(/'/g, "''")}', '${type}', 
-                '${controle.id_controle}', '${messageAnomalie.replace(/'/g, "''")}', 
-                ${idPeriode || 'NULL'}, NOW(), NOW()
-              )
-            `;
+            // Pour EXISTENCE : id_jnl = compte, id_num_compte = compte (via faux objet "line")
+            existenceAnomalies.push({
+              id_compte,
+              id_dossier,
+              id_exercice,
+              line: { id: controle.compte, comptegen: controle.compte },
+              type,
+              id_controle: controle.id_controle,
+              message: messageAnomalie,
+              idPeriode
+            });
 
-            const result = await db.sequelize.query(insertExistenceQuery, { type: db.Sequelize.QueryTypes.INSERT });
-            const idAnomalie = result[0]?.id || null;
-
-            // Recopier les données sauvegardées si elles existent (utilise id_controle + id_jnl)
             if (savedData.valide !== undefined) {
-              await insertOrUpdateCommentaire({
+              commentairesToCopy.push({
                 id_compte,
                 id_dossier,
                 id_exercice,
                 id_periode: savedData.id_periode || idPeriode,
                 id_controle: controle.id_controle,
-                id_jnl: controle.compte, // Pour EXISTENCE, id_jnl = compte
+                id_jnl: controle.compte,
                 valide: savedData.valide,
                 commentaire: savedData.commentaire
               });
             }
 
-            // Update controle (SQL)
-            await db.sequelize.query(`
-              UPDATE table_revisions_controles
-              SET anomalies = 1,
-                  details = '${JSON.stringify([{ anomalie: messageAnomalie }]).replace(/'/g, "''")}'
-              WHERE id = ${controle.id}
-            `, { type: db.Sequelize.QueryTypes.UPDATE });
-          } else {
-            // Update controle (SQL)
-            await db.sequelize.query(`
-              UPDATE table_revisions_controles
-              SET anomalies = 0,
-                  details = '${JSON.stringify([{ message: 'Compte existant - pas d\'anomalie' }]).replace(/'/g, "''")}'
-              WHERE id = ${controle.id}
-            `, { type: db.Sequelize.QueryTypes.UPDATE });
+            const detailsJson = JSON.stringify([{ anomalie: messageAnomalie }]).replace(/'/g, "''");
+            updateTuples.push(`(${controle.id}, 1, '${detailsJson}')`);
           }
+        }
+
+        // Insertion groupée des anomalies EXISTENCE
+        await insertLineAnomaliesBatch(existenceAnomalies);
+
+        // Recopie des commentaires sauvegardés (rare, conditionnel)
+        for (const c of commentairesToCopy) {
+          await insertOrUpdateCommentaire(c);
+        }
+
+        // Mise à jour groupée de tous les contrôles en UNE requête
+        if (updateTuples.length > 0) {
+          await db.sequelize.query(`
+            UPDATE table_revisions_controles AS t
+            SET anomalies = v.anomalies::int,
+                details = v.details::text
+            FROM (VALUES ${updateTuples.join(',')}) AS v(id, anomalies, details)
+            WHERE t.id = v.id::int
+          `, { type: db.Sequelize.QueryTypes.UPDATE });
         }
       }
       // ===== CONTRÔLE SENS_SOLDE =====
       else if (type === 'SENS_SOLDE') {
+        const sensSoldeAnomalies = []; // collecte pour insertion groupée
         // Récupérer toutes les écritures pour les comptes concernés (SQL)
         const comptesPrefixes = [...new Set(
           controles
@@ -834,7 +881,7 @@ exports.executeAll = async (req, res) => {
         ).join(' OR ');
 
         const ecrituresQuery = `
-          SELECT * FROM journals
+          SELECT id, comptegen, compteaux, debit, credit FROM journals
           WHERE id_compte = ${id_compte}
             AND id_dossier = ${id_dossier}
             AND id_exercice = ${id_exercice}
@@ -902,8 +949,8 @@ exports.executeAll = async (req, res) => {
 
               // console.log(`DEBUG SENS_SOLDE - Recherche clé: ${key}, Trouvé:`, !!savedData.valide, 'valide:', savedData.valide);
 
-              // Insérer une anomalie individuelle pour cette ligne
-              const idAnomalie = await insertLineAnomaly({
+              // Collecter l'anomalie pour insertion groupée (cf. flush après la boucle)
+              sensSoldeAnomalies.push({
                 id_compte,
                 id_dossier,
                 id_exercice,
@@ -944,6 +991,9 @@ exports.executeAll = async (req, res) => {
           }
         }
 
+        // Insertion groupée de toutes les anomalies SENS_SOLDE (1 requête au lieu de N)
+        await insertLineAnomaliesBatch(sensSoldeAnomalies);
+
         // Mettre à jour les contrôles avec les anomalies (SQL)
         for (const controle of controles) {
           const anomaliesControle = anomaliesDetectees.filter(a => a.controleId === controle.id);
@@ -965,6 +1015,7 @@ exports.executeAll = async (req, res) => {
 
       // ===== CONTRÔLE SENS_ECRITURE =====
       else if (type === 'SENS_ECRITURE') {
+        const sensEcritureAnomalies = []; // collecte pour insertion groupée
         // Récupérer les préfixes de comptes concernés
         const comptesPrefixes = [...new Set(
           controles
@@ -980,7 +1031,7 @@ exports.executeAll = async (req, res) => {
         ).join(' OR ');
 
         const ecrituresQuery = `
-          SELECT * FROM journals
+          SELECT id, comptegen, compteaux, debit, credit FROM journals
           WHERE id_compte = ${id_compte}
             AND id_dossier = ${id_dossier}
             AND id_exercice = ${id_exercice}
@@ -1044,8 +1095,8 @@ exports.executeAll = async (req, res) => {
 
             // console.log(`SENS_ECRITURE DEBUG - Création anomalie: ligne=${ligne.id}, compte=${compte}, controle.id=${controle.id}, controle.id_controle=${controle.id_controle}`);
 
-            // Insérer une anomalie individuelle pour cette ligne
-            const idAnomalie = await insertLineAnomaly({
+            // Collecter l'anomalie pour insertion groupée (cf. flush après la boucle)
+            sensEcritureAnomalies.push({
               id_compte,
               id_dossier,
               id_exercice,
@@ -1087,6 +1138,9 @@ exports.executeAll = async (req, res) => {
           }
         }
 
+        // Insertion groupée de toutes les anomalies SENS_ECRITURE (1 requête au lieu de N)
+        await insertLineAnomaliesBatch(sensEcritureAnomalies);
+
         // Mettre à jour les contrôles avec les anomalies (SQL)
         for (const controle of controles) {
           const anomaliesControle = anomaliesDetectees.filter(a => a.controleId === controle.id);
@@ -1108,6 +1162,7 @@ exports.executeAll = async (req, res) => {
 
       // ===== CONTRÔLE IMMO_CHARGE =====
       else if (type === 'IMMO_CHARGE') {
+        const immoChargeAnomalies = []; // collecte pour insertion groupée
         const SEUIL_CAPITALISATION = 500;
         const messageAnomalie = "Non-conformité dans l'application des règles de capitalisation des immobilisations";
 
@@ -1150,19 +1205,32 @@ exports.executeAll = async (req, res) => {
 
         // console.log(`IMMO_CHARGE - ${ecrituresImmoAnormales.length} immobilisations < ${SEUIL_CAPITALISATION}, ${ecrituresChargesAnormales.length} charges > ${SEUIL_CAPITALISATION}`);
 
-        // Fonction pour récupérer toutes les lignes d'une écriture
-        const getEcritureComplete = async (idEcriture) => {
-          const query = `
+        // Charger en UNE seule requête toutes les lignes des écritures concernées (au lieu d'un SELECT par ligne)
+        const idsEcritures = [...new Set(
+          [...ecrituresImmoAnormales, ...ecrituresChargesAnormales]
+            .map(e => e.id_ecriture)
+            .filter(v => v !== null && v !== undefined && v !== '')
+        )];
+
+        const ecrituresCompletesMap = new Map();
+        if (idsEcritures.length > 0) {
+          const inList = idsEcritures.map(v => `'${String(v).replace(/'/g, "''")}'`).join(',');
+          const completesRows = await db.sequelize.query(`
             SELECT j.*
             FROM journals j
             WHERE j.id_compte = ${id_compte}
               AND j.id_dossier = ${id_dossier}
               AND j.id_exercice = ${id_exercice}
-              AND j.id_ecriture = '${idEcriture}'
-            ORDER BY j.id
-          `;
-          return await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
-        };
+              AND j.id_ecriture IN (${inList})
+            ORDER BY j.id_ecriture, j.id
+          `, { type: db.Sequelize.QueryTypes.SELECT });
+
+          for (const row of completesRows) {
+            const k = String(row.id_ecriture);
+            if (!ecrituresCompletesMap.has(k)) ecrituresCompletesMap.set(k, []);
+            ecrituresCompletesMap.get(k).push(row);
+          }
+        }
 
         // Traiter les anomalies d'immobilisations (une anomalie par ligne individuelle)
         for (const ecriture of ecrituresImmoAnormales) {
@@ -1170,8 +1238,8 @@ exports.executeAll = async (req, res) => {
           const key = `${idPeriode || 'NULL'}_${ecriture.id}_${controles[0]?.id_controle || 'IMMO_CHARGE'}`;
           const savedData = anomaliesMap[key] || {};
 
-          // Récupérer l'écriture complète de cette ligne
-          const ecritureComplete = await getEcritureComplete(ecriture.id_ecriture);
+          // Récupérer l'écriture complète depuis la Map pré-chargée (plus de requête par ligne)
+          const ecritureComplete = ecrituresCompletesMap.get(String(ecriture.id_ecriture)) || [];
 
           anomaliesDetectees.push({
             controleId: controles[0]?.id,
@@ -1183,8 +1251,8 @@ exports.executeAll = async (req, res) => {
             ligneAnormale: ecriture
           });
 
-          // Insérer une anomalie individuelle pour cette ligne (utilise l'ID de la ligne)
-          const idAnomalieImmo = await insertLineAnomaly({
+          // Collecter l'anomalie pour insertion groupée (cf. flush après les boucles)
+          immoChargeAnomalies.push({
             id_compte,
             id_dossier,
             id_exercice,
@@ -1216,8 +1284,8 @@ exports.executeAll = async (req, res) => {
           const key = `${idPeriode || 'NULL'}_${ecriture.id}_${controles[0]?.id_controle || 'IMMO_CHARGE'}`;
           const savedData = anomaliesMap[key] || {};
 
-          // Récupérer l'écriture complète de cette ligne
-          const ecritureComplete = await getEcritureComplete(ecriture.id_ecriture);
+          // Récupérer l'écriture complète depuis la Map pré-chargée (plus de requête par ligne)
+          const ecritureComplete = ecrituresCompletesMap.get(String(ecriture.id_ecriture)) || [];
 
           anomaliesDetectees.push({
             controleId: controles[0]?.id,
@@ -1229,8 +1297,8 @@ exports.executeAll = async (req, res) => {
             ligneAnormale: ecriture
           });
 
-          // Insérer une anomalie individuelle pour cette ligne (utilise l'ID de la ligne)
-          const idAnomalieCharge = await insertLineAnomaly({
+          // Collecter l'anomalie pour insertion groupée (cf. flush après les boucles)
+          immoChargeAnomalies.push({
             id_compte,
             id_dossier,
             id_exercice,
@@ -1255,6 +1323,9 @@ exports.executeAll = async (req, res) => {
             });
           }
         }
+
+        // Insertion groupée de toutes les anomalies IMMO_CHARGE (1 requête au lieu de N)
+        await insertLineAnomaliesBatch(immoChargeAnomalies);
 
         // Mettre à jour les contrôles avec les anomalies
         for (const controle of controles) {
@@ -1458,6 +1529,7 @@ exports.executeAll = async (req, res) => {
 
       // ===== CONTRÔLE ATYPIQUE =====
       else if (type === 'ATYPIQUE') {
+        const atypiqueAnomalies = []; // collecte pour insertion groupée
         // console.log('\n========================================');
         // console.log('🚀 CONTRÔLE ATYPIQUE DÉMARRÉ');
         // console.log('========================================');
@@ -1578,8 +1650,8 @@ exports.executeAll = async (req, res) => {
               message: messageAnomalie
             });
 
-            // Utiliser insertLineAnomaly comme les autres contrôles
-            const idAnomalie = await insertLineAnomaly({
+            // Collecter l'anomalie pour insertion groupée (cf. flush après la boucle)
+            atypiqueAnomalies.push({
               id_compte,
               id_dossier,
               id_exercice,
@@ -1605,6 +1677,9 @@ exports.executeAll = async (req, res) => {
             }
           }
         }
+
+        // Insertion groupée de toutes les anomalies ATYPIQUE (1 requête au lieu de N)
+        await insertLineAnomaliesBatch(atypiqueAnomalies);
 
         // Mettre à jour les contrôles
         for (const controle of controles) {

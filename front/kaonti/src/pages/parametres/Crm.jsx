@@ -746,7 +746,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   return (
     <Grid container spacing={3} sx={{ flex: 1, minHeight: 0, height: '100%' }}>
       {/* AXES */}
-      <Grid item xs={12} md={5} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Grid item xs={12} md={5} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
         <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>AXES</Typography>
@@ -837,7 +837,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
       </Grid>
 
       {/* SECTIONS */}
-      <Grid item xs={12} md={7} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Grid item xs={12} md={7} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
         <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{selectedAxe ? `SECTIONS - ${selectedAxe.code}` : 'SECTIONS ASSOCIÉES'}</Typography>

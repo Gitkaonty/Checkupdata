@@ -23,6 +23,10 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
+    id_periode: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     id_controle: {
       type: DataTypes.STRING(255),
       allowNull: false,
