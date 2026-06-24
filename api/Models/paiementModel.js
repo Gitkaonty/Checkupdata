@@ -5,46 +5,32 @@ module.exports = (sequelize, Sequelize) => {
             primaryKey: true, 
             autoIncrement: true 
         },
-        membre_id: { 
+        compte_id: { 
             type: Sequelize.INTEGER, 
             allowNull: false 
         },
-        exercice_id: { 
-            type: Sequelize.INTEGER, 
-            allowNull: false 
+        compte: { 
+            type: Sequelize.STRING 
         },
         date_paiement: { 
             type: Sequelize.DATEONLY, 
             defaultValue: Sequelize.NOW 
         },
-        anouveau: { 
+        montant_paye: { 
             type: Sequelize.DECIMAL(15, 2), 
             defaultValue: 0 
         },
-        cotis_annee: { 
-            type: Sequelize.DECIMAL(15, 2), 
-            defaultValue: 0 
-        },
-        autre_appel: { 
-            type: Sequelize.DECIMAL(15, 2), 
-            defaultValue: 0 
-        },
-        total: { 
-            type: Sequelize.DECIMAL(15, 2), 
-            defaultValue: 0 
-        },
-        mode_reglement: { 
+        mode_paiement: { 
             type: Sequelize.STRING 
         },
-        reference: { 
-            type: Sequelize.TEXT 
+        periode_date_debut: { 
+            type: Sequelize.DATEONLY 
         },
-        valide: { 
-            type: Sequelize.BOOLEAN, 
-            defaultValue: true 
+        periode_date_fin: { 
+            type: Sequelize.DATEONLY 
         }
     }, {
-        timestamps: true, // Pour garder trace de quand le paiement a été saisi
+        timestamps: true,
         freezeTableName: true,
         underscored: true,
     });

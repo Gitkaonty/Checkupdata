@@ -124,46 +124,87 @@ const buildGroupKey = (groupByFields, row, montantType = null) => {
 // SECTION 3: Exécution SQL
 // ==========================================
 
+// Correspondance champ SQL (interne) -> alias de colonne en sortie, pour pouvoir
+// trier/filtrer dans la requête externe qui ne voit que les alias.
+const GROUPFIELD_ALIAS = {
+    'j.dateecriture': 'dateecriture',
+    'j.compteAux': 'compte',
+    'cj.code': 'journal',
+    'j.piece': 'piece',
+    'j.libelle': 'libelle',
+    'j.debit': 'debit',
+    'j.credit': 'credit',
+};
+const toAlias = (f) => GROUPFIELD_ALIAS[f] || f;
+
 /**
- * Exécute la requête de recherche de doublons pour DÉBIT uniquement
+ * Insère les résultats en INSERT brut multi-lignes par lots (bien plus rapide que
+ * bulkCreate de l'ORM, qui instancie chaque ligne).
+ */
+const insertDoublonsRaw = async (rows) => {
+    if (!rows || rows.length === 0) return;
+
+    const esc = (v) => (v === null || v === undefined) ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`;
+    const dt = (v) => {
+        if (v === null || v === undefined) return 'NULL';
+        if (v instanceof Date) return `'${v.toISOString().slice(0, 10)}'`;
+        return `'${String(v).slice(0, 10).replace(/'/g, "''")}'`;
+    };
+
+    const CHUNK = 1000;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+        const slice = rows.slice(i, i + CHUNK);
+        const values = slice.map(r =>
+            `(${r.id_dossier}, ${r.id_exercice}, ${r.id_periode == null ? 'NULL' : r.id_periode}, ${r.id_jnl}, ${dt(r.date)}, ${esc(r.compte)}, ${esc(r.journal)}, ${esc(r.piece)}, ${esc(r.libelle)}, ${Number(r.debit) || 0}, ${Number(r.credit) || 0}, ${r.id_doublon}, NOW(), NOW())`
+        ).join(',');
+
+        await db.sequelize.query(`
+            INSERT INTO recherche_doublons
+                (id_dossier, id_exercice, id_periode, id_jnl, date, compte, journal, piece, libelle, debit, credit, id_doublon, "createdAt", "updatedAt")
+            VALUES ${values}
+        `, { type: QueryTypes.INSERT });
+    }
+};
+
+/**
+ * Exécute la requête de recherche de doublons pour DÉBIT uniquement.
+ * Le filtre occurrences >= 2 est appliqué EN SQL (requête externe) pour ne ramener
+ * que les lignes appartenant à un groupe de doublons (au lieu de toute la période).
  */
 const executeDebitSearchQuery = async (params, groupByFields) => {
     const { id_dossier, id_exercice, date_debut, date_fin } = params;
 
     const baseFields = groupByFields.filter(f => f && f.trim() !== '');
-    const groupByClause = baseFields.length > 0 
+    const groupByClause = baseFields.length > 0
         ? [...baseFields, 'j.debit'].join(', ')
         : 'j.debit';
 
-    const orderByClause = baseFields.length > 0
-        ? [...baseFields, 'j.debit', 'j.id'].join(', ')
-        : 'j.debit, j.id';
+    // Tri sur la requête externe -> via les alias de colonnes
+    const outerOrderBy = (baseFields.length > 0
+        ? [...baseFields.map(toAlias), 'debit', 'id_jnl']
+        : ['debit', 'id_jnl']).join(', ');
 
     const query = `
-      SELECT 
-    j.id as id_jnl,
-    j.dateecriture,
-    j.compteAux as compte,
-    cj.code as journal,
-    j.piece as piece,
-    j.libelle,
-    j.debit,
-    j.credit,
-
-    -- Compte combien de lignes ont la même combinaison définie dans ${groupByClause}
-    -- La fonction OVER(PARTITION BY ...) crée des groupes logiques sans regrouper les lignes
-    -- Chaque ligne garde donc son détail mais reçoit le nombre d'occurrences du groupe
-    COUNT(*) OVER (PARTITION BY ${groupByClause}) as occurrences
-
-FROM journals j
-LEFT JOIN codejournals cj ON j.id_journal = cj.id
-
-WHERE j.id_dossier = :id_dossier
-AND j.id_exercice = :id_exercice
-AND j.dateecriture BETWEEN :date_debut AND :date_fin
-AND j.debit > 0
-
-ORDER BY ${orderByClause}
+      SELECT * FROM (
+        SELECT
+            j.id as id_jnl,
+            j.dateecriture,
+            j.compteAux as compte,
+            cj.code as journal,
+            j.piece as piece,
+            j.libelle,
+            j.debit,
+            j.credit,
+            COUNT(*) OVER (PARTITION BY ${groupByClause}) as occurrences
+        FROM journals j
+        LEFT JOIN codejournals cj ON j.id_journal = cj.id
+        WHERE j.id_dossier = :id_dossier
+          AND j.id_exercice = :id_exercice
+          AND j.dateecriture BETWEEN :date_debut AND :date_fin
+          AND j.debit > 0
+      ) sub
+      WHERE sub.occurrences >= 2
+      ORDER BY ${outerOrderBy}
     `;
 
     return await db.sequelize.query(query, {
@@ -179,32 +220,35 @@ const executeCreditSearchQuery = async (params, groupByFields) => {
     const { id_dossier, id_exercice, date_debut, date_fin } = params;
 
     const baseFields = groupByFields.filter(f => f && f.trim() !== '');
-    const groupByClause = baseFields.length > 0 
+    const groupByClause = baseFields.length > 0
         ? [...baseFields, 'j.credit'].join(', ')
         : 'j.credit';
 
-    const orderByClause = baseFields.length > 0
-        ? [...baseFields, 'j.credit', 'j.id'].join(', ')
-        : 'j.credit, j.id';
+    const outerOrderBy = (baseFields.length > 0
+        ? [...baseFields.map(toAlias), 'credit', 'id_jnl']
+        : ['credit', 'id_jnl']).join(', ');
 
     const query = `
-        SELECT 
-            j.id as id_jnl,
-            j.dateecriture,
-            j.compteAux as compte,
-            cj.code as journal,
-            j.piece as piece,
-            j.libelle,
-            j.debit,
-            j.credit,
-            COUNT(*) OVER (PARTITION BY ${groupByClause}) as occurrences
-        FROM journals j
-        LEFT JOIN codejournals cj ON j.id_journal = cj.id
-        WHERE j.id_dossier = :id_dossier
-        AND j.id_exercice = :id_exercice
-        AND j.dateecriture BETWEEN :date_debut AND :date_fin
-        AND j.credit > 0
-        ORDER BY ${orderByClause}
+        SELECT * FROM (
+            SELECT
+                j.id as id_jnl,
+                j.dateecriture,
+                j.compteAux as compte,
+                cj.code as journal,
+                j.piece as piece,
+                j.libelle,
+                j.debit,
+                j.credit,
+                COUNT(*) OVER (PARTITION BY ${groupByClause}) as occurrences
+            FROM journals j
+            LEFT JOIN codejournals cj ON j.id_journal = cj.id
+            WHERE j.id_dossier = :id_dossier
+              AND j.id_exercice = :id_exercice
+              AND j.dateecriture BETWEEN :date_debut AND :date_fin
+              AND j.credit > 0
+        ) sub
+        WHERE sub.occurrences >= 2
+        ORDER BY ${outerOrderBy}
     `;
 
     return await db.sequelize.query(query, {
@@ -336,23 +380,27 @@ exports.rechercherDoublons = async (req, res) => {
             }
         } else {
             // Recherche standard sans critère montant
+            const outerOrderBy = [...groupByFields.map(toAlias), 'id_jnl'].join(', ');
             const query = `
-                SELECT 
-                    j.id as id_jnl,
-                    j.dateecriture,
-                    j.compteAux as compte,
-                    cj.code as journal,
-                    j.piece as piece,
-                    j.libelle,
-                    j.debit,
-                    j.credit,
-                    COUNT(*) OVER (PARTITION BY ${groupByFields.join(', ')}) as occurrences
-                FROM journals j
-                LEFT JOIN codejournals cj ON j.id_journal = cj.id
-                WHERE j.id_dossier = :id_dossier
-                AND j.id_exercice = :id_exercice
-                AND j.dateecriture BETWEEN :date_debut AND :date_fin
-                ORDER BY ${groupByFields.join(', ')}, j.id
+                SELECT * FROM (
+                    SELECT
+                        j.id as id_jnl,
+                        j.dateecriture,
+                        j.compteAux as compte,
+                        cj.code as journal,
+                        j.piece as piece,
+                        j.libelle,
+                        j.debit,
+                        j.credit,
+                        COUNT(*) OVER (PARTITION BY ${groupByFields.join(', ')}) as occurrences
+                    FROM journals j
+                    LEFT JOIN codejournals cj ON j.id_journal = cj.id
+                    WHERE j.id_dossier = :id_dossier
+                      AND j.id_exercice = :id_exercice
+                      AND j.dateecriture BETWEEN :date_debut AND :date_fin
+                ) sub
+                WHERE sub.occurrences >= 2
+                ORDER BY ${outerOrderBy}
             `;
             
             const journalsData = await db.sequelize.query(query, {
@@ -365,15 +413,25 @@ exports.rechercherDoublons = async (req, res) => {
             totalGroupesGlobal = results.totalGroupes;
         }
 
-        // --- Étape 6: Insertion ---
+        // --- Étape 6: Insertion (INSERT brut par lots, bien plus rapide que l'ORM) ---
         if (allResultsToInsert.length > 0) {
-            await db.rechercheDoublons.bulkCreate(allResultsToInsert);
+            await insertDoublonsRaw(allResultsToInsert);
         }
 
-        // --- Étape 7: Récupération ---
-        const finalResults = await db.rechercheDoublons.findAll({
-            where: { id_dossier, id_exercice, id_periode: id_periode || null },
-            order: [['id_doublon', 'ASC'], ['id', 'ASC']]
+        // --- Étape 7: Récupération (requête brute -> pas d'hydratation ORM de milliers de lignes) ---
+        const periodeClause = (id_periode !== undefined && id_periode !== null && id_periode !== '')
+            ? 'id_periode = :id_periode'
+            : 'id_periode IS NULL';
+        const finalResults = await db.sequelize.query(`
+            SELECT id, id_doublon, date, journal, piece, compte, libelle, debit, credit, statut, date_validation
+            FROM recherche_doublons
+            WHERE id_dossier = :id_dossier
+              AND id_exercice = :id_exercice
+              AND ${periodeClause}
+            ORDER BY id_doublon ASC, id ASC
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: { id_dossier, id_exercice, ...(periodeClause.includes(':id_periode') ? { id_periode } : {}) }
         });
 
         // --- Étape 8: Réponse ---

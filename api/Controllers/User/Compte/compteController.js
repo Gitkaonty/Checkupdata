@@ -5,6 +5,7 @@ const userscomptes = db.userscomptes;
 const users = db.users;
 const abonnements = db.abonnements;
 const paiements = db.paiements;
+const pluralize = require('pluralize');
 
 exports.getAllComptes = async (req, res) => {
     try {
@@ -208,7 +209,7 @@ exports.deleteSelectedAbonnement = async (req, res) => {
                 id: abonnementIds
             }
         })
-        return res.status(200).json({ message: `${abonnementDeleted} ${pluralize(abonnementDeleted, 'abonnement')} ${pluralize(abonnementDeleted, 'supprimé')} avec succès`, state: true });
+        return res.status(200).json({ message: `${abonnementDeleted} ${pluralize('abonnement', abonnementDeleted)} ${pluralize('supprimé', abonnementDeleted)} avec succès`, state: true });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Erreur serveur", state: false, error: error.message });
@@ -226,7 +227,7 @@ exports.deleteSelectedPaiement = async (req, res) => {
                 id: paiementIds
             }
         })
-        return res.status(200).json({ message: `${paiementDeleted} ${pluralize(paiementDeleted, 'abonnement')} ${pluralize(paiementDeleted, 'supprimé')} avec succès`, state: true });
+        return res.status(200).json({ message: `${paiementDeleted} ${pluralize('paiement', paiementDeleted)} ${pluralize('supprimé', paiementDeleted)} avec succès`, state: true });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Erreur serveur", state: false, error: error.message });

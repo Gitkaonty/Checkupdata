@@ -1,1 +1,1 @@
-EcritureNum;datesaisie;EcritureDate;CompteNum;EcritureLib;CompAuxNum;Debit;Credit;JournalCode;PieceRef;PieceDate;Idevise;EcritureLet;DateLet;ModeRglt;DateRglt
+EcritureNum;datesaisie;EcritureDate;CompteNum;CompteLib;CompAuxNum;CompAuxLib;PieceRef;PieceDate;EcritureLib;Debit;Credit;JournalCode;Idevise;EcritureLet;ValideDate;DateLet;MontantDevise;ModeRglt;DateRglt;NatOp;IdClient
