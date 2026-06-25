@@ -23,6 +23,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(25),
       allowNull: false,
     },
+    id_num_compte: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     codeCtrl: {
       type: DataTypes.STRING(255),
       allowNull: false,

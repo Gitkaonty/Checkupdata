@@ -41,13 +41,13 @@ db.userPermission = require('./userPermissionsModel')(sequelize, DataTypes);
 db.rolePermission = require('./rolePermissionsModel')(sequelize, DataTypes);
 
 //gestion des membres
-db.membres = require('./membreIdentiteModel')(sequelize, DataTypes);
-db.membres_updates = require("./membreUpdateModel")(sequelize, Sequelize);
+// db.membres = require('./membreIdentiteModel')(sequelize, DataTypes);
+// db.membres_updates = require("./membreUpdateModel")(sequelize, Sequelize);
 
 //paramétres - exercice
 db.exercices = require('./exerciceModel')(sequelize, DataTypes);
 db.periodes = require('./periodesModel')(sequelize, DataTypes);
-db.grille_tarifaires = require('./grilleTarifaire')(sequelize, Sequelize);
+// db.grille_tarifaires = require('./grilleTarifaire')(sequelize, Sequelize);
 
 // Compte
 db.compteDossiers = require('./compteDossierModel')(sequelize, DataTypes);
@@ -80,7 +80,12 @@ db.journals = require('./journalsModel')(sequelize, DataTypes);
 //paramètres cotisation
 db.appels = require("./appelModel")(sequelize, Sequelize);
 db.ajustementappels = require("./ajustementappel")(sequelize, Sequelize);
-db.paiements = require("./paiementModel")(sequelize, Sequelize);
+
+//
+db.abonnements = require('./abonnementModel')(sequelize, DataTypes);
+db.paiements = require('./paiementModel')(sequelize, DataTypes);
+//
+
 
 //paramètres crm
 // db.dossierassocies = require('./dossierassociesModel')(sequelize, DataTypes);
@@ -112,6 +117,9 @@ db.commentaireAnalytique = require('./commentaireAnalytiqueModel')(sequelize, Da
 db.revuAnalytique = require('./revuAnalytiqueModel')(sequelize, DataTypes);
 db.commentaireAnalytiqueMensuelle = require('./commentaireAnalytiqueMensuelleModel.js')(sequelize, DataTypes);
 
+// Lignes analytiques (ventilation par axe/section des écritures)
+db.analytiques = require('./analytiqueModel')(sequelize, DataTypes);
+
 Object.keys(db).forEach(modelName => {
     if (db[modelName].associate) {
         db[modelName].associate(db);
@@ -137,9 +145,9 @@ db.userPermission.belongsTo(db.permissions, { foreignKey: 'permission_id', targe
 db.roles.hasMany(db.users, { foreignKey: 'role_id', sourceKey: 'id' });
 db.users.belongsTo(db.roles, { foreignKey: 'role_id', targetKey: 'id' });
 
-// Définir la relation (Pour le JOIN)
-db.membres.hasMany(db.membres_updates, { foreignKey: 'membre_id' });
-db.membres_updates.belongsTo(db.membres, { foreignKey: 'membre_id', as: 'membre_info' });
+// // Définir la relation (Pour le JOIN)
+// db.membres.hasMany(db.membres_updates, { foreignKey: 'membre_id' });
+// db.membres_updates.belongsTo(db.membres, { foreignKey: 'membre_id', as: 'membre_info' });
 
 db.balances.belongsTo(db.dossierplancomptables, { as: 'infosCompte', foreignKey: 'id_numcompte', targetKey: 'id' });
 
@@ -215,33 +223,39 @@ db.dossierPasswordAccess.belongsTo(db.dossiers, { foreignKey: 'id_dossier', targ
 
 
 // --- DÉFINITION DES RELATIONS ---
-// Un exercice possède plusieurs tarifs
-db.exercices.hasMany(db.grille_tarifaires, { foreignKey: 'exercice_id', as: 'tarifs' });
+// // Un exercice possède plusieurs tarifs
+// db.exercices.hasMany(db.grille_tarifaires, { foreignKey: 'exercice_id', as: 'tarifs' });
 // Un tarif appartient à un seul exercice
-db.grille_tarifaires.belongsTo(db.exercices, { foreignKey: 'exercice_id' });
+// db.grille_tarifaires.belongsTo(db.exercices, { foreignKey: 'exercice_id' });
 
 // Optionnel : Définir les relations pour faciliter les futures requêtes
 db.appels.belongsTo(db.exercices, { foreignKey: "exercice_id" });
-db.appels.belongsTo(db.membres, { foreignKey: "membre_id" });
+// db.appels.belongsTo(db.membres, { foreignKey: "membre_id" });
 
-// L'appel appartient à un membre
-db.appels.belongsTo(db.membres, {
-    foreignKey: 'membre_id',
-    as: 'membre' // Cet alias DOIT être le même que dans ton include
-});
+// // L'appel appartient à un membre
+// db.appels.belongsTo(db.membres, {
+//     foreignKey: 'membre_id',
+//     as: 'membre' // Cet alias DOIT être le même que dans ton include
+// });
 
 // Un membre peut avoir plusieurs appels (optionnel mais recommandé)
-db.membres.hasMany(db.appels, {
-    foreignKey: 'membre_id',
-    as: 'appels'
-});
+// db.membres.hasMany(db.appels, {
+//     foreignKey: 'membre_id',
+//     as: 'appels'
+// });
 
 
 // Compte portefeuille relationships removed - portefeuille references userscomptes via id_compte, not users directly
 
+// // Abonnement
+// db.userscomptes.hasMany(db.abonnements, { foreignKey: 'compte_id', sourceKey: 'id' });
+// db.abonnements.belongsTo(db.userscomptes, { foreignKey: 'compte_id', targetKey: 'id' });
 
-db.membres.hasMany(db.paiements, { foreignKey: 'membre_id', as: 'paiements' });
-db.paiements.belongsTo(db.membres, { foreignKey: 'membre_id', as: 'membre' });
+// db.userscomptes.hasMany(db.paiements, { foreignKey: 'compte_id', sourceKey: 'id', as: 'paiements' });
+// db.paiements.belongsTo(db.userscomptes, { foreignKey: 'compte_id', targetKey: 'id', as: 'userscompte' });
+
+// db.membres.hasMany(db.paiements, { foreignKey: 'membre_id', as: 'paiements' });
+// db.paiements.belongsTo(db.membres, { foreignKey: 'membre_id', as: 'membre' });
 
 //exporting the module
 module.exports = db;

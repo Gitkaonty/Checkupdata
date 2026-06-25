@@ -261,22 +261,36 @@ const getEvolution = (currentVar, previousVar) => {
     return 'stable';
 };
 
-const getJournalData = async (id_compte, id_dossier, id_exercice) => {
-    const journalData = await journals.findAll({
-        where: { id_compte, id_dossier, id_exercice },
-        include: [
-            { model: DossierPlan, attributes: ['compte'], required: true },
-            { model: codejournals, attributes: ['code'] }
-        ],
-        order: [['dateecriture', 'ASC']]
-    });
+// Charge uniquement les colonnes nécessaires aux calculs (compte, journal, date, débit, crédit),
+// en SQL brut → pas d'hydratation ORM ni de .toJSON() sur 40k+ lignes. dateecriture est formatée
+// en 'YYYY-MM-DD' pour un comportement identique aux calculs existants (new Date(...)).
+const getJournalData = async (id_compte, id_dossier, id_exercice, date_debut = null, date_fin = null) => {
+    const replacements = { id_compte, id_dossier, id_exercice };
+    let dateFilter = '';
+    if (date_debut && date_fin) {
+        dateFilter = ' AND J.dateecriture BETWEEN :date_debut AND :date_fin';
+        replacements.date_debut = date_debut;
+        replacements.date_fin = date_fin;
+    }
 
-    const mappedData = journalData.map(journal => {
-        const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-        return { ...rest, compte: dossierplancomptable?.compte || null, journal: codejournal?.code || null, };
-    });
+    const rows = await db.sequelize.query(
+        `SELECT
+            PC.compte AS compte,
+            CJ.code AS journal,
+            to_char(J.dateecriture, 'YYYY-MM-DD') AS dateecriture,
+            J.debit,
+            J.credit
+         FROM journals J
+         INNER JOIN dossierplancomptables PC ON PC.id = J.id_numcpt
+         LEFT JOIN codejournals CJ ON CJ.id = J.id_journal
+         WHERE J.id_compte = :id_compte
+           AND J.id_dossier = :id_dossier
+           AND J.id_exercice = :id_exercice${dateFilter}
+         ORDER BY J.dateecriture ASC`,
+        { replacements, type: db.sequelize.QueryTypes.SELECT }
+    );
 
-    return mappedData;
+    return rows;
 }
 
 exports.getAllInfo = async (req, res) => {
@@ -300,27 +314,8 @@ exports.getAllInfo = async (req, res) => {
         const moisN = getMonthsBetween(periodeDebut, periodeFin);
 
         const moisNMapped = moisN.map(val => val?.label + val?.year);
-        // Construire la clause where avec filtre de periode si applicable
-        const whereClause = { id_compte, id_dossier, id_exercice };
-        if (date_debut && date_fin) {
-            whereClause.dateecriture = {
-                [Op.between]: [new Date(date_debut), new Date(date_fin)]
-            };
-        }
-
-        const journalData = await journals.findAll({
-            where: whereClause,
-            include: [
-                { model: DossierPlan, attributes: ['compte'], required: true },
-                { model: codejournals, attributes: ['code'] }
-            ],
-            order: [['dateecriture', 'ASC']]
-        });
-
-        const mappedData = journalData.map(journal => {
-            const { dossierplancomptable, codejournal, ...rest } = journal.toJSON();
-            return { ...rest, compte: dossierplancomptable?.compte || null, journal: codejournal?.code || null, };
-        });
+        // Chargement léger (SQL brut, colonnes utiles uniquement) avec filtre de période si applicable
+        const mappedData = await getJournalData(id_compte, id_dossier, id_exercice, date_debut, date_fin);
 
         // === Exercice N ===
         const chiffreAffaireN = calculateChiffreAffaire(mappedData, moisN);

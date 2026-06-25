@@ -4,7 +4,8 @@ import {
   Box, Typography, Stack, Paper, MenuItem, Select,
   Autocomplete, TextField, IconButton, Divider, Tooltip, Chip,
   Breadcrumbs, Button,
-  Link
+  Link,
+  CircularProgress
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import axios from '../../../config/axios';
@@ -19,14 +20,12 @@ import usePermission from '../../hooks/usePermission';
 import useAxiosPrivate from '../../../config/axiosPrivate';
 
 import {
-  NavigateBefore, NavigateNext, AccountBalanceWalletOutlined,
-  DownloadOutlined, PrintOutlined, InfoOutlined,
-  DashboardOutlined
+  NavigateNext, DashboardOutlined
 } from '@mui/icons-material';
 
 const ConsultationComptes = () => {
 
-  const { canAdd, canModify, canDelete, canView } = usePermission();
+  const { canView } = usePermission();
 
   const axiosPrivate = useAxiosPrivate();
   const [typeComptabilite, setTypeComptabilite] = useState(null);
@@ -146,13 +145,13 @@ const ConsultationComptes = () => {
   }
 
   //Liste saisie
-  const getListeSaisie = () => {
-    axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`).then((response) => {
-      const resData = response.data;
-      canView ? setListSaisie(resData) : setListSaisie([]);
-    })
-  }
-
+  // const getListeSaisie = () => {
+  //   axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`).then((response) => {
+  //     const resData = response.data;
+  //     canView ? setListSaisie(resData) : setListSaisie([]);
+  //   })
+  // }
+  const [isLoading, setIsLoading] = useState(false);
   //Liste saisie with return statement
   const getListeSaisieReturn = async () => {
     const response = await axios.get(`/administration/traitementSaisie/getAllJournal/${compteId}/${id}/${selectedExerciceId}`);
@@ -684,12 +683,18 @@ const ConsultationComptes = () => {
   }
 
   // Liste saisie
-  useEffect(() => {
-    if (fileId && selectedExerciceId && compteId && (listePlanComptable.length > 0 && listePlanComptableInitiale.length > 0)) {
-      getListeSaisie();
-    }
-  }, [selectedPeriodeId, selectedExerciceId, selectedExerciceId, isRefresehed])
+  // useEffect(() => {
+  //   if (fileId && selectedExerciceId && compteId) {
+  //     getListeSaisie();
+  //   }
+  // }, [fileId, selectedExerciceId, isRefresehed])
 
+
+  // useEffect(() => {
+  //   if (fileId && selectedExerciceId && compteId) {
+  //     getListeSaisie();
+  //   }
+  // }, [fileId, selectedExerciceId, compteId])
   //récupérer les informations du dossier sélectionné
   useEffect(() => {
     const navigationEntries = performance.getEntriesByType('navigation');
@@ -739,6 +744,7 @@ const ConsultationComptes = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const resData = await getListeSaisieReturn();
         const comptesAvecSolde = resData.map(row => String(row.compteaux));
@@ -746,43 +752,47 @@ const ConsultationComptes = () => {
         const listePlanComptableFiltree = listePlanComptableInitiale.filter(plan =>
           comptesAvecSolde.includes(String(plan.compte))
         );
+        setListePlanComptable(listePlanComptableFiltree);
 
-        if (filtrageCompte === "1") {
-          // Comptes mouvementés
-          setListePlanComptable(listePlanComptableFiltree);
+        // if (filtrageCompte === "1") {
+        //   // Comptes mouvementés
+        //   setListePlanComptable(listePlanComptableFiltree);
 
-        } else if (filtrageCompte === "2") {
-          // Comptes soldés
-          const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
-            const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-            const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-            const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-            return Math.abs(totalDebit - totalCredit) < 0.01;
-          });
+        // } else if (filtrageCompte === "2") {
+        //   // Comptes soldés
+        //   const comptesEquilibres = listePlanComptableFiltree.filter(plan => {
+        //     const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
+        //     const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+        //     const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+        //     return Math.abs(totalDebit - totalCredit) < 0.01;
+        //   });
 
-          setListePlanComptable(comptesEquilibres);
+        //   setListePlanComptable(comptesEquilibres);
 
-        } else if (filtrageCompte === "3") {
-          // Comptes non soldés
-          const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
-            const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
-            const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-            const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-            return Math.abs(totalDebit - totalCredit) >= 0.01;
-          });
+        // } else if (filtrageCompte === "3") {
+        //   // Comptes non soldés
+        //   const comptesDesequilibres = listePlanComptableFiltree.filter(plan => {
+        //     const lignes = resData.filter(row => String(row.compteaux) === String(plan.compte));
+        //     const totalDebit = lignes.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+        //     const totalCredit = lignes.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+        //     return Math.abs(totalDebit - totalCredit) >= 0.01;
+        //   });
 
-          setListePlanComptable(comptesDesequilibres);
-        }
+        //   setListePlanComptable(comptesDesequilibres);
+        // }
       } catch (error) {
         console.error("Erreur lors du chargement des écritures :", error);
+      } finally {
+        setIsLoading(false);
       }
     }
-    if (fileId && compteId) {
+    if (fileId && compteId && selectedExerciceId) {
       fetchData();
     }
-  }, [filtrageCompte, fileId, listePlanComptableInitiale]);
+  }, [filtrageCompte, fileId, listePlanComptableInitiale, selectedExerciceId]);
 
   useEffect(() => {
+
     const handleKeyDown = (e) => {
       if (canView) {
         if (e.ctrlKey && e.key === "ArrowRight") {
@@ -979,6 +989,15 @@ const ConsultationComptes = () => {
           disableSelectionOnClick={true}
           editMode='row'
           density="compact"
+          loading={isLoading}
+          slots={{
+            loadingOverlay: () => (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 1.5 }}>
+                <CircularProgress size={40} />
+                <Typography sx={{ fontSize: '0.8rem', color: '#64748B' }}>Chargement des écritures…</Typography>
+              </Box>
+            ),
+          }}
           columns={ConsultationColumnHeader}
           rows={rowsAvecSolde}
           initialState={{

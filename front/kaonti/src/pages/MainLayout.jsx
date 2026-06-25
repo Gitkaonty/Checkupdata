@@ -9,7 +9,7 @@ import {
 import {
   DashboardOutlined, HomeOutlined, SettingsOutlined,
   NotificationsOutlined, LogoutOutlined, PersonOutline,
-  ExpandLess, ExpandMore, AccountBalanceWalletOutlined,
+  ExpandLess, ExpandMore, AccountBalanceWalletOutlined, MenuOutlined,
   BusinessOutlined, HistoryOutlined
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -118,18 +118,17 @@ const MainLayout = ({ children }) => {
   ];
 
   const drawer = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#0F172A', color: '#FFFFFF' }}
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#0F172A', color: '#FFFFFF', zIndex: 1200 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', height: 64 }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: '#10B981', fontWeight: 'bold', fontSize: 14 }}>Cd</Avatar>
-        {isHovered && <Typography variant="h6" sx={{ ml: 1, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
-          Checkup<span style={{ color: '#10B981' }}>Data</span>
-        </Typography>}
-      </Box>
 
       <List sx={{ px: 2, flexGrow: 1 }}>
+        <ListItemButton onClick={() => navigate('/home')} selected={location.pathname === '/home'} sx={menuItemStyle}>
+          <ListItemIcon sx={iconStyle}><MenuOutlined /></ListItemIcon>
+          {/* <ListItemText primary="Menu" sx={{ opacity: isHovered ? 1 : 0 }} /> */}
+        </ListItemButton>
+<br />
         <ListItemButton onClick={() => navigate('/home')} selected={location.pathname === '/home'} sx={menuItemStyle}>
           <ListItemIcon sx={iconStyle}><HomeOutlined /></ListItemIcon>
           <ListItemText primary="Accueil" sx={{ opacity: isHovered ? 1 : 0 }} />
@@ -215,7 +214,7 @@ const MainLayout = ({ children }) => {
           </Collapse>
         </Box>
       </List>
-    </Box>
+    </Box >
   );
 
   return (

@@ -326,6 +326,7 @@ export default function DashboardComponent() {
       console.log('URL sans période (exercice complet):', url);
     }
 
+    setLoading(true);
     axios.get(url)
       .then((response) => {
         if (response?.data?.state) {
@@ -407,6 +408,9 @@ export default function DashboardComponent() {
       .catch((err) => {
         console.error(err);
         toast.error(err?.response?.data?.message || err?.message || "Erreur inconnue");
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }
 
@@ -624,31 +628,35 @@ export default function DashboardComponent() {
     try {
       const { id_compte, id_dossier, id_exercice } = getIds();
 
-      // D'abord, déclencher la sauvegarde des anomalies pour la période sélectionnée
+      // D'abord, déclencher la sauvegarde des anomalies pour la période sélectionnée.
+      // Ces deux appels doivent se terminer AVANT de lire les stats (ils les sauvegardent),
+      // mais ils peuvent tourner en parallèle entre eux.
       if (selectedPeriodeDates) {
         try {
-          // Appeler l'endpoint de revue analytique N/N-1 pour sauvegarder les anomalies
-          await axiosPrivate.get(`/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}&id_periode=${selectedPeriodeId}`);
-
-          // Appeler l'endpoint de revue analytique mensuelle pour sauvegarder les anomalies
-          await axiosPrivate.get(`/dashboard/revuAnalytiqueMensuelle/${id_compte}/${id_dossier}/${id_exercice}?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}&id_periode=${selectedPeriodeId}`);
-
+          await Promise.all([
+            axiosPrivate.get(`/dashboard/revuAnalytiqueNN1/${id_compte}/${id_dossier}/${id_exercice}?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}&id_periode=${selectedPeriodeId}`),
+            axiosPrivate.get(`/dashboard/revuAnalytiqueMensuelle/${id_compte}/${id_dossier}/${id_exercice}?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}&id_periode=${selectedPeriodeId}`),
+          ]);
         } catch (error) {
           console.error('[SyntheseAnomalies] Erreur lors de la sauvegarde des anomalies:', error);
         }
       }
 
-      const updatedSections = [...sectionsData];
-
-      for (let section of updatedSections) {
-        for (let item of section.items) {
-          if (item.hasAnomalies && item.typeRevue) {
-            const stats = await fetchAnomalyStats(item.typeRevue, item.endpoint);
-            item.anomalies = stats.anomalies;
-            item.remaining = stats.remaining;
-          }
-        }
-      }
+      // Charger les stats de toutes les cartes EN PARALLÈLE (au lieu d'une par une).
+      const updatedSections = await Promise.all(
+        sectionsData.map(async (section) => {
+          const items = await Promise.all(
+            section.items.map(async (item) => {
+              if (item.hasAnomalies && item.typeRevue) {
+                const stats = await fetchAnomalyStats(item.typeRevue, item.endpoint);
+                return { ...item, anomalies: stats.anomalies, remaining: stats.remaining };
+              }
+              return item;
+            })
+          );
+          return { ...section, items };
+        })
+      );
 
       setSectionsData(updatedSections);
     } catch (error) {
@@ -840,7 +848,28 @@ export default function DashboardComponent() {
           :
           null
       }
-      <Box sx={{ height: 'calc(100vh - 110px)', width: 'calc(100vw - 130px)' }}>
+      <Box sx={{ height: 'calc(100vh - 110px)', width: 'calc(100vw - 130px)', position: 'relative' }}>
+        {(loading || loadingStats) && (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              bgcolor: 'rgba(255,255,255,0.65)',
+              backdropFilter: 'blur(1px)',
+            }}
+          >
+            <CircularProgress size={48} thickness={4} />
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#475569' }}>
+              Chargement des données…
+            </Typography>
+          </Box>
+        )}
         <TabContext value={"1"}>
           <TabPanel value="1" style={{ height: '100%', padding: 0, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{

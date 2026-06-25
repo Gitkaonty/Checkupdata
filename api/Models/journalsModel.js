@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true
         },
         dateecriture: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             unique: false,
             allowNull: false
         },

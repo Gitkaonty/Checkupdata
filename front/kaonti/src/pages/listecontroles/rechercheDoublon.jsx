@@ -30,6 +30,7 @@ import {
   TableFooter,
   TableHead,
   TableRow,
+  TablePagination,
   Collapse
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
@@ -159,6 +160,20 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
   const doublonsGroups = Object.values(groupedDoublons);
 
   const totalDoublonsGroupes = doublonsGroups.length;
+
+  // Pagination des groupes : évite de rendre des milliers de lignes DOM d'un coup
+  const [groupPage, setGroupPage] = useState(0);
+  const [groupRowsPerPage, setGroupRowsPerPage] = useState(25);
+  const pagedDoublonsGroups = doublonsGroups.slice(
+    groupPage * groupRowsPerPage,
+    groupPage * groupRowsPerPage + groupRowsPerPage
+  );
+
+  // Si le nombre de groupes change (nouvelle recherche), s'assurer que la page reste valide
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(doublonsGroups.length / groupRowsPerPage) - 1);
+    if (groupPage > maxPage) setGroupPage(maxPage);
+  }, [doublonsGroups.length, groupRowsPerPage, groupPage]);
 
   const selectedGroup = doublonsGroups.find(g => String(g.id_doublon) === String(selectedGroupId)) || null;
 
@@ -758,7 +773,7 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {doublonsGroups.map((group) => (
+                  {pagedDoublonsGroups.map((group) => (
                     <React.Fragment key={group.id}>
                       <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
                         <TableCell>
@@ -872,6 +887,19 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={totalDoublonsGroupes}
+                page={groupPage}
+                onPageChange={(e, newPage) => setGroupPage(newPage)}
+                rowsPerPage={groupRowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setGroupRowsPerPage(parseInt(e.target.value, 10));
+                  setGroupPage(0);
+                }}
+                rowsPerPageOptions={[25, 50, 100, 200]}
+                labelRowsPerPage="Groupes par page"
+              />
             </TableContainer>
           )}
 
