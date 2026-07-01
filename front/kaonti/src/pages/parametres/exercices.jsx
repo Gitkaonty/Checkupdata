@@ -19,6 +19,42 @@ import { useParams, useNavigate } from 'react-router-dom';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 
+// ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  warn: '#B5791A',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+};
+const primaryBtnSx = {
+  bgcolor: T.accent,
+  color: '#fff',
+  textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '13px',
+  borderRadius: '8px',
+  boxShadow: 'none',
+  '&:hover': { bgcolor: T.accentDark },
+};
+
 // --- COMPOSANT INTERNE : POPUP INITIALISATION (1er EXERCICE) ---
 const InitPremierExercice = ({ open, onClose, values, setValues, onSubmit }) => {
   const labelStyle = { 
@@ -33,8 +69,8 @@ const InitPremierExercice = ({ open, onClose, values, setValues, onSubmit }) => 
   return (
     <Dialog open={open} onClose={onClose} PaperProps={{ sx: { borderRadius: '20px', width: 450, p: 1 } }}>
       <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-        <Box sx={{ width: 60, height: 60, bgcolor: '#EEF2FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', mb: 2 }}>
-          <RocketLaunchOutlined sx={{ color: '#6366F1', fontSize: 32 }} />
+        <Box sx={{ width: 60, height: 60, bgcolor: T.accW, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', mb: 2 }}>
+          <RocketLaunchOutlined sx={{ color: T.accent, fontSize: 32 }} />
         </Box>
         <Typography variant="h6" sx={{ fontWeight: 900, color: '#1E293B' }}>Initialisation du Dossier</Typography>
         <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mt: 1 }}>Configurez votre tout premier exercice comptable</Typography>
@@ -103,12 +139,12 @@ const InitPremierExercice = ({ open, onClose, values, setValues, onSubmit }) => 
         <Button 
           variant="contained" 
           sx={{ 
-            bgcolor: '#1E293B', 
+            bgcolor: T.accent, 
             textTransform: 'none', 
             borderRadius: '10px', 
             px: 4, 
             fontWeight: 800,
-            '&:hover': { bgcolor: '#0F172A' }
+            '&:hover': { bgcolor: T.accentDark }
           }}
           onClick={onSubmit}
         >
@@ -407,100 +443,104 @@ const exercices = () => {
   }
 
   return (
-    <Box sx={{ p: 3, height: '100%', bgcolor: '#F8FAFC' }}>
-      
-      {/* --- BREADCRUMBS NAVIGATION --- */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-        <Chip 
-          label={compteName} 
-          sx={{ 
-            borderRadius: '4px', // Rectangulaire comme demandé
-            bgcolor: '#F1F5F9', 
-            color: '#475569', 
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            border: '1px solid #E2E8F0',
-            height: 24,
-          }} 
-        />
-        <Breadcrumbs 
-          separator={<NavigateNext fontSize="small" />} 
-          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+    <Box sx={{ p: 3, height: 'calc(100vh - 120px)', width: 'calc(100vw - 130px)', bgcolor: T.canvas, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2.5, flexShrink: 0 }}>
+        <Breadcrumbs
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Link underline="hover" color="inherit" href="/dashboard" 
-            sx={{ display: 'flex', alignItems: 'center' }}
-            >
-            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </Link>
-          <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Exercices & Périodes</Typography>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Exercices &amp; périodes</Typography>
         </Breadcrumbs>
-      </Stack>
 
-      {/* --- HEADER AVEC AFFICHAGE DÉTAILLÉ --- */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B' }}>Paramètres Exercice</Typography>
-          <Typography variant="caption" sx={{ color: '#64748B' }}>Définissez vos périodes de saisie</Typography>
-        </Box>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ flexWrap: 'wrap', rowGap: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+              <CalendarMonthOutlined />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+                Exercices &amp; périodes
+              </Typography>
+              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+                Définissez vos exercices et périodes de saisie · {compteName}
+              </Typography>
+            </Box>
+          </Stack>
 
-        {/* Navigation avec affichage Année : Début - Fin */}
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ bgcolor: '#FFF', p: 1, px: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          <IconButton
-            onClick={handleChevronLeft}
-            disabled={exercicesList.length === 0}
-            sx={{ bgcolor: '#F1F5F9' }}
-          >
-            <ChevronLeft />
-          </IconButton>
-          <Stack alignItems="center">
-            <Typography sx={{ fontWeight: 900, color: '#1E293B', fontSize: '1.1rem', lineHeight: 1.2 }}>
-                {exerciceActuel.annee}
-            </Typography>
-            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>
-                {exerciceActuel.debut} — {exerciceActuel.fin}
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+            {/* Navigation exercice : Année · Début — Fin */}
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ...panelSx, p: 0.75, px: 1.25, borderRadius: '10px' }}>
+              <IconButton onClick={handleChevronLeft} disabled={exercicesList.length === 0} size="small" sx={{ bgcolor: T.ledger, color: T.accent, '&:hover': { bgcolor: T.accW } }}>
+                <ChevronLeft fontSize="small" />
+              </IconButton>
+              <Stack alignItems="center" sx={{ minWidth: 130 }}>
+                <Typography sx={{ ...NUM, fontWeight: 800, color: T.ink, fontSize: '17px', lineHeight: 1.1 }}>
+                  {exerciceActuel.annee || '—'}
+                </Typography>
+                <Typography sx={{ ...NUM, color: T.muted, fontWeight: 600, fontSize: '11px' }}>
+                  {exerciceActuel.debut} — {exerciceActuel.fin}
+                </Typography>
+              </Stack>
+              <IconButton onClick={handleChevronRight} disabled={exercicesList.length === 0} size="small" sx={{ bgcolor: T.ledger, color: T.accent, '&:hover': { bgcolor: T.accW } }}>
+                <ChevronRight fontSize="small" />
+              </IconButton>
+            </Stack>
+
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={<AddOutlined />}
+              onClick={() => setOpenPeriode(true)}
+              disabled={!selectedExercice}
+              sx={{ ...primaryBtnSx, px: 3, height: 40 }}
+            >
+              Créer une période
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+
+      {/* --- GRILLE DES PÉRIODES (défilante) --- */}
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5 }}>
+        {periodesList.length === 0 ? (
+          <Stack alignItems="center" justifyContent="center" spacing={1.5} sx={{ height: '100%', textAlign: 'center' }}>
+            <Box sx={{ width: 56, height: 56, borderRadius: '16px', display: 'grid', placeItems: 'center', color: T.faint, bgcolor: T.ledger }}>
+              <CalendarMonthOutlined sx={{ fontSize: 28 }} />
+            </Box>
+            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: T.muted }}>Aucune période définie</Typography>
+            <Typography sx={{ fontSize: '12.5px', color: T.faint, maxWidth: 340 }}>
+              Créez une période (mois, trimestre…) pour cet exercice via le bouton « Créer une période ».
             </Typography>
           </Stack>
-          <IconButton
-            onClick={handleChevronRight}
-            disabled={exercicesList.length === 0}
-            sx={{ bgcolor: '#F1F5F9' }}
-          >
-            <ChevronRight />
-          </IconButton>
-        </Stack>
-
-        <Button 
-          variant="contained" 
-          startIcon={<AddOutlined />}
-          onClick={() => setOpenPeriode(true)}
-          sx={{ bgcolor: '#1E293B', textTransform: 'none', borderRadius: '8px', px: 3, '&:hover': { bgcolor: '#000' } }}
-        >
-          Créer une période
-        </Button>
-      </Stack>
-
-      {/* --- GRILLE DES PÉRIODES PERSONNALISÉES --- */}
-      <Grid container spacing={2}>
-        {periodesList.map((p) => (
-          <Grid key={p.id} item xs={12} sm={6} md={4} lg={3}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
-              <Stack direction="row" justifyContent="space-between" mb={1}>
-                <Typography sx={{ fontWeight: 800, color: '#1E293B' }}>{p.libelle}</Typography>
-                <Chip label="Ouvert" size="small" sx={{ bgcolor: '#F0FDFA', color: '#10B981', fontWeight: 800, fontSize: '0.65rem', height: 20 }} />
-              </Stack>
-              <Typography variant="body2" sx={{ color: '#64748B', mb: 2, fontSize: '0.8rem' }}>
-                Du {formatDateFr(p.date_debut)} au {formatDateFr(p.date_fin)}
-              </Typography>
-              <Divider sx={{ mb: 1.5 }} />
-              <Stack direction="row" justifyContent="flex-end">
-                <IconButton size="small" sx={{ color: '#EF4444', '&:hover': { bgcolor: '#FEF2F2' } }} onClick={() => { setPeriodeToDelete(p.id); setDeletePeriodeDialogOpen(true); }}>
-                  <DeleteOutline fontSize="small" />
-                </IconButton>
-              </Stack>
-            </Paper>
+        ) : (
+          <Grid container spacing={2}>
+            {periodesList.map((p) => (
+              <Grid key={p.id} item xs={12} sm={6} md={4} lg={3}>
+                <Paper elevation={0} sx={{ ...panelSx, p: 2, transition: 'transform .15s, box-shadow .15s', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 24px -14px rgba(16,39,51,.28)' } }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography sx={{ fontWeight: 700, color: T.ink, fontSize: '14px' }}>{p.libelle}</Typography>
+                    <Chip label="Ouvert" size="small" sx={{ bgcolor: T.accW, color: T.pos, fontWeight: 700, fontSize: '10px', height: 20 }} />
+                  </Stack>
+                  <Typography sx={{ ...NUM, color: T.muted, mb: 1.5, fontSize: '12px' }}>
+                    Du {formatDateFr(p.date_debut)} au {formatDateFr(p.date_fin)}
+                  </Typography>
+                  <Divider sx={{ mb: 1, borderColor: T.ledger }} />
+                  <Stack direction="row" justifyContent="flex-end">
+                    <IconButton size="small" sx={{ color: T.neg, '&:hover': { bgcolor: T.negW || '#F7E7E4' } }} onClick={() => { setPeriodeToDelete(p.id); setDeletePeriodeDialogOpen(true); }}>
+                      <DeleteOutline fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
+        )}
+      </Box>
 
       {/* --- POPUP SUPPRESSION DE PÉRIODE --- */}
       <ConfirmDeleteDialog
@@ -532,7 +572,7 @@ const exercices = () => {
       {/* --- POPUP CRÉATION DE PÉRIODE --- */}
       <Dialog open={openPeriode} onClose={() => setOpenPeriode(false)} PaperProps={{ sx: { borderRadius: '16px', width: 400 } }}>
         <DialogTitle sx={{ fontWeight: 900, pt: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CalendarMonthOutlined sx={{ color: '#6366F1' }} /> Nouvelle Période
+          <CalendarMonthOutlined sx={{ color: T.accent }} /> Nouvelle Période
         </DialogTitle>
         
         <DialogContent>
@@ -588,7 +628,7 @@ const exercices = () => {
           <Button onClick={() => setOpenPeriode(false)} sx={{ color: '#64748B', textTransform: 'none', fontWeight: 600 }}>
             Annuler
           </Button>
-          <Button variant="contained" sx={{ bgcolor: '#0F172A', textTransform: 'none', px: 4, fontWeight: 700, borderRadius: '8px', '&:hover': { bgcolor: '#1E293B' } }} onClick={handleCreatePeriode}>
+          <Button variant="contained" sx={{ bgcolor: T.accentDark, textTransform: 'none', px: 4, fontWeight: 700, borderRadius: '8px', '&:hover': { bgcolor: T.accent } }} onClick={handleCreatePeriode}>
             Valider
           </Button>
         </DialogActions>
@@ -606,8 +646,8 @@ const exercices = () => {
       {/* --- POPUP CRÉATION NOUVEL EXERCICE (NEXT/PREV) --- */}
       <Dialog open={openNewExercice} onClose={() => setOpenNewExercice(false)} PaperProps={{ sx: { borderRadius: '20px', width: 450 } }}>
         <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-          <Box sx={{ width: 60, height: 60, bgcolor: '#EEF2FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', mb: 2 }}>
-            <CalendarMonthOutlined sx={{ color: '#6366F1', fontSize: 32 }} />
+          <Box sx={{ width: 60, height: 60, bgcolor: T.accW, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', mb: 2 }}>
+            <CalendarMonthOutlined sx={{ color: T.accent, fontSize: 32 }} />
           </Box>
           <Typography variant="h6" sx={{ fontWeight: 900, color: '#1E293B' }}>
             Créer un nouvel exercice
@@ -645,12 +685,12 @@ const exercices = () => {
           <Button 
             variant="contained" 
             sx={{ 
-              bgcolor: '#1E293B', 
+              bgcolor: T.accent, 
               textTransform: 'none', 
               borderRadius: '10px', 
               px: 4, 
               fontWeight: 800,
-              '&:hover': { bgcolor: '#0F172A' }
+              '&:hover': { bgcolor: T.accentDark }
             }}
             onClick={handleConfirmNewExercice}
           >
