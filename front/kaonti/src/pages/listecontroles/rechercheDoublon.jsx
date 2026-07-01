@@ -77,6 +77,16 @@ const parseNumber = (value) => {
   return Number.isFinite(num) ? num : null;
 };
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', accentDark: '#0a5d65', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', accW: '#E2F0F1', negW: '#F7E7E4', warnW: '#FBF3E2',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const statLabelSx = { fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' };
+
 const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
   let initial = init[0];
 
@@ -636,15 +646,15 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', bgcolor: T.canvas }}>
 
       {/* --- STATISTIQUES GLOBALES --- */}
-      <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+      <Stack direction="row" spacing={3} sx={{ px: 2.5, py: 1.5, bgcolor: T.surface, borderBottom: `1px solid ${T.line}` }}>
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>DOUBLONS DÉTECTÉS</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{totalDoublonsGroupes}</Typography>
-            <CopyAllOutlined sx={{ color: '#EF4444', fontSize: 18 }} />
+          <Typography sx={statLabelSx}>Doublons détectés</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Typography sx={{ ...NUM, color: totalDoublonsGroupes > 0 ? T.neg : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{totalDoublonsGroupes}</Typography>
+            <CopyAllOutlined sx={{ color: totalDoublonsGroupes > 0 ? T.neg : T.pos, fontSize: 18 }} />
           </Stack>
         </Box>
       </Stack>
@@ -657,12 +667,13 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
           sx={{
             p: 2,
             borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            bgcolor: '#FFFFFF'
+            border: `1px solid ${T.line}`,
+            bgcolor: T.surface,
+            boxShadow: CARD_SHADOW
           }}
         >
           <Stack direction="row" alignItems="center" spacing={2} flexWrap="wrap">
-            <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Comparer par :
             </Typography>
 
@@ -682,13 +693,13 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                       fontSize: '0.75rem',
                       height: 28,
                       transition: 'all 0.2s',
-                      bgcolor: isActive ? 'rgba(6, 182, 212, 0.12)' : '#FFFFFF',
-                      color: isActive ? '#0891B2' : '#64748B',
+                      bgcolor: isActive ? T.accW : T.surface,
+                      color: isActive ? T.accentDark : T.muted,
                       border: '1px solid',
-                      borderColor: isActive ? '#06b6d4' : '#E2E8F0',
+                      borderColor: isActive ? T.accent : T.line,
                       '&:hover': {
-                        bgcolor: isActive ? 'rgba(6, 182, 212, 0.18)' : '#F8FAFC',
-                        borderColor: isActive ? '#06b6d4' : '#CBD5E1',
+                        bgcolor: isActive ? T.accW : T.ledger,
+                        borderColor: isActive ? T.accent : T.faint,
                       },
                       '& .MuiChip-icon': { color: 'inherit' }
                     }}
@@ -697,13 +708,13 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
               })}
             </Stack>
 
-            <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 20, alignSelf: 'center' }} />
+            <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 20, alignSelf: 'center', borderColor: T.line }} />
 
             <Typography
               variant="caption"
               sx={{
                 cursor: 'pointer',
-                color: '#6366F1',
+                color: T.accent,
                 fontWeight: 700,
                 '&:hover': { textDecoration: 'underline' }
               }}
@@ -712,18 +723,23 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
               Tout sélectionner
             </Typography>
 
-            <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 20, alignSelf: 'center' }} />
+            <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 20, alignSelf: 'center', borderColor: T.line }} />
 
             <Button
               variant="contained"
+              startIcon={<Search />}
               onClick={handleOpenConfirmDialog}
               disabled={!effectiveExerciceId || loading}
               sx={{
                 textTransform: 'none',
                 outline: 'none',
-                backgroundColor: initial.theme,
-                color: "white",
-                height: "32px",
+                bgcolor: T.accent,
+                color: 'white',
+                height: '34px',
+                fontWeight: 700,
+                borderRadius: '10px',
+                boxShadow: 'none',
+                '&:hover': { bgcolor: T.accentDark, boxShadow: 'none' },
               }}
             >
               {loading ? 'Recherche...' : 'Rechercher'}
@@ -736,8 +752,8 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
           sx={{
             p: 2,
             borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            bgcolor: '#F8FAFC',
+            border: `1px solid ${T.line}`,
+            bgcolor: T.canvas,
             flexGrow: 1,
             minHeight: 0,
             overflow: 'hidden',
@@ -753,7 +769,8 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
               elevation={0}
               sx={{
                 borderRadius: '12px',
-                border: '1px solid #E2E8F0',
+                border: `1px solid ${T.line}`,
+                boxShadow: CARD_SHADOW,
                 flexGrow: 1,
                 minHeight: 0,
                 overflow: 'auto'
@@ -761,7 +778,7 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
             >
               <Table size="small" stickyHeader>
                 <TableHead>
-                  <TableRow sx={{ '& th': { bgcolor: '#F8FAFC', fontWeight: 800, color: '#64748B', py: 1.5, fontSize: '0.75rem', textTransform: 'uppercase' } }}>
+                  <TableRow sx={{ '& th': { bgcolor: T.ledger, fontWeight: 700, color: T.muted, py: 1.5, fontSize: '11px', letterSpacing: '.3px', textTransform: 'uppercase', borderBottom: `1px solid ${T.line}` } }}>
                     <TableCell width={40}></TableCell>
                     <TableCell>GROUPE</TableCell>
                     <TableCell>COMPTE</TableCell>
@@ -781,28 +798,28 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                             size="small"
                             onClick={() => setExpandedId(expandedId === group.id ? null : group.id)}
                           >
-                            <Visibility fontSize="small" color={expandedId === group.id ? "primary" : "action"} />
+                            <Visibility fontSize="small" sx={{ color: expandedId === group.id ? T.accent : T.faint }} />
                           </IconButton>
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 800, fontSize: '0.85rem' }}>{group.id}</TableCell>
-                        <TableCell sx={{ fontSize: '0.85rem' }}>{group.compte}</TableCell>
-                        <TableCell sx={{ fontSize: '0.8rem', color: '#64748B' }}>{group.date},{group.compte},{group.journal},{group.piece},{group.libelle},                                                    {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                        <TableCell sx={{ fontWeight: 800, fontSize: '0.85rem', color: T.ink, ...NUM }}>{group.id}</TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', color: T.text, ...NUM }}>{group.compte}</TableCell>
+                        <TableCell sx={{ fontSize: '0.8rem', color: T.muted }}>{group.date},{group.compte},{group.journal},{group.piece},{group.libelle},                                                    {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 900, fontSize: '0.85rem' }}>
+                        <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.85rem', color: T.text, ...NUM }}>
                           {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                         </TableCell>
                         <TableCell align="center">
                           <Chip
                             label={group.occurences}
                             size="small"
-                            sx={{ height: 18, fontSize: '0.65rem', fontWeight: 900 }}
+                            sx={{ height: 18, fontSize: '0.65rem', fontWeight: 900, bgcolor: T.negW, color: T.neg, ...NUM }}
                           />
                         </TableCell>
                         <TableCell align="center">
                           {group.statut === 'VALIDE' ? (
-                            <CheckCircle sx={{ color: '#10B981', fontSize: '1.2rem' }} />
+                            <CheckCircle sx={{ color: T.pos, fontSize: '1.2rem' }} />
                           ) : (
-                            <WarningAmber sx={{ color: '#F59E0B', fontSize: '1.2rem' }} />
+                            <WarningAmber sx={{ color: T.warn, fontSize: '1.2rem' }} />
                           )}
                         </TableCell>
                         <TableCell align="right">
@@ -810,17 +827,15 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                             <Chip
                               label="VALIDÉ"
                               size="small"
-                              color="success"
-                              sx={{ fontWeight: 900, fontSize: '0.7rem' }}
+                              sx={{ fontWeight: 900, fontSize: '0.7rem', bgcolor: T.accW, color: T.pos }}
                             />
                           ) : (
                             <Button
                               variant="outlined"
                               size="small"
-                              color="success"
                               onClick={() => handleRequestValidateGroup(group.id_doublon)}
                               disabled={validatingGroup === group.id_doublon}
-                              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '6px', fontSize: '0.75rem' }}
+                              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '8px', fontSize: '0.75rem', color: T.accent, borderColor: T.accent, '&:hover': { borderColor: T.accentDark, bgcolor: T.accW } }}
                             >
                               {validatingGroup === group.id_doublon ? 'Validation...' : 'Valider'}
                             </Button>
@@ -832,27 +847,27 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                       <TableRow>
                         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
                           <Collapse in={expandedId === group.id} timeout="auto" unmountOnExit>
-                            <Box sx={{ py: 3, px: 10, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                            <Box sx={{ py: 3, px: 10, bgcolor: T.ledger, borderBottom: `1px solid ${T.line}` }}>
                               <Typography
                                 variant="subtitle2"
-                                sx={{ fontWeight: 800, mb: 1.5, color: '#475569', display: 'flex', alignItems: 'center', gap: 1 }}
+                                sx={{ fontWeight: 800, mb: 1.5, color: T.ink, display: 'flex', alignItems: 'center', gap: 1 }}
                               >
-                                Écritures détectées <Chip label={group.occurences} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 900 }} />
+                                Écritures détectées <Chip label={group.occurences} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 900, bgcolor: T.accW, color: T.accentDark, ...NUM }} />
                               </Typography>
 
-                              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '10px', border: `1px solid ${T.line}` }}>
                                 <Table size="small">
-                                  <TableHead sx={{ bgcolor: 'white' }}>
+                                  <TableHead sx={{ bgcolor: T.surface }}>
                                     <TableRow>
-                                      <TableCell sx={{ fontWeight: 700, color: '#64748B', fontSize: '0.7rem' }}>DATE</TableCell>
-                                      <TableCell sx={{ fontWeight: 700, color: '#64748B', fontSize: '0.7rem' }}>JOURNAL</TableCell>
-                                      <TableCell sx={{ fontWeight: 700, color: '#64748B', fontSize: '0.7rem' }}>LIBELLÉ</TableCell>
-                                      <TableCell sx={{ fontWeight: 700, color: '#64748B', fontSize: '0.7rem' }}>PIÈCE</TableCell>
-                                      <TableCell sx={{ fontWeight: 700, color: '#64748B', fontSize: '0.7rem' }}>DÉBIT</TableCell>
-                                      <TableCell sx={{ fontWeight: 700, color: '#64748B', fontSize: '0.7rem' }}>CRÉDIT</TableCell>
+                                      <TableCell sx={{ fontWeight: 700, color: T.muted, fontSize: '0.7rem' }}>DATE</TableCell>
+                                      <TableCell sx={{ fontWeight: 700, color: T.muted, fontSize: '0.7rem' }}>JOURNAL</TableCell>
+                                      <TableCell sx={{ fontWeight: 700, color: T.muted, fontSize: '0.7rem' }}>LIBELLÉ</TableCell>
+                                      <TableCell sx={{ fontWeight: 700, color: T.muted, fontSize: '0.7rem' }}>PIÈCE</TableCell>
+                                      <TableCell align="right" sx={{ fontWeight: 700, color: T.muted, fontSize: '0.7rem' }}>DÉBIT</TableCell>
+                                      <TableCell align="right" sx={{ fontWeight: 700, color: T.muted, fontSize: '0.7rem' }}>CRÉDIT</TableCell>
                                     </TableRow>
                                   </TableHead>
-                                  <TableBody sx={{ bgcolor: 'white' }}>
+                                  <TableBody sx={{ bgcolor: T.surface }}>
                                     {(group?.ecritures || []).map((ecriture, idx) => {
                                       const date = ecriture?.date ?? ecriture?.date_ecriture ?? ecriture?.date_piece;
                                       const journal = ecriture?.journal ?? ecriture?.code_journal;
@@ -862,16 +877,16 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                                       const credit = parseNumber(ecriture?.credit ?? ecriture?.montant_credit);
 
                                       return (
-                                        <TableRow key={idx} sx={{ bgcolor: idx === 0 ? 'rgba(16, 185, 129, 0.05)' : 'inherit' }}>
-                                          <TableCell sx={{ fontSize: '0.8rem' }}>{formatDate(date)}</TableCell>
-                                          <TableCell sx={{ fontSize: '0.8rem' }}>{journal || '-'}</TableCell>
-                                          <TableCell sx={{ fontSize: '0.8rem' }}>{libelle || '-'}</TableCell>
-                                          <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600 }}>{piece || '-'}</TableCell>
-                                          <TableCell sx={{ fontSize: '0.8rem' }}>
-                                            {debit === null ? '-' : debit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                                        <TableRow key={idx} sx={{ bgcolor: idx === 0 ? T.accW : 'inherit' }}>
+                                          <TableCell sx={{ fontSize: '0.8rem', color: T.text, ...NUM }}>{formatDate(date)}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.8rem', color: T.text }}>{journal || '—'}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.8rem', color: T.text }}>{libelle || '—'}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600, color: T.text, ...NUM }}>{piece || '—'}</TableCell>
+                                          <TableCell align="right" sx={{ fontSize: '0.8rem', color: T.text, ...NUM }}>
+                                            {debit === null ? '—' : debit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
                                           </TableCell>
-                                          <TableCell sx={{ fontSize: '0.8rem' }}>
-                                            {credit === null ? '-' : credit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                                          <TableCell align="right" sx={{ fontSize: '0.8rem', color: T.text, ...NUM }}>
+                                            {credit === null ? '—' : credit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
                                           </TableCell>
                                         </TableRow>
                                       );
@@ -957,7 +972,7 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
             confirmText="Lancer la recherche"
             cancelText="Annuler"
             loading={loading}
-            color="#06b6d4"
+            color={T.accent}
           />
 
           <ConfirmActionDialog
@@ -969,7 +984,7 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
             confirmText="Confirmer la validation"
             cancelText="Annuler"
             loading={pendingValidationGroupId !== null && validatingGroup === pendingValidationGroupId}
-            color="#06b6d4"
+            color={T.accent}
           />
         </Box>
       </Box>

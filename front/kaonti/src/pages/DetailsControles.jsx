@@ -11,7 +11,8 @@ import {
   CompareArrowsOutlined, CalendarMonthOutlined, AccountBalanceOutlined,
   PeopleAltOutlined, ContentCopyOutlined, HelpOutline,
   LabelOutlined, ChevronRight, FileDownloadOutlined, FilterListOutlined,
-  DashboardOutlined, PictureAsPdf, TableChart, ArrowDropDown
+  DashboardOutlined, PictureAsPdf, TableChart, ArrowDropDown,
+  FactCheckOutlined, NavigateNext
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Link, useNavigate } from 'react-router-dom';
@@ -25,6 +26,24 @@ import RechercheDoublons from './listecontroles/rechercheDoublon';
 import EcrituresSuspense from './listecontroles/EcrituresSuspense';
 import ControleAnalytique from './listecontroles/controleAnalytique';
 import ExercicePeriodeSelector from './ExercicePeriodeSelector';
+
+// ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
 
 const DetailsControles = () => {
   const { selectedExerciceId, selectedPeriodeId, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
@@ -87,72 +106,73 @@ const DetailsControles = () => {
 
   return (
     <Box sx={{
-      p: 0.5, bgcolor: '#FFFFFF', height: 'calc(100vh - 120px)',
+      p: 3, bgcolor: T.canvas, height: 'calc(100vh - 120px)',
       width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden'
     }}>
 
-      {/* --- HEADER CONTEXTUEL (Identique au Dashboard) --- */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-        <Chip
-          label={compteName}
-          sx={{
-            borderRadius: '4px',
-            bgcolor: '#F1F5F9',
-            color: '#475569',
-            fontWeight: 700,
-            fontSize: '0.72rem',
-            border: '1px solid #E2E8F0',
-            height: 24
-          }}
-        />
-        <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto', borderColor: '#CBD5E1' }} />
-        <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.8rem' }}>
-          <MuiLink component={Link} to="/dashboard" underline="hover" color="inherit" sx={{ fontSize: '1rem', color: '#94A3B8' }}>
-            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} />  Dashboard
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2, flexShrink: 0 }}>
+        <Breadcrumbs
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
+        >
+          <MuiLink component={Link} to="/dashboard" underline="hover" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </MuiLink>
-          <Typography sx={{ fontWeight: 600, color: '#64748B' }}>Détails des contrôles</Typography>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Détails des contrôles</Typography>
         </Breadcrumbs>
-      </Stack>
 
-      <Typography variant="h4" sx={{ fontWeight: 900, color: '#0F172A', mb: 4, letterSpacing: '-0.5px' }}>
-        Détails des contrôles
-      </Typography>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+              <FactCheckOutlined />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+                Détails des contrôles
+              </Typography>
+              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+                Revue analytique, contrôles comptables &amp; anomalies · {compteName}
+              </Typography>
+            </Box>
+          </Stack>
 
-      <Box>
-        <ExercicePeriodeSelector
-          selectedExerciceId={selectedExerciceId}
-          selectedPeriodeId={selectedPeriodeId}
-          onExerciceChange={handleChangeExercice}
-          onPeriodeChange={handleChangePeriode}
-          disabled={loading}
-          size="small"
-        />
+          <ExercicePeriodeSelector
+            selectedExerciceId={selectedExerciceId}
+            selectedPeriodeId={selectedPeriodeId}
+            onExerciceChange={handleChangeExercice}
+            onPeriodeChange={handleChangePeriode}
+            disabled={loading}
+            size="small"
+            sx={{ mb: 0, ml: 0, border: `1px solid ${T.line}`, borderRadius: '10px', boxShadow: CARD_SHADOW }}
+          />
+        </Stack>
       </Box>
 
       {/* --- ZONE PRINCIPALE : SIDEBAR + CONTENU --- */}
-      <Box sx={{ display: 'flex', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden', height: '90vh' }}>
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', border: `1px solid ${T.line}`, borderRadius: '16px', overflow: 'hidden', bgcolor: T.surface, boxShadow: CARD_SHADOW }}>
 
-        {/* SIDEBAR GAUCHE ALIGNÉE */}
-        <Box sx={{ width: 280, bgcolor: '#F8FAFC', borderRight: '1px solid #E2E8F0', py: 2 }}>
+        {/* SIDEBAR GAUCHE */}
+        <Box sx={{ width: 264, flexShrink: 0, bgcolor: T.surface, borderRight: `1px solid ${T.line}`, py: 1.5, overflowY: 'auto' }}>
           <Tabs
             orientation="vertical"
             value={activeTab}
             onChange={handleTabChange}
             sx={{
-              '& .MuiTabs-indicator': { left: 0, width: 3, borderRadius: '0 4px 4px 0', bgcolor: '#10B981' },
+              '& .MuiTabs-indicator': { left: 0, width: 3, borderRadius: '0 4px 4px 0', bgcolor: T.accent },
               '& .MuiTab-root': {
                 justifyContent: 'flex-start',
                 textTransform: 'none',
-                minHeight: 52,
-                color: '#64748B',
-                fontSize: '0.85rem',
+                minHeight: 46,
+                color: T.muted,
+                fontSize: '13px',
                 fontWeight: 600,
-                px: 3,
+                px: 2.5,
                 textAlign: 'left',
-                '&.Mui-selected': { color: '#10B981', bgcolor: 'rgba(16, 185, 129, 0.05)' },
+                '&.Mui-selected': { color: T.accent, bgcolor: T.accW },
                 '& .MuiTab-iconWrapper': {
                   marginRight: '12px',
-                  minWidth: '24px', // Aligne les textes verticalement
+                  minWidth: '22px',
                   display: 'flex',
                   justifyContent: 'center'
                 }
@@ -172,21 +192,21 @@ const DetailsControles = () => {
           flexDirection: 'column',
           minWidth: 0,
           overflow: 'hidden',
-          bgcolor: '#FFFFFF'
+          bgcolor: T.surface
         }}>
-          {/* Header interne (Titre + Filtres) */}
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid #F1F5F9' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1E293B' }}>
+          {/* Header interne (Titre + Filtres + Export) */}
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${T.ledger}`, flexShrink: 0 }}>
+            <Typography sx={{ fontSize: '14px', fontWeight: 700, color: T.ink }}>
               {menuControles[activeTab].label}
             </Typography>
             <Stack direction="row" spacing={1}>
-              <Button size="small" startIcon={<FilterListOutlined />} sx={{ color: '#64748B', textTransform: 'none' }}>Filtres</Button>
+              <Button size="small" startIcon={<FilterListOutlined />} sx={{ color: T.muted, textTransform: 'none', fontWeight: 600, fontSize: '13px' }}>Filtres</Button>
               <Button
                 size="small"
                 startIcon={<FileDownloadOutlined />}
                 endIcon={<ArrowDropDown />}
                 onClick={(e) => setExportAnchorEl(e.currentTarget)}
-                sx={{ color: '#10B981', textTransform: 'none', fontWeight: 600 }}
+                sx={{ color: T.accent, textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
               >
                 Export
               </Button>
@@ -194,13 +214,13 @@ const DetailsControles = () => {
                 anchorEl={exportAnchorEl}
                 open={Boolean(exportAnchorEl)}
                 onClose={() => setExportAnchorEl(null)}
-                PaperProps={{ sx: { mt: 1, borderRadius: '10px', minWidth: 160, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' } }}
+                PaperProps={{ sx: { mt: 1, borderRadius: '10px', minWidth: 160, boxShadow: '0 8px 24px -12px rgba(16,39,51,.3)' } }}
               >
-                <MenuItem onClick={handleExportExcel} sx={{ gap: 1.5, py: 1 }}>
-                  <TableChart sx={{ fontSize: 18, color: '#2e7d32' }} /> Export Excel
+                <MenuItem onClick={handleExportExcel} sx={{ gap: 1.5, py: 1, fontSize: '13px' }}>
+                  <TableChart sx={{ fontSize: 18, color: T.pos }} /> Export Excel
                 </MenuItem>
-                <MenuItem onClick={handleExportPdf} sx={{ gap: 1.5, py: 1 }}>
-                  <PictureAsPdf sx={{ fontSize: 18, color: '#d32f2f' }} /> Export PDF
+                <MenuItem onClick={handleExportPdf} sx={{ gap: 1.5, py: 1, fontSize: '13px' }}>
+                  <PictureAsPdf sx={{ fontSize: 18, color: T.neg }} /> Export PDF
                 </MenuItem>
               </Menu>
             </Stack>

@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState, useRef, forwardRef, useImperativeH
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Stack, Divider, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  Autocomplete, TextField, Tooltip, Paper, Chip, Tabs, Tab
+  Autocomplete, TextField, Tooltip, Paper, Chip, Tabs, Tab, Badge
 } from '@mui/material';
 
 import {
   CheckCircleOutline, ChatBubbleOutline, ChevronLeft, ChevronRight,
-  ErrorOutline, PeopleOutline, ShoppingCartOutlined
+  ErrorOutline, PeopleOutline, ShoppingCartOutlined, WarningAmberRounded,
+  TaskAltRounded, RadioButtonUnchecked, ChatBubbleOutlineOutlined
 } from '@mui/icons-material';
 
 import {
@@ -57,6 +58,31 @@ const ANOMALIE_TYPES = {
     color: 'default',
     description: 'Le compte présente un solde en suspens à vérifier.'
   }
+};
+
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', accentDark: '#0a5d65', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', info: '#3A6EA5', accW: '#E2F0F1', negW: '#F7E7E4', warnW: '#FBF3E2',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const statLabelSx = { fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' };
+const gridSx = {
+  border: 'none', fontSize: '13px',
+  '& .MuiDataGrid-columnHeaders': { bgcolor: T.ledger, borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px', textTransform: 'uppercase' } },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text, '&:focus': { outline: 'none' }, '&:focus-within': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+  '& .font-bold': { fontWeight: 700 },
+};
+const MoneyCell = ({ value }) => {
+  const v = Number(value) || 0;
+  if (!value) return <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: T.faint }}>—</Typography>;
+  return (<Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: 600 }}>
+    {v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </Typography>);
 };
 
 const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
@@ -470,7 +496,7 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', bgcolor: T.canvas }}>
       <ConfirmActionDialog
         open={openConfirmDialog}
         onClose={handleCloseConfirmDialog}
@@ -480,7 +506,7 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
         confirmText="Lancer"
         cancelText="Annuler"
         loading={loading}
-        color="#06b6d4"
+        color={T.accent}
       />
 
       <CommentDialog
@@ -508,41 +534,46 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
         confirmText={pendingValidation?.valider ? 'Valider' : 'Annuler la validation'}
         cancelText="Annuler"
         loading={loading}
-        color={pendingValidation?.valider ? '#06b6d4' : '#EF4444'}
+        color={pendingValidation?.valider ? T.accent : T.neg}
       />
 
       {/* --- RÉCAPITULATIF GLOBAL --- */}
-      <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+      <Stack direction="row" spacing={3} alignItems="center" sx={{ px: 2.5, py: 1.5, bgcolor: T.surface, borderBottom: `1px solid ${T.line}` }}>
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ANOMALIES TIERS</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{rowsFournisseur.length + rowsClient.length}</Typography>
-            <ErrorOutline sx={{ color: '#EF4444', fontSize: 18 }} />
+          <Typography sx={statLabelSx}>Anomalies tiers</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Typography sx={{ ...NUM, color: T.neg, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{rowsFournisseur.length + rowsClient.length}</Typography>
+            <ErrorOutline sx={{ color: T.neg, fontSize: 18 }} />
           </Stack>
         </Box>
-        <Divider orientation="vertical" flexItem />
+        <Divider orientation="vertical" flexItem sx={{ borderColor: T.line }} />
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>RESTANT À VALIDER</Typography>
-          <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 900, lineHeight: 1 }}>
-            {rowsFournisseur.filter(r => !r.valider).length + rowsClient.filter(r => !r.valider).length}
-          </Typography>
+          <Typography sx={statLabelSx}>Restant à valider</Typography>
+          {(() => {
+            const restant = rowsFournisseur.filter(r => !r.valider).length + rowsClient.filter(r => !r.valider).length;
+            return (
+              <Stack direction="row" spacing={0.75} alignItems="center">
+                <Typography sx={{ ...NUM, color: restant > 0 ? T.warn : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{restant}</Typography>
+                {restant > 0 ? <WarningAmberRounded sx={{ color: T.warn, fontSize: 18 }} /> : <CheckCircleOutline sx={{ color: T.pos, fontSize: 18 }} />}
+              </Stack>
+            );
+          })()}
         </Box>
-        <Divider orientation="vertical" flexItem />
-        <Box>
-          {/* <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>.</Typography> */}
-          {/* <br /> */}
+        <Box sx={{ ml: 'auto' }}>
           <Button
             variant="contained"
             startIcon={<Search />}
             onClick={handleAnalyserClick}
             disabled={!effectiveExerciceId || loading}
             sx={{
-              height: '25px',
-              bgcolor: '#064E3B',
+              height: 34,
+              bgcolor: T.accent,
               textTransform: 'none',
               fontWeight: 700,
               px: 3,
-              borderRadius: '8px'
+              borderRadius: '10px',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: T.accentDark, boxShadow: 'none' },
             }}
           >
             {loading ? 'Analyse...' : 'Analyser'}
@@ -553,18 +584,18 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
 
       <Box sx={{ p: 2, flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-        <Paper elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: '12px' }}>
+        <Paper elevation={0} sx={{ border: `1px solid ${T.line}`, borderRadius: '12px', boxShadow: CARD_SHADOW }}>
           <Tabs
             value={activeTab}
             onChange={handleTabChange}
             variant="fullWidth"
             sx={{
               minHeight: 42,
-              '& .MuiTab-root': { textTransform: 'none', fontWeight: 800, minHeight: 42 },
-              '& .MuiTab-root.Mui-selected': { bgcolor: 'rgba(59, 130, 246, 0.10)' },
+              '& .MuiTab-root': { textTransform: 'none', fontWeight: 700, minHeight: 42, color: T.muted },
+              '& .MuiTab-root.Mui-selected': { bgcolor: T.accW, color: T.accentDark },
               '& .MuiTab-root:first-of-type.Mui-selected': { borderTopLeftRadius: '12px' },
               '& .MuiTab-root:last-of-type.Mui-selected': { borderTopRightRadius: '12px' },
-              '& .MuiTabs-indicator': { bgcolor: '#064E3B', height: 3 }
+              '& .MuiTabs-indicator': { bgcolor: T.accent, height: 3 }
             }}
           >
             <Tab label={`Fournisseurs`} />
@@ -575,7 +606,7 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
         {activeTab === 0 && (
           <SectionTiersUnique
             title="Analyse Fournisseurs"
-            icon={<ShoppingCartOutlined sx={{ color: '#3B82F6' }} />}
+            icon={<ShoppingCartOutlined sx={{ color: T.accent }} />}
             stats={{
               anomalies: rowsFournisseur.length,
               restants: rowsFournisseur.filter(r => !r.valider).length,
@@ -591,7 +622,7 @@ const AnalyseTiers = forwardRef(({ id_exercice, id_periode }, ref) => {
         {activeTab === 1 && (
           <SectionTiersUnique
             title="Analyse Clients"
-            icon={<PeopleOutline sx={{ color: '#10B981' }} />}
+            icon={<PeopleOutline sx={{ color: T.pos }} />}
             stats={{
               anomalies: rowsClient.length,
               restants: rowsClient.filter(r => !r.valider).length,
@@ -699,35 +730,31 @@ const SectionTiersUnique = ({ title, icon, stats, rows, type, handleValiderAnoma
     {
       field: 'debit',
       headerName: 'Débit',
-      width: 100,
+      width: 110,
       type: 'number',
       align: 'right',
       headerAlign: 'right',
-      renderCell: (params) => params.value ? Number(params.value).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '',
-
+      renderCell: (params) => <MoneyCell value={params.value} />,
     },
     {
       field: 'credit',
       headerName: 'Crédit',
-      width: 100,
+      width: 110,
       type: 'number',
       align: 'right',
       headerAlign: 'right',
-      renderCell: (params) => params.value ? Number(params.value).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '',
-
+      renderCell: (params) => <MoneyCell value={params.value} />,
     },
     {
       field: 'lettrage',
       headerName: 'Let.',
-      width: 50,
+      width: 56,
       align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => (
-        <Chip
-          label={params.value || '-'}
-          size="small"
-          variant={params.value ? "filled" : "outlined"}
-          color={params.value ? "success" : "default"}
-        />
+        params.value
+          ? <Chip label={params.value} size="small" sx={{ height: 20, bgcolor: T.accW, color: T.accentDark, fontWeight: 700, fontSize: '0.65rem' }} />
+          : <Typography sx={{ color: T.faint, fontSize: '12px' }}>—</Typography>
       ),
     },
     {
@@ -744,48 +771,62 @@ const SectionTiersUnique = ({ title, icon, stats, rows, type, handleValiderAnoma
       headerName: 'Commentaire',
       width: 250,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontStyle: params.value ? 'normal' : 'italic', color: params.value ? 'inherit' : '#999' }}>
-          {params.value || ' '}
+        <Typography variant="body2" sx={{ fontSize: '12.5px', fontStyle: params.value ? 'normal' : 'italic', color: params.value ? T.text : T.faint }}>
+          {params.value || '—'}
         </Typography>
       ),
     },
     {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 110,
+      field: 'valide',
+      headerName: 'Validé',
+      width: 70,
+      align: 'center',
+      headerAlign: 'center',
       sortable: false,
       renderCell: (params) => (
-        <Stack direction="row" spacing={1}>
-          <Tooltip title={params.row.valider ? "Annuler la validation" : "Valider"}>
+        <Tooltip title={params.row.valider ? "Annuler la validation" : "Valider l'anomalie"}>
+          <IconButton
+            size="small"
+            onClick={() => handleRequestValidationChange({
+              id: params.row.anomalie_id,
+              valider: params.row.valider,
+              commentaire_validation: params.row.commentaire_validation,
+              sourceType: type
+            }, !params.row.valider)}
+          >
+            {params.row.valider
+              ? <TaskAltRounded sx={{ fontSize: 20, color: T.pos }} />
+              : <RadioButtonUnchecked sx={{ fontSize: 20, color: T.warn }} />}
+          </IconButton>
+        </Tooltip>
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Note',
+      width: 64,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      renderCell: (params) => {
+        const has = !!params.row.commentaire_validation;
+        return (
+          <Tooltip title="Ajouter / modifier un commentaire">
             <IconButton
               size="small"
-              color={params.row.valider ? "error" : "success"}
-              onClick={() => handleRequestValidationChange({
-                id: params.row.anomalie_id,
-                valider: params.row.valider,
-                commentaire_validation: params.row.commentaire_validation,
-                sourceType: type
-              }, !params.row.valider)}
-            >
-              {params.row.valider ? <Cancel fontSize="small" /> : <CheckCircle fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Ajouter/Modifier commentaire">
-            <IconButton
-              size="small"
-              color="primary"
               onClick={() => handleOpenCommentDialog({
                 id: params.row.anomalie_id,
                 valider: params.row.valider,
                 commentaire_validation: params.row.commentaire_validation
               }, type)}
             >
-              <CommentIcon fontSize="small" />
+              <Badge variant="dot" invisible={!has} sx={{ '& .MuiBadge-dot': { bgcolor: T.warn } }}>
+                <ChatBubbleOutlineOutlined sx={{ fontSize: 18, color: has ? T.accent : T.faint }} />
+              </Badge>
             </IconButton>
           </Tooltip>
-        </Stack>
-      ),
+        );
+      },
     },
   ];
 
@@ -795,31 +836,31 @@ const SectionTiersUnique = ({ title, icon, stats, rows, type, handleValiderAnoma
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           {icon}
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1E293B' }}>{title}</Typography>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: T.ink }}>{title}</Typography>
         </Stack>
         <Stack direction="row" spacing={1}>
-          <Chip label={`${stats.anomalies} anomalies`} size="small" sx={{ height: 20, bgcolor: '#FEF2F2', color: '#EF4444', fontWeight: 800, fontSize: '0.6rem' }} />
-          <Chip label={`${stats.restants} à valider`} size="small" sx={{ height: 20, bgcolor: '#FFFBEB', color: '#F59E0B', fontWeight: 800, fontSize: '0.6rem' }} />
+          <Chip label={`${stats.anomalies} anomalies`} size="small" sx={{ height: 20, bgcolor: T.negW, color: T.neg, fontWeight: 800, fontSize: '0.6rem', ...NUM }} />
+          <Chip label={`${stats.restants} à valider`} size="small" sx={{ height: 20, bgcolor: T.warnW, color: T.warn, fontWeight: 800, fontSize: '0.6rem', ...NUM }} />
         </Stack>
       </Stack>
 
-      <Paper variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: `1px solid ${T.line}`, boxShadow: CARD_SHADOW }}>
         {/* Navigateur de compte intégré */}
-        <Box sx={{ p: 1, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ p: 1, bgcolor: T.ledger, borderBottom: `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Autocomplete
             size="small"
             options={comptesOptions}
             value={selectedCompte}
             onChange={(e, value) => setSelectedCompte(value)}
             renderInput={(params) => (
-              <TextField {...params} placeholder="Navigateur de compte..." sx={{ width: 250, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 30, bgcolor: '#FFF' } }} />
+              <TextField {...params} placeholder="Navigateur de compte..." sx={{ width: 250, '& .MuiInputBase-root': { fontSize: '0.75rem', height: 30, bgcolor: T.surface } }} />
             )}
           />
           <IconButton
             size="small"
             onClick={handlePrevCompte}
             disabled={compteIndex <= 0}
-            sx={{ border: '1px solid #E2E8F0', bgcolor: '#FFF' }}
+            sx={{ border: `1px solid ${T.line}`, bgcolor: T.surface, borderRadius: '8px' }}
           >
             <ChevronLeft fontSize="small" />
           </IconButton>
@@ -827,7 +868,7 @@ const SectionTiersUnique = ({ title, icon, stats, rows, type, handleValiderAnoma
             size="small"
             onClick={handleNextCompte}
             disabled={!comptesOptions?.length || compteIndex >= comptesOptions.length - 1}
-            sx={{ border: '1px solid #E2E8F0', bgcolor: '#FFF' }}
+            sx={{ border: `1px solid ${T.line}`, bgcolor: T.surface, borderRadius: '8px' }}
           >
             <ChevronRight fontSize="small" />
           </IconButton>
@@ -840,12 +881,7 @@ const SectionTiersUnique = ({ title, icon, stats, rows, type, handleValiderAnoma
             columns={columns}
             density="compact"
             disableRowSelectionOnClick
-            sx={{
-              border: 'none',
-              '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', color: '#64748B', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' },
-              '& .MuiDataGrid-cell': { fontSize: '0.8rem', borderBottom: '1px solid #F1F5F9' },
-              '& .font-bold': { fontWeight: 700 }
-            }}
+            sx={gridSx}
           />
         </Box>
       </Paper>

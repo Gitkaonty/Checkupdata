@@ -17,6 +17,23 @@ import { jwtDecode } from 'jwt-decode';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', accentDark: '#0a5d65', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', accW: '#E2F0F1',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const statLabelSx = { fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' };
+const MoneyCell = ({ value }) => {
+  const v = Number(value) || 0;
+  if (value === null || value === undefined || value === '') return <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: T.faint }}>—</Typography>;
+  return (<Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: 600 }}>
+    {v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </Typography>);
+};
+
 const ControleAnalytique = forwardRef(({ id_exercice, id_periode }, ref) => {
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
@@ -213,49 +230,44 @@ const ControleAnalytique = forwardRef(({ id_exercice, id_periode }, ref) => {
   }, [effectiveExerciceId, effectivePeriodeId]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
-      
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', bgcolor: T.canvas }}>
+
       {/* --- STATISTIQUES GLOBALES --- */}
       <Stack
         direction="row"
         spacing={3}
+        alignItems="center"
         sx={{
-          p: 2,
-          bgcolor: '#F8FAFC',
-          borderBottom: '1px solid #E2E8F0',
+          px: 2.5,
+          py: 1.5,
+          bgcolor: T.surface,
+          borderBottom: `1px solid ${T.line}`,
           position: 'sticky',
           top: 0,
           zIndex: 2
         }}
       >
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ERREURS D'IMPUTATION</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{rows.length}</Typography>
-            <AssessmentOutlined sx={{ color: '#EF4444', fontSize: 18 }} />
+          <Typography sx={statLabelSx}>Erreurs d'imputation</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Typography sx={{ ...NUM, color: rows.length > 0 ? T.neg : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{rows.length}</Typography>
+            <AssessmentOutlined sx={{ color: rows.length > 0 ? T.neg : T.pos, fontSize: 18 }} />
           </Stack>
         </Box>
-        <Divider orientation="vertical" flexItem />
-        <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>NON RENSEIGNÉS</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 900, lineHeight: 1 }}>{rows.length}</Typography>
-            <QueryStatsOutlined sx={{ color: '#F59E0B', fontSize: 18 }} />
-          </Stack>
-        </Box>
-        <Divider orientation="vertical" flexItem />
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ ml: 'auto' }}>
           <Button
             variant="contained"
             onClick={handleAskControler}
             disabled={!effectiveExerciceId || !effectivePeriodeId || effectivePeriodeId === 'exercice' || loading}
             sx={{
-              height: '25px',
-              bgcolor: '#064E3B',
+              height: 34,
+              bgcolor: T.accent,
               textTransform: 'none',
               fontWeight: 700,
               px: 3,
-              borderRadius: '8px'
+              borderRadius: '10px',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: T.accentDark, boxShadow: 'none' },
             }}
           >
             {loading ? 'Contrôle...' : 'Contrôler'}
@@ -272,20 +284,22 @@ const ControleAnalytique = forwardRef(({ id_exercice, id_periode }, ref) => {
         confirmText="Lancer"
         cancelText="Annuler"
         loading={loading}
-        color="#06b6d4"
+        color={T.accent}
       />
 
       <Box sx={{ p: 2, flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        
+
         {/* --- TABLEAU ANALYTIQUE --- */}
         <Paper
           variant="outlined"
           sx={{
             flexGrow: 1,
             minHeight: 0,
-            borderRadius: '8px',
+            borderRadius: '12px',
             overflow: 'hidden',
-            bgcolor: '#FFFFFF',
+            bgcolor: T.surface,
+            border: `1px solid ${T.line}`,
+            boxShadow: CARD_SHADOW,
             display: 'flex',
             flexDirection: 'column'
           }}
@@ -293,38 +307,14 @@ const ControleAnalytique = forwardRef(({ id_exercice, id_periode }, ref) => {
           <DataGrid
             rows={rows} // Données avec codes analytiques
             columns={[
-              { field: 'date', headerName: 'Date', width: 120 },
-              { field: 'compte', headerName: 'Compte', width: 150, cellClassName: 'font-bold' },
+              { field: 'date', headerName: 'Date', width: 120, renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '12.5px', color: T.text }}>{p.value}</Typography> },
+              { field: 'compte', headerName: 'Compte', width: 150, cellClassName: 'font-bold', renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.ink }}>{p.value}</Typography> },
               { field: 'libelle', headerName: 'Libellé', flex: 1 },
-              {
-                field: 'debit',
-                headerName: 'Débit',
-                width: 130,
-                align: 'right',
-                headerAlign: 'right',
-                valueFormatter: (params) => {
-                  if (params.value === null || params.value === undefined) return '';
-                  const n = Number(params.value);
-                  if (Number.isNaN(n)) return '';
-                  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                }
-              },
-              {
-                field: 'credit',
-                headerName: 'Crédit',
-                width: 130,
-                align: 'right',
-                headerAlign: 'right',
-                valueFormatter: (params) => {
-                  if (params.value === null || params.value === undefined) return '';
-                  const n = Number(params.value);
-                  if (Number.isNaN(n)) return '';
-                  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                }
-              }
+              { field: 'debit', headerName: 'Débit', width: 130, align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
+              { field: 'credit', headerName: 'Crédit', width: 130, align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
             ]}
             density="compact"
-            sx={dataGridStyle}
+            sx={gridSx}
             disableRowSelectionOnClick
             loading={loading}
           />
@@ -334,22 +324,13 @@ const ControleAnalytique = forwardRef(({ id_exercice, id_periode }, ref) => {
   );
 });
 
-const dataGridStyle = {
-  border: 'none',
-  '& .MuiDataGrid-columnHeaders': {
-    bgcolor: '#F8FAFC',
-    color: '#64748B',
-    fontSize: '0.65rem',
-    fontWeight: 800,
-    textTransform: 'uppercase',
-    borderBottom: '1px solid #E2E8F0'
-  },
-  '& .MuiDataGrid-cell': { 
-    fontSize: '0.8rem', 
-    borderBottom: '1px solid #F1F5F9',
-    '&:focus': { outline: 'none' }
-  },
-  '& .font-bold': { color: '#1E293B', fontWeight: 700 }
+const gridSx = {
+  border: 'none', fontSize: '13px',
+  '& .MuiDataGrid-columnHeaders': { bgcolor: T.ledger, borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px', textTransform: 'uppercase' } },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text, '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+  '& .font-bold': { fontWeight: 700 },
 };
 
 export default ControleAnalytique;

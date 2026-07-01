@@ -63,6 +63,17 @@ const formatDateYYYYMMDD = (dateString) => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', accentDark: '#0a5d65', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', accW: '#E2F0F1', negW: '#F7E7E4',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = { border: `1px solid ${T.line}`, borderRadius: '16px', bgcolor: T.surface, boxShadow: CARD_SHADOW, overflow: 'hidden' };
+const statLabelSx = { fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' };
+
 const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) {
     let initial = init[0];
     const axiosPrivate = useAxiosPrivate();
@@ -614,7 +625,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
     }, [controles]);
 
     return (
-        <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
+        <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: T.canvas }}>
             <ConfirmActionDialog
                 open={confirmReviserPopup}
                 onClose={() => setConfirmReviserPopup(false)}
@@ -624,66 +635,57 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                 confirmText="Confirmer"
                 cancelText="Annuler"
                 loading={confirmReviserLoading}
-                color="#06b6d4"
+                color={T.accent}
             />
-            <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+            <Stack direction="row" spacing={3} alignItems="center" sx={{ px: 2.5, py: 1.5, mb: 1.5, ...panelSx }}>
                 <Box>
-                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>POINTS CRITIQUES</Typography>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>
+                    <Typography sx={statLabelSx}>Points critiques</Typography>
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography sx={{ ...NUM, color: T.neg, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>
                             {`${Object.values(initialTotals).reduce((sum, v) => sum + (Number(v) || 0), 0) || controlesGrouped.reduce((sum, c) => sum + (Number(c.anomalies) || 0), 0)}`}
                         </Typography>
-                        <ErrorOutline sx={{ color: '#EF4444', fontSize: 18 }} />
+                        <ErrorOutline sx={{ color: T.neg, fontSize: 18 }} />
                     </Stack>
                 </Box>
-                <Divider orientation="vertical" flexItem />
+                <Divider orientation="vertical" flexItem sx={{ borderColor: T.line }} />
                 <Box>
-                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>RESTANTS A VALIDER </Typography>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}> {`${controlesGrouped.reduce((sum, c) => sum + (c.anomalies || 0), 0)}`}</Typography>
-                        <ErrorOutline sx={{ color: '#EF4444', fontSize: 18 }} />
+                    <Typography sx={statLabelSx}>Restants à valider</Typography>
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                        {(() => {
+                            const restant = controlesGrouped.reduce((sum, c) => sum + (c.anomalies || 0), 0);
+                            return (
+                                <>
+                                    <Typography sx={{ ...NUM, color: restant > 0 ? T.warn : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{restant}</Typography>
+                                    {restant > 0
+                                        ? <WarningAmber sx={{ color: T.warn, fontSize: 18 }} />
+                                        : <CheckCircleOutline sx={{ color: T.pos, fontSize: 18 }} />}
+                                </>
+                            );
+                        })()}
                     </Stack>
                 </Box>
-                <Divider orientation="vertical" flexItem />
-                <Box>
-
-                    {/* <ExercicePeriodeSelector
-                        selectedExerciceId={effectiveExerciceId}
-                        selectedPeriodeId={effectivePeriodeId}
-                        onExerciceChange={handleChangeExercice}
-                        onPeriodeChange={handleChangePeriode}
-                        disabled={loading}
-                        size="small"
-                    /> */}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Button
-                            variant="contained"
-                            onClick={handleControler}
-                            disabled={!effectiveExerciceId}
-                            sx={{
-                                height: '25px',
-                                bgcolor: '#064E3B',
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                px: 3,
-                                borderRadius: '8px'
-                            }}
-                        >
-                            Réviser
-                        </Button>
-                    </Stack>
-                    {/* {controlesGrouped.length > 0 && (
-                        <Chip
-                            label={`${controlesGrouped.reduce((sum, c) => sum + (c.anomalies || 0), 0)} anomalies`}
-                            color="warning"
-                            size="small"
-                            sx={{ ml: 1 }}
-                        />
-                    )} */}
+                <Box sx={{ ml: 'auto' }}>
+                    <Button
+                        variant="contained"
+                        onClick={handleControler}
+                        disabled={!effectiveExerciceId}
+                        sx={{
+                            height: 34,
+                            bgcolor: T.accent,
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            px: 3,
+                            borderRadius: '10px',
+                            boxShadow: 'none',
+                            '&:hover': { bgcolor: T.accentDark, boxShadow: 'none' },
+                        }}
+                    >
+                        Réviser
+                    </Button>
                 </Box>
             </Stack>
 
-            <Paper sx={{ p: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Paper elevation={0} sx={{ p: 2, ...panelSx, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 {loadingControles ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
                         <CircularProgress size={28} />
@@ -708,23 +710,25 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                                     elevation={0}
                                     onClick={() => handleOpenDrawer(item)}
                                     sx={{
-                                        border: '1px solid #E2E8F0',
-                                        borderRadius: '10px',
+                                        border: `1px solid ${T.line}`,
+                                        borderRadius: '12px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
                                         '&:hover': {
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                            borderColor: '#CBD5E1'
+                                            boxShadow: CARD_SHADOW,
+                                            borderColor: T.accent
                                         }
                                     }}
                                 >
                                     <Box
                                         sx={{
                                             position: 'relative',
-                                            bgcolor: 'white',
+                                            bgcolor: T.surface,
                                             p: 2,
                                             display: 'flex',
-                                            alignItems: 'center'
+                                            alignItems: 'center',
+                                            borderRadius: '12px',
+                                            overflow: 'hidden'
                                         }}
                                     >
                                         {/* Bordure latérale */}
@@ -734,40 +738,41 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                                                 left: 0,
                                                 top: 0,
                                                 bottom: 0,
-                                                width: '5px',
-                                                bgcolor: isAllGood ? '#10B981' : '#EF4444'
+                                                width: '4px',
+                                                bgcolor: isAllGood ? T.pos : T.neg
                                             }}
                                         />
 
                                         <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%' }}>
                                             {isAllGood ? (
-                                                <CheckCircle sx={{ color: '#10B981', fontSize: 26 }} />
+                                                <CheckCircleOutline sx={{ color: T.pos, fontSize: 24 }} />
                                             ) : (
-                                                <ErrorOutline sx={{ color: '#EF4444', fontSize: 26 }} />
+                                                <WarningAmber sx={{ color: T.warn, fontSize: 24 }} />
                                             )}
 
                                             <Box sx={{ flexGrow: 1 }}>
-                                                <Typography sx={{ fontWeight: 800, color: '#0F172A' }}>
+                                                <Typography sx={{ fontWeight: 700, fontSize: '13.5px', color: T.text }}>
                                                     {item.description}
                                                 </Typography>
                                             </Box>
 
-                                            <Stack direction="row" spacing={2} alignItems="center">
+                                            <Stack direction="row" spacing={1.5} alignItems="center">
                                                 <Chip
                                                     label={`${totalInitial} total`}
                                                     sx={{
-                                                        bgcolor: totalInitial > 0 ? '#FEE2E2' : '#DCFCE7',
-                                                        color: totalInitial > 0 ? '#B91C1C' : '#15803D',
+                                                        bgcolor: totalInitial > 0 ? T.negW : T.accW,
+                                                        color: totalInitial > 0 ? T.neg : T.pos,
                                                         fontWeight: 800,
                                                         fontSize: '0.65rem',
-                                                        height: 20
+                                                        height: 20,
+                                                        ...NUM
                                                     }}
                                                 />
 
                                                 {totalInitial > 0 && (
                                                     <Chip
                                                         label={`${restant} restant`}
-                                                        sx={{ bgcolor: '#FFFBEB', color: '#F59E0B', fontWeight: 800, fontSize: '0.65rem', height: 20 }}
+                                                        sx={{ bgcolor: '#FBF3E2', color: T.warn, fontWeight: 800, fontSize: '0.65rem', height: 20, ...NUM }}
                                                     />
                                                 )}
                                             </Stack>
@@ -791,7 +796,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                 confirmText="Confirmer"
                 cancelText="Annuler"
                 loading={confirmLoading}
-                color={confirmPopup.nextValider ? '#06b6d4' : '#EF4444'}
+                color={confirmPopup.nextValider ? T.accent : T.neg}
             />
 
             {/* POPUP D'ERREUR POUR ANOMALIES NON VALIDÉES */}

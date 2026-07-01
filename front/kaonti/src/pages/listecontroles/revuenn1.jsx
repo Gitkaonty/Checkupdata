@@ -3,13 +3,47 @@ import {
   Box, Typography, Stack, IconButton, Tooltip, Divider, Chip, Badge, alpha,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { CheckCircle, Cancel, ErrorOutline } from '@mui/icons-material';
+import {
+  CheckCircle, Cancel, ErrorOutline,
+  CheckCircleOutline, WarningAmberRounded, RadioButtonUnchecked,
+  TaskAltRounded, ChatBubbleOutlineOutlined
+} from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import useAuth from '../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import CommentDialog from '../../components/commetDialog';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
+
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', info: '#3A6EA5', accW: '#E2F0F1',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const gridSx = {
+  border: 'none',
+  fontSize: '13px',
+  '& .MuiDataGrid-main': { overflow: 'auto' },
+  '& .MuiDataGrid-columnHeaders': {
+    bgcolor: T.ledger,
+    borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px', textTransform: 'uppercase' },
+  },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text, '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+};
+
+// Cellule montant : chiffres tabulaires alignés à droite, négatif en rouge (plus de Courier)
+const MoneyCell = ({ value }) => {
+  const v = Number(value) || 0;
+  return (
+    <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: v !== 0 ? 600 : 400 }}>
+      {(value ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </Typography>
+  );
+};
 
 const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exercice, id_periode }, ref) {
 
@@ -204,74 +238,19 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
     {
       field: 'compte',
       headerName: 'Compte',
-      width: 150,
-      cellClassName: 'font-bold'
+      width: 130,
+      renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '12.5px', fontWeight: 700, color: T.ink }}>{p.value}</Typography>,
     },
     {
       field: 'libelle',
       headerName: 'Libellé',
-      width: 350,
+      flex: 1,
+      minWidth: 260,
+      renderCell: (p) => <Typography noWrap title={p.value || ''} sx={{ fontSize: '12.5px', color: T.text }}>{p.value}</Typography>,
     },
-    {
-      field: 'soldeN1',
-      headerName: 'Solde N-1',
-      width: 130,
-      type: 'number',
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => {
-        const value = params.value;
-        return (
-          <Typography variant="body2" sx={{
-            fontSize: '0.75rem', fontFamily: 'monospace',
-            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
-            fontWeight: value !== 0 ? 600 : 400, width: '100%', textAlign: 'right'
-          }}>
-            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-          </Typography>
-        );
-      }
-    },
-    {
-      field: 'soldeN',
-      headerName: 'Solde N',
-      width: 130,
-      type: 'number',
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => {
-        const value = params.value;
-        return (
-          <Typography variant="body2" sx={{
-            fontSize: '0.75rem', fontFamily: 'monospace',
-            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
-            fontWeight: value !== 0 ? 600 : 400, width: '100%', textAlign: 'right'
-          }}>
-            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-          </Typography>
-        );
-      }
-    },
-    {
-      field: 'var',
-      headerName: 'Variation',
-      width: 120,
-      type: 'number',
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => {
-        const value = params.value;
-        return (
-          <Typography variant="body2" sx={{
-            fontSize: '0.75rem', fontFamily: 'monospace',
-            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
-            fontWeight: value !== 0 ? 600 : 400, width: '100%', textAlign: 'right'
-          }}>
-            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-          </Typography>
-        );
-      }
-    },
+    { field: 'soldeN1', headerName: 'Solde N-1', width: 130, type: 'number', align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
+    { field: 'soldeN', headerName: 'Solde N', width: 130, type: 'number', align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
+    { field: 'var', headerName: 'Variation', width: 120, type: 'number', align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
     {
       field: 'varPourcent',
       headerName: 'Variation %',
@@ -282,19 +261,18 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
       renderCell: (params) => {
         const value = params.value;
         if (value === null || value === undefined) {
-          return <Box sx={{ color: alpha('#64748B', 0.3), textAlign: 'center' }}>-</Box>;
+          return <Box sx={{ color: T.faint }}>—</Box>;
         }
+        const c = value > 0 ? T.info : value < 0 ? T.neg : T.muted;
         return (
           <Chip
             label={`${value > 0 ? '+' : ''}${value}%`}
             size="small"
             variant="outlined"
             sx={{
-              height: 22, minWidth: '55px', fontSize: '10px', fontWeight: 700, fontFamily: 'monospace',
-              color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
-              borderColor: value > 0 ? alpha('#2563eb', 0.5) : value < 0 ? alpha('#dc2626', 0.5) : alpha('#64748B', 0.3),
-              bgcolor: value > 0 ? alpha('#2563eb', 0.04) : value < 0 ? alpha('#dc2626', 0.04) : 'transparent',
-              '& .MuiChip-label': { px: 0.5, width: '100%', textAlign: 'center' }
+              ...NUM, height: 22, minWidth: 56, fontSize: '11px', fontWeight: 700,
+              color: c, borderColor: alpha(c, 0.5), bgcolor: alpha(c, 0.06),
+              '& .MuiChip-label': { px: 0.75 },
             }}
           />
         );
@@ -302,35 +280,17 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
     },
     {
       field: 'anomalies',
-      headerName: 'Anomalies',
-      width: 90,
+      headerName: 'Anomalie',
+      width: 95,
       align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         const hasAnomaly = !!params.value;
-
         return (
-          <Tooltip
-            title={
-              hasAnomaly
-                ? 'Anomalie détectée (variation ≥ seuil du dossier)'
-                : 'Aucune anomalie'
-            }
-            arrow
-          >
-            <IconButton
-              size="small"
-              disableRipple
-              sx={{
-                color: hasAnomaly ? '#16a34a' : '#EF4444', // rouge / vert
-                cursor: 'default'
-              }}
-            >
-              {hasAnomaly ? (
-                <CheckCircle fontSize="small" />
-              ) : (
-                <Cancel fontSize="small" />
-              )}
-            </IconButton>
+          <Tooltip title={hasAnomaly ? 'Anomalie détectée (variation ≥ seuil du dossier)' : 'Conforme — aucune anomalie'} arrow>
+            <Box sx={{ display: 'flex', width: '100%', justifyContent: 'center', color: hasAnomaly ? T.warn : T.pos }}>
+              {hasAnomaly ? <WarningAmberRounded fontSize="small" /> : <CheckCircleOutline fontSize="small" />}
+            </Box>
           </Tooltip>
         );
       }
@@ -340,18 +300,22 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
       headerName: 'Validé',
       width: 80,
       align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         const isValid = !!params.value;
+        const isAnomaly = !!params.row.anomalies;
         return (
-          <Tooltip title={isValid ? 'Validé' : 'Non validé'} arrow>
-            <IconButton
-              size="small"
-              onClick={() => handleToggleValide(params.row, !isValid)}
-              color={isValid ? 'success' : 'error'}
-              sx={{ p: 0, transition: '0.2s', '&:hover': { transform: 'scale(1.1)' } }}
-            >
-              {isValid ? <CheckCircle fontSize="small" /> : <Cancel fontSize="small" />}
-            </IconButton>
+          <Tooltip title={isValid ? 'Validé — cliquer pour dévalider' : (isAnomaly ? 'À valider — cliquer pour valider' : 'Rien à valider')} arrow>
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => handleToggleValide(params.row, !isValid)}
+                disabled={!isAnomaly && !isValid}
+                sx={{ p: 0.25, color: isValid ? T.pos : (isAnomaly ? T.warn : T.faint), transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
+              >
+                {isValid ? <TaskAltRounded fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
+              </IconButton>
+            </span>
           </Tooltip>
         );
       }
@@ -359,83 +323,68 @@ const RevueAnalytiqueTable = forwardRef(function RevueAnalytiqueTable({ id_exerc
     {
       field: 'commentaire',
       headerName: 'Commentaire',
-      width: 200,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Badge
-            variant={params.value && String(params.value).trim() ? 'dot' : 'standard'}
-            overlap="circular"
-            sx={{ '& .MuiBadge-badge': { backgroundColor: 'orange', color: 'orange' } }}
-          >
-            <Tooltip
-              title={params.value || ''}
-              arrow
-              componentsProps={{
-                tooltip: { sx: { backgroundColor: 'white', color: '#334155', fontSize: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: 250 } },
-                arrow: { sx: { color: 'white' } }
-              }}
+      width: 130,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const has = params.value && String(params.value).trim();
+        return (
+          <Box sx={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
+            <Badge
+              variant={has ? 'dot' : 'standard'}
+              overlap="circular"
+              sx={{ '& .MuiBadge-badge': { backgroundColor: T.warn } }}
             >
-              <span>
+              <Tooltip
+                title={params.value || 'Ajouter un commentaire'}
+                arrow
+                componentsProps={{
+                  tooltip: { sx: { backgroundColor: '#fff', color: T.text, fontSize: '12px', border: `1px solid ${T.line}`, boxShadow: '0 4px 12px rgba(16,39,51,.12)', maxWidth: 260 } },
+                  arrow: { sx: { color: '#fff' } }
+                }}
+              >
                 <IconButton
                   size="small"
-                  color="primary"
                   onClick={() => { setSelectedRow(params.row); setOpenCommentDialog(true); }}
+                  sx={{ color: has ? T.accent : T.faint, '&:hover': { bgcolor: T.accW } }}
                 >
-                  <CommentIcon fontSize="small" />
+                  <ChatBubbleOutlineOutlined fontSize="small" />
                 </IconButton>
-              </span>
-            </Tooltip>
-          </Badge>
-        </Box>
-      )
+              </Tooltip>
+            </Badge>
+          </Box>
+        );
+      }
     }
   ];
 
   return (
     <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* STATISTIQUES */}
-      <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+      <Stack direction="row" spacing={3} alignItems="center" sx={{ px: 2.5, py: 1.5, bgcolor: T.canvas, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ANOMALIES DÉTECTÉES</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{totalAnomalies}</Typography>
-            <ErrorOutline sx={{ color: '#EF4444', fontSize: 16 }} />
+          <Typography sx={{ fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' }}>Anomalies détectées</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Typography sx={{ ...NUM, color: T.warn, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{totalAnomalies}</Typography>
+            <WarningAmberRounded sx={{ color: T.warn, fontSize: 16 }} />
           </Stack>
         </Box>
-        <Divider orientation="vertical" flexItem />
+        <Divider orientation="vertical" flexItem sx={{ borderColor: T.line }} />
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>RESTANT À VALIDER</Typography>
-          <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 900, lineHeight: 1 }}>{restantAValider}</Typography>
+          <Typography sx={{ fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' }}>Restant à valider</Typography>
+          <Typography sx={{ ...NUM, color: restantAValider > 0 ? T.neg : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{restantAValider}</Typography>
         </Box>
-        <Divider orientation="vertical" flexItem />
-        {/* <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>PÉRIODE</Typography>
-          <Typography variant="h6" sx={{ color: '#3B82F6', fontWeight: 900, lineHeight: 1 }}>
-            {id_periode ? `P${id_periode}` : 'Global'}
-          </Typography>
-        </Box> */}
-        {/* <Divider orientation="vertical" flexItem />
-        <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>TOTAL LIGNES</Typography>
-          <Typography variant="h6" sx={{ color: '#6B7280', fontWeight: 900, lineHeight: 1 }}>{rows.length}</Typography>
-        </Box> */}
       </Stack>
 
       {/* TABLEAU */}
-      <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden' }}>
+      <Box sx={{ flexGrow: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
         <DataGrid
           rows={rows}
           columns={columns}
           loading={loading}
           density="compact"
           disableRowSelectionOnClick
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-main': { overflow: 'auto' },
-            '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', color: '#64748B', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' },
-            '& .MuiDataGrid-cell': { fontSize: '0.8rem', borderBottom: '1px solid #F1F5F9' },
-            '& .font-bold': { fontWeight: 700 }
-          }}
+          sx={gridSx}
         />
       </Box>
 

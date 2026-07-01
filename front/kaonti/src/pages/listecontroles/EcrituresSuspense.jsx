@@ -18,6 +18,23 @@ import useAuth from '../../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import { useExercicePeriode } from '../../context/ExercicePeriodeContext';
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', accentDark: '#0a5d65', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', accW: '#E2F0F1',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const statLabelSx = { fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' };
+const MoneyCell = ({ value }) => {
+  const v = Number(value) || 0;
+  if (!value) return <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: T.faint }}>—</Typography>;
+  return (<Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: 600 }}>
+    {v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </Typography>);
+};
+
 const EcrituresSuspense = forwardRef(({ id_exercice, id_periode }, ref) => {
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
@@ -173,35 +190,35 @@ const EcrituresSuspense = forwardRef(({ id_exercice, id_periode }, ref) => {
   }, [effectiveExerciceId, effectivePeriodeId, selectedPeriodeDates, currentExerciceDates]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-      
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', bgcolor: T.canvas }}>
+
       {/* --- STATISTIQUES GLOBALES (Sous le titre) --- */}
-      <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+      <Stack direction="row" spacing={3} sx={{ px: 2.5, py: 1.5, bgcolor: T.surface, borderBottom: `1px solid ${T.line}` }}>
         <Box>
-          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ÉCRITURES EN ATTENTE</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>{rows.length}</Typography>
-            <HourglassEmptyOutlined sx={{ color: '#EF4444', fontSize: 18 }} />
+          <Typography sx={statLabelSx}>Écritures en attente</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Typography sx={{ ...NUM, color: rows.length > 0 ? T.warn : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{rows.length}</Typography>
+            <HourglassEmptyOutlined sx={{ color: rows.length > 0 ? T.warn : T.pos, fontSize: 18 }} />
           </Stack>
         </Box>
       </Stack>
 
       <Box sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        
-        {/* --- TABLEAU DES ÉCRITURES (Même style que Doublons) --- */}
-        <Paper variant="outlined" sx={{ flexGrow: 1, borderRadius: '8px', overflow: 'hidden', bgcolor: '#FFFFFF' }}>
+
+        {/* --- TABLEAU DES ÉCRITURES --- */}
+        <Paper variant="outlined" sx={{ flexGrow: 1, borderRadius: '12px', overflow: 'hidden', bgcolor: T.surface, border: `1px solid ${T.line}`, boxShadow: CARD_SHADOW }}>
           <DataGrid
             rows={rows} // Données des comptes 47*
             columns={[
-              { field: 'compte', headerName: 'Compte', width: 100, cellClassName: 'font-bold' },
+              { field: 'compte', headerName: 'Compte', width: 100, cellClassName: 'font-bold', renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.ink }}>{p.value}</Typography> },
               { field: 'journal', headerName: 'Journal', width: 80 },
-              { field: 'piece', headerName: 'Pièce', width: 110 },
+              { field: 'piece', headerName: 'Pièce', width: 110, renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '12.5px', color: T.text }}>{p.value}</Typography> },
               { field: 'libelle', headerName: 'Libellé', flex: 1 },
-              { field: 'debit', headerName: 'Débit', width: 120, type: 'number' },
-              { field: 'credit', headerName: 'Crédit', width: 120, type: 'number' },
+              { field: 'debit', headerName: 'Débit', width: 120, type: 'number', align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
+              { field: 'credit', headerName: 'Crédit', width: 120, type: 'number', align: 'right', headerAlign: 'right', renderCell: (p) => <MoneyCell value={p.value} /> },
             ]}
             density="compact"
-            sx={dataGridStyle}
+            sx={gridSx}
             disableRowSelectionOnClick
             loading={loading}
           />
@@ -211,22 +228,13 @@ const EcrituresSuspense = forwardRef(({ id_exercice, id_periode }, ref) => {
   );
 });
 
-const dataGridStyle = {
-  border: 'none',
-  '& .MuiDataGrid-columnHeaders': {
-    bgcolor: '#F8FAFC',
-    color: '#64748B',
-    fontSize: '0.65rem',
-    fontWeight: 800,
-    textTransform: 'uppercase',
-    borderBottom: '1px solid #E2E8F0'
-  },
-  '& .MuiDataGrid-cell': { 
-    fontSize: '0.8rem', 
-    borderBottom: '1px solid #F1F5F9',
-    '&:focus': { outline: 'none' }
-  },
-  '& .font-bold': { color: '#1E293B', fontWeight: 700 }
+const gridSx = {
+  border: 'none', fontSize: '13px',
+  '& .MuiDataGrid-columnHeaders': { bgcolor: T.ledger, borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px', textTransform: 'uppercase' } },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text, '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+  '& .font-bold': { fontWeight: 700 },
 };
 
 export default EcrituresSuspense;

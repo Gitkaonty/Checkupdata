@@ -35,7 +35,11 @@ import {
   ChatBubbleOutline,
   CheckCircle,
   Cancel,
-  ErrorOutline
+  ErrorOutline,
+  WarningAmberRounded,
+  RadioButtonUnchecked,
+  TaskAltRounded,
+  ChatBubbleOutlineOutlined
 } from '@mui/icons-material';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import useAuth from '../../hooks/useAuth';
@@ -54,6 +58,34 @@ const formatDate = (dateString) => {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const yy = String(date.getFullYear()).slice(-2);
   return `${dd}/${mm}/${yy}`;
+};
+
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733', canvas: '#F4F6F5', surface: '#FFFFFF', line: '#E2E6EA', ledger: '#EEF1F3',
+  text: '#16202B', muted: '#6A7785', faint: '#9AA6B2',
+  accent: '#0E7C86', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', info: '#3A6EA5', accW: '#E2F0F1',
+};
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const gridSx = {
+  border: 'none',
+  fontSize: '13px',
+  '& .MuiDataGrid-main': { overflow: 'auto' },
+  '& .MuiDataGrid-columnHeaders': {
+    bgcolor: T.ledger,
+    borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px', textTransform: 'uppercase' },
+  },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text, '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+};
+const MoneyCell = ({ value, bold }) => {
+  const v = Number(value) || 0;
+  return (
+    <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: bold ? 800 : (v !== 0 ? 600 : 400) }}>
+      {(value ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </Typography>
+  );
 };
 
 const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercice: id_exercice_prop, id_periode: id_periode_prop }, ref) {
@@ -474,52 +506,27 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
   // Calcul des lignes à afficher pour la page courante
   const displayedRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
+  // Statistiques
+  const totalAnomalies = rows.filter((r) => r.anomalies).length;
+  const restantAValider = rows.filter((r) => r.anomalies && !r.valide_anomalie).length;
+
   // Build dynamic columns based on API moisColumns
   const columns = [
     {
-      field: 'compte',
-      headerName: 'Compte',
-      width: 90,
-      headerClassName: 'sticky-header',
-      cellClassName: 'font-bold sticky-cell'
+      field: 'compte', headerName: 'Compte', width: 100,
+      renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '12.5px', fontWeight: 700, color: T.ink }}>{p.value}</Typography>,
     },
     {
-      field: 'libelle',
-      headerName: 'Libellé',
-      width: 300,
-      headerClassName: 'sticky-header',
-      cellClassName: 'sticky-cell'
+      field: 'libelle', headerName: 'Libellé', width: 300,
+      renderCell: (p) => <Typography noWrap title={p.value || ''} sx={{ fontSize: '12.5px', color: T.text }}>{p.value}</Typography>,
     },
     {
-      field: 'total_exercice',
-      headerName: 'TOTAL',
-      width: 110,
-      type: 'number',
-      cellClassName: 'total-cell',
-      renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 800, fontFamily: 'monospace' }}>
-          {params.value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-        </Typography>
-      )
+      field: 'total_exercice', headerName: 'Total', width: 120, type: 'number', align: 'right', headerAlign: 'right',
+      renderCell: (params) => <MoneyCell value={params.value} bold />,
     },
     ...moisColumns.map((mois) => ({
-      field: mois.nom,
-      headerName: mois.nomAffiche,
-      width: 110,
-      type: 'number',
-      renderCell: (params) => {
-        const value = params.value;
-        return (
-          <Typography variant="body2" sx={{
-            fontSize: '0.75rem',
-            fontFamily: 'monospace',
-            color: value > 0 ? '#2563eb' : value < 0 ? '#dc2626' : '#64748B',
-            fontWeight: value !== 0 ? 600 : 400
-          }}>
-            {value?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
-          </Typography>
-        );
-      }
+      field: mois.nom, headerName: mois.nomAffiche, width: 110, type: 'number', align: 'right', headerAlign: 'right',
+      renderCell: (params) => <MoneyCell value={params.value} />,
     })),
     {
       field: 'anomalies',
@@ -540,30 +547,16 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
       // )
       renderCell: (params) => {
         const hasAnomaly = !!params.value;
-
         return (
-          <Tooltip
-            title={hasAnomaly ? 'Anomalie détectée' : 'Aucune anomalie'}
-            arrow
-          >
+          <Tooltip title={hasAnomaly ? 'Anomalie signalée — cliquer pour retirer' : 'Conforme — cliquer pour signaler'} arrow>
             <IconButton
               size="small"
               onClick={() => handleToggleAnomalie(params.row, !hasAnomaly)}
-              color={hasAnomaly ? 'success' : 'error'}
-              sx={{
-                transition: '0.2s',
-                '&:hover': {
-                  transform: 'scale(1.1)'
-                }
-              }}
+              sx={{ p: 0.25, color: hasAnomaly ? T.warn : T.pos, transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
             >
-              {hasAnomaly ? (
-                <CheckCircle fontSize="small" />
-              ) : (
-                <Cancel fontSize="small" />
-              )}
+              {hasAnomaly ? <WarningAmberRounded fontSize="small" /> : <CheckCircleOutline fontSize="small" />}
             </IconButton>
-          </Tooltip >
+          </Tooltip>
         );
       }
     },
@@ -574,30 +567,19 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
       align: 'center',
       renderCell: (params) => {
         const isValid = !!params.value;
-
+        const isAnomaly = !!params.row.anomalies;
         return (
-          <Tooltip
-            title={isValid ? 'Validé' : 'Non validé'}
-            arrow
-          >
-            <IconButton
-              size="small"
-              onClick={() => handleToggleValide(params.row, !isValid)}
-              color={isValid ? 'success' : 'error'}
-              sx={{
-                p: 0,
-                transition: '0.2s',
-                '&:hover': {
-                  transform: 'scale(1.1)'
-                }
-              }}
-            >
-              {isValid ? (
-                <CheckCircle fontSize="small" />
-              ) : (
-                <Cancel fontSize="small" />
-              )}
-            </IconButton>
+          <Tooltip title={isValid ? 'Validé — cliquer pour dévalider' : (isAnomaly ? 'À valider — cliquer pour valider' : 'Rien à valider')} arrow>
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => handleToggleValide(params.row, !isValid)}
+                disabled={!isAnomaly && !isValid}
+                sx={{ p: 0.25, color: isValid ? T.pos : (isAnomaly ? T.warn : T.faint), transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
+              >
+                {isValid ? <TaskAltRounded fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
+              </IconButton>
+            </span>
           </Tooltip>
         );
       }
@@ -613,8 +595,8 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
             overlap="circular"
             sx={{
               '& .MuiBadge-badge': {
-                backgroundColor: 'orange',
-                color: 'orange'
+                backgroundColor: T.warn,
+                color: T.warn
               }
             }}
           >
@@ -642,13 +624,13 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
               <span>
                 <IconButton
                   size="small"
-                  color="primary"
                   onClick={() => {
                     setSelectedRow(params.row);
                     setOpenCommentDialog(true);
                   }}
+                  sx={{ color: (params.value && String(params.value).trim()) ? T.accent : T.faint, '&:hover': { bgcolor: T.accW } }}
                 >
-                  <CommentIcon fontSize="small" />
+                  <ChatBubbleOutlineOutlined fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
@@ -683,38 +665,29 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
 
           {/* HEADER DE STATISTIQUES (Fixe en haut) */}
-          <Stack direction="row" spacing={3} sx={{ p: 2, bgcolor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+          <Stack direction="row" spacing={3} alignItems="center" sx={{ px: 2.5, py: 1.5, bgcolor: T.canvas, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>ANOMALIES DÉTECTÉES</Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 900, lineHeight: 1 }}>N/A</Typography>
-                <ErrorOutline sx={{ color: '#EF4444', fontSize: 16 }} />
+              <Typography sx={{ fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' }}>Anomalies signalées</Typography>
+              <Stack direction="row" spacing={0.75} alignItems="center">
+                <Typography sx={{ ...NUM, color: T.warn, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{totalAnomalies}</Typography>
+                <WarningAmberRounded sx={{ color: T.warn, fontSize: 16 }} />
               </Stack>
             </Box>
-            <Divider orientation="vertical" flexItem />
+            <Divider orientation="vertical" flexItem sx={{ borderColor: T.line }} />
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700 }}>RESTANT À VALIDER</Typography>
-              <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 900, lineHeight: 1 }}>N/A</Typography>
+              <Typography sx={{ fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' }}>Restant à valider</Typography>
+              <Typography sx={{ ...NUM, color: restantAValider > 0 ? T.neg : T.pos, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>{restantAValider}</Typography>
             </Box>
           </Stack>
 
           {/* ZONE DU TABLEAU AVEC SCROLL INTERNE */}
-          <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden' }}>
+          <Box sx={{ flexGrow: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
             <DataGrid
               rows={rows}
               columns={columns}
               density="compact"
               disableRowSelectionOnClick
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-main': {
-                  overflow: 'auto', // Permet le scroll horizontal et vertical interne
-                },
-                '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', color: '#64748B', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' },
-                '& .MuiDataGrid-cell': { fontSize: '0.8rem', borderBottom: '1px solid #F1F5F9' },
-                '& .font-bold': { fontWeight: 700 }
-
-              }}
+              sx={gridSx}
             />
           </Box>
         </Box>
