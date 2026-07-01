@@ -22,6 +22,76 @@ import useAuth from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  warn: '#B5791A',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+  overflow: 'hidden',
+};
+const fieldLabelSx = {
+  fontSize: '10px',
+  textTransform: 'uppercase',
+  letterSpacing: '.4px',
+  fontWeight: 600,
+  color: T.faint,
+  mb: 0.5,
+  display: 'block',
+};
+const selectSx = {
+  height: 34,
+  fontSize: '13px',
+  borderRadius: '8px',
+  bgcolor: T.surface,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: T.accent },
+};
+const sectionTitleSx = {
+  fontSize: '11px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '.5px',
+  color: T.ink,
+  mb: 1.5,
+};
+
+// Ligne de récapitulatif (libellé / valeur)
+const RecapRow = ({ label, value }) => (
+  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2} sx={{ py: 1.25 }}>
+    <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: T.muted }}>{label}</Typography>
+    <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.ink, textAlign: 'right' }}>{value}</Typography>
+  </Stack>
+);
+
+// Ligne à puce
+const BulletLine = ({ children }) => (
+  <Stack direction="row" spacing={1} alignItems="flex-start">
+    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: T.accent, mt: '7px', flex: 'none' }} />
+    <Typography sx={{ fontSize: '12.5px', color: T.text, lineHeight: 1.5 }}>{children}</Typography>
+  </Stack>
+);
+
 const ExportGrandLivre = () => {
   const [fileInfos, setFileInfos] = useState('');
   const [fileId, setFileId] = useState(0);
@@ -292,311 +362,210 @@ const ExportGrandLivre = () => {
     return data.sort((a, b) => b.localeCompare(a)); // décroissant
   }, [listeComptes]);
 
+  const selectedEx = listeExercice.find((e) => e.id === selectedExerciceId);
+
   return (
-    <Box sx={{ p: 3, bgcolor: '#F8FAFC', minHeight: '85vh' }}>
+    <Box
+      sx={{
+        p: 3,
+        bgcolor: T.canvas,
+        height: 'calc(100vh - 120px)',
+        width: 'calc(100vw - 130px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        minWidth: 0,
+      }}
+    >
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2.5, flexShrink: 0, minWidth: 0 }}>
+        <Breadcrumbs
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
+        >
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
+          </Link>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Grand livre</Typography>
+        </Breadcrumbs>
 
-      {/* --- HEADER --- */}
-      <Box sx={{ mb: 4 }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-          <Chip
-            label={compteName}
-            sx={{
-              borderRadius: '4px', // Rectangulaire comme demandé
-              bgcolor: '#F1F5F9',
-              color: '#475569',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: '1px solid #E2E8F0',
-              height: 24,
-            }}
-          />
-          <Breadcrumbs
-            separator={<NavigateNext fontSize="small" />}
-            sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
-          >
-            <Link underline="hover" color="inherit" href="/dashboard"
-              sx={{ display: 'flex', alignItems: 'center' }}
-            >
-              <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
-            </Link>
-            <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Grand Livre</Typography>
-          </Breadcrumbs>
-        </Stack>
-
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Box sx={{ p: 1, borderRadius: '8px', bgcolor: '#0F172A', display: 'flex' }}>
-            <AccountBalanceWalletOutlined sx={{ color: 'white', fontSize: 24 }} />
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+            <AccountBalanceWalletOutlined />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px' }}>
-            Export du Grand Livre
-          </Typography>
+          <Box>
+            <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+              Export du grand livre
+            </Typography>
+            <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+              Extraction détaillée des écritures par compte · {compteName}
+            </Typography>
+          </Box>
         </Stack>
       </Box>
 
-      {/* --- CONFIGURATION --- */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid #E2E8F0', bgcolor: '#FCFDFF' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.75rem' }}>CRITÈRES D'EXTRACTION</Typography>
-            </Box>
+      {/* ESPACE DE TRAVAIL : paramètres (gauche) + récapitulatif (droite) */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
 
-            <Box sx={{ p: 3 }}>
-              <Stack direction="row" spacing={3} alignItems="flex-start">
-
-                {/* BLOC SÉLECTEURS GROUPÉS */}
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  sx={{
-                    p: 0.5,
-                    bgcolor: '#FFFFFF',
-                    borderRadius: '10px',
-                    border: '1px solid #E2E8F0',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                  }}
+        {/* PANNEAU DE PARAMÈTRES (vertical) */}
+        <Paper elevation={0} sx={{ ...panelSx, width: { xs: '100%', md: 360 }, flex: 'none', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          {/* Critères */}
+          <Box sx={{ p: 2.5, borderBottom: `1px solid ${T.ledger}` }}>
+            <Typography sx={sectionTitleSx}>Critères d'extraction</Typography>
+            <Stack spacing={1.75}>
+              <Box>
+                <Typography sx={fieldLabelSx}>Exercice</Typography>
+                <Select
+                  fullWidth
+                  value={selectedExerciceId}
+                  onChange={(e) => handleChangeExercice(e.target.value)}
+                  size="small"
+                  sx={{ ...selectSx, ...NUM, fontWeight: 700 }}
                 >
-                  {/* Exercice */}
-                  <Box sx={{ px: 2, py: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', display: 'block', textTransform: 'uppercase', fontSize: '0.55rem' }}>
-                      Exercice
-                    </Typography>
-                    <Select
-                      value={selectedExerciceId}
-                      onChange={(e) => handleChangeExercice(e.target.value)}
-                      variant="standard"
-                      disableUnderline
-                      sx={{ height: 24, fontSize: '0.8rem', fontWeight: 700, color: '#1E293B', minWidth: 100 }}
-                    >
-                      {listeExercice.map((option) => (
-                        <MenuItem key={option.id} value={option.id} sx={{ fontSize: 15 }}>
-                          {option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
+                  {listeExercice.map((option) => (
+                    <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
+                      {option.libelle_rang} : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </Box>
 
-                  <Divider orientation="vertical" flexItem sx={{ height: 28, alignSelf: 'center', borderColor: '#E2E8F0' }} />
-
-                  {/* Choix de Compte */}
-                  <Box sx={{ px: 2, py: 0.5, width: "100%", overflow: "visible" }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: 800,
-                        color: "#94A3B8",
-                        display: "block",
-                        textTransform: "uppercase",
-                        fontSize: "0.55rem",
-                      }}
-                    >
-                      Sélection de compte
-                    </Typography>
-
-                    <Autocomplete
-                      multiple
-                      sx={{
-                        minWidth: 350,
-                        width: "100%",
-                        maxWidth: 400,
-                        "& .MuiAutocomplete-inputRoot": {
-                          flexWrap: "nowrap",
-                          overflow: "hidden",
-                        },
-                        "& .MuiAutocomplete-tag": {
-                          maxWidth: 120,
-                        },
-                      }}
-                      options={[ALL_OPTION, ...optionsComptes]}
-                      value={compteAux}
-                      disableCloseOnSelect
-                      limitTags={2}
-                      onChange={(event, newValue) => {
-                        // ✔ SELECT ALL LOGIC
-                        if (newValue.includes(ALL_OPTION)) {
-                          handleChangeComptes(
-                            isAllSelected ? [] : optionsComptes
-                          );
-                        } else {
-                          handleChangeComptes(newValue);
-                        }
-                      }}
-                      getOptionLabel={(option) =>
-                        option === ALL_OPTION ? "Sélectionner tout" : option
-                      }
-                      renderOption={(props, option, { selected }) => {
-                        const isAll = option === ALL_OPTION;
-
-                        return (
-                          <li
-                            {...props}
-                            style={{
-                              whiteSpace: "normal",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            <Checkbox
-                              style={{ marginRight: 8 }}
-                              checked={
-                                isAll ? isAllSelected : selected
-                              }
-                            />
-                            <ListItemText
-                              primary={isAll ? "Sélectionner tout" : option}
-                              primaryTypographyProps={{
-                                fontWeight: isAll ? "bold" : "normal",
-                              }}
-                            />
-                          </li>
-                        );
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          variant="standard"
-                          placeholder="Rechercher un compte..."
-                          sx={{
-                            width: "100%",
-                            "& .MuiInputBase-input": {
-                              fontSize: "0.8rem",
-                              fontWeight: 700,
-                              color: "#6366F1",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            },
-                          }}
-                          InputProps={{
-                            ...params.InputProps,
-                            disableUnderline: true,
-                          }}
-                        />
-                      )}
+              <Box>
+                <Typography sx={fieldLabelSx}>Sélection de comptes</Typography>
+                <Autocomplete
+                  multiple
+                  size="small"
+                  options={[ALL_OPTION, ...optionsComptes]}
+                  value={compteAux}
+                  disableCloseOnSelect
+                  limitTags={2}
+                  onChange={(event, newValue) => {
+                    if (newValue.includes(ALL_OPTION)) {
+                      handleChangeComptes(isAllSelected ? [] : optionsComptes);
+                    } else {
+                      handleChangeComptes(newValue);
+                    }
+                  }}
+                  getOptionLabel={(option) => (option === ALL_OPTION ? 'Sélectionner tout' : option)}
+                  renderOption={(props, option, { selected }) => {
+                    const isAll = option === ALL_OPTION;
+                    return (
+                      <li {...props} style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                        <Checkbox size="small" style={{ marginRight: 8 }} checked={isAll ? isAllSelected : selected} />
+                        <ListItemText primary={isAll ? 'Sélectionner tout' : option} primaryTypographyProps={{ fontSize: '13px', fontWeight: isAll ? 700 : 400 }} />
+                      </li>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={compteAux.length ? '' : 'Tous les comptes'}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line } }}
                     />
-                  </Box>
-                </Stack>
+                  )}
+                />
+              </Box>
 
-                {/* Date Arrêté */}
-                <Box>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', display: 'block', mb: 0.5, textTransform: 'uppercase', fontSize: '0.6rem' }}>
-                    Arrêté au
-                  </Typography>
-                  <TextField
-                    type="date"
-                    size="small"
-                    value={dateFin}
-                    onChange={(e) => setDateFin(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <DateRangeOutlined sx={{ fontSize: 16, color: '#6366F1' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        height: 35,
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        borderRadius: '8px',
-                        bgcolor: '#F8FAFC'
-                      }
-                    }}
-                  />
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', display: 'block', mb: 0.5, textTransform: 'uppercase', fontSize: '0.6rem' }}>
-                    Réinitialiser
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    disableElevation
-                    size="small"
-                    onClick={handleResetFilter}
-                    startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        height: 35,
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        borderRadius: '8px',
-                        bgcolor: '#F8FAFC'
-                      }
-                    }}
-                  >
-                    Réinitialiser
-                  </Button>
-                </Box>
-              </Stack>
-
-              <Divider sx={{ my: 4, borderStyle: 'dashed' }} />
-
-              {/* FORMATS D'EXPORT */}
-              <Stack direction="row" spacing={2}>
-                <Button
-                  variant="contained"
+              <Box>
+                <Typography sx={fieldLabelSx}>Arrêté au</Typography>
+                <TextField
                   fullWidth
-                  onClick={exportExcel}
-                  startIcon={<TableChartOutlined />}
-                  sx={{
-                    py: 1.5,
-                    bgcolor: '#10B981',
-                    textTransform: 'none',
-                    fontWeight: 800,
-                    borderRadius: '12px',
-                    '&:hover': { bgcolor: '#059669' }
+                  type="date"
+                  size="small"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <DateRangeOutlined sx={{ fontSize: 16, color: T.accent }} />
+                      </InputAdornment>
+                    ),
                   }}
-                >
-                  Exporter Excel (.xlsx)
-                </Button>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={exportPdf}
-                  startIcon={<PictureAsPdfOutlined />}
-                  sx={{
-                    py: 1.5,
-                    bgcolor: '#EF4444',
-                    textTransform: 'none',
-                    fontWeight: 800,
-                    borderRadius: '12px',
-                    '&:hover': { bgcolor: '#DC2626' }
-                  }}
-                >
-                  Exporter PDF (.pdf)
-                </Button>
-              </Stack>
-            </Box>
-          </Paper>
-        </Grid>
+                  sx={{ '& .MuiOutlinedInput-root': { ...NUM, height: 34, fontSize: '13px', fontWeight: 600, borderRadius: '8px' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line } }}
+                />
+              </Box>
 
-        {/* --- ASIDE INFO --- */}
-        <Grid item xs={12} md={4}>
-          <Stack spacing={2}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', bgcolor: '#F8FAFC' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1, fontSize: '0.7rem', color: '#64748B', textTransform: 'uppercase' }}>
-                Options du Grand Livre
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', color: '#1E293B', mb: 1, fontWeight: 500 }}>
-                • Inclut le report à nouveau (RAN).
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', color: '#1E293B', mb: 1, fontWeight: 500 }}>
-                • Détail ligne par ligne avec lettrage.
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', color: '#1E293B', fontWeight: 500 }}>
-                • Sous-totaux par compte comptable.
-              </Typography>
-            </Paper>
+              <Button
+                onClick={handleResetFilter}
+                startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
+                sx={{ alignSelf: 'flex-start', px: 0, textTransform: 'none', fontWeight: 600, fontSize: '12.5px', color: T.muted, '&:hover': { bgcolor: 'transparent', color: T.accent } }}
+              >
+                Réinitialiser les filtres
+              </Button>
+            </Stack>
+          </Box>
 
-            <Box sx={{ p: 2, borderRadius: '12px', bgcolor: '#EEF2FF', border: '1px solid #C7D2FE' }}>
-              <Typography variant="caption" sx={{ color: '#4338CA', fontWeight: 700 }}>
-                Astuce : L'export au format PDF est optimisé pour l'impression A4 paysage.
+          {/* Export */}
+          <Box sx={{ p: 2.5, mt: 'auto' }}>
+            <Typography sx={sectionTitleSx}>Exporter</Typography>
+            <Stack spacing={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                disableElevation
+                onClick={exportExcel}
+                disabled={!canExport() || exporting}
+                startIcon={<TableChartOutlined />}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', py: 1, bgcolor: T.pos, borderRadius: '8px', '&:hover': { bgcolor: '#176e59' }, '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint } }}
+              >
+                Exporter en Excel
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={exportPdf}
+                disabled={!canExport() || exporting}
+                startIcon={<PictureAsPdfOutlined />}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', py: 1, color: T.neg, borderColor: T.line, borderRadius: '8px', '&:hover': { borderColor: T.neg, bgcolor: 'rgba(190,58,47,.06)' }, '&.Mui-disabled': { color: T.faint, borderColor: T.line } }}
+              >
+                Exporter en PDF
+              </Button>
+              {exporting && (
+                <Typography sx={{ fontSize: '11.5px', color: T.muted, textAlign: 'center', mt: 0.5 }}>{exportMsg}</Typography>
+              )}
+            </Stack>
+          </Box>
+        </Paper>
+
+        {/* PANNEAU RÉCAPITULATIF */}
+        <Paper elevation={0} sx={{ ...panelSx, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${T.ledger}`, flexShrink: 0 }}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 700, color: T.ink }}>Résumé de l'extraction</Typography>
+          </Box>
+
+          <Box sx={{ p: 3, overflowY: 'auto' }}>
+            <Stack divider={<Divider sx={{ borderColor: T.ledger }} />}>
+              <RecapRow
+                label="Exercice"
+                value={selectedEx ? `${selectedEx.libelle_rang} · ${format(new Date(selectedEx.date_debut), 'dd/MM/yyyy')} – ${format(new Date(selectedEx.date_fin), 'dd/MM/yyyy')}` : '—'}
+              />
+              <RecapRow
+                label="Comptes"
+                value={compteAux.length ? `${compteAux.length} compte(s) sélectionné(s)` : 'Tous les comptes'}
+              />
+              <RecapRow
+                label="Arrêté au"
+                value={dateFin ? format(new Date(dateFin), 'dd/MM/yyyy') : '—'}
+              />
+            </Stack>
+
+            <Typography sx={{ ...sectionTitleSx, mt: 3 }}>Contenu du grand livre</Typography>
+            <Stack spacing={1}>
+              <BulletLine>Inclut le report à nouveau (RAN).</BulletLine>
+              <BulletLine>Détail ligne par ligne avec lettrage.</BulletLine>
+              <BulletLine>Sous-totaux par compte comptable.</BulletLine>
+            </Stack>
+
+            <Stack direction="row" spacing={1.25} sx={{ mt: 3, p: 1.5, borderRadius: '10px', bgcolor: T.accW, border: `1px solid ${T.line}` }}>
+              <Box component="span" sx={{ fontSize: '15px', lineHeight: 1.4 }}>💡</Box>
+              <Typography sx={{ fontSize: '12px', color: T.ink, lineHeight: 1.5 }}>
+                L'export PDF est optimisé pour l'impression <b>A4 paysage</b>.
               </Typography>
-            </Box>
-          </Stack>
-        </Grid>
-      </Grid>
-    </Box >
+            </Stack>
+          </Box>
+        </Paper>
+      </Box>
+    </Box>
   );
 };
 

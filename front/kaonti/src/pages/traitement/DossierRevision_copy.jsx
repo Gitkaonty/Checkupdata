@@ -30,43 +30,6 @@ import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 import CommentDialog from '../../components/commetDialog';
 
-// ─── Système de design (aligné sur le tableau de bord) ───
-const T = {
-  ink: '#0E2733',
-  canvas: '#F4F6F5',
-  surface: '#FFFFFF',
-  line: '#E2E6EA',
-  ledger: '#EEF1F3',
-  text: '#16202B',
-  muted: '#6A7785',
-  faint: '#9AA6B2',
-  accent: '#0E7C86',
-  accentDark: '#0a5d65',
-  pos: '#1F8A70',
-  warn: '#B5791A',
-  neg: '#BE3A2F',
-  accW: '#E2F0F1',
-};
-const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
-const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
-const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
-const panelSx = {
-  border: `1px solid ${T.line}`,
-  borderRadius: '16px',
-  bgcolor: T.surface,
-  boxShadow: CARD_SHADOW,
-  overflow: 'hidden',
-};
-const fieldLabelSx = {
-  fontSize: '10px',
-  textTransform: 'uppercase',
-  letterSpacing: '.4px',
-  fontWeight: 600,
-  color: T.faint,
-  mb: 0.5,
-  display: 'block',
-};
-
 const GestionRevisionCycles = () => {
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
@@ -124,14 +87,14 @@ const GestionRevisionCycles = () => {
   const [newSyntheseCommentDialogOpen, setNewSyntheseCommentDialogOpen] = useState(false);
 
   const K_THEME = {
-    navy: T.ink,
-    cyan: T.accent,
-    slate: T.muted,
-    border: T.line,
-    success: T.pos,
-    warning: T.warn,
-    error: T.neg,
-    bg: T.canvas,
+    navy: '#0f172a',
+    cyan: '#06b6d4',
+    slate: '#64748b',
+    border: '#e2e8f0',
+    success: '#10b981',
+    warning: '#f59e0b',
+    error: '#f43f5e',
+    bg: '#f8fafc',
     radius: '10px'
   };
 
@@ -971,42 +934,52 @@ const GestionRevisionCycles = () => {
   // --- RENDU SYNTHÈSE (STYLE ÉPURÉ) ---
   const RenderSynthese = () => (
 
-    <Box sx={{ p: 3, overflowY: 'auto' }}>
-      <Grid container spacing={2.5}>
+    <Box sx={{ p: 3 }}>
+      <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
-          <Paper elevation={0} sx={{ ...panelSx }}>
-            <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${T.ledger}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography sx={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: T.muted }}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', bgcolor: '#FFF', border: '1px solid #E2E8F0' }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="caption" sx={{ fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>
                 Indicateurs de complétude
               </Typography>
-              <Box component="span" sx={{ fontSize: '10px', fontWeight: 700, color: T.accent, bgcolor: T.accW, px: 1, py: '3px', borderRadius: '5px' }}>En cours</Box>
+              <Chip label="En cours" size="small" sx={{ fontWeight: 800, bgcolor: '#EFF6FF', color: '#2563EB', height: 20, fontSize: '0.6rem' }} />
             </Box>
             <Box sx={{ p: 3 }}>
               <Stack spacing={3}>
                 <Box>
                   <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.text }}>Questionnaires validés</Typography>
-                    <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.pos }}>
-                      {itemsLoading ? '…' : `${questionnaireStats.done} / ${questionnaireStats.total}`}
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#1E293B' }}>Questionnaires validés</Typography>
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: '#10B981' }}>
+                      {itemsLoading ? '...' : `${questionnaireStats.done} / ${questionnaireStats.total}`}
                     </Typography>
                   </Stack>
                   <LinearProgress
                     variant="determinate"
                     value={itemsLoading ? 0 : questionnaireStats.percent}
-                    sx={{ height: 6, borderRadius: 99, bgcolor: T.ledger, '& .MuiLinearProgress-bar': { bgcolor: T.pos, borderRadius: 99 } }}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      bgcolor: '#F1F5F9',
+                      '& .MuiLinearProgress-bar': { bgcolor: '#10B981' }
+                    }}
                   />
                 </Box>
                 <Box>
                   <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.text }}>Justificatifs de revue analytique</Typography>
-                    <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.accent }}>
-                      {loadingEcritures ? '…' : `${revueAnalytiqueStats.verified} / ${revueAnalytiqueStats.total}`}
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#1E293B' }}>Justificatifs de revue analytique</Typography>
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: '#6366F1' }}>
+                      {loadingEcritures ? '...' : `${revueAnalytiqueStats.verified} / ${revueAnalytiqueStats.total}`}
                     </Typography>
                   </Stack>
                   <LinearProgress
                     variant="determinate"
                     value={loadingEcritures ? 0 : revueAnalytiqueStats.percent}
-                    sx={{ height: 6, borderRadius: 99, bgcolor: T.ledger, '& .MuiLinearProgress-bar': { bgcolor: T.accent, borderRadius: 99 } }}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      bgcolor: '#F1F5F9',
+                      '& .MuiLinearProgress-bar': { bgcolor: '#6366F1' }
+                    }}
                   />
                 </Box>
               </Stack>
@@ -1015,12 +988,24 @@ const GestionRevisionCycles = () => {
         </Grid>
 
         <Grid item xs={12} md={5}>
-          <Paper elevation={0} sx={{ ...panelSx, position: 'relative' }}>
+          <Paper
+            variant="outlined"
+            sx={{ borderRadius: '12px', bgcolor: '#FFF', position: 'relative' }}
+          >
             <Box
-              sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${T.ledger}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              sx={{
+                p: 2,
+                borderBottom: '1px solid #F1F5F9',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <Typography sx={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: T.muted }}>
-                Notes &amp; observations
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}
+              >
+                Notes & Observations
               </Typography>
 
               <Tooltip title="Ajouter un commentaire">
@@ -1029,7 +1014,7 @@ const GestionRevisionCycles = () => {
                     size="small"
                     onClick={handleOpenNewSyntheseCommentDialog}
                     disabled={savingNouveauCommentaire}
-                    sx={{ color: T.accent, bgcolor: T.accW, '&:hover': { bgcolor: '#D5E9EA' } }}
+                    sx={{ bgcolor: '#F1F5F9' }}
                   >
                     <Comment fontSize="small" />
                   </IconButton>
@@ -1038,7 +1023,11 @@ const GestionRevisionCycles = () => {
             </Box>
 
             {/* Historique des notes (vraies données) */}
-            <Box sx={{ px: 2, py: 2, maxHeight: 300, overflowY: 'auto' }}>
+            <Box sx={{ px: 2, pb: 2, maxHeight: 300, overflowY: 'auto' }}>
+              <br />
+              {/* <Typography sx={{ color: K_THEME.navy, fontWeight: 900, fontSize: '0.75rem', mb: 2 }}>
+                HISTORIQUE DES NOTES
+              </Typography> */}
               {historiqueNotes()}
             </Box>
           </Paper>
@@ -1151,30 +1140,25 @@ const GestionRevisionCycles = () => {
           sx={{
             border: 'none',
             flex: 1,
-            ...NUM,
-            fontSize: '12.5px',
             '& .MuiDataGrid-columnHeaders': {
-              bgcolor: T.ledger,
-              borderBottom: `1px solid ${T.line}`,
+              bgcolor: '#FCFDFF',
+              borderBottom: '1px solid #E2E8F0',
 
               '& .MuiDataGrid-columnHeaderTitle': {
-                fontSize: '11px',
-                fontWeight: 700,
-                color: T.muted,
-                letterSpacing: '.3px',
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                color: '#94A3B8',
+                letterSpacing: '0.05rem',
               }
             },
 
             '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #F1F4F6',
-              color: T.text,
+              borderBottom: '1px solid #F1F5F9',
             },
 
             '& .MuiDataGrid-virtualScroller': {
-              bgcolor: T.surface,
-            },
-
-            '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+              bgcolor: '#FFF',
+            }
           }}
         />
       </Box>
@@ -1336,47 +1320,9 @@ const GestionRevisionCycles = () => {
           minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
-          p: 2,
-          gap: 1.5,
+          p: 2
         }}
       >
-        {/* Barre : comptes à analyser (pilote le chargement des écritures) + avancement */}
-        <Stack direction="row" alignItems="flex-end" spacing={1.5} sx={{ flexShrink: 0, flexWrap: 'wrap', rowGap: 1 }}>
-          <Box sx={{ flexGrow: 1, minWidth: 240 }}>
-            <Typography sx={fieldLabelSx}>Comptes à analyser</Typography>
-            <Stack direction="row" spacing={1}>
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Ex : 401 ; 407 ; 53…"
-                value={compteAssocieInput}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  setCompteAssocieInput(text);
-                  const cleaned = text.replace(/,/g, ';').split(';').map(s => s.trim()).filter(s => s !== '');
-                  setCompteAssocieSelection(cleaned);
-                }}
-                sx={{ '& .MuiOutlinedInput-root': { height: 34, fontSize: '13px', borderRadius: '8px' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line } }}
-              />
-              <Button
-                variant="contained"
-                disableElevation
-                onClick={handleSaveCompteAssocie}
-                disabled={savingCompteAssocie || compteAssocieSelection.join(';') === compteAssocieSaved.join(';')}
-                sx={{ bgcolor: T.accent, color: '#fff', fontSize: '12px', fontWeight: 600, textTransform: 'none', height: 34, minWidth: 84, borderRadius: '8px', '&:hover': { bgcolor: T.accentDark }, '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint } }}
-              >
-                {savingCompteAssocie ? '…' : 'Charger'}
-              </Button>
-            </Stack>
-          </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography sx={fieldLabelSx}>Vérifiées</Typography>
-            <Typography sx={{ ...NUM, fontSize: '18px', fontWeight: 800, color: T.accent, lineHeight: 1 }}>
-              {revueAnalytiqueStats.verified} / {revueAnalytiqueStats.total}
-            </Typography>
-          </Box>
-        </Stack>
-
         <DataGrid
           rows={rows}
           columns={columns}
@@ -1386,30 +1332,25 @@ const GestionRevisionCycles = () => {
           sx={{
             border: 'none',
             flex: 1,
-            ...NUM,
-            fontSize: '12.5px',
             '& .MuiDataGrid-columnHeaders': {
-              bgcolor: T.ledger,
-              borderBottom: `1px solid ${T.line}`,
+              bgcolor: '#FCFDFF',
+              borderBottom: '1px solid #E2E8F0',
 
               '& .MuiDataGrid-columnHeaderTitle': {
-                fontSize: '11px',
-                fontWeight: 700,
-                color: T.muted,
-                letterSpacing: '.3px',
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                color: '#94A3B8',
+                letterSpacing: '0.05rem',
               }
             },
 
             '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #F1F4F6',
-              color: T.text,
+              borderBottom: '1px solid #F1F5F9',
             },
 
             '& .MuiDataGrid-virtualScroller': {
-              bgcolor: T.surface,
-            },
-
-            '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+              bgcolor: '#FFF',
+            }
           }}
           localeText={{
             noRowsLabel:
@@ -1426,7 +1367,7 @@ const GestionRevisionCycles = () => {
     <Box sx={{
       height: 'calc(100vh - 120px)',
       width: 'calc(100vw - 130px)',
-      bgcolor: T.canvas,
+      bgcolor: '#F8FAFC',
       p: 3,
       display: 'flex',
       flexDirection: 'column',
@@ -1479,60 +1420,166 @@ const GestionRevisionCycles = () => {
         loading={savingNouveauCommentaire}
       />
 
-      {/* EN-TÊTE */}
-      <Box sx={{ flexShrink: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+        <Chip
+          label={compteName}
+          sx={{
+            borderRadius: '4px', // Rectangulaire comme demandé
+            bgcolor: '#F1F5F9',
+            color: '#475569',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            border: '1px solid #E2E8F0',
+            height: 24,
+          }}
+        />
         <Breadcrumbs
-          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
-          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
+          separator={<NavigateNext fontSize="small" />}
+          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
         >
-          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
-            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
+          <Link underline="hover" color="inherit" href="/dashboard"
+            sx={{ display: 'flex', alignItems: 'center' }}
+          >
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
           </Link>
-          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Dossier de révision</Typography>
+          <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Dossiers de révision</Typography>
         </Breadcrumbs>
+      </Stack>
+      {/* BARRE HAUTE (Exercice, Période & Label Cycle) */}
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
+        <Stack direction="row" spacing={1} alignItems="center">
 
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={1.5}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
-              <FolderOpenOutlined />
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
-                Dossier de révision
+          {/* BLOC EXERCICE */}
+          <Box>
+            <ExercicePeriodeSelector
+              selectedExerciceId={selectedExerciceId}
+              selectedPeriodeId={selectedPeriodeId}
+              onExerciceChange={handleChangeExercice}
+              onPeriodeChange={handleChangePeriode}
+              disabled={loading}
+              size="small"
+            />
+          </Box>
+          <Stack
+            direction="row"
+            alignItems="center"
+            sx={{
+              mb: 3,
+              p: 0.5,
+              bgcolor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #E2E8F0',
+              width: 'fit-content',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              ml: -2,
+              position: 'relative',
+              top: -10
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.5 }}>
+
+              {/* 🔹 LABEL */}
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 800,
+                  color: '#94A3B8',
+                  display: 'block',
+                  mb: 0,
+                  textTransform: 'uppercase',
+                  fontSize: '0.55rem',
+                  letterSpacing: '0.02rem'
+                }}
+              >
+                Compte associé
               </Typography>
-              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
-                Suivi des cycles de révision &amp; justificatifs · {compteName}
-              </Typography>
+
+              {/* 🔹 INPUT + BUTTON */}
+              <Stack direction="row" alignItems="center" spacing={1}>
+
+                <TextField
+                  size="small"
+                  placeholder="Ex: 401;407;53..."
+                  variant="standard"
+                  value={compteAssocieInput}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    setCompteAssocieInput(text);
+
+                    const cleaned = text
+                      .replace(/,/g, ';')
+                      .split(';')
+                      .map(s => s.trim())
+                      .filter(s => s !== '');
+
+                    setCompteAssocieSelection(cleaned);
+                  }}
+                  disabled={
+                    activeCycle === "etat d'avancement" ||
+                    !selectedExerciceId ||
+                    !selectedPeriodeId
+                  }
+                  sx={{
+                    minWidth: 260,
+                    fontSize: '0.8rem',
+                    '& .MuiInputBase-root': {
+                      height: 24
+                    }
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleSaveCompteAssocie}
+                  disabled={
+                    savingCompteAssocie ||
+                    activeCycle === "etat d'avancement" ||
+                    !selectedExerciceId ||
+                    !selectedPeriodeId ||
+                    compteAssocieSelection.join(';') === compteAssocieSaved.join(';')
+                  }
+                  sx={{
+                    bgcolor: K_THEME.navy,
+                    color: '#fff',
+                    fontSize: '0.65rem',
+                    fontWeight: 900,
+                    height: 24,
+                    minWidth: 70
+                  }}
+                >
+                  {savingCompteAssocie ? '...' : 'Valider'}
+                </Button>
+
+              </Stack>
             </Box>
           </Stack>
-          <Box
-            component="span"
-            sx={{ ...NUM, fontFamily: MONO, fontSize: '11px', fontWeight: 600, color: T.accent, bgcolor: T.accW, px: 1.25, py: '5px', borderRadius: '6px', alignSelf: { xs: 'flex-start', md: 'center' } }}
-          >
-            RÉVISION · {activeCycle.toUpperCase()}
-          </Box>
+
+
         </Stack>
+        <Typography sx={{ color: K_THEME.cyan, fontWeight: 900, fontSize: '0.7rem' }}>KAONTI / REVISION / {activeCycle.toUpperCase()}</Typography>
+        {/* <Chip
+              label={activeCycle.toUpperCase()}
+              sx={{
+                bgcolor: '#0F172A', color: '#00B8D4',
+                fontWeight: 900, borderRadius: '6px',
+                fontSize: '0.75rem', textTransform: 'uppercase'
+              }}
+            /> */}
+      </Stack>
 
-        {/* CONTRÔLE : exercice / période (sous le titre) */}
-        <Box sx={{ mt: 2 }}>
-          <ExercicePeriodeSelector
-            selectedExerciceId={selectedExerciceId}
-            selectedPeriodeId={selectedPeriodeId}
-            onExerciceChange={handleChangeExercice}
-            onPeriodeChange={handleChangePeriode}
-            disabled={loading}
-            size="small"
-            sx={{ mb: 0, ml: 0, border: `1px solid ${T.line}`, borderRadius: '10px', boxShadow: CARD_SHADOW }}
-          />
-        </Box>
-      </Box>
+      <Divider sx={{ my: 1, bgcolor: K_THEME.navy, height: 2 }} />
 
-      <Stack direction={"row"} spacing={2} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <Paper
-          elevation={0}
-          sx={{ ...panelSx, width: 264, flex: 'none', display: 'flex', flexDirection: 'column' }}
+      <Stack direction={"row"} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <Box
+          sx={{
+            width: 260,
+            maxHeight: 'calc(100vh - 340px)',
+            overflowY: 'auto',
+            pr: 0.5
+          }}
         >
-          <List sx={{ p: 1, overflowY: 'auto' }}>
+          <List sx={{ p: 0 }}>
             {menuCycles.map((cycleName) => {
               const isAvancement = cycleName === "ETAT D'AVANCEMENT";
               const isActive = activeCycle === cycleName.toLowerCase();
@@ -1542,79 +1589,49 @@ const GestionRevisionCycles = () => {
                   selected={isActive}
                   onClick={() => { setActiveCycle(cycleName.toLowerCase()); setActiveTab(0); }}
                   sx={{
-                    borderRadius: K_THEME.radius, mb: 0.5,
+                    borderRadius: K_THEME.radius, mb: 0.1,
                     ...(isAvancement ? {
                       position: 'sticky',
                       top: 0,
                       zIndex: 2,
-                      background: 'radial-gradient(circle at 10% 20%, #16384a 0%, #0E2733 100%)',
+                      background: 'radial-gradient(circle at 10% 20%, #2f4566 0%, #010810 100%)',
                       '& .MuiTypography-root': { color: '#fff' },
-                      '& .MuiListItemIcon-root': { color: T.accent },
-                      '&:hover': { background: 'radial-gradient(circle at 10% 20%, #1e4a60 0%, #0E2733 100%)' }
+                      '& .MuiListItemIcon-root': { color: K_THEME.cyan },
+                      '&:hover': { background: 'radial-gradient(circle at 10% 20%, #3d5a85 0%, #010810 100%)' }
                     } : {
-                      '&.Mui-selected': { bgcolor: T.accW, borderLeft: `3px solid ${T.accent}` }
+                      '&.Mui-selected': { bgcolor: alpha(K_THEME.cyan, 0.05), borderLeft: `4px solid ${K_THEME.navy}` }
                     })
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 32, color: isActive ? T.accent : T.faint }}>
-                    {React.cloneElement(isAvancement ? <PieChart /> : <FiberManualRecord />, { sx: { fontSize: '1.1rem' } })}
+                  <ListItemIcon sx={{ minWidth: 32, color: isActive ? K_THEME.cyan : K_THEME.slate }}>
+                    {React.cloneElement(isAvancement ? <PieChart /> : <FiberManualRecord />, { sx: { fontSize: '1.2rem' } })}
                   </ListItemIcon>
-                  <ListItemText primary={cycleName} primaryTypographyProps={{ fontSize: '12.5px', fontWeight: 600, color: isActive && !isAvancement ? T.ink : undefined }} />
+                  <ListItemText primary={cycleName} primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: 600 }} />
                 </ListItemButton>
               );
             })}
           </List>
-        </Paper>
+        </Box>
 
-        <Paper elevation={0} sx={{ ...panelSx, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          {(!selectedExerciceId || !selectedPeriodeId || activeCycle === "etat d'avancement") ? (
-            <Stack alignItems="center" justifyContent="center" spacing={1.5} sx={{ flex: 1, px: 3, textAlign: 'center' }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: '16px', display: 'grid', placeItems: 'center', color: T.faint, bgcolor: T.ledger }}>
-                {(!selectedExerciceId || !selectedPeriodeId)
-                  ? <CalendarTodayOutlined sx={{ fontSize: 26 }} />
-                  : <AssignmentOutlined sx={{ fontSize: 26 }} />}
-              </Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: T.muted }}>
-                {(!selectedExerciceId || !selectedPeriodeId)
-                  ? 'Sélectionnez un exercice et une période'
-                  : 'Sélectionnez un cycle à réviser'}
-              </Typography>
-              <Typography sx={{ fontSize: '12.5px', color: T.faint, maxWidth: 360 }}>
-                {(!selectedExerciceId || !selectedPeriodeId)
-                  ? "Choisissez l'exercice et la période en haut de page pour démarrer la révision."
-                  : 'Choisissez un cycle dans la liste de gauche pour afficher son questionnaire et sa revue analytique.'}
-              </Typography>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+
+          <Stack sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            {/* ONGLETS DES RUBRIQUES */}
+            <Box sx={{ bgcolor: '#FFF', borderBottom: '1px solid #E2E8F0', px: 2 }}>
+              <Tabs value={tabValue} onChange={(e, val) => setTabValue(val)} sx={{ minHeight: 48 }}>
+                <Tab icon={<AnalyticsOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Synthèse" sx={tabStyle} />
+                <Tab icon={<AssignmentOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Questionnaire" sx={tabStyle} />
+                <Tab icon={<HistoryOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Revue Analytique" sx={tabStyle} />
+              </Tabs>
+            </Box>
+
+            <Stack sx={{ flex: 1, minHeight: 0, overflow: 'hidden', bgcolor: '#F8FAFC' }}>
+              {tabValue === 0 && RenderSynthese()}
+              {tabValue === 1 && RenderQuestionnaire()}
+              {tabValue === 2 && RenderRevue()}
             </Stack>
-          ) : (
-            <Stack sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-              {/* SOUS-EN-TÊTE DU CYCLE : nom + progression toujours visible */}
-              <Box sx={{ px: 2.5, py: 1.25, borderBottom: `1px solid ${T.ledger}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexShrink: 0, flexWrap: 'wrap', rowGap: 1 }}>
-                <Typography sx={{ fontSize: '14px', fontWeight: 700, color: T.ink, textTransform: 'capitalize' }}>
-                  {activeCycle}
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <ProgressChip label="Questionnaire" value={questionnaireStats.done} total={questionnaireStats.total} color={T.pos} />
-                  <ProgressChip label="Justificatifs" value={revueAnalytiqueStats.verified} total={revueAnalytiqueStats.total} color={T.accent} />
-                </Stack>
-              </Box>
-
-              {/* ONGLETS DES RUBRIQUES */}
-              <Box sx={{ borderBottom: `1px solid ${T.line}`, px: 2, flexShrink: 0 }}>
-                <Tabs value={tabValue} onChange={(e, val) => setTabValue(val)} sx={{ minHeight: 44, '& .MuiTabs-indicator': { backgroundColor: T.accent, height: 2.5 } }}>
-                  <Tab icon={<AnalyticsOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Synthèse" sx={tabStyle} />
-                  <Tab icon={<AssignmentOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Questionnaire" sx={tabStyle} />
-                  <Tab icon={<HistoryOutlined sx={{ fontSize: 18 }} />} iconPosition="start" label="Revue analytique" sx={tabStyle} />
-                </Tabs>
-              </Box>
-
-              <Stack sx={{ flex: 1, minHeight: 0, overflow: 'hidden', bgcolor: T.surface }}>
-                {tabValue === 0 && RenderSynthese()}
-                {tabValue === 1 && RenderQuestionnaire()}
-                {tabValue === 2 && RenderRevue()}
-              </Stack>
-            </Stack>
-          )}
-        </Paper>
+          </Stack>
+        </Box>
 
       </Stack>
 
@@ -1622,28 +1639,14 @@ const GestionRevisionCycles = () => {
   );
 };
 
-// Petit indicateur de progression (libellé + n/total + mini-barre)
-const ProgressChip = ({ label, value, total, color }) => {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  return (
-    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ px: 1.25, py: 0.5, borderRadius: '8px', bgcolor: T.ledger }}>
-      <Typography sx={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.3px', color: T.faint }}>{label}</Typography>
-      <Typography sx={{ ...NUM, fontSize: '12px', fontWeight: 700, color }}>{value}/{total}</Typography>
-      <Box sx={{ width: 36, height: 4, borderRadius: 99, bgcolor: '#FFFFFF', overflow: 'hidden' }}>
-        <Box sx={{ height: '100%', width: `${pct}%`, bgcolor: color, borderRadius: 99 }} />
-      </Box>
-    </Stack>
-  );
-};
-
 const tabStyle = {
   textTransform: 'none',
-  fontWeight: 600,
-  fontSize: '13px',
+  fontWeight: 800,
+  fontSize: '0.75rem',
   minHeight: 48,
   minWidth: 140,
-  color: T.muted,
-  '&.Mui-selected': { color: T.ink, fontWeight: 700 }
+  color: '#64748B',
+  '&.Mui-selected': { color: '#0F172A' }
 };
 
 const dataGridStyle = {

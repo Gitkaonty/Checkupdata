@@ -5,7 +5,7 @@ import {
   Breadcrumbs, Link, MenuItem, Select, Divider,
   LinearProgress, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent, IconButton, List,
-  Chip, ToggleButton, ToggleButtonGroup
+  Chip
 } from '@mui/material';
 import {
   NavigateNext, FileUploadOutlined,
@@ -27,109 +27,6 @@ import axios from '../../../config/axios';
 import toast from 'react-hot-toast';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
-
-// ─── Système de design (aligné sur le tableau de bord) ───
-const T = {
-  ink: '#0E2733',
-  canvas: '#F4F6F5',
-  surface: '#FFFFFF',
-  line: '#E2E6EA',
-  ledger: '#EEF1F3',
-  text: '#16202B',
-  muted: '#6A7785',
-  faint: '#9AA6B2',
-  accent: '#0E7C86',
-  accentDark: '#0a5d65',
-  pos: '#1F8A70',
-  warn: '#B5791A',
-  neg: '#BE3A2F',
-  negW: '#F7E7E4',
-  accW: '#E2F0F1',
-};
-const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
-const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
-const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
-const panelSx = {
-  border: `1px solid ${T.line}`,
-  borderRadius: '16px',
-  bgcolor: T.surface,
-  boxShadow: CARD_SHADOW,
-  overflow: 'hidden',
-};
-const fieldLabelSx = {
-  fontSize: '10px',
-  textTransform: 'uppercase',
-  letterSpacing: '.4px',
-  fontWeight: 600,
-  color: T.faint,
-  mb: 0.5,
-  display: 'block',
-};
-const selectSx = {
-  height: 34,
-  fontSize: '13px',
-  borderRadius: '8px',
-  bgcolor: T.surface,
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: T.accent },
-};
-const toggleSx = {
-  '& .MuiToggleButtonGroup-grouped': {
-    flex: 1,
-    textTransform: 'none',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: T.muted,
-    borderColor: T.line,
-    py: 0.55,
-    '&.Mui-selected': { color: '#fff', bgcolor: T.accent, '&:hover': { bgcolor: T.accentDark } },
-  },
-};
-
-// Bloc d'étape du panneau de pilotage : badge numéroté (✓ si fait) + titre + contenu
-const StepBlock = ({ n, title, done, last, children }) => (
-  <Box sx={{ px: 2.5, py: 2, borderBottom: last ? 'none' : `1px solid ${T.ledger}` }}>
-    <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.5 }}>
-      <Box
-        sx={{
-          width: 22, height: 22, flex: 'none', borderRadius: '7px', display: 'grid', placeItems: 'center',
-          fontSize: '11px', fontWeight: 700, color: done ? '#fff' : T.accent, bgcolor: done ? T.accent : T.accW,
-        }}
-      >
-        {done ? '✓' : n}
-      </Box>
-      <Typography sx={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.5px', fontWeight: 700, color: T.ink }}>
-        {title}
-      </Typography>
-    </Stack>
-    {children}
-  </Box>
-);
-
-// Option sélectionnable type radio (mode d'import)
-const OptionRow = ({ selected, onClick, title, desc }) => (
-  <Box
-    onClick={onClick}
-    sx={{
-      px: 1.5, py: 1, borderRadius: '10px', cursor: 'pointer',
-      border: `1px solid ${selected ? T.accent : T.line}`,
-      bgcolor: selected ? T.accW : T.surface,
-      transition: 'all .15s',
-      '&:hover': { borderColor: T.accent },
-    }}
-  >
-    <Stack direction="row" alignItems="center" spacing={1}>
-      <Box sx={{ width: 16, height: 16, flex: 'none', borderRadius: '50%', border: `2px solid ${selected ? T.accent : '#CBD5E1'}`, display: 'grid', placeItems: 'center' }}>
-        {selected && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: T.accent }} />}
-      </Box>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.ink, lineHeight: 1.2 }}>{title}</Typography>
-        <Typography sx={{ fontSize: '11px', color: T.muted }}>{desc}</Typography>
-      </Box>
-    </Stack>
-  </Box>
-);
 
 const ImportJournal = () => {
   const [importMode, setImportMode] = useState('update');
@@ -1328,8 +1225,8 @@ const ImportJournal = () => {
     <Box
       sx={{
         px: 3,
-        py: 2.5,
-        bgcolor: T.canvas,
+        py: 2,
+        bgcolor: '#F8FAFC',
         height: 'calc(100vh - 120px)',
         width: 'calc(100vw - 120px)',
         display: 'flex',
@@ -1341,162 +1238,145 @@ const ImportJournal = () => {
       }}
     >
 
-      {/* --- EN-TÊTE --- */}
-      <Box sx={{ mb: 2.5, flexShrink: 0 }}>
-        <Breadcrumbs
-          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
-          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
-        >
-          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
-            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
-          </Link>
-          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Import du journal</Typography>
-        </Breadcrumbs>
-
-        <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} spacing={2}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Box
-              sx={{
-                width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center',
-                color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 },
-              }}
+      {/* --- HEADER COMPACT --- */}
+      <Box sx={{ mb: 2, flexShrink: 0 }}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+          <Chip
+            label={compteName}
+            sx={{
+              borderRadius: '4px',
+              bgcolor: '#F1F5F9',
+              color: '#475569',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              border: '1px solid #E2E8F0',
+              height: 24,
+            }}
+          />
+          <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto', borderColor: '#CBD5E1' }} />
+          <Breadcrumbs
+            separator={<NavigateNext fontSize="small" />}
+            sx={{ '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+          >
+            <Link underline="hover" color="inherit" href="/dashboard"
+              sx={{ display: 'flex', alignItems: 'center' }}
             >
-              <FileUploadOutlined />
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
-                Import du journal
-              </Typography>
-              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
-                Importez et contrôlez vos écritures avant intégration · {compteName}
-              </Typography>
-            </Box>
+              <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+            </Link>
+            <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>
+              Import journal
+            </Typography>
+          </Breadcrumbs>
+        </Stack>
+
+        <Stack direction="column" spacing={1.5} sx={{ mt: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <FileUploadOutlined sx={{ color: '#6366F1', fontSize: 24 }} />
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px' }}
+            >
+              Import Journal
+            </Typography>
           </Stack>
 
           <Stack
             direction="row"
             alignItems="center"
-            spacing={1.25}
-            sx={{ ml: { md: 'auto' }, px: 1.75, py: 0.9, borderRadius: '10px', border: `1px solid ${T.line}`, bgcolor: T.surface, boxShadow: CARD_SHADOW }}
+            sx={{
+              p: 0.5,
+              bgcolor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #E2E8F0',
+              width: 'fit-content',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
           >
-            <Typography sx={{ ...fieldLabelSx, mb: 0 }}>Exercice</Typography>
-            <Select
-              value={selectedExerciceId}
-              onChange={(e) => handleChangeExercice(e.target.value)}
-              variant="standard"
-              disableUnderline
-              size="small"
-              sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.ink, '& .MuiSelect-select': { py: 0, pr: '20px !important' } }}
-            >
-              {listeExercice.map((option) => (
-                <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
-                  {format(option.date_debut, "dd/MM/yyyy")} – {format(option.date_fin, "dd/MM/yyyy")}
-                </MenuItem>
-              ))}
-            </Select>
+            <Box sx={{ px: 2, py: 0.5 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography sx={{ fontWeight: 500, mb: 0.5, color: '#666', fontSize: '0.85rem' }}>
+                  Exercice
+                </Typography>
+                <Select
+                  fullWidth
+                  size="small"
+                  value={selectedExerciceId}
+                  onChange={(e) => handleChangeExercice(e.target.value)}
+                  sx={{
+                    height: 24,
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: '#1E293B',
+                    minWidth: 100,
+                    '& .MuiSelect-select': { py: 0 }
+                  }}
+                >
+                  {listeExercice.map((option) => (
+                    <MenuItem key={option.id} value={option.id} sx={{ fontSize: '0.9rem' }}>
+                      {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </Box>
+              {/* <Select
+                value={exercise}
+                onChange={(e) => setExercise(e.target.value)}
+                variant="standard"
+                disableUnderline
+                size="small"
+                sx={{
+                  height: 24,
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#1E293B',
+                  minWidth: 100,
+                  '& .MuiSelect-select': { py: 0 }
+                }}
+              >
+                <MenuItem value="2024">Exercice 2024</MenuItem>
+                <MenuItem value="2025">Exercice 2025</MenuItem>
+              </Select> */}
+            </Box>
           </Stack>
         </Stack>
       </Box>
 
-      {/* --- ESPACE DE TRAVAIL : pilotage (gauche) + aperçu (droite) --- */}
-      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-
-        {/* PANNEAU DE PILOTAGE */}
-        <Paper
-          elevation={0}
-          sx={{
-            ...panelSx,
-            width: { xs: '100%', md: 360 },
-            flex: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            overflowY: 'auto',
-          }}
-        >
-          {/* Étape 1 — Format & mode */}
-          <StepBlock n={1} title="Format & mode" done={!!formikImport.values.choixImport}>
-            <Typography sx={fieldLabelSx}>Type de fichier</Typography>
-            <ToggleButtonGroup
-              exclusive
-              fullWidth
-              size="small"
-              value={formikImport.values.type}
-              onChange={(e, v) => v && handleChangeType({ target: { value: v } })}
-              sx={toggleSx}
-            >
-              <ToggleButton value="CSV">CSV</ToggleButton>
-              <ToggleButton value="FEC">FEC</ToggleButton>
-            </ToggleButtonGroup>
-
-            <Typography sx={{ ...fieldLabelSx, mt: 2 }}>Mode d'import</Typography>
-            <Stack spacing={1}>
-              <OptionRow
-                selected={formikImport.values.choixImport === 'UPDATE'}
-                onClick={() => handleChangeCptDispatch({ target: { value: 'UPDATE' } })}
-                title="Importer sans écraser"
-                desc="Ajoute aux écritures déjà présentes"
-              />
-              <OptionRow
-                selected={formikImport.values.choixImport === 'ECRASER'}
-                onClick={() => handleChangeCptDispatch({ target: { value: 'ECRASER' } })}
-                title="Écraser les données"
-                desc="Remplace l'existant sur la période"
-              />
-            </Stack>
-
-            <Button
-              startIcon={<DownloadOutlined sx={{ fontSize: 16 }} />}
-              disabled={!fileTypeCSV}
-              onClick={fileTypeCSV ? handleDownloadModel : undefined}
-              sx={{
-                mt: 1.5, px: 0, textTransform: 'none', fontWeight: 600, fontSize: '12.5px', color: T.accent,
-                '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
-              }}
-            >
-              Télécharger le modèle
-            </Button>
-          </StepBlock>
-
-          {/* Étape 2 — Fichier */}
-          <StepBlock n={2} title="Fichier" done={journalData.length > 0}>
-            {journalData.length === 0 ? (
-              <Box
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
+      {/* --- ZONE DE CONFIGURATION --- */}
+      <Grid container spacing={2} sx={{ mb: 2, flexShrink: 0 }}>
+        <Grid item xs={12} md={7}>
+          <Paper
+            variant="outlined"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            sx={{
+              p: 2,
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              border: isDragging ? '2px dashed #6366F1' : '1px dashed #6366F1',
+              bgcolor: isDragging ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.02)',
+              height: '100%',
+              boxSizing: 'border-box',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <CloudUploadOutlined sx={{ fontSize: 32, color: '#6366F1', flexShrink: 0 }} />
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 700, cursor: 'pointer' }}
                 onClick={() => document.getElementById("fileInput").click()}
-                sx={{
-                  p: 2.5, borderRadius: '12px', textAlign: 'center', cursor: 'pointer',
-                  border: isDragging ? `2px dashed ${T.accent}` : `1.5px dashed ${T.line}`,
-                  bgcolor: isDragging ? T.accW : '#FCFDFD',
-                  transition: 'all 0.2s ease',
-                  '&:hover': { borderColor: T.accent },
-                }}
               >
-                <Box sx={{ width: 44, height: 44, mx: 'auto', mb: 1, borderRadius: '12px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14` }}>
-                  <CloudUploadOutlined sx={{ fontSize: 24 }} />
-                </Box>
-                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: T.ink }}>
-                  Glissez votre fichier ou <Box component="span" sx={{ color: T.accent }}>parcourez</Box>
-                </Typography>
-                <Typography sx={{ fontSize: '11px', color: T.muted, mt: 0.3 }}>CSV, FEC (max 10 Mo)</Typography>
-              </Box>
-            ) : (
-              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#F1F8F5', border: '1px solid #CDE8DD' }}>
-                <CheckCircleOutline sx={{ color: T.pos, fontSize: 22 }} />
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.ink }}>{journalData.length} lignes chargées</Typography>
-                  <Typography sx={{ fontSize: '11px', color: T.muted }}>Prêtes à être contrôlées</Typography>
-                </Box>
-                <Button
-                  size="small"
-                  onClick={() => document.getElementById("fileInput").click()}
-                  sx={{ textTransform: 'none', fontSize: '12px', fontWeight: 600, color: T.accent, '&:hover': { bgcolor: T.accW } }}
-                >
-                  Remplacer
-                </Button>
-              </Stack>
-            )}
+                Glissez votre fichier ici ou{' '}
+                <span style={{ color: '#6366F1' }}>parcourez</span>
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                XLSX, CSV (Max 10Mo)
+              </Typography>
+            </Box>
+
             <input
               type="file"
               accept={fileTypeCSV ? ".csv" : ".txt"}
@@ -1504,163 +1384,263 @@ const ImportJournal = () => {
               style={{ display: "none" }}
               id="fileInput"
             />
-          </StepBlock>
 
-          {/* Étape 3 — Contrôles */}
-          <StepBlock n={3} title="Contrôles">
-            {journalData.length === 0 ? (
-              <Typography sx={{ fontSize: '12.5px', color: T.faint }}>En attente d'un fichier…</Typography>
-            ) : nbrAnomalie === 0 ? (
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <CheckCircleOutline sx={{ color: T.pos, fontSize: 18 }} />
-                <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: T.pos }}>Aucune anomalie détectée</Typography>
-              </Stack>
-            ) : (
+            <Divider orientation="vertical" flexItem />
+
+            <Box sx={{ minWidth: 180, flexShrink: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#64748B', display: 'block' }}>
+                Type de fichier
+              </Typography>
+              <Select
+                value={formikImport.values.type}
+                onChange={handleChangeType}
+                displayEmpty
+                fullWidth
+                size="small"
+                sx={{ height: 32, fontSize: '0.8rem' }}
+              >
+                <MenuItem value="CSV" sx={{ fontSize: '0.9rem' }}>CSV</MenuItem>
+                <MenuItem value="FEC" sx={{ fontSize: '0.9rem' }}>FEC</MenuItem>
+              </Select>
+            </Box>
+
+            <Divider orientation="vertical" flexItem />
+            <Box sx={{ minWidth: 180, flexShrink: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#64748B', display: 'block' }}>
+                Mode d'import
+              </Typography>
+              <Select
+                value={formikImport.values.choixImport}
+                onChange={handleChangeCptDispatch}
+                displayEmpty
+                fullWidth
+                size="small"
+                sx={{ height: 32, fontSize: '0.8rem' }}
+              >
+                <MenuItem value="" sx={{ fontSize: '0.9rem' }}>
+                  <em>None</em>
+                </MenuItem>
+                <MenuItem value="ECRASER" sx={{ fontSize: '0.9rem' }}>
+                  Ecraser les données déjà existantes
+                </MenuItem>
+                <MenuItem value="UPDATE" sx={{ fontSize: '0.9rem' }}>
+                  Importer sans écraser
+                </MenuItem>
+              </Select>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={5}>
+          <Stack direction="row" spacing={1} sx={{ height: '100%' }}>
+            <Stack spacing={1} sx={{ flexGrow: 1, minWidth: 0 }}>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadOutlined />}
+                disabled={!fileTypeCSV}
+                onClick={fileTypeCSV ? handleDownloadModel : undefined}
+                fullWidth
+                size="small"
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '8px', height: 36 }}
+              >
+                Modèle Excel
+              </Button>
               <Box>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                  <ErrorOutline sx={{ color: T.warn, fontSize: 18 }} />
-                  <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: T.warn }}>
-                    {nbrAnomalie} point(s) de vigilance
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.65rem' }}>
+                    Progression : {uploadProgress}%
                   </Typography>
-                </Stack>
-                <Stack spacing={0.75} sx={{ maxHeight: 220, overflowY: 'auto', pr: 0.5 }}>
-                  {anomalies.map((anom, index) => (
-                    <Box key={index} sx={{ p: 1, borderRadius: '8px', bgcolor: '#FBF4E6', border: '1px solid #EADFC2' }}>
-                      <Typography sx={{ fontSize: '11.5px', color: '#6B5618', lineHeight: 1.4 }}>{anom.erreur}</Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-          </StepBlock>
-
-          {/* Étape 4 — Import */}
-          <StepBlock n={4} title="Import" last>
-            {(uploadProgress > 0 || isImporting) && (
-              <Box sx={{ mb: 1.5 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-                  <Typography noWrap sx={{ fontSize: '11px', color: T.muted, mr: 1 }}>{traitementJournalMsg || 'Traitement…'}</Typography>
-                  <Typography sx={{ ...NUM, fontSize: '11px', fontWeight: 700, color: T.accent }}>{uploadProgress}%</Typography>
+                  <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 800, fontSize: '0.65rem' }}>
+                    {nbrAnomalie} Erreurs
+                  </Typography>
                 </Stack>
                 <LinearProgress
                   variant="determinate"
                   value={uploadProgress}
-                  sx={{ height: 6, borderRadius: 99, bgcolor: T.ledger, '& .MuiLinearProgress-bar': { bgcolor: T.accent, borderRadius: 99 } }}
+                  sx={{
+                    height: 4,
+                    borderRadius: 2,
+                    bgcolor: '#E2E8F0',
+                    '& .MuiLinearProgress-bar': { bgcolor: '#6366F1' }
+                  }}
                 />
               </Box>
-            )}
+            </Stack>
+
+            {/* --- BOUTON ROUGE CARRÉ POUR ANOMALIES --- */}
             <Button
-              type="button"
-              fullWidth
               variant="contained"
-              disableElevation
-              disabled={journalData.length === 0}
-              onClick={formikImport.handleSubmit}
+              onClick={() => setOpenAnomalies(true)}
+              disabled={nbrAnomalie === 0}
               sx={{
-                textTransform: 'none', fontWeight: 700, fontSize: '14px', py: 1, borderRadius: '10px',
-                bgcolor: T.accent, '&:hover': { bgcolor: T.accentDark },
-                '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint },
+                minWidth: 80,
+                width: 80,
+                flexShrink: 0,
+                bgcolor: '#FEE2E2',
+                color: '#EF4444',
+                borderRadius: '10px',
+                border: '1px solid #FCA5A5',
+                '&:hover': { bgcolor: '#FCA5A5', color: '#B91C1C' },
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.5,
+                boxShadow: 'none',
               }}
             >
-              Lancer l'import
+              <ErrorOutline sx={{ fontSize: 24 }} />
+              <Typography sx={{ fontSize: '0.6rem', fontWeight: 900 }}>DETAIL</Typography>
             </Button>
-          </StepBlock>
-        </Paper>
+          </Stack>
+        </Grid>
+      </Grid>
 
-        {/* APERÇU DES ÉCRITURES */}
-        <Paper
-          elevation={0}
+      {/* --- DATAGRID --- */}
+      <Paper
+        variant="outlined"
+        sx={{
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+          flexGrow: 1,          // prend tout l'espace restant
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,         // CRITIQUE : permet au flexGrow de fonctionner
+        }}
+      >
+        <Box
           sx={{
-            ...panelSx,
-            flex: 1,
-            minWidth: 0,
+            px: 2,
+            py: 1,
+            bgcolor: '#FFF',
             display: 'flex',
-            flexDirection: 'column',
-            minHeight: { xs: 320, md: 0 },
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #E2E8F0',
+            flexShrink: 0,
           }}
         >
-          <Box
+          <Typography variant="subtitle2" sx={{ fontWeight: 900, fontSize: '0.75rem' }}>
+            APERCU DES DONNEES
+          </Typography>
+          <Button
+            type="button"
+            disabled={journalData.length === 0}
+            variant="contained"
+            size="small"
+            sx={{ bgcolor: '#10B981', fontWeight: 800, textTransform: 'none', px: 3 }}
+            onClick={formikImport.handleSubmit}
+          >
+            Lancer l'import
+          </Button>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataGrid
+            rows={journalData}
+            columns={columnsTable.map(col => ({
+              field: col.id,
+              headerName: col.label,
+              width: col.minWidth,
+              align: col.align,
+              headerAlign: col.align,
+              valueFormatter: col.format
+                ? (params) => col.format(params.value)
+                : undefined
+            }))}
+            getRowId={(row) =>
+              row.id || row.EcritureNum || row.RefInterne || Math.random().toString(36).substr(2, 9)
+            }
+            density="compact"
+            // hideFooter
+            disableColumnMenu
             sx={{
-              px: 2.5,
-              py: 1.5,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              borderBottom: `1px solid ${T.ledger}`,
-              flexShrink: 0,
+              border: 'none',
+              fontSize: '0.75rem',
+              height: '100%',
+              '& .MuiDataGrid-columnHeaders': {
+                bgcolor: '#F1F5F9',
+                fontWeight: 800,
+                fontSize: '0.75rem',
+              },
+              '& .MuiDataGrid-row': {
+                height: '40px !important',
+                minHeight: '40px !important',
+                maxHeight: '40px !important',
+              },
+              '& .MuiDataGrid-row:hover': {
+                bgcolor: '#F8FAFC',
+              },
+            }}
+          />
+        </Box>
+      </Paper>
+
+      {/* --- POPUP DES ANOMALIES --- */}
+      <Dialog
+        open={openAnomalies}
+        onClose={() => setOpenAnomalies(false)}
+        PaperProps={{ sx: { borderRadius: '16px', width: 500 } }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 900,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #F1F5F9'
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ErrorOutline sx={{ color: '#EF4444' }} />
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>
+              Anomalies detectees
+            </Typography>
+          </Stack>
+          <IconButton onClick={() => setOpenAnomalies(false)} size="small">
+            <Close sx={{ fontSize: 20 }} />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 0 }}>
+          <List sx={{ py: 0 }}>
+            {anomalies.map((anom, index) => (
+              <Box key={index}>
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{ px: 3, py: 2, '&:hover': { bgcolor: '#FFF5F5' } }}
+                >
+                  <Typography
+                    sx={{ color: '#EF4444', fontWeight: 800, fontSize: '0.8rem', minWidth: 60 }}
+                  >
+                    Ligne {anom.ligne}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.85rem', color: '#1E293B', fontWeight: 500 }}>
+                    {anom.erreur}
+                  </Typography>
+                </Stack>
+                {index < anomalies.length - 1 && <Divider sx={{ opacity: 0.5 }} />}
+              </Box>
+            ))}
+          </List>
+        </DialogContent>
+
+        <Box sx={{ p: 2, textAlign: 'center', bgcolor: '#F8FAFC' }}>
+          <Button
+            onClick={() => setOpenAnomalies(false)}
+            variant="contained"
+            fullWidth
+            sx={{
+              bgcolor: '#1E293B',
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontWeight: 700
             }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.25}>
-              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: T.ink }}>
-                Aperçu des écritures
-              </Typography>
-              {journalData.length > 0 && (
-                <Box component="span" sx={{ ...NUM, fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: T.accent, bgcolor: T.accW, px: 1, py: '3px', borderRadius: '5px' }}>
-                  {journalData.length} lignes
-                </Box>
-              )}
-            </Stack>
-          </Box>
-
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {journalData.length === 0 ? (
-              <Stack alignItems="center" justifyContent="center" spacing={1.5} sx={{ flex: 1, px: 3, textAlign: 'center' }}>
-                <Box sx={{ width: 56, height: 56, borderRadius: '16px', display: 'grid', placeItems: 'center', color: T.faint, bgcolor: T.ledger }}>
-                  <CloudUploadOutlined sx={{ fontSize: 28 }} />
-                </Box>
-                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: T.muted }}>Aucune donnée à prévisualiser</Typography>
-                <Typography sx={{ fontSize: '12.5px', color: T.faint, maxWidth: 340 }}>
-                  Importez un fichier CSV ou FEC depuis le panneau de gauche pour afficher l'aperçu des écritures avant intégration.
-                </Typography>
-              </Stack>
-            ) : (
-              <DataGrid
-                rows={journalData}
-                columns={columnsTable.map(col => ({
-                  field: col.id,
-                  headerName: col.label,
-                  width: col.minWidth,
-                  align: col.align,
-                  headerAlign: col.align,
-                  valueFormatter: col.format
-                    ? (params) => col.format(params.value)
-                    : undefined
-                }))}
-                getRowId={(row) =>
-                  row.id || row.EcritureNum || row.RefInterne || Math.random().toString(36).substr(2, 9)
-                }
-                density="compact"
-                disableColumnMenu
-                sx={{
-                  border: 'none',
-                  fontSize: '12.5px',
-                  height: '100%',
-                  ...NUM,
-                  '& .MuiDataGrid-columnHeaders': {
-                    bgcolor: T.ledger,
-                    borderBottom: `1px solid ${T.line}`,
-                  },
-                  '& .MuiDataGrid-columnHeaderTitle': {
-                    fontWeight: 700,
-                    fontSize: '11px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '.3px',
-                    color: T.muted,
-                  },
-                  '& .MuiDataGrid-cell': { borderColor: '#F1F4F6', color: T.text },
-                  '& .MuiDataGrid-row': {
-                    height: '38px !important',
-                    minHeight: '38px !important',
-                    maxHeight: '38px !important',
-                  },
-                  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
-                  '& .MuiDataGrid-footerContainer': { borderTop: `1px solid ${T.ledger}` },
-                }}
-              />
-            )}
-          </Box>
-        </Paper>
-      </Box>
+            Fermer
+          </Button>
+        </Box>
+      </Dialog>
 
       {/* --- POPUP DE CONFIRMATION D'IMPORT --- */}
       <ConfirmActionDialog
@@ -1671,7 +1651,7 @@ const ImportJournal = () => {
         message="Voulez-vous vraiment importer le journal en cours ?"
         confirmText="Importer"
         cancelText="Annuler"
-        color={T.accent}
+        color="#06b6d4"
       />
 
     </Box>

@@ -22,6 +22,76 @@ import axios from '../../../config/axios';
 import { ListItemIcon, ListItemText } from '@mui/material';
 
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  warn: '#B5791A',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+  overflow: 'hidden',
+};
+const fieldLabelSx = {
+  fontSize: '10px',
+  textTransform: 'uppercase',
+  letterSpacing: '.4px',
+  fontWeight: 600,
+  color: T.faint,
+  mb: 0.5,
+  display: 'block',
+};
+const selectSx = {
+  height: 34,
+  fontSize: '13px',
+  borderRadius: '8px',
+  bgcolor: T.surface,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: T.accent },
+};
+const sectionTitleSx = {
+  fontSize: '11px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '.5px',
+  color: T.ink,
+  mb: 1.5,
+};
+
+// Ligne de récapitulatif (libellé / valeur)
+const RecapRow = ({ label, value }) => (
+  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2} sx={{ py: 1.25 }}>
+    <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: T.muted }}>{label}</Typography>
+    <Typography sx={{ ...NUM, fontSize: '13px', fontWeight: 700, color: T.ink, textAlign: 'right' }}>{value}</Typography>
+  </Stack>
+);
+
+// Ligne à puce
+const BulletLine = ({ children }) => (
+  <Stack direction="row" spacing={1} alignItems="flex-start">
+    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: T.accent, mt: '7px', flex: 'none' }} />
+    <Typography sx={{ fontSize: '12.5px', color: T.text, lineHeight: 1.5 }}>{children}</Typography>
+  </Stack>
+);
+
 const ExportJournal = () => {
   const [fileInfos, setFileInfos] = useState('');
   const [fileId, setFileId] = useState(0);
@@ -282,305 +352,215 @@ const ExportJournal = () => {
     }
   }, [fileId, compteId]);
 
+  const selectedEx = listeExercice.find((e) => e.id === selectedExerciceId);
+
   return (
-    <Box sx={{ p: 3, bgcolor: '#F8FAFC', minHeight: '85vh' }}>
+    <Box
+      sx={{
+        p: 3,
+        bgcolor: T.canvas,
+        height: 'calc(100vh - 120px)',
+        width: 'calc(100vw - 130px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        minWidth: 0,
+      }}
+    >
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2.5, flexShrink: 0, minWidth: 0 }}>
+        <Breadcrumbs
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
+        >
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
+          </Link>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Export des journaux</Typography>
+        </Breadcrumbs>
 
-      {/* --- HEADER --- */}
-      <Box sx={{ mb: 4 }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-          <Chip
-            label={compteName}
-            sx={{
-              borderRadius: '4px', // Rectangulaire comme demandé
-              bgcolor: '#F1F5F9',
-              color: '#475569',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: '1px solid #E2E8F0',
-              height: 24,
-            }}
-          />
-          <Breadcrumbs
-            separator={<NavigateNext fontSize="small" />}
-            sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
-          >
-            <Link underline="hover" color="inherit" href="/dashboard"
-              sx={{ display: 'flex', alignItems: 'center' }}
-            >
-              <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
-            </Link>
-            <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Export Journal</Typography>
-          </Breadcrumbs>
-        </Stack>
-
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Box sx={{ p: 1, borderRadius: '8px', bgcolor: '#6366F1', display: 'flex' }}>
-            <FileDownloadOutlined sx={{ color: 'white', fontSize: 24 }} />
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+            <FileDownloadOutlined />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px' }}>
-            Export des Journaux
-          </Typography>
+          <Box>
+            <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+              Export des journaux
+            </Typography>
+            <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+              Génération des journaux comptables (PDF / Excel) · {compteName}
+            </Typography>
+          </Box>
         </Stack>
       </Box>
 
-      {/* --- CONFIGURATION DE L'EXPORT --- */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper variant="outlined" sx={{ p: 0, borderRadius: '12px', overflow: 'hidden' }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid #E2E8F0', bgcolor: '#FCFDFF' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.75rem' }}>CRITÈRES DE GÉNÉRATION</Typography>
-            </Box>
+      {/* ESPACE DE TRAVAIL : paramètres (gauche) + récapitulatif (droite) */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
 
-            <Box sx={{ p: 3 }}>
-              <Stack direction="row" spacing={4} alignItems="flex-start">
-
-                {/* BLOC SÉLECTEURS GROUPÉS (Style Pro) */}
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  sx={{
-                    p: 0.5,
-                    bgcolor: '#FFFFFF',
-                    borderRadius: '10px',
-                    border: '1px solid #E2E8F0',
-                    width: 'fit-content',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                  }}
-                >
-                  {/* Exercice */}
-                  <Box sx={{ px: 2, py: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', display: 'block', textTransform: 'uppercase', fontSize: '0.55rem' }}>
-                      Exercice
-                    </Typography>
-                    <Select
-                      value={selectedExerciceId}
-                      onChange={(e) => handleChangeExercice(e.target.value)}
-                      variant="standard"
-                      disableUnderline
-                      sx={{ height: 24, fontSize: '0.8rem', fontWeight: 700, color: '#1E293B', minWidth: 100 }}
-                    >
-                      {listeExercice.map((option) => (
-                        <MenuItem key={option.id} value={option.id} sx={{ fontSize: 15 }}>
-                          {option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
-
-                  <Divider orientation="vertical" flexItem sx={{ height: 28, alignSelf: 'center', borderColor: '#E2E8F0' }} />
-                  <Box sx={{ px: 2, py: 0.5, width: "100%", overflow: "visible" }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: 800,
-                        color: "#94A3B8",
-                        display: "block",
-                        textTransform: "uppercase",
-                        fontSize: "0.55rem",
-                      }}
-                    >
-                      Sélection de journal
-                    </Typography>
-                    {/* Code Journal */}
-                    <Autocomplete
-                      multiple
-                      disableCloseOnSelect
-                      options={[ALL_OPTION, ...listeCodeJournaux.map((v) => v.code)]}
-                      value={journalCodes}
-                      onChange={(event, newValue) => {
-                        // ✔ SELECT ALL LOGIC
-                        if (newValue.includes(ALL_OPTION)) {
-                          handleChangeCodes(
-                            isAllSelected ? [] : listeCodeJournaux.map((v) => v.code)
-                          );
-                        } else {
-                          handleChangeCodes(newValue);
-                        }
-                      }}
-                      getOptionLabel={(option) => {
-                        if (option === ALL_OPTION) return "Sélectionner tout";
-                        const item = listeCodeJournaux.find((v) => v.code === option);
-                        return item ? `${item.code} - ${item.libelle}` : option;
-                      }}
-                      sx={{
-                        minWidth: 350,
-                        width: "100%",
-                        maxWidth: 420,
-                        "& .MuiAutocomplete-inputRoot": {
-                          flexWrap: "nowrap",
-                          overflow: "hidden",
-                        },
-                        "& .MuiAutocomplete-tag": {
-                          maxWidth: 140,
-                        },
-                      }}
-                      renderOption={(props, option, { selected }) => {
-                        const isAll = option === ALL_OPTION;
-
-                        return (
-                          <li {...props}>
-                            <Checkbox
-                              size="small"
-                              style={{ marginRight: 8 }}
-                              checked={isAll ? isAllSelected : selected}
-                            />
-                            <ListItemText
-                              primary={isAll ? "Sélectionner tout" : option}
-                              primaryTypographyProps={{
-                                fontWeight: isAll ? 800 : 400,
-                              }}
-                            />
-                          </li>
-                        );
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          variant="standard"
-                          placeholder="Rechercher un code journal..."
-                          InputProps={{
-                            ...params.InputProps,
-                            disableUnderline: true,
-                          }}
-                          sx={{
-                            "& .MuiInputBase-input": {
-                              fontSize: "0.8rem",
-                              fontWeight: 700,
-                              color: "#6366F1",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            },
-                          }}
-                        />
-                      )}
-                      renderTags={(value, getTagProps) => {
-                        const vals = value.filter((v) => v !== ALL_OPTION);
-                        const visible = vals.slice(0, 5);
-                        const hiddenCount = vals.length - visible.length;
-
-                        return (
-                          <Stack direction="row" spacing={0.5} sx={{ overflow: "hidden" }}>
-                            {visible.map((val, index) => (
-                              <Chip
-                                key={val}
-                                label={val}
-                                size="small"
-                                {...getTagProps({ index })}
-                                onDelete={() =>
-                                  handleChangeCodes(vals.filter((c) => c !== val))
-                                }
-                              />
-                            ))}
-
-                            {hiddenCount > 0 && (
-                              <Tooltip title={vals.join(", ")} arrow>
-                                <Chip label={`+${hiddenCount}`} size="small" />
-                              </Tooltip>
-                            )}
-                          </Stack>
-                        );
-                      }}
-                    />
-                  </Box>
-                </Stack>
-
-                {/* Date Arrêté (Champ Date moderne) */}
-                <Box>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748B', display: 'block', mb: 0.5, textTransform: 'uppercase', fontSize: '0.6rem' }}>
-                    Date d'arrêté
-                  </Typography>
-                  <TextField
-                    type="date"
-                    size="small"
-                    value={dateFin}
-                    onChange={(e) => setDateFin(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <DateRangeOutlined sx={{ fontSize: 16, color: '#6366F1' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        height: 35,
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        borderRadius: '8px',
-                        bgcolor: '#F8FAFC'
-                      }
-                    }}
-                  />
-                </Box>
-              </Stack>
-
-              <Divider sx={{ my: 4, borderStyle: 'dashed' }} />
-
-              {/* ACTIONS D'EXPORTATION */}
+        {/* PANNEAU DE PARAMÈTRES (vertical) */}
+        <Paper elevation={0} sx={{ ...panelSx, width: { xs: '100%', md: 360 }, flex: 'none', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          {/* Critères */}
+          <Box sx={{ p: 2.5, borderBottom: `1px solid ${T.ledger}` }}>
+            <Typography sx={sectionTitleSx}>Critères de génération</Typography>
+            <Stack spacing={1.75}>
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, color: '#475569' }}>Sélectionnez le format d'export :</Typography>
-                <Stack direction="row" spacing={2}>
-                  <Button
-                    variant="outlined"
-                    onClick={exportExcel}
-                    startIcon={<TableChartOutlined />}
-                    sx={{
-                      flex: 1,
-                      py: 1.5,
-                      textTransform: 'none',
-                      fontWeight: 800,
-                      borderRadius: '12px',
-                      color: '#10B981',
-                      borderColor: '#10B981',
-                      '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.05)', borderColor: '#059669' }
-                    }}
-                  >
-                    Exporter en Excel
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={exportPdf}
-                    startIcon={<PictureAsPdfOutlined />}
-                    sx={{
-                      flex: 1,
-                      py: 1.5,
-                      textTransform: 'none',
-                      fontWeight: 800,
-                      borderRadius: '12px',
-                      color: '#EF4444',
-                      borderColor: '#EF4444',
-                      '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.05)', borderColor: '#DC2626' }
-                    }}
-                  >
-                    Générer le PDF
-                  </Button>
-                </Stack>
+                <Typography sx={fieldLabelSx}>Exercice</Typography>
+                <Select
+                  fullWidth
+                  value={selectedExerciceId}
+                  onChange={(e) => handleChangeExercice(e.target.value)}
+                  size="small"
+                  sx={{ ...selectSx, ...NUM, fontWeight: 700 }}
+                >
+                  {listeExercice.map((option) => (
+                    <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
+                      {option.libelle_rang} : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
+                    </MenuItem>
+                  ))}
+                </Select>
               </Box>
-            </Box>
-          </Paper>
-        </Grid>
 
-        {/* --- INFO PANEL (ASIDE) --- */}
-        <Grid item xs={12} md={4}>
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', bgcolor: '#F1F5F9', border: 'none' }}>
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <BookOutlined sx={{ color: '#64748B' }} />
-                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Aide à l'export</Typography>
-              </Stack>
-              <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.5 }}>
-                L'export inclut toutes les écritures validées jusqu'à la date d'arrêté choisie.
-                Si vous choisissez "Tous les journaux", un seul fichier consolidé sera généré.
-              </Typography>
-              <Divider />
-              <Typography variant="caption" sx={{ fontWeight: 700, color: '#1E293B' }}>
-                Note : Pour un export légal (FEC), veuillez vous rendre dans le menu Paramètres\Conformité.
+              <Box>
+                <Typography sx={fieldLabelSx}>Sélection de journaux</Typography>
+                <Autocomplete
+                  multiple
+                  size="small"
+                  disableCloseOnSelect
+                  limitTags={2}
+                  options={[ALL_OPTION, ...listeCodeJournaux.map((v) => v.code)]}
+                  value={journalCodes}
+                  onChange={(event, newValue) => {
+                    if (newValue.includes(ALL_OPTION)) {
+                      handleChangeCodes(isAllSelected ? [] : listeCodeJournaux.map((v) => v.code));
+                    } else {
+                      handleChangeCodes(newValue);
+                    }
+                  }}
+                  getOptionLabel={(option) => {
+                    if (option === ALL_OPTION) return 'Sélectionner tout';
+                    const item = listeCodeJournaux.find((v) => v.code === option);
+                    return item ? `${item.code} - ${item.libelle}` : option;
+                  }}
+                  renderOption={(props, option, { selected }) => {
+                    const isAll = option === ALL_OPTION;
+                    const item = listeCodeJournaux.find((v) => v.code === option);
+                    return (
+                      <li {...props}>
+                        <Checkbox size="small" style={{ marginRight: 8 }} checked={isAll ? isAllSelected : selected} />
+                        <ListItemText
+                          primary={isAll ? 'Sélectionner tout' : (item ? `${item.code} - ${item.libelle}` : option)}
+                          primaryTypographyProps={{ fontSize: '13px', fontWeight: isAll ? 700 : 400 }}
+                        />
+                      </li>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={journalCodes.length ? '' : 'Tous les journaux'}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line } }}
+                    />
+                  )}
+                />
+              </Box>
+
+              <Box>
+                <Typography sx={fieldLabelSx}>Date d'arrêté</Typography>
+                <TextField
+                  fullWidth
+                  type="date"
+                  size="small"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <DateRangeOutlined sx={{ fontSize: 16, color: T.accent }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { ...NUM, height: 34, fontSize: '13px', fontWeight: 600, borderRadius: '8px' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line } }}
+                />
+              </Box>
+
+              <Button
+                onClick={handleResetFilter}
+                sx={{ alignSelf: 'flex-start', px: 0, textTransform: 'none', fontWeight: 600, fontSize: '12.5px', color: T.muted, '&:hover': { bgcolor: 'transparent', color: T.accent } }}
+              >
+                Réinitialiser les filtres
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Export */}
+          <Box sx={{ p: 2.5, mt: 'auto' }}>
+            <Typography sx={sectionTitleSx}>Exporter</Typography>
+            <Stack spacing={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                disableElevation
+                onClick={exportExcel}
+                disabled={!canExport() || exporting}
+                startIcon={<TableChartOutlined />}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', py: 1, bgcolor: T.pos, borderRadius: '8px', '&:hover': { bgcolor: '#176e59' }, '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint } }}
+              >
+                Exporter en Excel
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={exportPdf}
+                disabled={!canExport() || exporting}
+                startIcon={<PictureAsPdfOutlined />}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', py: 1, color: T.neg, borderColor: T.line, borderRadius: '8px', '&:hover': { borderColor: T.neg, bgcolor: 'rgba(190,58,47,.06)' }, '&.Mui-disabled': { color: T.faint, borderColor: T.line } }}
+              >
+                Générer le PDF
+              </Button>
+              {exporting && (
+                <Typography sx={{ fontSize: '11.5px', color: T.muted, textAlign: 'center', mt: 0.5 }}>{exportMsg}</Typography>
+              )}
+            </Stack>
+          </Box>
+        </Paper>
+
+        {/* PANNEAU RÉCAPITULATIF */}
+        <Paper elevation={0} sx={{ ...panelSx, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${T.ledger}`, flexShrink: 0 }}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 700, color: T.ink }}>Résumé de l'export</Typography>
+          </Box>
+
+          <Box sx={{ p: 3, overflowY: 'auto' }}>
+            <Stack divider={<Divider sx={{ borderColor: T.ledger }} />}>
+              <RecapRow
+                label="Exercice"
+                value={selectedEx ? `${selectedEx.libelle_rang} · ${format(new Date(selectedEx.date_debut), 'dd/MM/yyyy')} – ${format(new Date(selectedEx.date_fin), 'dd/MM/yyyy')}` : '—'}
+              />
+              <RecapRow
+                label="Journaux"
+                value={journalCodes.length ? `${journalCodes.length} journal(aux) sélectionné(s)` : 'Tous les journaux'}
+              />
+              <RecapRow
+                label="Date d'arrêté"
+                value={dateFin ? format(new Date(dateFin), 'dd/MM/yyyy') : '—'}
+              />
+            </Stack>
+
+            <Typography sx={{ ...sectionTitleSx, mt: 3 }}>À propos de l'export</Typography>
+            <Stack spacing={1}>
+              <BulletLine>Inclut toutes les écritures jusqu'à la date d'arrêté choisie.</BulletLine>
+              <BulletLine>« Tous les journaux » génère un fichier consolidé unique.</BulletLine>
+            </Stack>
+
+            <Stack direction="row" spacing={1.25} sx={{ mt: 3, p: 1.5, borderRadius: '10px', bgcolor: T.accW, border: `1px solid ${T.line}` }}>
+              <Box component="span" sx={{ fontSize: '15px', lineHeight: 1.4 }}>💡</Box>
+              <Typography sx={{ fontSize: '12px', color: T.ink, lineHeight: 1.5 }}>
+                Pour un export légal <b>FEC</b>, rendez-vous dans <b>Paramètres › Conformité</b>.
               </Typography>
             </Stack>
-          </Paper>
-        </Grid>
-      </Grid>
+          </Box>
+        </Paper>
+      </Box>
     </Box>
   );
 };

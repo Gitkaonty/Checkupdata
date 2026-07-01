@@ -128,7 +128,8 @@ const ExercicePeriodeSelector = ({
                 border: '1px solid #E2E8F0',
                 width: 'fit-content',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                ml: -2 
+                ml: -2,
+                ...sx,
             }}
         >
             <Box sx={{ px: 2, py: 0.5 }}>
@@ -177,7 +178,25 @@ const ExercicePeriodeSelector = ({
                                     py: 0.5
                                 }}
                             >
-                                {exercice.libelle_rang} - {formatDate(exercice.date_debut)} au {formatDate(exercice.date_fin)}
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        display: 'inline-block',
+                                        px: 0.75,
+                                        py: '2px',
+                                        mr: 0.75,
+                                        borderRadius: '5px',
+                                        bgcolor: '#E7F2EE',
+                                        color: '#1F8A70',
+                                        fontWeight: 700,
+                                        fontSize: '0.7rem',
+                                        lineHeight: 1.4,
+                                        width: 30
+                                    }}
+                                >
+                                    {exercice.libelle_rang}
+                                </Box>
+                                {formatDate(exercice.date_debut)} au {formatDate(exercice.date_fin)}
                             </MenuItem>
                         ))}
                     </Select>

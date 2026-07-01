@@ -39,6 +39,74 @@ import toast from 'react-hot-toast';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 import { format } from 'date-fns';
 
+// ─── Système de design (aligné sur le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  warn: '#B5791A',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+  overflow: 'hidden',
+};
+const fieldLabelSx = {
+  fontSize: '10px',
+  textTransform: 'uppercase',
+  letterSpacing: '.4px',
+  fontWeight: 600,
+  color: T.faint,
+  mb: 0.5,
+  display: 'block',
+};
+const selectSx = {
+  height: 34,
+  fontSize: '13px',
+  borderRadius: '8px',
+  bgcolor: T.surface,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: T.accent },
+};
+const switchSx = {
+  '& .MuiSwitch-switchBase.Mui-checked': { color: T.accent },
+  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: T.accent },
+};
+const sectionTitleSx = {
+  fontSize: '11px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '.5px',
+  color: T.ink,
+  mb: 1.5,
+};
+
+// Total d'une colonne (libellé + montant tabulaire)
+const TotalItem = ({ label, value, fmt }) => (
+  <Stack alignItems="flex-end">
+    <Typography sx={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.3px', color: T.faint, fontWeight: 600 }}>
+      {label}
+    </Typography>
+    <Typography sx={{ ...NUM, fontSize: '15px', fontWeight: 800, color: T.ink }}>{fmt(value)}</Typography>
+  </Stack>
+);
+
 const ExportBalance = () => {
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
@@ -237,6 +305,10 @@ const ExportBalance = () => {
     };
   }, [balance]);
 
+  // Équilibre de la balance (solde débit vs solde crédit)
+  const soldeEcart = Math.abs((balanceTotals.soldedebit || 0) - (balanceTotals.soldecredit || 0));
+  const isBalanced = soldeEcart < 0.005;
+
   // Redirection si pas de dossier
   const sendToHome = (value) => {
     setNoFile(!value);
@@ -247,13 +319,26 @@ const ExportBalance = () => {
   const formatMoney = (v) => (Number(v) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Colonnes DataGrid
+  const moneyCol = (field, headerName) => ({
+    field,
+    headerName,
+    width: 140,
+    align: 'right',
+    headerAlign: 'right',
+    renderCell: (params) => (
+      <Typography sx={{ ...NUM, fontSize: '0.78rem', fontWeight: 600, color: T.text }}>
+        {formatMoney(params.value)}
+      </Typography>
+    ),
+  });
+
   const columns = [
     {
       field: 'compte',
       headerName: 'N° COMPTE',
-      flex: 1,
+      width: 120,
       renderCell: (params) => (
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#6366F1' }}>
+        <Typography sx={{ ...NUM, fontSize: '0.78rem', fontWeight: 700, color: T.accent }}>
           {params.value}
         </Typography>
       )
@@ -261,61 +346,18 @@ const ExportBalance = () => {
     {
       field: 'libelle',
       headerName: 'INTITULÉ DU COMPTE',
-      width: 200,
+      flex: 1,
+      minWidth: 220,
       renderCell: (params) => (
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#1E293B' }}>
+        <Typography noWrap sx={{ fontSize: '0.78rem', fontWeight: 600, color: T.text }}>
           {params.value}
         </Typography>
       )
     },
-    {
-      field: 'mvmdebit',
-      headerName: 'MOUV. DÉBIT',
-      width: 100,
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => (
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700 }}>
-          {formatMoney(params.value)}
-        </Typography>
-      )
-    },
-    {
-      field: 'mvmcredit',
-      headerName: 'MOUV. CRÉDIT',
-      width: 100,
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => (
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700 }}>
-          {formatMoney(params.value)}
-        </Typography>
-      )
-    },
-    {
-      field: 'soldedebit',
-      headerName: 'SOLDE DÉBIT',
-      width: 100,
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => (
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700 }}>
-          {formatMoney(params.value)}
-        </Typography>
-      )
-    },
-    {
-      field: 'soldecredit',
-      headerName: 'SOLDE CRÉDIT',
-      width: 100,
-      align: 'right',
-      headerAlign: 'right',
-      renderCell: (params) => (
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700 }}>
-          {formatMoney(params.value)}
-        </Typography>
-      )
-    },
+    moneyCol('mvmdebit', 'MOUV. DÉBIT'),
+    moneyCol('mvmcredit', 'MOUV. CRÉDIT'),
+    moneyCol('soldedebit', 'SOLDE DÉBIT'),
+    moneyCol('soldecredit', 'SOLDE CRÉDIT'),
   ];
 
   if (noFile) {
@@ -326,468 +368,184 @@ const ExportBalance = () => {
     <Box
       sx={{
         p: 3,
-        bgcolor: '#F8FAFC',
+        bgcolor: T.canvas,
         height: 'calc(100vh - 120px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         width: 'calc(100vw - 130px)',
-        // maxWidth: '100%',
         minWidth: 0,
       }}
     >
 
-      {/* --- HEADER --- */}
-      <Box sx={{ mb: 3, minWidth: 0 }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={2}
-          sx={{
-            mb: 1,
-            flexWrap: 'wrap',
-            minWidth: 0,
-          }}
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2.5, flexShrink: 0, minWidth: 0 }}>
+        <Breadcrumbs
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Chip
-            label={compteName}
-            sx={{
-              borderRadius: '4px',
-              bgcolor: '#F1F5F9',
-              color: '#475569',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: '1px solid #E2E8F0',
-              height: 24,
-              maxWidth: '100%',
-            }}
-          />
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
+          </Link>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Balance générale</Typography>
+        </Breadcrumbs>
 
-          <Breadcrumbs
-            separator={<NavigateNext fontSize="small" />}
-            sx={{
-              mb: 2,
-              minWidth: 0,
-              '& .MuiTypography-root': {
-                fontSize: '0.85rem',
-                fontWeight: 600
-              }
-            }}
-          >
-            <Link
-              underline="hover"
-              color="inherit"
-              href="/dashboard"
-              sx={{
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} />
-              Dashboard
-            </Link>
-
-            <Typography
-              color="text.primary"
-              sx={{
-                fontWeight: 600,
-                color: '#64748B'
-              }}
-            >
-              Balance Générale
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+            <AccountBalanceOutlined />
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+              Balance des comptes
             </Typography>
-          </Breadcrumbs>
-        </Stack>
-
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          flexWrap="wrap"
-          gap={2}
-          sx={{ minWidth: 0 }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Box
-              sx={{
-                p: 1,
-                borderRadius: '8px',
-                bgcolor: '#00B8D4',
-                display: 'flex'
-              }}
-            >
-              <AccountBalanceOutlined
-                sx={{ color: 'white', fontSize: 24 }}
-              />
-            </Box>
-
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 900,
-                color: '#1E293B',
-                letterSpacing: '-0.5px'
-              }}
-            >
-              Balance des Comptes
+            <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+              Consultez et exportez la balance · {compteName}
             </Typography>
-          </Stack>
-
-          <Stack
-            direction="row"
-            spacing={1.5}
-            flexWrap="wrap"
-          >
-            <Button
-              variant="outlined"
-              startIcon={<TableChartOutlined />}
-              onClick={() => doExport('excel')}
-              disabled={!listeExercice?.length || !selectedExerciceId || loading}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 700,
-                color: '#10B981',
-                borderColor: '#10B981',
-                borderRadius: '8px'
-              }}
-            >
-              Excel
-            </Button>
-
-            <Button
-              variant="contained"
-              startIcon={<PictureAsPdfOutlined />}
-              onClick={() => doExport('pdf')}
-              disabled={!listeExercice?.length || !selectedExerciceId || loading}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 700,
-                bgcolor: '#EF4444',
-                borderRadius: '8px',
-                '&:hover': {
-                  bgcolor: '#DC2626'
-                }
-              }}
-            >
-              PDF
-            </Button>
-          </Stack>
+          </Box>
         </Stack>
       </Box>
 
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 2,
-          mb: 3,
-          borderRadius: '12px',
-          bgcolor: '#FFF',
-          overflow: 'hidden',
-          width: '100%',
-          minWidth: 0,
-        }}
-      >
-        <Grid container spacing={3} alignItems="center">
+      {/* ESPACE DE TRAVAIL : paramètres (gauche) + aperçu (droite) */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
 
-          <Grid item>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                color: '#94A3B8',
-                display: 'block',
-                mb: 0.5,
-                textTransform: 'uppercase',
-                fontSize: '0.6rem'
-              }}
-            >
-              Exercice
-            </Typography>
-
-            <Select
-              value={selectedExerciceId}
-              onChange={(e) => setSelectedExerciceId(e.target.value)}
-              size="small"
-              sx={{
-                height: 35,
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                minWidth: 240,
-                borderRadius: '8px',
-                maxWidth: '100%',
-              }}
-            >
-              {listeExercice.map((option) => (
-                <MenuItem
-                  key={option.id}
-                  value={option.id}
-                  sx={{ fontSize: '12px' }}
+        {/* PANNEAU DE PARAMÈTRES (vertical) */}
+        <Paper elevation={0} sx={{ ...panelSx, width: { xs: '100%', md: 320 }, flex: 'none', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          {/* Paramètres */}
+          <Box sx={{ p: 2.5, borderBottom: `1px solid ${T.ledger}` }}>
+            <Typography sx={sectionTitleSx}>Paramètres</Typography>
+            <Stack spacing={1.75}>
+              <Box>
+                <Typography sx={fieldLabelSx}>Exercice</Typography>
+                <Select
+                  fullWidth
+                  value={selectedExerciceId}
+                  onChange={(e) => setSelectedExerciceId(e.target.value)}
+                  size="small"
+                  sx={{ ...selectSx, ...NUM, fontWeight: 700 }}
                 >
-                  {option.libelle_rang} :
-                  {' '}
-                  {format(new Date(option.date_debut), 'dd/MM/yyyy')}
-                  {' - '}
-                  {format(new Date(option.date_fin), 'dd/MM/yyyy')}
-                </MenuItem>
-              ))}
-            </Select>
-          </Grid>
-
-          <Grid item>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                color: '#94A3B8',
-                display: 'block',
-                mb: 0.5,
-                textTransform: 'uppercase',
-                fontSize: '0.6rem'
-              }}
-            >
-              Type
-            </Typography>
-
-            <Select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              size="small"
-              sx={{
-                height: 35,
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                minWidth: 140,
-                borderRadius: '8px'
-              }}
-            >
-              <MenuItem value={0} sx={{ fontSize: '12px' }}>
-                Générale
-              </MenuItem>
-
-              <MenuItem value={1} sx={{ fontSize: '12px' }}>
-                Fournisseurs
-              </MenuItem>
-
-              <MenuItem value={2} sx={{ fontSize: '12px' }}>
-                Clients
-              </MenuItem>
-            </Select>
-          </Grid>
-
-          <Grid item>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                color: '#94A3B8',
-                display: 'block',
-                mb: 0.5,
-                textTransform: 'uppercase',
-                fontSize: '0.6rem'
-              }}
-            >
-              Arrêté au
-            </Typography>
-
-            <TextField
-              type="date"
-              size="small"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  height: 35,
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  borderRadius: '8px'
-                }
-              }}
-            />
-          </Grid>
-
-          <Grid
-            item
-            sx={{
-              borderLeft: '1px solid #E2E8F0',
-              ml: 2,
-              pl: 4,
-              mt: 4,
-              minWidth: 0,
-            }}
-          >
-            <Stack
-              direction="row"
-              flexWrap="wrap"
-              gap={2}
-            >
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={checked}
-                    onChange={(e) => setChecked(e.target.checked)}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: '#6366F1'
-                      },
-                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                        bgcolor: '#6366F1'
-                      }
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    sx={{
-                      fontSize: '0.9rem',
-                      fontWeight: 700,
-                      color: '#1E293B'
-                    }}
-                  >
-                    Centraliser
-                  </Typography>
-                }
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={unsoldedCompte}
-                    onChange={(e) => setUnsoldedCompte(e.target.checked)}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: '#6366F1'
-                      },
-                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                        bgcolor: '#6366F1'
-                      }
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    sx={{
-                      fontSize: '0.9rem',
-                      fontWeight: 700,
-                      color: '#1E293B'
-                    }}
-                  >
-                    Non soldés
-                  </Typography>
-                }
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={movmentedCpt}
-                    onChange={(e) => setMovmentedCpt(e.target.checked)}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: '#6366F1'
-                      },
-                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                        bgcolor: '#6366F1'
-                      }
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    sx={{
-                      fontSize: '0.9rem',
-                      fontWeight: 700,
-                      color: '#1E293B'
-                    }}
-                  >
-                    Mouvementés
-                  </Typography>
-                }
-              />
-            </Stack>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {loading && (
-        <Stack
-          direction="row"
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ mb: 2 }}
-        >
-          <CircularProgress size={22} />
-
-          <Typography
-            variant="body2"
-            sx={{
-              color: '#2973B2',
-              fontWeight: 700
-            }}
-          >
-            {loadingMsg}
-          </Typography>
-        </Stack>
-      )}
-
-      <Stack
-        sx={{
-          flex: 1,
-          minHeight: 0
-        }}
-      >
-        <Stack
-          sx={{
-            borderRadius: '12px',
-            overflow: 'hidden',
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-
-          <Box
-            sx={{
-              px: 2,
-              py: 1.5,
-              bgcolor: '#FCFDFF',
-              borderBottom: '1px solid #E2E8F0',
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <FilterListOutlined
-                sx={{
-                  fontSize: 18,
-                  color: '#64748B'
-                }}
-              />
-
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  fontWeight: 800,
-                  fontSize: '0.75rem',
-                  color: '#1E293B'
-                }}
-              >
-                APERÇU DE LA BALANCE ({balance.length} lignes)
-              </Typography>
+                  {listeExercice.map((option) => (
+                    <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
+                      {option.libelle_rang} : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </Box>
+              <Box>
+                <Typography sx={fieldLabelSx}>Type de balance</Typography>
+                <Select
+                  fullWidth
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  size="small"
+                  sx={{ ...selectSx, fontWeight: 700 }}
+                >
+                  <MenuItem value={0} sx={{ fontSize: '13px' }}>Générale</MenuItem>
+                  <MenuItem value={1} sx={{ fontSize: '13px' }}>Fournisseurs</MenuItem>
+                  <MenuItem value={2} sx={{ fontSize: '13px' }}>Clients</MenuItem>
+                </Select>
+              </Box>
+              <Box>
+                <Typography sx={fieldLabelSx}>Arrêté au</Typography>
+                <TextField
+                  fullWidth
+                  type="date"
+                  size="small"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  sx={{ '& .MuiOutlinedInput-root': { ...NUM, height: 34, fontSize: '13px', fontWeight: 600, borderRadius: '8px' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: T.line } }}
+                />
+              </Box>
             </Stack>
           </Box>
 
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              overflow: 'hidden',
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
+          {/* Options d'affichage */}
+          <Box sx={{ p: 2.5, borderBottom: `1px solid ${T.ledger}` }}>
+            <Typography sx={sectionTitleSx}>Options d'affichage</Typography>
+            <Stack>
+              <FormControlLabel
+                control={<Switch size="small" checked={checked} onChange={(e) => setChecked(e.target.checked)} sx={switchSx} />}
+                label={<Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.text }}>Centraliser</Typography>}
+              />
+              <FormControlLabel
+                control={<Switch size="small" checked={unsoldedCompte} onChange={(e) => setUnsoldedCompte(e.target.checked)} sx={switchSx} />}
+                label={<Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.text }}>Comptes non soldés</Typography>}
+              />
+              <FormControlLabel
+                control={<Switch size="small" checked={movmentedCpt} onChange={(e) => setMovmentedCpt(e.target.checked)} sx={switchSx} />}
+                label={<Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.text }}>Comptes mouvementés</Typography>}
+              />
+            </Stack>
+          </Box>
+
+          {/* Export */}
+          <Box sx={{ p: 2.5, mt: 'auto' }}>
+            <Typography sx={sectionTitleSx}>Exporter</Typography>
+            <Stack spacing={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                disableElevation
+                startIcon={<TableChartOutlined />}
+                onClick={() => doExport('excel')}
+                disabled={!balance.length || loading}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', bgcolor: T.pos, borderRadius: '8px', '&:hover': { bgcolor: '#176e59' }, '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint } }}
+              >
+                Exporter en Excel
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<PictureAsPdfOutlined />}
+                onClick={() => doExport('pdf')}
+                disabled={!balance.length || loading}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', color: T.neg, borderColor: T.line, borderRadius: '8px', '&:hover': { borderColor: T.neg, bgcolor: 'rgba(190,58,47,.06)' } }}
+              >
+                Exporter en PDF
+              </Button>
+            </Stack>
+          </Box>
+        </Paper>
+
+        {/* APERÇU + TOTAUX */}
+        <Paper elevation={0} sx={{ ...panelSx, flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* En-tête : titre + nb lignes + chargement + équilibre */}
+        <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${T.ledger}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexShrink: 0, flexWrap: 'wrap', rowGap: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1.25}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 700, color: T.ink }}>Aperçu de la balance</Typography>
+            <Box component="span" sx={{ ...NUM, fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: T.accent, bgcolor: T.accW, px: 1, py: '3px', borderRadius: '5px' }}>
+              {balance.length} lignes
+            </Box>
+            {loading && (
+              <Stack direction="row" alignItems="center" spacing={0.75}>
+                <CircularProgress size={13} thickness={5} sx={{ color: T.accent }} />
+                <Typography sx={{ fontSize: '11.5px', color: T.muted }}>{loadingMsg || 'Chargement…'}</Typography>
+              </Stack>
+            )}
+          </Stack>
+
+          {balance.length > 0 && (
+            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ px: 1, py: 0.4, borderRadius: '99px', bgcolor: isBalanced ? 'rgba(31,138,112,.12)' : 'rgba(190,58,47,.12)' }}>
+              <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: isBalanced ? T.pos : T.neg }} />
+              <Typography sx={{ ...NUM, fontSize: '11.5px', fontWeight: 700, color: isBalanced ? T.pos : T.neg }}>
+                {isBalanced ? 'Balance équilibrée' : `Écart : ${formatMoney(soldeEcart)}`}
+              </Typography>
+            </Stack>
+          )}
+        </Box>
+
+        {/* Grille / état vide */}
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          {balance.length === 0 && !loading ? (
+            <Stack alignItems="center" justifyContent="center" spacing={1.5} sx={{ flex: 1, px: 3, textAlign: 'center' }}>
+              <Box sx={{ width: 56, height: 56, borderRadius: '16px', display: 'grid', placeItems: 'center', color: T.faint, bgcolor: T.ledger }}>
+                <AccountBalanceOutlined sx={{ fontSize: 28 }} />
+              </Box>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: T.muted }}>Aucune ligne à afficher</Typography>
+              <Typography sx={{ fontSize: '12.5px', color: T.faint, maxWidth: 360 }}>
+                Ajustez les filtres ci-dessus (exercice, type, date d'arrêté, options) pour générer la balance.
+              </Typography>
+            </Stack>
+          ) : (
             <DataGrid
               rows={balance}
               columns={columns}
@@ -796,194 +554,38 @@ const ExportBalance = () => {
               sx={{
                 border: 'none',
                 height: '100%',
-                '& .MuiDataGrid-main': {
-                  overflow: 'hidden',
-                },
-
+                ...NUM,
+                fontSize: '12.5px',
+                '& .MuiDataGrid-main': { overflow: 'hidden' },
                 '& .MuiDataGrid-columnHeaders': {
-                  bgcolor: '#FCFDFF',
-                  borderBottom: '1px solid #E2E8F0',
-
-                  '& .MuiDataGrid-columnHeaderTitle': {
-                    fontSize: '0.65rem',
-                    fontWeight: 800,
-                    color: '#94A3B8',
-                    letterSpacing: '0.05rem',
-                  }
+                  bgcolor: T.ledger,
+                  borderBottom: `1px solid ${T.line}`,
+                  '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px' },
                 },
-
-                '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #F1F5F9',
-                },
-
-                '& .MuiDataGrid-virtualScroller': {
-                  bgcolor: '#FFF',
-                }
+                '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text },
+                '& .MuiDataGrid-virtualScroller': { bgcolor: T.surface },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
               }}
             />
-          </Box>
+          )}
+        </Box>
 
-
-          <Box
-          sx={{
-            p: 2,
-            bgcolor: '#F8FAFC',
-            borderTop: '2px solid #E2E8F0',
-          }}
-        >
-
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            flexWrap="wrap"
-            gap={2}
-          >
-
-            <Typography
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 900,
-                color: '#1E293B'
-              }}
-            >
-              TOTAL GÉNÉRAL
+        {/* TOTAUX */}
+        <Box sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${T.line}`, bgcolor: '#FCFDFD', flexShrink: 0 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+            <Typography sx={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: T.muted }}>
+              Total général
             </Typography>
-
-            <Stack
-              direction="row"
-              useFlexGap
-              flexWrap="wrap"
-              gap={4}
-            >
-
-              <Stack alignItems="flex-end">
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: '#94A3B8',
-                    fontWeight: 700,
-                    fontSize: '0.6rem'
-                  }}
-                >
-                  MOUV. DÉBIT
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontWeight: 900,
-                    fontSize: '0.85rem',
-                    color: '#1E293B'
-                  }}
-                >
-                  {formatMoney(balanceTotals.mvmdebit)}
-                </Typography>
-              </Stack>
-
-              <Stack alignItems="flex-end">
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: '#94A3B8',
-                    fontWeight: 700,
-                    fontSize: '0.6rem'
-                  }}
-                >
-                  MOUV. CRÉDIT
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontWeight: 900,
-                    fontSize: '0.85rem',
-                    color: '#1E293B'
-                  }}
-                >
-                  {formatMoney(balanceTotals.mvmcredit)}
-                </Typography>
-              </Stack>
-
-              <Stack alignItems="flex-end">
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: '#94A3B8',
-                    fontWeight: 700,
-                    fontSize: '0.6rem'
-                  }}
-                >
-                  SOLDE DÉBIT
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontWeight: 900,
-                    fontSize: '0.85rem',
-                    color: '#1E293B'
-                  }}
-                >
-                  {formatMoney(balanceTotals.soldedebit)}
-                </Typography>
-              </Stack>
-
-              <Stack alignItems="flex-end">
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: '#94A3B8',
-                    fontWeight: 700,
-                    fontSize: '0.6rem'
-                  }}
-                >
-                  SOLDE CRÉDIT
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontWeight: 900,
-                    fontSize: '0.85rem',
-                    color: '#1E293B'
-                  }}
-                >
-                  {formatMoney(balanceTotals.soldecredit)}
-                </Typography>
-              </Stack>
-
+            <Stack direction="row" useFlexGap flexWrap="wrap" gap={4}>
+              <TotalItem label="Mouv. débit" value={balanceTotals.mvmdebit} fmt={formatMoney} />
+              <TotalItem label="Mouv. crédit" value={balanceTotals.mvmcredit} fmt={formatMoney} />
+              <TotalItem label="Solde débit" value={balanceTotals.soldedebit} fmt={formatMoney} />
+              <TotalItem label="Solde crédit" value={balanceTotals.soldecredit} fmt={formatMoney} />
             </Stack>
           </Stack>
         </Box>
-        </Stack>
-      </Stack>
-      <Menu
-        id="export-menu"
-        anchorEl={anchorElExport}
-        open={openExportMenu}
-        onClose={handleCloseExportMenu}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left'
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left'
-        }}
-      >
-        <MenuItem onClick={() => doExport('pdf')}>
-          <ListItemIcon>
-            <FaFilePdf size={20} color="#D32F2F" />
-          </ListItemIcon>
-
-          <ListItemText primary="Exporter en PDF" />
-        </MenuItem>
-
-        <MenuItem onClick={() => doExport('excel')}>
-          <ListItemIcon>
-            <FaFileExcel size={20} color="#2E7D32" />
-          </ListItemIcon>
-
-          <ListItemText primary="Exporter en Excel" />
-        </MenuItem>
-      </Menu>
+        </Paper>
+      </Box>
 
     </Box>
   );

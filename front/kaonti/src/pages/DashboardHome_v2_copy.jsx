@@ -863,7 +863,10 @@ export default function DashboardComponent() {
 
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* ─── BARRE SUPÉRIEURE ─── */}
-          <Box
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            spacing={2}
             sx={{
               px: { xs: 2, md: 3 },
               py: 2,
@@ -872,35 +875,25 @@ export default function DashboardComponent() {
               bgcolor: 'rgba(244,246,245,0.86)',
             }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.75 }}>
-              <Box
-                sx={{
-                  width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center',
-                  color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 },
-                }}
-              >
-                <AssessmentIcon />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
-                  Tableau de bord
-                </Typography>
-                <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.3 }}>
-                  Pilotage financier &amp; suivi de la révision comptable
-                </Typography>
-              </Box>
-            </Stack>
-
-            <ExercicePeriodeSelector
-              selectedExerciceId={selectedExerciceId}
-              selectedPeriodeId={selectedPeriodeId}
-              onExerciceChange={handleChangeExercice}
-              onPeriodeChange={handleChangePeriode}
-              disabled={loading}
-              size="small"
-              sx={{ mb: 0, ml: 0, border: `1px solid ${T.line}`, borderRadius: '10px', boxShadow: CARD_SHADOW }}
-            />
-          </Box>
+            <Box>
+              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+                Tableau de bord
+              </Typography>
+              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.3 }}>
+                Pilotage financier &amp; suivi de la révision comptable
+              </Typography>
+            </Box>
+            <Box sx={{ ml: { md: 'auto' }, width: { xs: '100%', md: 'auto' } }}>
+              <ExercicePeriodeSelector
+                selectedExerciceId={selectedExerciceId}
+                selectedPeriodeId={selectedPeriodeId}
+                onExerciceChange={handleChangeExercice}
+                onPeriodeChange={handleChangePeriode}
+                disabled={loading}
+                size="small"
+              />
+            </Box>
+          </Stack>
 
           {/* ─── CONTENU (défilant) ─── */}
           <Box

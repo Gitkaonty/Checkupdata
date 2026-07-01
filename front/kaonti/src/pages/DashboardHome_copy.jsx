@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, Paper, Grid, Button, LinearProgress, CircularProgress, Divider } from '@mui/material';
+import { Typography, Stack, Paper, Grid, Button, LinearProgress, CircularProgress } from '@mui/material';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
@@ -8,6 +8,9 @@ import Select from '@mui/material/Select';
 import PopupTestSelectedFile from './popupTestSelectedFile';
 import axios from '../../config/axios';
 import Box from '@mui/material/Box';
+import TabContext from '@mui/lab/TabContext';
+import TabPanel from '@mui/lab/TabPanel';
+import KPICard from './DashboardCard';
 import { format } from 'date-fns';
 import useAuth from '../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
@@ -23,8 +26,7 @@ import {
   BarChartOutlined, ChevronRight,
   ArrowForwardOutlined, HistoryToggleOffOutlined,
   HomeOutlined,
-  NavigateNext,
-  SavingsOutlined, GroupsOutlined
+  NavigateNext
 } from '@mui/icons-material';
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
@@ -127,47 +129,6 @@ const formatDate = (dateString) => {
 
 const NAV_DARK = '#0B1120';
 const BG_SOFT = '#F8FAFC';
-
-// ─── Système de design (inspiré du cockpit comptable de référence) ───
-const T = {
-  ink: '#0E2733',
-  canvas: '#F4F6F5',
-  surface: '#FFFFFF',
-  line: '#E2E6EA',
-  ledger: '#EEF1F3',
-  text: '#16202B',
-  muted: '#6A7785',
-  faint: '#9AA6B2',
-  accent: '#0E7C86', // pétrole — couleur primaire
-  pos: '#1F8A70',
-  warn: '#B5791A',
-  neg: '#BE3A2F',
-  info: '#3A6EA5',
-  accW: '#E2F0F1',
-};
-const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
-const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
-const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
-const panelSx = {
-  border: `1px solid ${T.line}`,
-  borderRadius: '16px',
-  bgcolor: T.surface,
-  boxShadow: CARD_SHADOW,
-  overflow: 'hidden',
-};
-
-const dirOf = (evolution) =>
-  evolution === 'augmentation' ? 'up' : evolution === 'diminution' ? 'down' : 'flat';
-
-const fmtMontant = (num) => {
-  if (num === null || num === undefined || isNaN(num)) return '—';
-  return Number(num).toLocaleString('fr-FR');
-};
-
-const fmtPct = (value) => {
-  if (value === undefined || value === null || isNaN(value)) return '0,00';
-  return Math.abs(parseFloat(value)).toFixed(2).replace('.', ',');
-};
 
 // Petit graphique de tendance interne
 const SparklineMini = ({ data = [], color = '#3B82F6', width = 200, height = 80 }) => {
@@ -508,6 +469,68 @@ export default function DashboardComponent() {
     }
   }, [compteId, fileId, selectedExerciceId, selectedPeriodeDates]);
 
+  const KpiCard = ({ title, value, color, icon, progress, trend }) => (
+    <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: '16px', bgcolor: '#F8FAFC', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', position: 'relative' }}>
+      <Stack direction="row" spacing={2.5} alignItems="center">
+        <Box sx={{ p: 1.8, bgcolor: '#FFFFFF', color: color, borderRadius: '12px', display: 'flex', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', '& svg': { fontSize: 28 } }}>
+          {icon}
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.75rem' }}>{title}</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 900, color: '#0F172A', lineHeight: 1.2 }}>{value}</Typography>
+        </Box>
+        {progress !== undefined && (
+          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+            <CircularProgress
+              variant="determinate"
+              value={100}
+              size={50}
+              sx={{
+                color: '#E2E8F0',
+                position: 'absolute',
+                '& .MuiCircularProgress-circle': {
+                  strokeLinecap: 'round',
+                },
+              }}
+            />
+            <CircularProgress
+              variant="determinate"
+              value={progress}
+              size={50}
+              sx={{
+                color: color,
+                '& .MuiCircularProgress-circle': {
+                  strokeLinecap: 'round',
+                },
+              }}
+            />
+            <Box
+              sx={{
+                top: 0,
+                left: 0,
+                bottom: 0,
+                right: 0,
+                position: 'absolute',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Typography variant="caption" component="div" sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748B' }}>
+                {`${progress}%`}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+      </Stack>
+      {/* {trend && (
+        <Box sx={{ position: 'absolute', bottom: 10, right: 10 }}>
+          <SparklineMini data={trend} color={color} />
+        </Box>
+      )} */}
+    </Paper>
+  );
+
   const fetchAnomalyStats = async (typeRevue, endpoint) => {
     try {
       const { id_compte, id_dossier, id_exercice } = getIds();
@@ -814,19 +837,6 @@ export default function DashboardComponent() {
 
     window.open(url, '_blank');
   };
-
-  // Indicateurs financiers : configuration alignée sur le PCG (eyebrow = classe de compte)
-  const financialKpis = [
-    { label: 'Résultat', code: '12', icon: <TrendingUpOutlined />, accent: T.accent, trend: margeBruteNGraph, n: resultatN, n1: resultatN1, variation: variationResultatN, evolution: evolutionResultatN },
-    { label: "Chiffre d'affaires", code: '70', icon: <BarChartOutlined />, accent: T.pos, trend: chiffresAffairesNGraph, n: resultatChiffreAffaireN, n1: resultatChiffreAffaireN1, variation: variationChiffreAffaireN, evolution: evolutionChiffreAffaireN },
-    { label: 'Dépenses — Achats', code: '60', icon: <PaymentsOutlined />, accent: T.warn, trend: chiffresAffairesNGraph, n: resultatDepenseAchatN, n1: resultatDepenseAchatN1, variation: variationDepenseAchatN, evolution: evolutionDepenseAchatN },
-    { label: 'Dépenses salariales', code: '64', icon: <GroupsOutlined />, accent: '#7C5CBF', trend: margeBruteNGraph, n: resultatDepenseSalarialeN, n1: resultatDepenseSalarialeN1, variation: variationDepenseSalarialeN, evolution: evolutionDepenseSalarialeN },
-    { label: 'Trésorerie — Banques', code: '512', icon: <AccountBalanceIcon />, accent: T.info, trend: tresorerieBanqueNGraph, n: resultatTresorerieBanqueN, n1: resultatTresorerieBanqueN1, variation: variationTresorerieBanqueN, evolution: evolutionTresorerieBanqueN },
-    { label: 'Trésorerie — Caisse', code: '53', icon: <SavingsOutlined />, accent: '#0E9F9F', trend: tresorerieCaisseNGraph, n: resultatTresorerieCaisseN, n1: resultatTresorerieCaisseN1, variation: variationTresorerieCaisseN, evolution: evolutionTresorerieCaisseN },
-  ];
-
-  const ecrituresEnAttente = Array.isArray(journalData) ? journalData.length : (Number(journalData?.length) || 0);
-
   return (
     <>
       {
@@ -838,7 +848,7 @@ export default function DashboardComponent() {
           :
           null
       }
-      <Box sx={{ height: 'calc(100vh - 110px)', width: 'calc(100vw - 130px)', position: 'relative', bgcolor: T.canvas }}>
+      <Box sx={{ height: 'calc(100vh - 110px)', width: 'calc(100vw - 130px)', position: 'relative' }}>
         {(loading || loadingStats) && (
           <Box
             sx={{
@@ -850,425 +860,319 @@ export default function DashboardComponent() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 2,
-              bgcolor: 'rgba(244,246,245,0.7)',
-              backdropFilter: 'blur(2px)',
+              bgcolor: 'rgba(255,255,255,0.65)',
+              backdropFilter: 'blur(1px)',
             }}
           >
-            <CircularProgress size={44} thickness={4} sx={{ color: T.accent }} />
-            <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: T.muted }}>
+            <CircularProgress size={48} thickness={4} />
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#475569' }}>
               Chargement des données…
             </Typography>
           </Box>
         )}
-
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* ─── BARRE SUPÉRIEURE ─── */}
-          <Box
-            sx={{
-              px: { xs: 2, md: 3 },
-              py: 2,
-              flexShrink: 0,
-              borderBottom: `1px solid ${T.line}`,
-              bgcolor: 'rgba(244,246,245,0.86)',
-            }}
-          >
-            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.75 }}>
-              <Box
-                sx={{
-                  width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center',
-                  color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 },
-                }}
-              >
-                <AssessmentIcon />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
-                  Tableau de bord
-                </Typography>
-                <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.3 }}>
-                  Pilotage financier &amp; suivi de la révision comptable
-                </Typography>
-              </Box>
-            </Stack>
-
-            <ExercicePeriodeSelector
-              selectedExerciceId={selectedExerciceId}
-              selectedPeriodeId={selectedPeriodeId}
-              onExerciceChange={handleChangeExercice}
-              onPeriodeChange={handleChangePeriode}
-              disabled={loading}
-              size="small"
-              sx={{ mb: 0, ml: 0, border: `1px solid ${T.line}`, borderRadius: '10px', boxShadow: CARD_SHADOW }}
-            />
-          </Box>
-
-          {/* ─── CONTENU (défilant) ─── */}
-          <Box
-            sx={{
+        <TabContext value={"1"}>
+          <TabPanel value="1" style={{ height: '100%', padding: 0, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
               flex: 1,
               minHeight: 0,
-              overflowY: 'auto',
-              px: { xs: 2, md: 3 },
-              py: 3,
-              '&::-webkit-scrollbar': { width: '8px' },
-              '&::-webkit-scrollbar-thumb': { bgcolor: '#CBD5E1', borderRadius: '4px' },
-              '&::-webkit-scrollbar-thumb:hover': { bgcolor: '#94A3B8' },
-            }}
-          >
-            {/* MODULE 1 — Indicateurs financiers (1 panneau : indicateur principal + lignes) */}
-            <Box sx={{ mb: 5 }}>
-              <SectionHead
-                code="N · cumul"
-                title="Indicateurs financiers"
-                desc="Soldes de la période et variation vs exercice précédent."
-              />
-              <Paper elevation={0} sx={panelSx}>
-                <Stack direction={{ xs: 'column', md: 'row' }} divider={<Divider flexItem sx={{ borderColor: T.ledger }} />}>
-                  {/* Indicateur principal mis en avant */}
-                  <Box sx={{ flex: { md: '0 0 36%' }, minWidth: 0 }}>
-                    <HeroKpi
-                      label={financialKpis[0].label}
-                      code={financialKpis[0].code}
-                      icon={financialKpis[0].icon}
-                      accent={financialKpis[0].accent}
-                      trend={financialKpis[0].trend}
-                      value={fmtMontant(financialKpis[0].n)}
-                      unit={deviseParDefaut}
-                      deltaDir={dirOf(financialKpis[0].evolution)}
-                      deltaText={`${fmtPct(financialKpis[0].variation)} %`}
-                      n1Text={`N-1 ${fmtMontant(financialKpis[0].n1)} ${deviseParDefaut || ''}`}
-                    />
-                  </Box>
-                  {/* Les autres en lignes séparées par un filet */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    {financialKpis.slice(1).map((k, i, arr) => (
-                      <KpiRow
-                        key={k.label}
-                        label={k.label}
-                        code={k.code}
-                        accent={k.accent}
-                        trend={k.trend}
-                        value={fmtMontant(k.n)}
-                        unit={deviseParDefaut}
-                        deltaDir={dirOf(k.evolution)}
-                        deltaText={`${fmtPct(k.variation)} %`}
-                        n1Text={`N-1 ${fmtMontant(k.n1)} ${deviseParDefaut || ''}`}
-                        divider={i < arr.length - 1}
-                      />
-                    ))}
-                  </Box>
-                </Stack>
-              </Paper>
-            </Box>
+              overflow: 'hidden'
+            }}>
+              <Typography variant='h6' sx={{ color: NAV_DARK, fontWeight: 800, mb: 0 }} align='left'>Dashboard</Typography>
 
-            {/* MODULE 2 — Synthèse des anomalies (bande de stats divisée par des filets) */}
-            <Box sx={{ mb: 5 }}>
-              <SectionHead
-                code="Contrôles"
-                title="Synthèse des anomalies"
-                desc={`${ecrituresEnAttente} écriture(s) en attente de lettrage`}
-              />
-              <Paper elevation={0} sx={panelSx}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} divider={<Divider flexItem sx={{ borderColor: T.ledger }} />}>
-                  <StatCell
-                    label="Total anomalies"
-                    value={String(totalAnomalies)}
-                    deltaText="détectées sur la période"
-                    barPct={totalAnomalies > 0 ? 100 : 0}
-                    barColor={T.neg}
-                  />
-                  <StatCell
-                    label="Restantes à valider"
-                    value={String(totalRemaining)}
-                    deltaText={`${totalValidated} déjà validée(s)`}
-                    barPct={totalAnomalies ? (totalRemaining / totalAnomalies) * 100 : 0}
-                    barColor={T.warn}
-                  />
-                  <StatCell
-                    label="Taux de validation"
-                    value={String(globalProgress)}
-                    unit="%"
-                    deltaText="anomalies traitées"
-                    barPct={globalProgress}
-                    barColor={T.pos}
+              <Box width={"100%"} sx={{ mb: -1, ml: 2 }}>
+                <Stack
+                  direction={"row"}
+                >
+                  <ExercicePeriodeSelector
+                    selectedExerciceId={selectedExerciceId}
+                    selectedPeriodeId={selectedPeriodeId}
+                    onExerciceChange={handleChangeExercice}
+                    onPeriodeChange={handleChangePeriode}
+                    disabled={loading}
+                    size="small"
                   />
                 </Stack>
-              </Paper>
-            </Box>
+              </Box>
 
-            {/* MODULE 3 — État des contrôles (liste en lignes, pas de grille de boîtes) */}
-            <Box sx={{ mb: 1 }}>
-              <SectionHead
-                title="État des contrôles spécifiques"
-                action={
-                  <Button
-                    endIcon={<ArrowForwardOutlined />}
-                    onClick={() => navigate('/controles/details')}
-                    sx={{
-                      textTransform: 'none',
-                      color: T.accent,
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      '&:hover': { bgcolor: T.accW },
-                    }}
-                  >
-                    Voir les détails
-                  </Button>
-                }
-              />
-              <Paper elevation={0} sx={panelSx}>
-                {sectionsData.flatMap((section) => section.items).map((item, index, arr) => {
+              <Stack
+                width={'100%'}
+              >
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{
+                    flexWrap: 'nowrap',
+                    overflowX: 'auto',
+                    pb: 2,
+                    gap: 1,
+                    justifyContent: 'flex-start',
+                    alignItems: 'stretch',
+                    width: '100%',
+                    '&::-webkit-scrollbar': { display: 'none' },
+                    msOverflowStyle: 'none',
+                    scrollbarWidth: 'none',
+                  }}
+                >
+                  <KPICard
+                    title={'Résultat'}
+                    color={'#037934'}
+                    resultatN={resultatN}
+                    resultatN1={resultatN1}
+                    variationN={variationResultatN}
+                    variationN1={variationResultatN1}
+                    evolutionN={evolutionResultatN}
+                    evolutionN1={evolutionResultatN1}
+                    trendN={margeBruteNGraph}
+                    devise={deviseParDefaut}
+                    compact
+                    sx={{ minWidth: dashboardCardMinWidth, height: dashboardCardHeight, flex: '1 1 0' }}
+                  />
+
+                  <KPICard
+                    title={"Chiffre d'affaires"}
+                    color={'#037934'}
+                    resultatN={resultatChiffreAffaireN}
+                    resultatN1={resultatChiffreAffaireN1}
+                    variationN={variationChiffreAffaireN}
+                    variationN1={variationChiffreAffaireN1}
+                    evolutionN={evolutionChiffreAffaireN}
+                    evolutionN1={evolutionChiffreAffaireN1}
+                    trendN={chiffresAffairesNGraph}
+                    devise={deviseParDefaut}
+                    compact
+                    sx={{ minWidth: dashboardCardMinWidth, height: dashboardCardHeight, flex: '1 1 0' }}
+                  />
+
+                  <KPICard
+                    title={'Dépenses (Achats)'}
+                    color={'#fb8c00'}
+                    resultatN={resultatDepenseAchatN}
+                    resultatN1={resultatDepenseAchatN1}
+                    variationN={variationDepenseAchatN}
+                    variationN1={variationDepenseAchatN1}
+                    evolutionN={evolutionDepenseAchatN}
+                    evolutionN1={evolutionDepenseAchatN1}
+                    trendN={chiffresAffairesNGraph}
+                    devise={deviseParDefaut}
+                    compact
+                    sx={{ minWidth: dashboardCardMinWidth, height: dashboardCardHeight, flex: '1 1 0' }}
+                  />
+
+                  <KPICard
+                    title={'Dépenses salariales'}
+                    color={'#fb8c00'}
+                    resultatN={resultatDepenseSalarialeN}
+                    resultatN1={resultatDepenseSalarialeN1}
+                    variationN={variationDepenseSalarialeN}
+                    variationN1={variationDepenseSalarialeN1}
+                    evolutionN={evolutionDepenseSalarialeN}
+                    evolutionN1={evolutionDepenseSalarialeN1}
+                    trendN={margeBruteNGraph}
+                    devise={deviseParDefaut}
+                    compact
+                    sx={{ minWidth: dashboardCardMinWidth, height: dashboardCardHeight, flex: '1 1 0' }}
+                  />
+
+                  <KPICard
+                    title={'Trésoreries (Banques)'}
+                    color={'#095a9c'}
+                    resultatN={resultatTresorerieBanqueN}
+                    resultatN1={resultatTresorerieBanqueN1}
+                    variationN={variationTresorerieBanqueN}
+                    variationN1={variationTresorerieBanqueN1}
+                    evolutionN={evolutionTresorerieBanqueN}
+                    evolutionN1={evolutionTresorerieBanqueN1}
+                    trendN={tresorerieBanqueNGraph}
+                    devise={deviseParDefaut}
+                    compact
+                    sx={{ minWidth: dashboardCardMinWidth, height: dashboardCardHeight, flex: '1 1 0' }}
+                  />
+
+                  <KPICard
+                    title={'Trésoreries (Caisse)'}
+                    color={'#095a9c'}
+                    resultatN={resultatTresorerieCaisseN}
+                    resultatN1={resultatTresorerieCaisseN1}
+                    variationN={variationTresorerieCaisseN}
+                    variationN1={variationTresorerieCaisseN1}
+                    evolutionN={evolutionTresorerieCaisseN}
+                    evolutionN1={evolutionTresorerieCaisseN1}
+                    trendN={tresorerieCaisseNGraph}
+                    devise={deviseParDefaut}
+                    compact
+                    sx={{ minWidth: dashboardCardMinWidth, height: dashboardCardHeight, flex: '1 1 0' }}
+                  />
+                </Stack>
+              </Stack>
+
+              <Grid container spacing={3} sx={{ mb: 1, mt: -4, pl: 0 }}>
+                <Grid item xs={12} md={4}>
+                  <KpiCard title="Total Anomalies" value={totalAnomalies} color="#EF4444" icon={<ErrorOutline />} trend={trendAnomalies} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <KpiCard title="Restantes à valider" value={totalRemaining} color="#F59E0B" icon={<HistoryToggleOffOutlined />} trend={trendRemaining} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <KpiCard title="Progression Globale" value={`${globalProgress}%`} color="#10B981" icon={<CheckCircleOutline />} progress={globalProgress} />
+                </Grid>
+              </Grid>
+
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3, mt: 3, width: '100%' }}>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#0F172A' }}>
+                  État des contrôles spécifiques
+                </Typography>
+                <Button
+                  endIcon={<ArrowForwardOutlined />}
+                  onClick={() => navigate('/controles/details')}
+                  sx={{
+                    textTransform: 'none',
+                    color: '#10B981',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.05)' }
+                  }}
+                >
+                  Voir les détails
+                </Button>
+              </Stack>
+
+              <Grid container spacing={3}>
+                {sectionsData.flatMap((section) => section.items).map((item, index) => {
                   const anomalies = Number(item.anomalies) || 0;
                   const remaining = Number(item.remaining) || 0;
                   const progress = anomalies === 0 ? 0 : Math.round(((anomalies - remaining) / anomalies) * 100);
                   return (
-                    <ControlRow
-                      key={index}
-                      title={item.title}
-                      anomalies={anomalies}
-                      remaining={remaining}
-                      progress={progress}
-                      divider={index < arr.length - 1}
-                    // onClick={() => handleNavigateToDetails(item)}
-                    />
+                    <Grid item xs={12} md={6} lg={4} key={index} >
+                      <AnalysisCard
+                        title={item.title}
+                        errors={anomalies}
+                        pending={remaining}
+                        progress={progress}
+                      // onClick={() => handleNavigateToDetails(item)}
+                      />
+                    </Grid>
                   );
                 })}
-              </Paper>
+              </Grid>
+
             </Box>
-          </Box>
-        </Box>
-      </Box>
+          </TabPanel>
+        </TabContext>
+
+      </Box >
     </>
   )
 }
 
-// En-tête de module : eyebrow (code), titre, et description/action alignée à droite
-const SectionHead = ({ code, title, desc, action }) => (
-  <Stack
-    direction="row"
-    alignItems="baseline"
-    spacing={1.5}
-    sx={{ mb: 1.75, flexWrap: 'wrap', rowGap: 0.5 }}
+const AnalysisCard = ({ title, errors, pending, progress, onClick }) => (
+  <Paper
+    elevation={0}
+    onClick={onClick}
+    sx={{
+      p: 2,
+      border: '1px solid #E2E8F0',
+      borderRadius: '12px',
+      cursor: 'pointer',
+      transition: '0.2s',
+      backgroundColor: '#FFFFFF',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      '&:hover': {
+        borderColor: '#10B981',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        transform: 'translateY(-2px)'
+      }
+    }}
   >
-    {code && (
-      <Box
-        component="span"
-        sx={{
-          ...NUM,
-          fontFamily: MONO,
-          fontSize: '11px',
-          fontWeight: 600,
-          color: T.accent,
-          bgcolor: T.accW,
-          px: 1,
-          py: '3px',
-          borderRadius: '5px',
-          whiteSpace: 'nowrap',
-          alignSelf: 'center',
-        }}
-      >
-        {code}
-      </Box>
-    )}
-    <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.1px' }}>
+    {/* TITLE */}
+    <Typography
+      variant="body2"
+      sx={{ fontWeight: 700, color: '#1E293B', mb: 1.5, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}
+    >
       {title}
     </Typography>
-    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
-      {action ||
-        (desc && (
-          <Typography
-            sx={{ fontSize: '12.5px', color: T.muted, textAlign: 'right', maxWidth: 440, display: { xs: 'none', md: 'block' } }}
-          >
-            {desc}
-          </Typography>
-        ))}
-    </Box>
-  </Stack>
-);
 
-const DELTA_COLOR = { up: T.pos, down: T.neg, flat: T.muted };
-const DELTA_ARROW = { up: '▲', down: '▼', flat: '▬' };
-
-const deltaBg = (dir) =>
-  dir === 'up' ? 'rgba(31,138,112,.12)' : dir === 'down' ? 'rgba(190,58,47,.12)' : 'rgba(106,119,133,.12)';
-
-// Pilule de variation (flèche + valeur)
-const DeltaPill = ({ dir = 'flat', text, size = 'sm' }) => (
-  <Stack
-    direction="row"
-    alignItems="center"
-    spacing={0.4}
-    sx={{ flex: 'none', px: 0.9, py: 0.4, borderRadius: '99px', bgcolor: deltaBg(dir) }}
-  >
-    <Box component="span" sx={{ fontSize: size === 'lg' ? '10px' : '9px', color: DELTA_COLOR[dir], lineHeight: 1 }}>
-      {DELTA_ARROW[dir]}
-    </Box>
-    <Typography sx={{ ...NUM, fontSize: size === 'lg' ? '12px' : '11px', fontWeight: 700, color: DELTA_COLOR[dir] }}>
-      {text}
-    </Typography>
-  </Stack>
-);
-
-// Indicateur principal mis en avant : grand chiffre + sparkline pleine largeur
-const HeroKpi = ({ label, code, value, unit, deltaText, deltaDir = 'flat', n1Text, icon, accent = T.accent, trend }) => (
-  <Box sx={{ p: { xs: 2.5, md: 3 }, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
-    <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2 }}>
-      <Box
-        sx={{
-          width: 34, height: 34, flex: 'none', borderRadius: '10px', display: 'grid', placeItems: 'center',
-          color: accent, bgcolor: `${accent}14`, '& svg': { fontSize: 18 },
-        }}
-      >
-        {icon}
+    {/* STATS INLINE */}
+    <Stack direction="row" spacing={2} sx={{ mb: 1.5 }}>
+      {/* ANOMALIES */}
+      <Box>
+        <Typography
+          variant="caption"
+          sx={{ color: '#64748B', display: 'block', fontWeight: 600, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}
+        >
+          Anomalies
+        </Typography>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 900,
+            color: errors > 0 ? '#EF4444' : '#10B981',
+            lineHeight: 1.2,
+            fontSize: '1rem'
+          }}
+        >
+          {errors}
+        </Typography>
       </Box>
-      <Typography sx={{ fontSize: '13px', fontWeight: 600, color: T.muted }}>{label}</Typography>
-      {code && <Box component="span" sx={{ ...NUM, fontFamily: MONO, fontSize: '10px', color: T.faint }}>{code}</Box>}
+
+      {/* RESTANTES */}
+      <Box>
+        <Typography
+          variant="caption"
+          sx={{ color: '#64748B', display: 'block', fontWeight: 600, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}
+        >
+          Restantes
+        </Typography>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 900,
+            color: pending > 0 ? '#F59E0B' : '#10B981',
+            lineHeight: 1.2,
+            fontSize: '1rem'
+          }}
+        >
+          {pending}
+        </Typography>
+      </Box>
+
+      {/* PROGRESSION */}
+      <Box sx={{ ml: 'auto', textAlign: 'right' }}>
+        <Typography
+          variant="caption"
+          sx={{ color: '#64748B', display: 'block', fontWeight: 600, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}
+        >
+          Progression
+        </Typography>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: 900, color: '#1E293B', lineHeight: 1.2, fontSize: '1rem' }}
+        >
+          {progress}%
+        </Typography>
+      </Box>
     </Stack>
 
-    <Typography sx={{ ...NUM, fontSize: { xs: '30px', md: '36px' }, fontWeight: 800, letterSpacing: '-1px', lineHeight: 1, color: T.ink }}>
-      {value}
-      {unit && <Box component="span" sx={{ fontSize: '16px', fontWeight: 600, color: T.muted, ml: '5px' }}>{unit}</Box>}
-    </Typography>
-
-    <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1.25 }}>
-      {deltaText && <DeltaPill dir={deltaDir} text={deltaText} size="lg" />}
-      <Typography noWrap sx={{ ...NUM, fontSize: '11.5px', color: T.faint }}>{n1Text}</Typography>
-    </Stack>
-
-    <Box sx={{ mt: 'auto', pt: 2.5 }}>
-      <Sparkline data={trend} color={accent} height={58} />
-    </Box>
-  </Box>
-);
-
-// Indicateur secondaire en ligne (séparé par un filet)
-const KpiRow = ({ label, code, value, unit, deltaText, deltaDir = 'flat', n1Text, accent = T.accent, trend, divider }) => (
-  <Stack
-    direction="row"
-    alignItems="center"
-    spacing={2}
-    sx={{ px: { xs: 2.5, md: 3 }, py: 1.6, borderBottom: divider ? `1px solid ${T.ledger}` : 'none' }}
-  >
-    <Box sx={{ minWidth: 0, flex: 1 }}>
-      <Stack direction="row" alignItems="center" spacing={0.75}>
-        <Typography noWrap sx={{ fontSize: '13px', fontWeight: 600, color: T.ink }}>{label}</Typography>
-        {code && <Box component="span" sx={{ ...NUM, fontFamily: MONO, fontSize: '9.5px', color: T.faint }}>{code}</Box>}
-      </Stack>
-      <Typography noWrap sx={{ ...NUM, fontSize: '11px', color: T.faint, mt: 0.2 }}>{n1Text}</Typography>
-    </Box>
-
-    <Box sx={{ width: 60, flex: 'none', display: { xs: 'none', sm: 'block' } }}>
-      <Sparkline data={trend} color={accent} height={26} />
-    </Box>
-
-    <Box sx={{ textAlign: 'right', flex: 'none', minWidth: 92 }}>
-      <Typography sx={{ ...NUM, fontSize: '17px', fontWeight: 700, lineHeight: 1.15, color: T.ink }}>
-        {value}
-        {unit && <Box component="span" sx={{ fontSize: '11px', fontWeight: 600, color: T.muted, ml: '3px' }}>{unit}</Box>}
-      </Typography>
-      <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={0.4} sx={{ mt: 0.3 }}>
-        <Box component="span" sx={{ fontSize: '8px', color: DELTA_COLOR[deltaDir] }}>{DELTA_ARROW[deltaDir]}</Box>
-        <Typography sx={{ ...NUM, fontSize: '11px', fontWeight: 700, color: DELTA_COLOR[deltaDir] }}>{deltaText}</Typography>
-      </Stack>
-    </Box>
-  </Stack>
-);
-
-// Cellule de stat dans une bande (synthèse anomalies)
-const StatCell = ({ label, value, unit, deltaText, barPct, barColor = T.accent }) => (
-  <Box sx={{ flex: 1, p: { xs: 2.5, md: 3 }, minWidth: 0 }}>
-    <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: T.muted, mb: 1 }}>{label}</Typography>
-    <Typography sx={{ ...NUM, fontSize: { xs: '26px', md: '30px' }, fontWeight: 800, letterSpacing: '-.6px', lineHeight: 1, color: T.ink }}>
-      {value}
-      {unit && <Box component="span" sx={{ fontSize: '14px', fontWeight: 600, color: T.muted, ml: '4px' }}>{unit}</Box>}
-    </Typography>
-    {deltaText && <Typography sx={{ fontSize: '11.5px', color: T.muted, mt: 0.8 }}>{deltaText}</Typography>}
-    {barPct !== undefined && (
-      <Box sx={{ mt: 1.5, height: 4, borderRadius: 99, bgcolor: T.ledger, overflow: 'hidden' }}>
-        <Box sx={{ height: '100%', borderRadius: 99, width: `${Math.max(0, Math.min(100, barPct))}%`, bgcolor: barColor }} />
-      </Box>
-    )}
-  </Box>
-);
-
-// Ligne de contrôle (liste, séparée par un filet)
-const ControlRow = ({ title, anomalies, remaining, progress, divider, onClick }) => {
-  const barColor = progress >= 100 ? T.pos : progress < 30 ? T.neg : T.accent;
-  return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={2.5}
-      onClick={onClick}
+    {/* PROGRESS BAR */}
+    <LinearProgress
+      variant="determinate"
+      value={progress}
       sx={{
-        px: { xs: 2.5, md: 3 },
-        py: 1.75,
-        borderBottom: divider ? `1px solid ${T.ledger}` : 'none',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'background .15s',
-        '&:hover': onClick ? { bgcolor: '#FAFBFB' } : {},
+        height: 6,
+        borderRadius: 3,
+        bgcolor: '#F1F5F9',
+        '& .MuiLinearProgress-bar': {
+          bgcolor:
+            progress === 100
+              ? '#10B981'
+              : progress < 30
+                ? '#EF4444'
+                : '#3B82F6',
+          borderRadius: 4
+        }
       }}
-    >
-      <Typography sx={{ flex: 1, minWidth: 0, fontSize: '13px', fontWeight: 600, color: T.ink, lineHeight: 1.3 }}>
-        {title}
-      </Typography>
-
-      <Box sx={{ textAlign: 'right', flex: 'none', width: 64, display: { xs: 'none', sm: 'block' } }}>
-        <Typography sx={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '.4px', color: T.faint, fontWeight: 600 }}>Anom.</Typography>
-        <Typography sx={{ ...NUM, fontSize: '14px', fontWeight: 700, color: anomalies > 0 ? T.neg : T.pos }}>{anomalies}</Typography>
-      </Box>
-      <Box sx={{ textAlign: 'right', flex: 'none', width: 64, display: { xs: 'none', sm: 'block' } }}>
-        <Typography sx={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '.4px', color: T.faint, fontWeight: 600 }}>Rest.</Typography>
-        <Typography sx={{ ...NUM, fontSize: '14px', fontWeight: 700, color: remaining > 0 ? T.warn : T.pos }}>{remaining}</Typography>
-      </Box>
-
-      <Box sx={{ flex: 'none', width: { xs: 96, md: 170 }, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box sx={{ flex: 1, height: 6, borderRadius: 99, bgcolor: T.ledger, overflow: 'hidden' }}>
-          <Box sx={{ height: '100%', borderRadius: 99, width: `${Math.max(0, Math.min(100, progress))}%`, bgcolor: barColor }} />
-        </Box>
-        <Typography sx={{ ...NUM, fontSize: '12px', fontWeight: 700, color: T.ink, width: 34, textAlign: 'right' }}>{progress}%</Typography>
-      </Box>
-    </Stack>
-  );
-};
-
-// Mini-graphique de tendance en aire dégradée (responsive, courbe lissée)
-const Sparkline = ({ data = [], color = T.accent, height = 46 }) => {
-  const nums = (Array.isArray(data) ? data : []).map(Number).filter((v) => !isNaN(v));
-  if (nums.length < 2) return <Box sx={{ height }} />;
-
-  const W = 100, H = 100;
-  const min = Math.min(...nums);
-  const max = Math.max(...nums);
-  const range = max - min || 1;
-  const pts = nums.map((v, i) => [
-    (i / (nums.length - 1)) * W,
-    H - ((v - min) / range) * (H * 0.78) - H * 0.12,
-  ]);
-
-  let line = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 1; i < pts.length; i++) {
-    const [px, py] = pts[i - 1];
-    const [cx, cy] = pts[i];
-    const mx = (px + cx) / 2;
-    line += ` C ${mx} ${py}, ${mx} ${cy}, ${cx} ${cy}`;
-  }
-  const area = `${line} L ${W} ${H} L 0 ${H} Z`;
-  const gid = `spark-${color.replace('#', '')}`;
-
-  return (
-    <Box sx={{ height, width: '100%' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={height} style={{ display: 'block' }}>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.30" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill={`url(#${gid})`} stroke="none" />
-        <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      </svg>
-    </Box>
-  );
-};
-
+    />
+  </Paper>
+);
