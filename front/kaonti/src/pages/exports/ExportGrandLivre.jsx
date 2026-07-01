@@ -176,21 +176,26 @@ const ExportGrandLivre = () => {
     axios.get(`/api/exercices/listeExercice/${idDossier}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
-        setListeExercice(resData.list);
-        const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-        setListeSituation(exerciceNId);
-        setSelectedExerciceId(exerciceNId[0].id);
-        setSelectedPeriodeChoiceId(0);
-        setSelectedPeriodeId(exerciceNId[0].id);
-        // Initialiser les dates du filtre avec celles de l'exercice courant
-        const d1 = format(new Date(exerciceNId[0].date_debut), 'yyyy-MM-dd');
-        const d2 = format(new Date(exerciceNId[0].date_fin), 'yyyy-MM-dd');
-        setDateDebut(d1);
-        setDateFin(d2);
+        const list = Array.isArray(resData.list) ? resData.list : [];
+        setListeExercice(list);
+        // Exercice "N" si présent, sinon le premier de la liste (évite le crash undefined.id)
+        const exSel = list.find((item) => item.libelle_rang === "N") || list[0];
+        if (exSel) {
+          setListeSituation(list.filter((item) => item.id === exSel.id));
+          setSelectedExerciceId(exSel.id);
+          setSelectedPeriodeChoiceId(0);
+          setSelectedPeriodeId(exSel.id);
+          // Initialiser les dates du filtre avec celles de l'exercice sélectionné
+          setDateDebut(format(new Date(exSel.date_debut), 'yyyy-MM-dd'));
+          setDateFin(format(new Date(exSel.date_fin), 'yyyy-MM-dd'));
+        }
       } else {
         setListeExercice([]);
         toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
       }
+    }).catch(() => {
+      setListeExercice([]);
+      toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
     })
   }
 
@@ -216,8 +221,8 @@ const ExportGrandLivre = () => {
       if (resData.state) {
         setListeComptes(resData.liste || []);
       } else {
+        // Liste vide (aucune écriture) : pas une erreur bloquante
         setListeComptes([]);
-        toast.error(resData.msg || 'Erreur lors de la récupération des comptes');
       }
     }).catch((err) => {
       setListeComptes([]);
@@ -331,19 +336,11 @@ const ExportGrandLivre = () => {
   };
 
   useEffect(() => {
-    const navigationEntries = performance.getEntriesByType('navigation');
-    let idFile = 0;
-    if (navigationEntries.length > 0) {
-      const navigationType = navigationEntries[0].type;
-      if (navigationType === 'reload') {
-        const idDossier = sessionStorage.getItem("fileId");
-        setFileId(idDossier);
-        idFile = idDossier;
-      } else {
-        sessionStorage.setItem('fileId', id);
-        setFileId(id);
-        idFile = id;
-      }
+    // Résolution robuste de l'id dossier : paramètre de route (:id), sinon sessionStorage
+    const idFile = id || sessionStorage.getItem('fileId') || 0;
+    if (idFile && idFile !== '0') {
+      sessionStorage.setItem('fileId', idFile);
+      setFileId(idFile);
     }
     GetInfosIdDossier(idFile);
     GetListeExercice(idFile);
@@ -357,9 +354,8 @@ const ExportGrandLivre = () => {
 
 
   const optionsComptes = React.useMemo(() => {
-    const data = (listeComptes || []).map((c) => c.compte);
-
-    return data.sort((a, b) => b.localeCompare(a)); // décroissant
+    // Conserver l'ordre renvoyé par le backend (compte puis baseaux)
+    return (listeComptes || []).map((c) => c.compte);
   }, [listeComptes]);
 
   const selectedEx = listeExercice.find((e) => e.id === selectedExerciceId);
@@ -424,7 +420,25 @@ const ExportGrandLivre = () => {
                 >
                   {listeExercice.map((option) => (
                     <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
-                      {option.libelle_rang} : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
+                      <Box
+                        component="span"
+                        sx={{
+                            display: 'inline-block',
+                            px: 0.75,
+                            py: '2px',
+                            mr: 0.75,
+                            borderRadius: '5px',
+                            bgcolor: '#E7F2EE',
+                            color: '#1F8A70',
+                            fontWeight: 700,
+                            fontSize: '0.7rem',
+                            lineHeight: 1.4,
+                            width: 30
+                        }}
+                      >
+                        {option.libelle_rang} 
+                      </Box>
+                      : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
                     </MenuItem>
                   ))}
                 </Select>
@@ -438,7 +452,21 @@ const ExportGrandLivre = () => {
                   options={[ALL_OPTION, ...optionsComptes]}
                   value={compteAux}
                   disableCloseOnSelect
-                  limitTags={2}
+                  renderTags={(value) => {
+                    const vals = value.filter((v) => v !== ALL_OPTION);
+                    if (!vals.length) return null;
+                    return (
+                      <Chip
+                        size="small"
+                        label={`${vals.length} compte${vals.length > 1 ? 's' : ''}`}
+                        sx={{ height: 22, fontSize: '12px', fontWeight: 700, bgcolor: T.accW, color: T.accent, m: 0.25 }}
+                      />
+                    );
+                  }}
+                  slotProps={{
+                    popper: { style: { width: 'fit-content' } },
+                    paper: { sx: { minWidth: 360, maxWidth: 640 } },
+                  }}
                   onChange={(event, newValue) => {
                     if (newValue.includes(ALL_OPTION)) {
                       handleChangeComptes(isAllSelected ? [] : optionsComptes);
@@ -446,13 +474,21 @@ const ExportGrandLivre = () => {
                       handleChangeComptes(newValue);
                     }
                   }}
-                  getOptionLabel={(option) => (option === ALL_OPTION ? 'Sélectionner tout' : option)}
+                  getOptionLabel={(option) => {
+                    if (option === ALL_OPTION) return 'Sélectionner tout';
+                    const item = listeComptes.find((c) => c.compte === option);
+                    return item && item.libelle ? `${item.compte} - ${item.libelle}` : option;
+                  }}
                   renderOption={(props, option, { selected }) => {
                     const isAll = option === ALL_OPTION;
+                    const item = listeComptes.find((c) => c.compte === option);
+                    const label = isAll
+                      ? 'Sélectionner tout'
+                      : (item && item.libelle ? `${item.compte} - ${item.libelle}` : option);
                     return (
-                      <li {...props} style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                        <Checkbox size="small" style={{ marginRight: 8 }} checked={isAll ? isAllSelected : selected} />
-                        <ListItemText primary={isAll ? 'Sélectionner tout' : option} primaryTypographyProps={{ fontSize: '13px', fontWeight: isAll ? 700 : 400 }} />
+                      <li {...props} style={{ whiteSpace: 'nowrap', paddingTop: 2, paddingBottom: 2, minHeight: 0 }}>
+                        <Checkbox size="small" sx={{ p: 0.25, mr: 1 }} checked={isAll ? isAllSelected : selected} />
+                        <ListItemText primary={label} sx={{ my: 0 }} primaryTypographyProps={{ noWrap: true, fontSize: '13px', fontWeight: isAll ? 700 : 400 }} />
                       </li>
                     );
                   }}

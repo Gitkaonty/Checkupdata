@@ -757,7 +757,7 @@ exports.exportPdf = async (req, res) => {
           bold: true,
           fontSize: 7,
           color: '#2C3E50',
-          fillColor: '#D6EAF8'
+          fillColor: '#CFE6E4'
         },
 
         soldeRow: {
@@ -880,14 +880,14 @@ exports.exportExcel = async (req, res) => {
         // Compte header row
         const compteRow = ws.getRow(rowCursor);
         compteRow.values = [`Compte ${compte} - ${label}`];
-        compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+        compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
         rowCursor += 1;
 
         // Table header
         const headerRow = ws.getRow(rowCursor);
         headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
         headerRow.alignment = { horizontal: 'center' };
         rowCursor += 1;
 
@@ -928,14 +928,14 @@ exports.exportExcel = async (req, res) => {
         // Compte header row
         const compteRow = ws.getRow(rowCursor);
         compteRow.values = [`Actions pour le compte ${compte}`];
-        compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+        compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
         rowCursor += 1;
 
         // Table header
         const headerRow = ws.getRow(rowCursor);
         headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
         headerRow.alignment = { horizontal: 'center' };
         rowCursor += 1;
 
@@ -975,7 +975,7 @@ exports.exportExcel = async (req, res) => {
         totalRow.font = { bold: true };
         totalRow.getCell('E').numFmt = '#,##0.00';
         totalRow.getCell('F').numFmt = '#,##0.00';
-        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
         rowCursor += 1;
 
         // Solde row
@@ -1013,13 +1013,13 @@ exports.exportExcel = async (req, res) => {
 
         const compteRow = ws.getRow(rowCursor);
         compteRow.values = [detailMessage];
-        compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+        compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
         rowCursor += 1;
 
         const headerRow = ws.getRow(rowCursor);
         headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
         headerRow.alignment = { horizontal: 'center' };
         rowCursor += 1;
 
@@ -1050,7 +1050,7 @@ exports.exportExcel = async (req, res) => {
         totalRow.font = { bold: true };
         totalRow.getCell('E').numFmt = '#,##0.00';
         totalRow.getCell('F').numFmt = '#,##0.00';
-        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
         rowCursor += 1;
 
         // Solde
@@ -1076,13 +1076,13 @@ exports.exportExcel = async (req, res) => {
 
         const compteRow = ws.getRow(rowCursor);
         compteRow.values = [`Anomalie de sens d'écriture pour le compte "${compte}"`];
-        compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+        compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
         rowCursor += 1;
 
         const headerRow = ws.getRow(rowCursor);
         headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
         headerRow.alignment = { horizontal: 'center' };
         rowCursor += 1;
 
@@ -1111,7 +1111,7 @@ exports.exportExcel = async (req, res) => {
         totalRow.font = { bold: true };
         totalRow.getCell('E').numFmt = '#,##0.00';
         totalRow.getCell('F').numFmt = '#,##0.00';
-        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+        totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
         rowCursor += 1;
 
         rowCursor += 1;
@@ -1123,14 +1123,14 @@ exports.exportExcel = async (req, res) => {
 
         const compteRow = ws.getRow(rowCursor);
         compteRow.values = [`Écriture - ${anomalie.message || 'Anomalie TVA'}`];
-        compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+        compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
         rowCursor += 1;
 
         if (lines.length > 0) {
           const headerRow = ws.getRow(rowCursor);
           headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
           headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-          headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+          headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
           headerRow.alignment = { horizontal: 'center' };
           rowCursor += 1;
 
@@ -1156,14 +1156,14 @@ exports.exportExcel = async (req, res) => {
 
         const compteRow = ws.getRow(rowCursor);
         compteRow.values = [anomalie.message || 'Anomalie'];
-        compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+        compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
         rowCursor += 1;
 
         if (lines.length > 0) {
           const headerRow = ws.getRow(rowCursor);
           headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
           headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-          headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+          headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
           headerRow.alignment = { horizontal: 'center' };
           rowCursor += 1;
 
@@ -1373,7 +1373,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
     const headerRow = ws.getRow(cursor);
     headerRow.values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'];
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
     headerRow.alignment = { horizontal: 'center' };
     return cursor + 1;
   };
@@ -1400,7 +1400,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       const label = firstAnomaly?.message || `Anomalie atypique (${data.anomalies.length})`;
       const compteRow = ws.getRow(rowCursor);
       compteRow.values = [`Compte ${compte} - ${label}`];
-      compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+      compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
       rowCursor += 1;
       rowCursor = addHeaderRow(rowCursor);
       lines.forEach(l => {
@@ -1425,7 +1425,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
 
       const compteRow = ws.getRow(rowCursor);
       compteRow.values = [headerText];
-      compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+      compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
       rowCursor += 1;
       rowCursor = addHeaderRow(rowCursor);
 
@@ -1445,7 +1445,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       totalRow.font = { bold: true };
       totalRow.getCell('E').numFmt = '#,##0.00';
       totalRow.getCell('F').numFmt = '#,##0.00';
-      totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+      totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
       rowCursor += 1;
 
       if (type === 'IMMO_CHARGE' || type === 'SENS_SOLDE') {
@@ -1466,7 +1466,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       const lines = anomalie.journalLines || [];
       const compteRow = ws.getRow(rowCursor);
       compteRow.values = [`Écriture - ${anomalie.message || 'Anomalie TVA'}`];
-      compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+      compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
       rowCursor += 1;
       if (lines.length > 0) {
         rowCursor = addHeaderRow(rowCursor);
@@ -1481,7 +1481,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       const lines = anomalie.journalLines || [];
       const compteRow = ws.getRow(rowCursor);
       compteRow.values = [anomalie.message || 'Anomalie'];
-      compteRow.font = { bold: true, color: { argb: 'FF1A5276' }, size: 10 };
+      compteRow.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 10 };
       rowCursor += 1;
       if (lines.length > 0) {
         rowCursor = addHeaderRow(rowCursor);
@@ -1586,11 +1586,11 @@ exports.exportGlobalPdf = async (req, res) => {
         header: { fontSize: 16, bold: true, color: '#2C3E50' },
         subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
         subheader2: { fontSize: 9, color: '#566573' },
-        typeSectionHeader: { fontSize: 13, bold: true, color: '#1A5276', margin: [0, 15, 0, 5] },
+        typeSectionHeader: { fontSize: 13, bold: true, color: '#0E7C86', margin: [0, 15, 0, 5] },
         anomalyHeader: { fontSize: 10, bold: true, color: '#2C3E50', margin: [0, 10, 0, 5] },
         tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
         cell: { fontSize: 7, color: '#2C3E50' },
-        totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#D6EAF8' },
+        totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
         soldeRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#FDEBD0' },
         noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
       }

@@ -35,18 +35,21 @@ async function getRows(id_compte, id_dossier, id_exercice, compteAux, dateDebut,
   } else if (dateFin) {
     where.dateecriture = { [Op.lte]: new Date(dateFin) };
   }
-  // Filtre par compteaux si sélectionné
+  // Filtre par compte(s) sélectionné(s) du plan comptable (général ou auxiliaire)
   if (Array.isArray(compteAux) && compteAux.length > 0) {
-    where.compteaux = { [Op.in]: compteAux };
+    where[Op.or] = [
+      { comptegen: { [Op.in]: compteAux } },
+      { compteaux: { [Op.in]: compteAux } },
+    ];
   }
 
   const list = await journals.findAll({
     where,
     include: [
-      { model: dossierplancomptables, attributes: ['compte', 'libelle'], required: true },
+      { model: dossierplancomptables, attributes: ['compte', 'libelle'], required: false },
       { model: codejournals, attributes: ['code'], required: false }
     ],
-    order: [[dossierplancomptables, 'compte', 'ASC'], ['dateecriture', 'ASC'], ['id_ecriture', 'ASC'], ['id', 'ASC']]
+    order: [['comptegen', 'ASC'], ['dateecriture', 'ASC'], ['id_ecriture', 'ASC'], ['id', 'ASC']]
   });
 
   return list.map(r => (r?.get ? r.get({ plain: true }) : r));
@@ -55,9 +58,9 @@ async function getRows(id_compte, id_dossier, id_exercice, compteAux, dateDebut,
 function groupByAccount(rows) {
   const groups = {};
   rows.forEach(r => {
-    const cpt = r?.dossierplancomptable?.compte || r?.dossierplancomptables?.compte || 'INCONNU';
+    const cpt = r?.comptegen || r?.compteaux || r?.dossierplancomptable?.compte || 'INCONNU';
     if (!groups[cpt]) {
-      groups[cpt] = { libelle: r?.dossierplancomptable?.libelle || r?.dossierplancomptables?.libelle || '', rows: [] };
+      groups[cpt] = { libelle: r?.libellecompte || r?.libelleaux || r?.dossierplancomptable?.libelle || '', rows: [] };
     }
     groups[cpt].rows.push(r);
   });
@@ -88,10 +91,10 @@ function buildSections(groups) {
   Object.entries(groups).forEach(([compte, info]) => {
     // Ligne du compte + libellé
     body.push([
-      { text: compte, alignment: 'left', fillColor: '#D4E6F1', fontSize: 6, margin: [4, 2, 0, 2] },
-      { text: info.libelle || '', alignment: 'center', colSpan: 6, fillColor: '#D4E6F1', fontSize: 6, margin: [0, 2, 0, 2] },
+      { text: compte, alignment: 'left', fillColor: '#E2F0F1', fontSize: 6, margin: [4, 2, 0, 2] },
+      { text: info.libelle || '', alignment: 'center', colSpan: 6, fillColor: '#E2F0F1', fontSize: 6, margin: [0, 2, 0, 2] },
       {}, {}, {}, {}, {},
-      { text: '', fillColor: '#D4E6F1', border: [false, false, false, false] }
+      { text: '', fillColor: '#E2F0F1', border: [false, false, false, false] }
     ]);
 
 
@@ -137,9 +140,9 @@ function buildSections(groups) {
     body.push([
       { text: '', colSpan: 4, border: [false, false, false, false], fillColor: '#FFFFFF' }, {}, {}, {},
       { text: '', bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#FFFFFF', fontSize: 6 },
-      { text: formatAmount(sumDebit), bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#D6EAF8', fontSize: 6 },
-      { text: formatAmount(sumCredit), bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#D6EAF8', fontSize: 6 },
-      { text: formatAmount(running), bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#D6EAF8', fontSize: 6 }
+      { text: formatAmount(sumDebit), bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#E7F2F0', fontSize: 6 },
+      { text: formatAmount(sumCredit), bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#E7F2F0', fontSize: 6 },
+      { text: formatAmount(running), bold: true, alignment: 'right', margin: [0, 1, 0, 1], fillColor: '#E7F2F0', fontSize: 6 }
     ]);
 
 
@@ -151,10 +154,10 @@ function buildSections(groups) {
   // Total global à la fin
   body.push([
     { text: '', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
-    { text: 'TOT.', bold: true, alignment: 'right', fillColor: '#EAECEE', margin: [0, 2, 0, 2] },
-    { text: formatAmount(totalGlobalDebit), bold: true, alignment: 'right', fillColor: '#EAECEE', margin: [0, 2, 0, 2] },
-    { text: formatAmount(totalGlobalCredit), bold: true, alignment: 'right', fillColor: '#EAECEE', margin: [0, 2, 0, 2] },
-    { text: formatAmount(totalGlobalSolde), bold: true, alignment: 'right', fillColor: '#EAECEE', margin: [0, 2, 0, 2] }
+    { text: 'TOT.', bold: true, alignment: 'right', fillColor: '#CFE6E4', margin: [0, 2, 0, 2] },
+    { text: formatAmount(totalGlobalDebit), bold: true, alignment: 'right', fillColor: '#CFE6E4', margin: [0, 2, 0, 2] },
+    { text: formatAmount(totalGlobalCredit), bold: true, alignment: 'right', fillColor: '#CFE6E4', margin: [0, 2, 0, 2] },
+    { text: formatAmount(totalGlobalSolde), bold: true, alignment: 'right', fillColor: '#CFE6E4', margin: [0, 2, 0, 2] }
   ]);
 
   sections.push({
@@ -173,7 +176,7 @@ function buildSections(groups) {
           const cell = row[columnIndex];
           if (cell && cell.fillColor) return null;
         }
-        return rowIndex % 2 === 0 ? null : '#fcfcfc';
+        return rowIndex % 2 === 0 ? null : '#F7FAF9';
       }
     },
     margin: [0, 0, 0, 10]

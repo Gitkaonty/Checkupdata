@@ -26,18 +26,27 @@ async function getJournalRows(id_compte, id_dossier, id_exercice, journalCodes, 
       { model: dossierplancomptables, attributes: ['compte', 'libelle'], required: false },
       { model: codejournals, attributes: ['code'], required: Array.isArray(journalCodes) && journalCodes.length > 0, where: (Array.isArray(journalCodes) && journalCodes.length > 0) ? { code: { [Op.in]: journalCodes } } : undefined }
     ],
-    order: [['id_ecriture', 'ASC'], ['dateecriture', 'ASC'], [codejournals, 'code', 'ASC']]
+    // Tri : journal, puis date, puis numéro d'écriture
+    order: [[codejournals, 'code', 'ASC'], ['dateecriture', 'ASC'], ['id_ecriture', 'ASC'], ['id', 'ASC']]
   });
 
   // Return plain objects for ease of use
   return list.map(r => (r?.get ? r.get({ plain: true }) : r));
 }
 
-function buildTable(data) {
-  const body = [];
+const fmtAmount = (value) => {
+  if (value == null) return '0.00';
+  return String(Number(value)
+    .toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+    .replace(/[  ]/g, ' ')
+    .replace(/ /g, ' ');
+};
 
-  // En-têtes stylés (comme IRSA)
-  body.push([
+// Construit le corps du tableau + les métadonnées de séparation par écriture
+function buildJournalTable(data) {
+  const widths = ['9%', '6%', '11%', '*', '11%', '7%', '6%', '12%', '12%'];
+
+  const header = [
     { text: 'Date', style: 'tableHeader' },
     { text: 'Journal', style: 'tableHeader' },
     { text: 'Compte', style: 'tableHeader' },
@@ -47,66 +56,69 @@ function buildTable(data) {
     { text: 'Devise', style: 'tableHeader' },
     { text: 'Débit', style: 'tableHeader' },
     { text: 'Crédit', style: 'tableHeader' },
-  ]);
+  ];
 
-  // Formateurs
-  const fmtAmount = (value) => {
-    if (value == null) return '0.00';
-    return Number(value)
-      .toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      .replace(/\u202F/g, ' ');
-  };
+  const body = [header];
+  const boundaries = new Set(); // index de ligne (corps) où tracer un filet séparateur (au-dessus)
+  const shaded = new Set();     // lignes à trame (écritures d'indice impair)
 
   let totD = 0, totC = 0;
+  let prevEcr;
+  let group = -1;
 
-  data.forEach(r => {
+  (data || []).forEach((r, idx) => {
+    const ecr = String(r.id_ecriture ?? `__${idx}`);
+    const rowIndex = body.length;
+
+    // Nouvelle écriture -> nouveau groupe + séparateur
+    if (idx === 0 || ecr !== prevEcr) {
+      group += 1;
+      if (idx > 0) boundaries.add(rowIndex);
+    }
+    prevEcr = ecr;
+    if (group % 2 === 1) shaded.add(rowIndex);
+
     totD += Number(r.debit || 0);
     totC += Number(r.credit || 0);
+
     const dateObj = r.dateecriture ? new Date(r.dateecriture) : null;
     const dd = dateObj ? String(dateObj.getDate()).padStart(2, '0') : '';
     const mm = dateObj ? String(dateObj.getMonth() + 1).padStart(2, '0') : '';
     const yyyy = dateObj ? dateObj.getFullYear() : '';
+
     body.push([
-      { text: `${dd}/${mm}/${yyyy}`, alignment: 'center', margin: [0,2,0,2] },
-      { text: r.codejournal?.code || '', alignment: 'left', margin: [0,2,0,2] },
-      { text: r.dossierplancomptables?.compte || '', alignment: 'left', margin: [0,2,0,2] },
-      { text: r.libelle || '', alignment: 'left', margin: [0,2,0,2], noWrap: false },
-      { text: r.piece || '', alignment: 'left', margin: [0,2,0,2] },
-      { text: r.lettrage || '', alignment: 'center', margin: [0,2,0,2] },
-      { text: r.devise || '', alignment: 'center', margin: [0,2,0,2] },
-      { text: fmtAmount(r.debit), alignment: 'right', margin: [0,2,0,2] },
-      { text: fmtAmount(r.credit), alignment: 'right', margin: [0,2,0,2] },
+      { text: dateObj ? `${dd}/${mm}/${yyyy}` : '', alignment: 'center', margin: [0, 2, 0, 2] },
+      { text: r.codejournal?.code || '', alignment: 'left', margin: [0, 2, 0, 2] },
+      { text: r.compteaux || r.comptegen || r.dossierplancomptable?.compte || '', alignment: 'left', margin: [0, 2, 0, 2] },
+      { text: r.libelle || '', alignment: 'left', margin: [0, 2, 0, 2], noWrap: false },
+      { text: r.piece || '', alignment: 'left', margin: [0, 2, 0, 2] },
+      { text: r.lettrage || '', alignment: 'center', margin: [0, 2, 0, 2] },
+      { text: r.devise || '', alignment: 'center', margin: [0, 2, 0, 2] },
+      { text: fmtAmount(r.debit), alignment: 'right', margin: [0, 2, 0, 2] },
+      { text: fmtAmount(r.credit), alignment: 'right', margin: [0, 2, 0, 2] },
     ]);
   });
 
-  // Ligne TOTAL avec fond
+  // Ligne TOTAL (séparateur au-dessus)
+  boundaries.add(body.length);
   body.push([
-    { text: 'TOTAL', bold: true, alignment: 'right', margin: [0,2,0,2], fillColor: '#89A8B2', colSpan: 7 },
-    { text: '', fillColor: '#89A8B2' },
-    { text: '', fillColor: '#89A8B2' },
-    { text: '', fillColor: '#89A8B2' },
-    { text: '', fillColor: '#89A8B2' },
-    { text: '', fillColor: '#89A8B2' },
-    { text: '', fillColor: '#89A8B2' },
-    { text: fmtAmount(totD), bold: true, alignment: 'right', margin: [0,2,0,2], fillColor: '#89A8B2' },
-    { text: fmtAmount(totC), bold: true, alignment: 'right', margin: [0,2,0,2], fillColor: '#89A8B2' },
+    { text: 'TOTAL', bold: true, alignment: 'right', margin: [0, 3, 0, 3], fillColor: '#CFE6E4', colSpan: 7 },
+    { text: '', fillColor: '#CFE6E4' },
+    { text: '', fillColor: '#CFE6E4' },
+    { text: '', fillColor: '#CFE6E4' },
+    { text: '', fillColor: '#CFE6E4' },
+    { text: '', fillColor: '#CFE6E4' },
+    { text: '', fillColor: '#CFE6E4' },
+    { text: fmtAmount(totD), bold: true, alignment: 'right', margin: [0, 3, 0, 3], fillColor: '#CFE6E4' },
+    { text: fmtAmount(totC), bold: true, alignment: 'right', margin: [0, 3, 0, 3], fillColor: '#CFE6E4' },
   ]);
 
-  return [
-    {
-      table: {
-        headerRows: 1,
-        widths: ['10%', '10%', '12%', '*', '12%', '10%', '8%', '12%', '12%'],
-        body
-      },
-      layout: 'lightHorizontalLines'
-    }
-  ];
+  return { header, body, widths, boundaries, shaded };
 }
 
 async function generateJournalContent(id_compte, id_dossier, id_exercice, journalCodes, dateDebut, dateFin) {
   const list = await getJournalRows(id_compte, id_dossier, id_exercice, journalCodes, dateDebut, dateFin);
-  return { buildTable, list };
+  return { buildJournalTable, list };
 }
 
 module.exports = { generateJournalContent };

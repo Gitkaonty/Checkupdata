@@ -176,17 +176,17 @@ const ExportJournal = () => {
     axios.get(`/api/exercices/listeExercice/${idDossier}`).then((response) => {
       const resData = response.data;
       if (resData.state) {
-        setListeExercice(resData.list);
-        const exerciceNId = resData.list?.filter((item) => item.libelle_rang === "N");
-        setListeSituation(exerciceNId);
-        setSelectedExerciceId(exerciceNId[0].id);
-        setSelectedPeriodeChoiceId(0);
-        setSelectedPeriodeId(exerciceNId[0].id);
-        // Initialiser les dates du filtre avec celles de l'exercice courant
-        const d1 = format(new Date(exerciceNId[0].date_debut), 'yyyy-MM-dd');
-        const d2 = format(new Date(exerciceNId[0].date_fin), 'yyyy-MM-dd');
-        setDateDebut(d1);
-        setDateFin(d2);
+        const list = Array.isArray(resData.list) ? resData.list : [];
+        setListeExercice(list);
+        const exSel = list.find((item) => item.libelle_rang === "N") || list[0];
+        if (exSel) {
+          setListeSituation(list.filter((item) => item.id === exSel.id));
+          setSelectedExerciceId(exSel.id);
+          setSelectedPeriodeChoiceId(0);
+          setSelectedPeriodeId(exSel.id);
+          setDateDebut(format(new Date(exSel.date_debut), 'yyyy-MM-dd'));
+          setDateFin(format(new Date(exSel.date_fin), 'yyyy-MM-dd'));
+        }
       } else {
         setListeExercice([]);
         toast.error("une erreur est survenue lors de la récupération de la liste des exercices");
@@ -414,7 +414,25 @@ const ExportJournal = () => {
                 >
                   {listeExercice.map((option) => (
                     <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
-                      {option.libelle_rang} : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
+                      <Box
+                        component="span"
+                        sx={{
+                            display: 'inline-block',
+                            px: 0.75,
+                            py: '2px',
+                            mr: 0.75,
+                            borderRadius: '5px',
+                            bgcolor: '#E7F2EE',
+                            color: '#1F8A70',
+                            fontWeight: 700,
+                            fontSize: '0.7rem',
+                            lineHeight: 1.4,
+                            width: 30
+                        }}
+                      >
+                        {option.libelle_rang}
+                      </Box>
+                      : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
                     </MenuItem>
                   ))}
                 </Select>

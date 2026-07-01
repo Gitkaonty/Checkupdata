@@ -59,7 +59,7 @@ async function exportBalanceTableExcel(id_compte, id_dossier, id_exercice, centr
   ws.mergeCells('A1:C1');
   const titleCell = ws.getCell('A1');
   titleCell.value = 'BALANCE';
-  titleCell.font = { bold: true, size: 16 };
+  titleCell.font = { bold: true, size: 16, color: { argb: 'FF0E7C86' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // ====== Ligne 2 : Dossier centré sous le titre ======
@@ -82,41 +82,51 @@ async function exportBalanceTableExcel(id_compte, id_dossier, id_exercice, centr
   // Définir les colonnes (largeurs + format), sans créer d'en-tête automatique
   ws.columns = [
     { key: 'compte', width: 18 },
-    { key: 'libelle', width: 40 },
+    { key: 'libelle', width: 45 },
+    { key: 'mvmdebit', width: 18, style: { numFmt: '#,##0.00' } },
     { key: 'mvmcredit', width: 18, style: { numFmt: '#,##0.00' } },
-    { key: 'mvtcredit', width: 18, style: { numFmt: '#,##0.00' } },
     { key: 'soldedebit', width: 18, style: { numFmt: '#,##0.00' } },
     { key: 'soldecredit', width: 18, style: { numFmt: '#,##0.00' } },
   ];
 
   // === TITRE GLOBAL centré sur les colonnes du tableau ===
   const headerRow = ws.addRow(['Compte', 'Libellé', 'Mouvement débit', 'Mouvement crédit', 'Solde débit', 'Solde crédit']);
+  headerRow.height = 20;
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.alignment = { horizontal: 'center' };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+    cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
   });
 
   let totMvtD = 0, totMvtC = 0, totSoldeD = 0, totSoldeC = 0;
 
-  data.forEach(r => {
-    totMvtD += Number(r.mvmcredit || 0);
+  (data || []).forEach((r, i) => {
+    totMvtD += Number(r.mvmdebit || 0);
     totMvtC += Number(r.mvmcredit || 0);
     totSoldeD += Number(r.soldedebit || 0);
     totSoldeC += Number(r.soldecredit || 0);
-    ws.addRow({
+    const dataRow = ws.addRow({
       compte: r.compte || '',
       libelle: r.libelle || '',
-      mvmcredit: Number(r.mvmcredit || 0),
+      mvmdebit: Number(r.mvmdebit || 0),
       mvmcredit: Number(r.mvmcredit || 0),
       soldedebit: Number(r.soldedebit || 0),
       soldecredit: Number(r.soldecredit || 0)
     });
+    // Zébrage doux (une ligne sur deux)
+    if (i % 2 === 1) {
+      dataRow.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6FAF9' } };
+      });
+    }
   });
 
   // Total row
-  const totalRow = ws.addRow({ compte: 'TOTAL', mvmcredit: totMvtD, mvmcredit: totMvtC, soldedebit: totSoldeD, soldecredit: totSoldeC });
-  totalRow.font = { bold: true };
+  const totalRow = ws.addRow({ compte: 'TOTAL', mvmdebit: totMvtD, mvmcredit: totMvtC, soldedebit: totSoldeD, soldecredit: totSoldeC });
+  totalRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FF0E2733' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
+  });
 
   // Align numbers
   ['C', 'D', 'E', 'F'].forEach(col => {

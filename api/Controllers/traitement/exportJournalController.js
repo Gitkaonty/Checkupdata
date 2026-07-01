@@ -7,6 +7,7 @@ const exercices = db.exercices;
 const userscomptes = db.userscomptes;
 const { generateJournalContent } = require('../../Middlewares/Journal/JournalGeneratePdf');
 const { exportJournalTableExcel } = require('../../Middlewares/Journal/JournalGenerateExcel');
+const { buildHeader, pageFooter, contentWidth } = require('../../Middlewares/exportPdfTheme');
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -30,7 +31,7 @@ module.exports = {
       const exercice = await exercices.findByPk(exerciceId);
       const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
 
-      const { buildTable, list } = await generateJournalContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin);
+      const { buildJournalTable, list } = await generateJournalContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin);
       if (!list || list.length === 0) {
         return res.status(404).json({ state: false, msg: 'Aucune écriture trouvée pour ce filtre.' });
       }
@@ -44,53 +45,45 @@ module.exports = {
         }
       };
 
-      const headerSub = () => {
-        const parts = [
-          `Dossier: ${dossier?.dossier || ''}`,
-          `${compte?.nom || ''}`,
-          `Exercice: ${formatDate(exercice?.date_debut)} - ${formatDate(exercice?.date_fin)}`
-        ];
-        if (Array.isArray(journalCodes) && journalCodes.length > 0) parts.push(`Journaux: ${journalCodes.join(', ')}`);
-        if (dateDebut) parts.push(`Du: ${formatDate(dateDebut)}`);
-        if (dateFin) parts.push(`Au: ${formatDate(dateFin)}`);
-        return parts.join('  |  ');
-      };
-
-      // Build table from middleware then override widths and layout
-      const built = generateJournalContent ? (await generateJournalContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin)).buildTable(list)[0] : null;
-      const baseTable = (built && built.table) ? built.table : (buildTable(list)[0]?.table);
-      const tableBody = baseTable?.body || [];
-      const fixedWidths = ['10%','5%','10%','*','12%','5%','5%','12%','12%'];
+      const { body: journalBody, widths: journalWidths, boundaries, shaded } = buildJournalTable(list);
 
       const docDefinition = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [10, 40, 10, 40],
-        defaultStyle: { font: 'Helvetica', fontSize: 8 },
+        pageMargins: [15, 18, 15, 32],
+        defaultStyle: { font: 'Helvetica', fontSize: 9, color: '#16202B' },
+        footer: pageFooter(formatDate(new Date())),
         content: [
-          { text: 'JOURNAL COMPTABLE', style: 'header', alignment: 'center', margin: [0, 0, 0, 8] },
-          { text: `Dossier : ${dossier?.dossier || ''}`, alignment: 'center', fontSize: 15,bold: true, margin: [0, 0, 0, 5] },
-          // { text: `Type Journaux : ${Array.isArray(journalCodes) && journalCodes.length ? journalCodes.join(', ') : 'Tous'}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 3] },
-          { text: `Période du : ${formatDate(dateDebut || exercice?.date_debut)} au ${formatDate(dateFin || exercice?.date_fin)}`, alignment: 'left', fontSize: 9, margin: [0, 0, 0, 15] },
+          ...buildHeader('Journal comptable', {
+            dossier: dossier?.dossier,
+            compte: compte?.nom,
+            periode: `Du ${formatDate(dateDebut || exercice?.date_debut)} au ${formatDate(dateFin || exercice?.date_fin)}`,
+            extra: { label: 'Journaux', value: (Array.isArray(journalCodes) && journalCodes.length) ? journalCodes.join(', ') : 'Tous' },
+          }, contentWidth('landscape')),
           {
             table: {
               headerRows: 1,
-              widths: fixedWidths,
-              body: tableBody
+              widths: journalWidths,
+              body: journalBody
             },
             layout: {
-              hLineWidth: () => 0,
+              // Filet séparateur au-dessus de chaque nouvelle écriture (et du total)
+              hLineWidth: (i) => (boundaries.has(i) ? 0.8 : 0),
+              hLineColor: () => '#B9D6D1',
               vLineWidth: () => 0,
               paddingTop: () => 4,
               paddingBottom: () => 4,
-              fillColor: (rowIndex) => rowIndex % 2 === 0 ? null : '#f2f2f2'
+              paddingLeft: () => 5,
+              paddingRight: () => 5,
+              // Trame douce par écriture (une écriture sur deux)
+              fillColor: (rowIndex) => (shaded.has(rowIndex) ? '#EFF7F4' : null)
             }
           }
         ],
         styles: {
-          header: { fontSize: 18, bold: true, font: 'Helvetica' },
-          subheader: { fontSize: 10, bold: true, font: 'Helvetica' },
-          tableHeader: { bold: true, fontSize: 7, color: 'white', fillColor: '#1A5276', alignment: 'center', font: 'Helvetica' }
+          header: { fontSize: 16, bold: true, color: '#0E7C86', characterSpacing: 1, font: 'Helvetica' },
+          subheader: { fontSize: 10, bold: true, color: '#16202B', font: 'Helvetica' },
+          tableHeader: { bold: true, fontSize: 7, color: 'white', fillColor: '#0E7C86', alignment: 'center', font: 'Helvetica' }
         }
       };
 

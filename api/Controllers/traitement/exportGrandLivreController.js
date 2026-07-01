@@ -7,8 +7,10 @@ const dossiers = db.dossiers;
 const exercices = db.exercices;
 const userscomptes = db.userscomptes;
 const journals = db.journals;
+const dossierplancomptables = db.dossierplancomptables;
 const { generateGrandLivreContent } = require('../../Middlewares/GrandLivre/GrandLivreGeneratePdf');
 const { exportGrandLivreTableExcel } = require('../../Middlewares/GrandLivre/GrandLivreGenerateExcel');
+const { buildHeader, pageFooter, contentWidth } = require('../../Middlewares/exportPdfTheme');
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -49,19 +51,22 @@ module.exports = {
       const docDefinition = {
         pageSize: 'A4',
         pageOrientation: 'portrait',
-        pageMargins: [10, 40, 10, 40],
-        defaultStyle: { font: 'Helvetica', fontSize: 8 },
+        pageMargins: [15, 18, 15, 32],
+        defaultStyle: { font: 'Helvetica', fontSize: 8, color: '#16202B' },
+        footer: pageFooter(formatDate(new Date())),
         content: [
-          { text: 'GRAND LIVRE', style: 'header', alignment: 'center', margin: [0,0,0,10] },
-          { text: `Dossier : ${dossier?.dossier || ''}`, style: 'subheader', alignment: 'center', margin: [0,0,0,8] },
-          { text: `Période du : ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`, alignment: 'left', margin: [0,0,0,10] },
+          ...buildHeader('Grand livre', {
+            dossier: dossier?.dossier,
+            compte: compte?.nom,
+            periode: `Du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`,
+          }, contentWidth('portrait')),
           ...buildSections(groups)
         ],
         styles: {
-          header: { fontSize: 16, bold: true, font: 'Helvetica' },
-          subheader: { fontSize: 11, bold: true, font: 'Helvetica' },
-          tableHeader: { bold: true, fontSize: 7, color: 'white', fillColor: '#1A5276', alignment: 'center', font: 'Helvetica' },
-          accountHeader: { bold: true, fillColor: '#CDE9F6' }
+          header: { fontSize: 16, bold: true, color: '#0E7C86', characterSpacing: 1, font: 'Helvetica' },
+          subheader: { fontSize: 11, bold: true, color: '#16202B', font: 'Helvetica' },
+          tableHeader: { bold: true, fontSize: 7, color: 'white', fillColor: '#0E7C86', alignment: 'center', font: 'Helvetica' },
+          accountHeader: { bold: true, fillColor: '#E2F0F1' }
         }
       };
 
@@ -107,23 +112,20 @@ module.exports = {
         return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
       }
 
-      // Récupérer les compteaux uniques depuis la table journals
-      const listeCompteAux = await journals.findAll({
+      // Comptes du plan comptable du dossier (compte + libellé)
+      const list = await dossierplancomptables.findAll({
         where: {
           id_compte: Number(compteId),
           id_dossier: Number(fileId),
-          id_exercice: Number(exerciceId),
-          compteaux: { [Sequelize.Op.ne]: null }
         },
-        attributes: [
-          [Sequelize.fn('DISTINCT', Sequelize.col('compteaux')), 'compteaux']
-        ],
-        raw: true
+        attributes: ['compte', 'libelle', 'baseaux'],
+        order: [['compte', 'ASC'], ['baseaux', 'ASC']],
+        raw: true,
       });
 
-      const formattedList = listeCompteAux
-        .map(item => ({ compte: item.compteaux }))
-        .filter(item => item.compte);
+      const formattedList = (list || [])
+        .filter(item => item.compte)
+        .map(item => ({ compte: item.compte, libelle: item.libelle || '' }));
 
       return res.json({
         state: formattedList.length > 0,

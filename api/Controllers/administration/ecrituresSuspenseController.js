@@ -220,7 +220,7 @@ module.exports = {
                     subheader2: { fontSize: 9, color: '#566573' },
                     tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
                     cell: { fontSize: 7, color: '#2C3E50' },
-                    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#D6EAF8' },
+                    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
                     noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
                 }
             };

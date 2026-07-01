@@ -256,7 +256,25 @@ const ExercicePeriodeSelector = ({
                                     py: 0.5
                                 }}
                             >
-                                {periode.libelle} {formatDate(periode.date_debut)} au {formatDate(periode.date_fin)}
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        display: 'inline-block',
+                                        px: 0.75,
+                                        py: '2px',
+                                        mr: 0.75,
+                                        borderRadius: '5px',
+                                        bgcolor: '#E7F2EE',
+                                        color: '#1F8A70',
+                                        fontWeight: 700,
+                                        fontSize: '0.7rem',
+                                        lineHeight: 1.4,
+                                        width: 30
+                                    }}
+                                >
+                                    {periode.libelle}
+                                </Box>
+                                 {formatDate(periode.date_debut)} au {formatDate(periode.date_fin)}
                             </MenuItem>
                         ))}
                     </Select>

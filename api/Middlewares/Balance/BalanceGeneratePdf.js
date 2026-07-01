@@ -25,7 +25,7 @@ const generateBalanceContent = async (id_compte, id_dossier, id_exercice, centra
 
     data.forEach((r, i) => {
       const isEven = i % 2 === 0; // lignes paires et impaires
-      const rowColor = isEven ? '#FFFFFF' : '#F8F9F9'; // blanc / gris clair
+      const rowColor = isEven ? '#FFFFFF' : '#F6FAF9'; // blanc / vert très clair
 
       totMvtD += Number(r.mvmdebit || 0);
       totMvtC += Number(r.mvmcredit || 0);
@@ -44,12 +44,12 @@ const generateBalanceContent = async (id_compte, id_dossier, id_exercice, centra
 
     // Ligne total
     body.push([
-      { text: 'TOTAL', bold: true, alignment: 'left', margin: [0, 2, 0, 2], fillColor: '#89A8B2' },
-      { text: '', fillColor: '#89A8B2' },
-      { text: fmt(totMvtD), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#89A8B2' },
-      { text: fmt(totMvtC), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#89A8B2' },
-      { text: fmt(totSoldeD), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#89A8B2' },
-      { text: fmt(totSoldeC), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#89A8B2' }
+      { text: 'TOTAL', bold: true, alignment: 'left', margin: [0, 2, 0, 2], fillColor: '#CFE6E4' },
+      { text: '', fillColor: '#CFE6E4' },
+      { text: fmt(totMvtD), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#CFE6E4' },
+      { text: fmt(totMvtC), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#CFE6E4' },
+      { text: fmt(totSoldeD), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#CFE6E4' },
+      { text: fmt(totSoldeC), bold: true, alignment: 'right', margin: [0, 2, 0, 2], fillColor: '#CFE6E4' }
     ]);
 
     return [

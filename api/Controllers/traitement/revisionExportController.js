@@ -259,8 +259,8 @@ exports.exportPdf = async (req, res) => {
                   paddingBottom: () => 2,
                   minRowHeight: (rowIndex) => rowIndex === 0 ? 22 : 16,
                   fillColor: (rowIndex) => {
-                    if (rowIndex === 0) return '#1A5276';        // header bleu
-                    return rowIndex % 2 === 0 ? '#f2f2f2' : null; // alternance gris/blanc
+                    if (rowIndex === 0) return '#0E7C86';        // header bleu
+                    return rowIndex % 2 === 0 ? '#F6FAF9' : null; // alternance vert clair / blanc
                   }
                 }
               }
@@ -272,8 +272,8 @@ exports.exportPdf = async (req, res) => {
         header: { fontSize: 16, bold: true, font: 'Helvetica', margin: [0, 5, 0, 5] },
         subheader: { fontSize: 12, bold: true, font: 'Helvetica', margin: [0, 2, 0, 2] },
         subheader2: { fontSize: 10, bold: true, font: 'Helvetica', margin: [0, 2, 0, 2] },
-        anomalyHeader: { fontSize: 12, bold: true, font: 'Helvetica', color: '#1A5276' },
-        tableHeader: { bold: true, fontSize: 8, color: 'white', fillColor: '#1A5276', alignment: 'center', font: 'Helvetica' },
+        anomalyHeader: { fontSize: 12, bold: true, font: 'Helvetica', color: '#0E7C86' },
+        tableHeader: { bold: true, fontSize: 8, color: 'white', fillColor: '#0E7C86', alignment: 'center', font: 'Helvetica' },
         noData: { fontSize: 9, color: '#666', italics: true }
       }
     };
@@ -355,7 +355,7 @@ exports.exportExcel = async (req, res) => {
     const writeHeaderRow = (rowIndex) => {
       ws.getRow(rowIndex).values = ['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit'];
       ws.getRow(rowIndex).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      ws.getRow(rowIndex).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+      ws.getRow(rowIndex).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
     };
 
     anomalies.forEach((a) => {
@@ -363,7 +363,7 @@ exports.exportExcel = async (req, res) => {
       const title = `Compte ${compte}: ${a.message || ''}`;
 
       ws.getRow(rowCursor).values = [title];
-      ws.getRow(rowCursor).font = { bold: true, color: { argb: 'FF1A5276' } };
+      ws.getRow(rowCursor).font = { bold: true, color: { argb: 'FF0E7C86' } };
       rowCursor += 1;
 
       writeHeaderRow(rowCursor);
@@ -394,7 +394,7 @@ exports.exportExcel = async (req, res) => {
     const wsA = workbook.addWorksheet('Anomalies');
     wsA.getRow(1).values = ['Compte', 'Message', 'Validé', 'Commentaire'];
     wsA.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    wsA.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+    wsA.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
     anomalies.forEach((a, idx) => {
       const rowIndex = 2 + idx;
       wsA.getRow(rowIndex).values = [a.compteNum || a.id_jnl || '', a.message || '', a.valide ? 'Oui' : 'Non', a.commentaire || ''];

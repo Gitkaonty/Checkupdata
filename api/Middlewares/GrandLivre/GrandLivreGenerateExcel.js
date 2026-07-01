@@ -28,18 +28,21 @@ async function getRows(id_compte, id_dossier, id_exercice, compteAux, dateDebut,
   } else if (dateFin) {
     where.dateecriture = { [Op.lte]: new Date(dateFin) };
   }
-  // Filtre par compteaux si sélectionné
+  // Filtre par compte(s) sélectionné(s) du plan comptable (général ou auxiliaire)
   if (Array.isArray(compteAux) && compteAux.length > 0) {
-    where.compteaux = { [Op.in]: compteAux };
+    where[Op.or] = [
+      { comptegen: { [Op.in]: compteAux } },
+      { compteaux: { [Op.in]: compteAux } },
+    ];
   }
 
   const list = await journals.findAll({
     where,
     include: [
-      { model: dossierplancomptables, attributes: ['compte', 'libelle'], required: true },
+      { model: dossierplancomptables, attributes: ['compte', 'libelle'], required: false },
       { model: codejournals, attributes: ['code'], required: false }
     ],
-    order: [[dossierplancomptables, 'compte', 'ASC'], ['dateecriture', 'ASC'], ['id_ecriture', 'ASC'], ['id', 'ASC']]
+    order: [['comptegen', 'ASC'], ['dateecriture', 'ASC'], ['id_ecriture', 'ASC'], ['id', 'ASC']]
   });
 
   return list.map(r => (r?.get ? r.get({ plain: true }) : r));
@@ -48,8 +51,8 @@ async function getRows(id_compte, id_dossier, id_exercice, compteAux, dateDebut,
 function groupByAccount(rows) {
   const groups = new Map();
   rows.forEach(r => {
-    const compte = r?.dossierplancomptable?.compte || 'INCONNU';
-    const libelle = r?.dossierplancomptable?.libelle || '';
+    const compte = r?.comptegen || r?.compteaux || r?.dossierplancomptable?.compte || 'INCONNU';
+    const libelle = r?.libellecompte || r?.libelleaux || r?.dossierplancomptable?.libelle || '';
     if (!groups.has(compte)) groups.set(compte, { libelle, rows: [] });
     groups.get(compte).rows.push(r);
   });
@@ -95,7 +98,7 @@ async function exportGrandLivreTableExcel(
   ws.mergeCells('A1:E1');
   const titleCell = ws.getCell('A1');
   titleCell.value = 'GRAND LIVRE';
-  titleCell.font = { bold: true, size: 16 };
+  titleCell.font = { bold: true, size: 16, color: { argb: 'FF0E7C86' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // ====== Ligne 2 : Dossier centré sous le titre ======
@@ -118,19 +121,20 @@ async function exportGrandLivreTableExcel(
   // === ENTÊTE DU TABLEAU ===
   const header = ['Date', 'Jal', 'Pièce', 'Let', 'Libellé', 'Débit', 'Crédit', 'Solde'];
   const headerRow = ws.addRow(header);
+  headerRow.height = 20;
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.alignment = { horizontal: 'center' };
+    cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF1A5276' }, // bleu foncé uniquement sur la ligne du tableau
+      fgColor: { argb: 'FF0E7C86' }, // vert (thème) sur la ligne d'en-tête
     };
     cell.border = {
-      top: { style: 'thin', color: { argb: 'FF000000' } },
-      left: { style: 'thin', color: { argb: 'FF000000' } },
-      right: { style: 'thin', color: { argb: 'FF000000' } },
-      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      top: { style: 'thin', color: { argb: 'FFCFE0DE' } },
+      left: { style: 'thin', color: { argb: 'FFCFE0DE' } },
+      right: { style: 'thin', color: { argb: 'FFCFE0DE' } },
+      bottom: { style: 'thin', color: { argb: 'FFCFE0DE' } },
     };
   });
 
@@ -148,8 +152,8 @@ async function exportGrandLivreTableExcel(
       const c = ws.getCell(`${col}${accRow.number}`);
       if (col === 'A') c.value = compte;
       if (col === 'E') c.value = info.libelle || '';
-      c.font = { bold: true, size: 12, color: { argb: 'FF1A5276' } };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F4FA' } };
+      c.font = { bold: true, size: 12, color: { argb: 'FF0E7C86' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0F1' } };
       c.alignment = { horizontal: (col === 'A' ? 'left' : col === 'E' ? 'center' : 'right'), vertical: 'middle' };
       c.border = {
         top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
@@ -211,7 +215,7 @@ async function exportGrandLivreTableExcel(
     ['F', 'G', 'H'].forEach(col => {
       const cell = subTotalRow.getCell(col);
       cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7F2F0' } };
       cell.alignment = { horizontal: 'right' };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
@@ -239,8 +243,8 @@ async function exportGrandLivreTableExcel(
   // Ligne TOTAL GENERAL
   const grandTotalRow = ws.addRow(['', '', '', '', 'TOTAL', grandDebit, grandCredit, grandSolde]);
   grandTotalRow.eachCell((cell, colNumber) => {
-    cell.font = { bold: true };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB3DAF1' } };
+    cell.font = { bold: true, color: { argb: 'FF0E2733' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
     cell.alignment = { horizontal: (colNumber >= 6 ? 'right' : (colNumber === 5 ? 'center' : 'center')) };
     cell.border = {
       top: { style: 'thin', color: { argb: 'FF999999' } },

@@ -425,7 +425,26 @@ const ExportBalance = () => {
                 >
                   {listeExercice.map((option) => (
                     <MenuItem key={option.id} value={option.id} sx={{ ...NUM, fontSize: '13px' }}>
-                      {option.libelle_rang} : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
+                      <Box
+                          component="span"
+                          sx={{
+                              display: 'inline-block',
+                              px: 0.75,
+                              py: '2px',
+                              mr: 0.75,
+                              borderRadius: '5px',
+                              bgcolor: '#E7F2EE',
+                              color: '#1F8A70',
+                              fontWeight: 700,
+                              fontSize: '0.7rem',
+                              lineHeight: 1.4,
+                              width: 30
+                          }}
+                      >
+                        {option.libelle_rang}
+                      </Box>
+                       
+                      : {format(new Date(option.date_debut), 'dd/MM/yyyy')} – {format(new Date(option.date_fin), 'dd/MM/yyyy')}
                     </MenuItem>
                   ))}
                 </Select>

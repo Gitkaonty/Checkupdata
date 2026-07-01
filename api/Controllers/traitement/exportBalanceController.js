@@ -15,6 +15,7 @@ const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 const { generateBalanceContent } = require('../../Middlewares/Balance/BalanceGeneratePdf');
 const { exportBalanceTableExcel } = require('../../Middlewares/Balance/BalanceGenerateExcel');
+const { buildHeader, pageFooter, contentWidth } = require('../../Middlewares/exportPdfTheme');
 
 const fonctionUpdateSoldAnalytique = require('../../Middlewares/UpdateSolde/updateBalanceAnalytique');
 const createAnalytiqueIfNotExist = fonctionUpdateSoldAnalytique.createAnalytiqueIfNotExist;
@@ -382,34 +383,32 @@ module.exports = {
             const docDefinition = {
                 pageSize: 'A4',
                 pageOrientation: 'landscape',
-                pageMargins: [10, 40, 10, 40],
-                defaultStyle: { font: 'Helvetica', fontSize: 8 },
+                pageMargins: [15, 18, 15, 32],
+                defaultStyle: { font: 'Helvetica', fontSize: 9, color: '#16202B' },
+                footer: pageFooter(formatDate(new Date())),
                 content: [
-                    { text: 'BALANCE', style: 'header', alignment: 'center', margin: [0, 0, 0, 15] },
-                    {
-                        text: `Dossier: ${dossier?.dossier || ''}`, alignment: 'center',
-                        style: 'subheader', margin: [0, 0, 0, 20]
-                    },
-                    {
-                        text: `Période du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`,
-                        alignment: 'left',
-                        style: 'subheader2', margin: [0, 0, 0, 20]
-                    },
+                    ...buildHeader('Balance générale', {
+                        dossier: dossier?.dossier,
+                        compte: compte?.nom,
+                        periode: `Du ${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`,
+                    }, contentWidth('landscape')),
                     {
                         ...buildTable(list)[0],
                         layout: {
                             hLineWidth: () => 0,
                             vLineWidth: () => 0,
-                            paddingTop: () => 4,
-                            paddingBottom: () => 4
+                            paddingTop: () => 5,
+                            paddingBottom: () => 5,
+                            paddingLeft: () => 6,
+                            paddingRight: () => 6
                         }
                     }
                 ],
                 styles: {
-                    header: { fontSize: 18, bold: true, font: 'Helvetica' },
-                    subheader: { fontSize: 18, bold: true, font: 'Helvetica' },
-                    subheader2: { fontSize: 12, bold: true, font: 'Helvetica' },
-                    tableHeader: { bold: true, fontSize: 7, color: 'white', fillColor: '#1A5276', alignment: 'center', font: 'Helvetica' }
+                    header: { fontSize: 16, bold: true, color: '#0E7C86', characterSpacing: 1, font: 'Helvetica' },
+                    subheader: { fontSize: 11, bold: true, color: '#16202B', font: 'Helvetica' },
+                    subheader2: { fontSize: 9, bold: false, color: '#6A7785', font: 'Helvetica' },
+                    tableHeader: { bold: true, fontSize: 7, color: 'white', fillColor: '#0E7C86', alignment: 'center', font: 'Helvetica' }
                 }
             };
 

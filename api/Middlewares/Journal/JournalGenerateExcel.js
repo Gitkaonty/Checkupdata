@@ -27,7 +27,7 @@ async function getJournalRows(id_compte, id_dossier, id_exercice, journalCodes, 
       { model: dossierplancomptables, attributes: ['compte', 'libelle'], required: false },
       { model: codejournals, attributes: ['code'], required: Array.isArray(journalCodes) && journalCodes.length > 0, where: (Array.isArray(journalCodes) && journalCodes.length > 0) ? { code: { [Op.in]: journalCodes } } : undefined }
     ],
-    order: [['id_ecriture', 'ASC'], ['dateecriture', 'ASC'], [codejournals, 'code', 'ASC']]
+    order: [[codejournals, 'code', 'ASC'], ['dateecriture', 'ASC'], ['id_ecriture', 'ASC'], ['id', 'ASC']]
   });
 
   return list.map(r => (r?.get ? r.get({ plain: true }) : r));
@@ -61,7 +61,7 @@ async function exportJournalTableExcel(id_compte, id_dossier, id_exercice, journ
   ws.mergeCells('A1:E1');
   const titleCell = ws.getCell('A1');
   titleCell.value = 'JOURNAL';
-  titleCell.font = { bold: true, size: 16 };
+  titleCell.font = { bold: true, size: 16, color: { argb: 'FF0E7C86' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // ====== Ligne 2 : Dossier centré sous le titre ======
@@ -83,29 +83,48 @@ async function exportJournalTableExcel(id_compte, id_dossier, id_exercice, journ
 
   // En-têtes
   const headerRow = ws.addRow(['Date', 'Journal', 'Compte', 'Libellé', 'Pièce', 'Lettrage', 'Devise', 'Débit', 'Crédit']);
+  headerRow.height = 20;
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.alignment = { horizontal: 'center' };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+    cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
   });
   // (supprimé) insertion inutile qui pouvait décaler la mise en page
 
   let totD = 0, totC = 0;
 
 
-  rows.forEach(r => {
+  let prevEcr;
+  let group = -1;
+  rows.forEach((r, i) => {
+    const ecr = String(r.id_ecriture ?? `__${i}`);
+    if (i === 0 || ecr !== prevEcr) group += 1;
+    const isNewEcr = i > 0 && ecr !== prevEcr;
+    prevEcr = ecr;
+
     totD += Number(r.debit || 0);
     totC += Number(r.credit || 0);
-    ws.addRow({
+    const dataRow = ws.addRow({
       date: fmtDate(r.dateecriture),
       journal: r.codejournal?.code || '',
-      compte: r.dossierplancomptables?.compte || '',
+      compte: r.compteaux || r.comptegen || r.dossierplancomptable?.compte || '',
       libelle: r.libelle || '',
       piece: r.piece || '',
       lettrage: r.lettrage || '',
       devise: r.devise || '',
       debit: Number(r.debit || 0),
       credit: Number(r.credit || 0),
+    });
+
+    const shade = group % 2 === 1;
+    dataRow.eachCell((cell) => {
+      if (shade) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF7F4' } };
+      }
+      // Filet séparateur au-dessus d'une nouvelle écriture
+      if (isNewEcr) {
+        cell.border = { ...(cell.border || {}), top: { style: 'thin', color: { argb: 'FFB9D6D1' } } };
+      }
     });
   });
 
@@ -115,8 +134,8 @@ async function exportJournalTableExcel(id_compte, id_dossier, id_exercice, journ
   cols.forEach((col) => {
     const cell = ws.getCell(`${col}${totalRow.number}`);
     if (!cell.value) cell.value = '';
-    cell.font = { bold: true };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+    cell.font = { bold: true, color: { argb: 'FF0E2733' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
     cell.alignment = { horizontal: (['H', 'I'].includes(col) ? 'right' : 'center'), vertical: 'middle' };
     cell.border = {
       top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
