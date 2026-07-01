@@ -17,6 +17,80 @@ import {
 } from '@mui/icons-material';
 import useAxiosPrivate from '../../../config/axiosPrivate';
 
+// ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  warn: '#B5791A',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+  overflow: 'hidden',
+};
+const primaryBtnSx = {
+  bgcolor: T.accent,
+  color: '#fff',
+  textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '13px',
+  borderRadius: '8px',
+  boxShadow: 'none',
+  '&:hover': { bgcolor: T.accentDark },
+  '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint },
+};
+const gridSx = {
+  border: 'none',
+  flex: 1,
+  minHeight: 0,
+  fontSize: '12.5px',
+  '& .MuiDataGrid-columnHeaders': {
+    bgcolor: T.ledger,
+    borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': {
+      fontSize: '11px',
+      fontWeight: 700,
+      color: T.muted,
+      letterSpacing: '.3px',
+      textTransform: 'uppercase',
+    },
+  },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+};
+const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+
+// Palette de chips (couleur stable par valeur) pour Type / Test
+const CHIP_PALETTE = [
+  { bg: '#E2F0F1', fg: '#0E7C86' }, // pétrole
+  { bg: '#E7F2EE', fg: '#1F8A70' }, // vert
+  { bg: '#E8EFF6', fg: '#3A6EA5' }, // bleu
+  { bg: '#F6EEDD', fg: '#B5791A' }, // ambre
+  { bg: '#EDE9F7', fg: '#6B4FBB' }, // violet
+  { bg: '#F1EAE0', fg: '#8A6D3B' }, // brun
+];
+const pickColor = (str) => {
+  const s = String(str || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return CHIP_PALETTE[h % CHIP_PALETTE.length];
+};
+
 const GestionControles = () => {
   const axiosPrivate = useAxiosPrivate();
   const [rows, setRows] = useState([]);
@@ -190,7 +264,12 @@ const GestionControles = () => {
   }, [rows]);
 
   const columns = [
-    { field: 'controle', headerName: 'CODE CONTROLE', flex: 1, editable: true, checkboxSelection: true },
+    {
+      field: 'controle', headerName: 'CODE CONTRÔLE', flex: 1, editable: true, checkboxSelection: true,
+      renderCell: (p) => p.value
+        ? <Box component="span" sx={{ fontFamily: MONO, fontSize: '12px', fontWeight: 700, color: T.accent, bgcolor: T.accW, px: 1, py: '3px', borderRadius: '6px' }}>{p.value}</Box>
+        : <Typography sx={{ color: T.faint, fontSize: '12px' }}>—</Typography>,
+    },
     {
       field: 'Type',
       headerName: 'TYPE',
@@ -198,8 +277,16 @@ const GestionControles = () => {
       editable: true,
       type: 'singleSelect',
       valueOptions: typeValueOptions,
+      renderCell: (p) => {
+        if (!p.value) return null;
+        const c = pickColor(p.value);
+        return <Chip label={p.value} size="small" sx={{ bgcolor: c.bg, color: c.fg, fontWeight: 700, fontSize: '11px', height: 22, borderRadius: '6px' }} />;
+      },
     },
-    { field: 'compte', headerName: 'COMPTE', flex: 0.8, editable: true },
+    {
+      field: 'compte', headerName: 'COMPTE', flex: 0.7, editable: true,
+      renderCell: (p) => <Box component="span" sx={{ ...NUM, fontFamily: MONO, fontSize: '12px', fontWeight: 600, color: p.value === '*' ? T.faint : T.text }}>{p.value || '—'}</Box>,
+    },
     {
       field: 'test',
       headerName: 'TEST',
@@ -207,27 +294,47 @@ const GestionControles = () => {
       editable: true,
       type: 'singleSelect',
       valueOptions: testValueOptions,
+      renderCell: (p) => {
+        if (!p.value) return null;
+        const c = pickColor(p.value);
+        return <Chip label={p.value} size="small" variant="outlined" sx={{ borderColor: c.fg, color: c.fg, bgcolor: c.bg, fontWeight: 700, fontSize: '11px', height: 22, borderRadius: '6px' }} />;
+      },
     },
-    { field: 'description', headerName: 'DESCRIPTION', flex: 2, editable: true },
-    { field: 'anomalies', headerName: 'ANOMALIES DÉTECTÉES', flex: 2, editable: true },
-    { field: 'param', headerName: 'PARAMÈTRES', flex: 1, editable: true },
+    {
+      field: 'description', headerName: 'DESCRIPTION', flex: 2, editable: true,
+      renderCell: (p) => <Typography noWrap title={p.value || ''} sx={{ fontSize: '12.5px', color: T.text }}>{p.value}</Typography>,
+    },
+    {
+      field: 'anomalies', headerName: 'ANOMALIES DÉTECTÉES', flex: 2, editable: true,
+      renderCell: (p) => p.value
+        ? <Typography noWrap title={p.value} sx={{ fontSize: '12px', color: T.warn }}>{p.value}</Typography>
+        : <Typography sx={{ color: T.faint, fontSize: '12px' }}>—</Typography>,
+    },
+    {
+      field: 'param', headerName: 'PARAMÈTRES', flex: 0.8, editable: true,
+      renderCell: (p) => (p.value !== '' && p.value != null)
+        ? <Box component="span" sx={{ ...NUM, fontFamily: MONO, fontSize: '12px', fontWeight: 700, color: T.ink, bgcolor: T.ledger, px: 1, py: '3px', borderRadius: '6px' }}>{p.value}</Box>
+        : <Typography sx={{ color: T.faint, fontSize: '12px' }}>—</Typography>,
+    },
     {
       field: 'etat',
       headerName: 'ÉTAT',
-      width: 120,
+      width: 130,
       type: 'boolean',
       editable: true,
       renderCell: (params) => (
         <Chip
-          icon={params.value ? <CheckCircleOutline /> : <DoDisturbOnOutlined />}
+          icon={params.value ? <CheckCircleOutline sx={{ fontSize: '15px !important' }} /> : <DoDisturbOnOutlined sx={{ fontSize: '15px !important' }} />}
           label={params.value ? "Activé" : "Désactivé"}
           size="small"
           sx={{
             fontWeight: 700,
-            fontSize: '0.65rem',
-            bgcolor: params.value ? '#ECFDF5' : '#FEF2F2',
-            color: params.value ? '#10B981' : '#EF4444',
-            border: `1px solid ${params.value ? '#10B981' : '#EF4444'}30`
+            fontSize: '11px',
+            height: 22,
+            borderRadius: '6px',
+            bgcolor: params.value ? T.accW : '#F7E7E4',
+            color: params.value ? T.pos : T.neg,
+            '& .MuiChip-icon': { color: 'inherit' },
           }}
         />
       )
@@ -260,10 +367,10 @@ const GestionControles = () => {
 
         return [
           <GridActionsCellItem
-            icon={<EditOutlined sx={{ color: '#2563EB' }} />}
+            icon={<EditOutlined sx={{ color: T.accent }} />}
             label="Edit"
             onClick={handleEditClick(id)}
-            sx={{ bgcolor: '#EEF2FF', mr: 1 }}
+            sx={{ bgcolor: T.accW, mr: 1 }}
           />,
           <GridActionsCellItem
             icon={<DeleteOutline sx={{ color: '#94A3B8' }} />}
@@ -278,53 +385,43 @@ const GestionControles = () => {
 
   return (
     <Box sx={{
-      p: 3, bgcolor: '#F8FAFC', height: 'calc(100vh - 120px)',
+      p: 3, bgcolor: T.canvas, height: 'calc(100vh - 120px)',
       width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden'
     }}>
 
-      {/* --- HEADER --- */}
-      <Box sx={{ mb: 3 }}>
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2.5, flexShrink: 0 }}>
         <Breadcrumbs
-          separator={<NavigateNext fontSize="small" />}
-          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Link underline="hover" color="inherit" href="/dashboard"
-            sx={{ display: 'flex', alignItems: 'center' }}
-          >
-            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </Link>
-          <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Gestion des contrôles</Typography>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Gestion des contrôles</Typography>
         </Breadcrumbs>
 
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2}>
           <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Box sx={{ p: 1, borderRadius: '8px', bgcolor: '#0F172A', display: 'flex' }}>
-              <RuleOutlined sx={{ color: '#00B8D4', fontSize: 24 }} />
+            <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+              <RuleOutlined />
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-                Gestion des Contrôles
+              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+                Gestion des contrôles
               </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-                Configurez les règles automatiques de vérification des écritures.
+              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+                Configurez les règles automatiques de vérification des écritures
               </Typography>
             </Box>
           </Stack>
 
           <Button
             variant="contained"
+            disableElevation
             startIcon={<AddOutlined />}
             onClick={handleAddRow}
-            sx={{
-              bgcolor: '#000000',
-              color: '#FFFFFF',
-              textTransform: 'none',
-              borderRadius: '8px',
-              px: 3,
-              fontWeight: 700,
-              '&:hover': { bgcolor: '#222' },
-              '&:disabled': { bgcolor: '#CCCCCC', color: '#666' }
-            }}
+            sx={{ ...primaryBtnSx, px: 3, height: 40 }}
           >
             Nouveau contrôle
           </Button>
@@ -332,17 +429,12 @@ const GestionControles = () => {
       </Box>
 
       {/* --- DATAGRID --- */}
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
       {error && (
-        <Box sx={{ p: 2, color: 'error.main' }}>
-          <Typography>{error}</Typography>
+        <Box sx={{ p: 2, mb: 2, borderRadius: '10px', bgcolor: '#F7E7E4', border: '1px solid #F0C9C4', flexShrink: 0 }}>
+          <Typography sx={{ fontSize: '13px', color: T.neg, fontWeight: 600 }}>{error}</Typography>
         </Box>
       )}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Paper elevation={0} sx={{ ...panelSx, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -354,29 +446,7 @@ const GestionControles = () => {
           loading={loading}
           checkboxSelection
           disableSelectionOnClick={false}
-
-          sx={{
-            border: 'none',
-            flex: 1,
-            minHeight: 0,
-            '& .MuiDataGrid-columnHeaders': {
-              bgcolor: '#F8FAFC',
-              borderBottom: '1px solid #E2E8F0',
-              '& .MuiDataGrid-columnHeaderTitle': {
-                fontSize: '0.7rem',
-                fontWeight: 800,
-                color: '#64748B',
-                textTransform: 'uppercase',
-              }
-            },
-            '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #F1F5F9',
-              '&:focus': { outline: 'none' }
-            },
-            '& .MuiDataGrid-row:hover': {
-              bgcolor: '#F1F5F930'
-            }
-          }}
+          sx={gridSx}
         />
       </Paper>
 
