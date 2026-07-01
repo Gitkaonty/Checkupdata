@@ -4,6 +4,7 @@ import {
   Box, Typography, Stack, Button, IconButton, Paper, Grid,
   TextField, Chip, Breadcrumbs, Link, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  List, ListItemButton, ListItemText, ListItemIcon,
   Tab, Tabs, Select, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, FormHelperText, Autocomplete,
   Input
@@ -43,6 +44,73 @@ import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 import ConfirmActionDialog from '../../components/ConfirmActionDialog';
 import PopupImportCodeJournaux from '../../components/PopupImportCodeJournaux';
+
+// ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  warn: '#B5791A',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+  overflow: 'hidden',
+};
+const sectionTitleSx = {
+  fontSize: '11px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '.5px',
+  color: T.ink,
+};
+// Bouton d'action principal (pétrole)
+const primaryBtnSx = {
+  bgcolor: T.accent,
+  color: '#fff',
+  textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '13px',
+  borderRadius: '8px',
+  boxShadow: 'none',
+  '&:hover': { bgcolor: T.accentDark },
+  '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint },
+};
+// Style commun des DataGrid (en-têtes « ledger », lignes fines)
+const gridSx = {
+  border: 'none',
+  flex: 1,
+  minHeight: 0,
+  fontSize: '12.5px',
+  '& .MuiDataGrid-columnHeaders': {
+    bgcolor: T.ledger,
+    borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': {
+      fontSize: '11px',
+      fontWeight: 700,
+      color: T.muted,
+      letterSpacing: '.3px',
+      textTransform: 'uppercase',
+    },
+  },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+  '& .Mui-selected': { bgcolor: `${T.accW} !important` },
+};
 
 // Composant DataGrid pour Codes Journaux
 const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
@@ -320,7 +388,7 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
 
         return [
           <GridActionsCellItem
-            icon={<EditOutlined sx={{ color: '#6366F1' }} />}
+            icon={<EditOutlined sx={{ color: T.accent }} />}
             label="Edit"
             onClick={handleEditClick(id)}
             sx={{ bgcolor: '#EEF2FF', mr: 1 }}
@@ -345,13 +413,13 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
             onClick={handleAddNewRow}
             startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
             sx={{
-              bgcolor: '#000',
+              bgcolor: T.accent,
               color: '#FFF',
               textTransform: 'none',
               borderRadius: '8px',
 
               '&:hover': {
-                bgcolor: '#000'
+                bgcolor: T.accent
               }
             }}
           >
@@ -403,8 +471,8 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
             minHeight: 0,
 
             '& .MuiDataGrid-columnHeaders': {
-              bgcolor: '#F8FAFC',
-              borderBottom: '1px solid #E2E8F0',
+              bgcolor: T.ledger,
+              borderBottom: `1px solid ${T.line}`,
 
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontSize: '0.7rem',
@@ -709,7 +777,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           ];
         }
         return [
-          <GridActionsCellItem icon={<EditOutlined sx={{ color: '#6366F1' }} />} label="Edit" onClick={handleAxeEditClick(id)} sx={{ bgcolor: '#EEF2FF', mr: 1 }} />,
+          <GridActionsCellItem icon={<EditOutlined sx={{ color: T.accent }} />} label="Edit" onClick={handleAxeEditClick(id)} sx={{ bgcolor: '#EEF2FF', mr: 1 }} />,
           <GridActionsCellItem icon={<DeleteOutline sx={{ color: '#EF4444' }} />} label="Delete" onClick={handleAxeDeleteClick(id)} sx={{ bgcolor: '#FEF2F2' }} />,
         ];
       },
@@ -736,7 +804,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           ];
         }
         return [
-          <GridActionsCellItem icon={<EditOutlined sx={{ color: '#6366F1' }} />} label="Edit" onClick={handleSectionEditClick(id)} sx={{ bgcolor: '#EEF2FF', mr: 1 }} />,
+          <GridActionsCellItem icon={<EditOutlined sx={{ color: T.accent }} />} label="Edit" onClick={handleSectionEditClick(id)} sx={{ bgcolor: '#EEF2FF', mr: 1 }} />,
           <GridActionsCellItem icon={<DeleteOutline sx={{ color: '#EF4444' }} />} label="Delete" onClick={handleSectionDeleteClick(id)} sx={{ bgcolor: '#FEF2F2' }} />,
         ];
       },
@@ -751,13 +819,13 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2.5, bgcolor: '#FFF', flexShrink: 0 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>AXES</Typography>
             <Button onClick={handleAddNewAxe} startIcon={<AddOutlined sx={{ color: '#10B981' }} />} sx={{
-              bgcolor: '#000',
+              bgcolor: T.accent,
               color: '#FFF',
               textTransform: 'none',
               borderRadius: '8px',
 
               '&:hover': {
-                bgcolor: '#000'
+                bgcolor: T.accent
               }
             }}>Ajouter</Button>
           </Stack>
@@ -846,13 +914,13 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
               disabled={!selectedAxe}
               sx={{
-                bgcolor: '#000',
+                bgcolor: T.accent,
                 color: '#FFF',
                 textTransform: 'none',
                 borderRadius: '8px',
 
                 '&:hover': {
-                  bgcolor: '#000',
+                  bgcolor: T.accent,
                 },
 
                 '&.Mui-disabled': {
@@ -1439,7 +1507,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
       editable: true,
       headerClassName: 'HeaderbackColor',
       renderCell: (params) => (
-        <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#6366F1', fontFamily: 'monospace' }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.accent, fontFamily: 'monospace' }}>
           {params.row.compte}
         </Typography>
       ),
@@ -1652,7 +1720,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
 
         return [
           <GridActionsCellItem
-            icon={<EditOutlined sx={{ color: '#6366F1' }} />}
+            icon={<EditOutlined sx={{ color: T.accent }} />}
             label="Edit"
             onClick={handlePcEditClick(id)}
             sx={{ bgcolor: '#EEF2FF', mr: 1 }}
@@ -1684,13 +1752,13 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           onClick={handleAddNewPcRow}
           startIcon={<AddOutlined />}
           sx={{
-            bgcolor: '#000',
+            bgcolor: T.accent,
             color: '#FFF',
             textTransform: 'none',
             borderRadius: '8px',
 
             '&:hover': {
-              bgcolor: '#000' // 👈 même couleur au hover
+              bgcolor: T.accent // 👈 même couleur au hover
             }
           }}
         >
@@ -1778,7 +1846,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
 const CRM = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(4); // 4 = Général (identité du dossier)
   const [selectedAxe, setSelectedAxe] = useState(0);
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
@@ -2156,141 +2224,34 @@ const CRM = () => {
 
   return (
     <Box sx={{
-      p: 2, height: 'calc(100vh - 120px)',
-      width: 'calc(100vw - 130px)', bgcolor: '#F8FAFC', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+      p: 3, height: 'calc(100vh - 120px)',
+      width: 'calc(100vw - 130px)', bgcolor: T.canvas, display: 'flex', flexDirection: 'column', overflow: 'hidden'
     }}>
-      {/* --- BREADCRUMBS --- */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-        <Chip
-          label={compteName}
-          sx={{
-            borderRadius: '4px', // Rectangulaire comme demandé
-            bgcolor: '#F1F5F9',
-            color: '#475569',
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            border: '1px solid #E2E8F0',
-            height: 24,
-          }}
-        />
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2, flexShrink: 0 }}>
         <Breadcrumbs
-          separator={<NavigateNext fontSize="small" />}
-          sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Link underline="hover" color="inherit" href="/dashboard"
-            sx={{ display: 'flex', alignItems: 'center' }}
-          >
-            <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </Link>
-          <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>CRM & Dossier</Typography>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Paramètres · CRM</Typography>
         </Breadcrumbs>
-      </Stack>
 
-      {/* --- TITRE DE LA PAGE --- */}
-      <Box sx={{ mb: 3, mt: 2 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
-          <AdminPanelSettingsOutlined sx={{ color: '#1E293B', fontSize: 32 }} />
-          <Typography variant="h4" sx={{ fontWeight: 900, color: '#1E293B', letterSpacing: '-1px' }}>
-            CRM
-          </Typography>
+          <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+            <AdminPanelSettingsOutlined />
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+              CRM &amp; paramètres du dossier
+            </Typography>
+            <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+              Plan comptable, journaux, analytique &amp; seuils · {compteName}
+            </Typography>
+          </Box>
         </Stack>
-        <Typography variant="subtitle2" sx={{ color: '#64748B', fontWeight: 600, ml: 6, mt: -0.5 }}>
-          SARL Kaonty Demo
-        </Typography>
-      </Box>
-
-      {/* --- HEADER ÉDITABLE --- */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          borderRadius: '16px',
-          mb: 1,
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-        }}
-      >
-        <Grid container spacing={4} alignItems="flex-end">
-
-          {/* NOM DOSSIER */}
-          <Grid item xs={12} md={3}>
-            <FieldLabel>Nom complet du dossier</FieldLabel>
-            <TextField
-              value={nomDossier}
-              onChange={(e) => setNomDossier(e.target.value)}
-              fullWidth
-              size="small"
-              variant="outlined"
-            />
-          </Grid>
-
-          {/* PORTEFEUILLE */}
-          <Grid item xs={12} md={3}>
-            <FieldLabel>Portefeuille associé</FieldLabel>
-            <Autocomplete
-              multiple
-              options={listePortefeuille}
-              getOptionLabel={(option) => option.nom || ''}
-              value={portefeuille}
-              onChange={(e, newValue) => setPortefeuille(newValue)}
-              size="small"
-              renderInput={(params) => (
-                <TextField {...params} placeholder="Sélectionner" />
-              )}
-            />
-          </Grid>
-
-          {/* BOUTON */}
-          <Grid
-            item
-            xs={12}
-            md={2}
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              pl: 1 // 👈 espace à gauche pour éviter effet collé
-            }}
-          >
-            <Button
-              variant="contained"
-              startIcon={<SaveOutlined />}
-              sx={{
-                width: '150px',
-                bgcolor: '#1E293B',
-                textTransform: 'none',
-                borderRadius: '10px',
-                height: '40px',
-                fontWeight: 700,
-                boxShadow: 'none',
-
-                '&:hover': {
-                  bgcolor: '#000'
-                }
-              }}
-              onClick={handleSaveHeader}
-            >
-              Enregistrer
-            </Button>
-          </Grid>
-
-        </Grid>
-      </Paper>
-
-      {/* --- NAVIGATION --- */}
-      <Box sx={{ mb: 2 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(e, v) => setActiveTab(v)}
-          sx={{
-            '& .MuiTabs-indicator': { height: 3, borderRadius: '3px', bgcolor: '#6366F1' },
-            '& .MuiTab-root': { textTransform: 'none', fontWeight: 800, fontSize: '0.9rem', color: '#64748B', minWidth: 120 }
-          }}
-        >
-          <Tab label="Seuils" />
-          <Tab label="Plan Comptable" />
-          <Tab label="Codes Journaux" />
-          <Tab label="Analytique" />
-        </Tabs>
       </Box>
 
       <ConfirmActionDialog
@@ -2302,85 +2263,148 @@ const CRM = () => {
         confirmText="Valider"
         cancelText="Annuler"
         loading={confirmSeuilLoading}
-        color="#06b6d4"
+        color={T.accent}
       />
 
-      {/* --- CONTENU --- */}
+      {/* --- ESPACE DE TRAVAIL : navigation (gauche) + contenu (droite) --- */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
 
-      {/* ONGLET 0 : SEUILS */}
-      {activeTab === 0 && (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <Grid container spacing={3} sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-            <Grid item xs={12} md={6}>
-              <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AnalyticsOutlined sx={{ color: '#6366F1' }} /> Paramètres d'Anomalies
-                </Typography>
-                <FieldLabel>Seuil de variation analytique N/N-1 (%)</FieldLabel>
-                <TextField
-                  value={seuilVariation}
-                  onChange={(e) => setSeuilVariation(e.target.value)}
-                  onBlur={(e) => handleSeuilBlur(e.target.value)}
-                  fullWidth
-                  type="number"
-                  size="small"
-                />
+        {/* NAVIGATION LATÉRALE */}
+        <Paper elevation={0} sx={{ ...panelSx, width: { xs: '100%', md: 240 }, flex: 'none', display: 'flex', flexDirection: 'column' }}>
+          <List sx={{ p: 1 }}>
+            {[
+              { value: 4, label: 'Général', icon: <BusinessOutlined /> },
+              { value: 1, label: 'Plan comptable', icon: <MenuBookOutlined /> },
+              { value: 2, label: 'Codes journaux', icon: <ListAltOutlined /> },
+              { value: 3, label: 'Analytique', icon: <AccountTreeOutlined /> },
+              { value: 0, label: 'Seuils', icon: <SettingsOutlined /> },
+            ].map((s) => {
+              const active = activeTab === s.value;
+              return (
+                <ListItemButton
+                  key={s.value}
+                  selected={active}
+                  onClick={() => setActiveTab(s.value)}
+                  sx={{
+                    borderRadius: '10px', mb: 0.5,
+                    '&.Mui-selected': { bgcolor: T.accW, borderLeft: `3px solid ${T.accent}` },
+                    '&.Mui-selected:hover': { bgcolor: T.accW },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 34, color: active ? T.accent : T.faint, '& svg': { fontSize: 20 } }}>
+                    {s.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={s.label} primaryTypographyProps={{ fontSize: '13px', fontWeight: 600, color: active ? T.ink : T.text }} />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        </Paper>
+
+        {/* CONTENU */}
+        <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+
+          {/* GÉNÉRAL — identité du dossier */}
+          {activeTab === 4 && (
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <Paper elevation={0} sx={{ ...panelSx, p: 3 }}>
+                <Typography sx={{ ...sectionTitleSx, mb: 2.5 }}>Identité du dossier</Typography>
+                <Grid container spacing={3} alignItems="flex-end">
+                  <Grid item xs={12} md={5}>
+                    <FieldLabel>Nom complet du dossier</FieldLabel>
+                    <TextField value={nomDossier} onChange={(e) => setNomDossier(e.target.value)} fullWidth size="small" variant="outlined" />
+                  </Grid>
+                  <Grid item xs={12} md={5}>
+                    <FieldLabel>Portefeuille associé</FieldLabel>
+                    <Autocomplete
+                      multiple
+                      options={listePortefeuille}
+                      getOptionLabel={(option) => option.nom || ''}
+                      value={portefeuille}
+                      onChange={(e, newValue) => setPortefeuille(newValue)}
+                      size="small"
+                      renderInput={(params) => (<TextField {...params} placeholder="Sélectionner" />)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={2} sx={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <Button
+                      variant="contained"
+                      disableElevation
+                      startIcon={<SaveOutlined />}
+                      sx={{ ...primaryBtnSx, width: '100%', height: '40px' }}
+                      onClick={handleSaveHeader}
+                    >
+                      Enregistrer
+                    </Button>
+                  </Grid>
+                </Grid>
               </Paper>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px', bgcolor: '#FFF' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AccessTimeOutlined sx={{ color: '#6366F1' }} /> Paramètres de Retard
-                </Typography>
-                <Stack direction="row" spacing={3}>
-                  <Box sx={{ flex: 1 }}>
-                    <FieldLabel>Retard Fournisseurs (Mois)</FieldLabel>
-                    <TextField fullWidth type="number" value={retardFourns} onChange={(e) => setRetardFourns(e.target.value)} size="small" />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <FieldLabel>Retard Clients (Mois)</FieldLabel>
-                    <TextField fullWidth type="number" value={retardClt} onChange={(e) => setRetardClt(e.target.value)} size="small" />
-                  </Box>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Box>
-      )}
+            </Box>
+          )}
 
-      {/* ONGLET 1 : PLAN COMPTABLE */}
-      {activeTab === 1 && (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <PlanComptableDataGrid
-            fileId={fileId}
-            compteId={compteId}
-            axiosPrivate={axiosPrivate}
-          />
-        </Box>
-      )}
+          {/* SEUILS */}
+          {activeTab === 0 && (
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={0} sx={{ ...panelSx, p: 3 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AnalyticsOutlined sx={{ color: T.accent }} /> Paramètres d'anomalies
+                    </Typography>
+                    <FieldLabel>Seuil de variation analytique N/N-1 (%)</FieldLabel>
+                    <TextField
+                      value={seuilVariation}
+                      onChange={(e) => setSeuilVariation(e.target.value)}
+                      onBlur={(e) => handleSeuilBlur(e.target.value)}
+                      fullWidth
+                      type="number"
+                      size="small"
+                    />
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={0} sx={{ ...panelSx, p: 3 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AccessTimeOutlined sx={{ color: T.accent }} /> Paramètres de retard
+                    </Typography>
+                    <Stack direction="row" spacing={3}>
+                      <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Retard Fournisseurs (Mois)</FieldLabel>
+                        <TextField fullWidth type="number" value={retardFourns} onChange={(e) => setRetardFourns(e.target.value)} size="small" />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Retard Clients (Mois)</FieldLabel>
+                        <TextField fullWidth type="number" value={retardClt} onChange={(e) => setRetardClt(e.target.value)} size="small" />
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
 
-      {/* ONGLET 2 : CODES JOURNAUX */}
-      {activeTab === 2 && (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <CodesJournauxDataGrid
-            fileId={fileId}
-            compteId={compteId}
-            axiosPrivate={axiosPrivate}
-            pc={pc}
-          />
-        </Box>
-      )}
+          {/* PLAN COMPTABLE */}
+          {activeTab === 1 && (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <PlanComptableDataGrid fileId={fileId} compteId={compteId} axiosPrivate={axiosPrivate} />
+            </Box>
+          )}
 
-      {/* ONGLET 3 : ANALYTIQUE */}
-      {activeTab === 3 && (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <AnalytiqueDataGrid
-            fileId={fileId}
-            compteId={compteId}
-            axiosPrivate={axiosPrivate}
-          />
+          {/* CODES JOURNAUX */}
+          {activeTab === 2 && (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <CodesJournauxDataGrid fileId={fileId} compteId={compteId} axiosPrivate={axiosPrivate} pc={pc} />
+            </Box>
+          )}
+
+          {/* ANALYTIQUE */}
+          {activeTab === 3 && (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <AnalytiqueDataGrid fileId={fileId} compteId={compteId} axiosPrivate={axiosPrivate} />
+            </Box>
+          )}
         </Box>
-      )}
+      </Box>
 
     </Box>
   );
