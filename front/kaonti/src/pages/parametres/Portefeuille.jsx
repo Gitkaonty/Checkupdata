@@ -18,6 +18,61 @@ import { useParams, useNavigate } from 'react-router-dom';
 import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog';
 
+// ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
+const T = {
+  ink: '#0E2733',
+  canvas: '#F4F6F5',
+  surface: '#FFFFFF',
+  line: '#E2E6EA',
+  ledger: '#EEF1F3',
+  text: '#16202B',
+  muted: '#6A7785',
+  faint: '#9AA6B2',
+  accent: '#0E7C86',
+  accentDark: '#0a5d65',
+  pos: '#1F8A70',
+  neg: '#BE3A2F',
+  accW: '#E2F0F1',
+};
+const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+const panelSx = {
+  border: `1px solid ${T.line}`,
+  borderRadius: '16px',
+  bgcolor: T.surface,
+  boxShadow: CARD_SHADOW,
+  overflow: 'hidden',
+};
+const primaryBtnSx = {
+  bgcolor: T.accent,
+  color: '#fff',
+  textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '13px',
+  borderRadius: '8px',
+  boxShadow: 'none',
+  '&:hover': { bgcolor: T.accentDark },
+  '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint },
+};
+const gridSx = {
+  border: 'none',
+  flex: 1,
+  minHeight: 0,
+  fontSize: '12.5px',
+  '& .MuiDataGrid-columnHeaders': {
+    bgcolor: T.ledger,
+    borderBottom: `1px solid ${T.line}`,
+    '& .MuiDataGrid-columnHeaderTitle': {
+      fontSize: '11px',
+      fontWeight: 700,
+      color: T.muted,
+      letterSpacing: '.3px',
+      textTransform: 'uppercase',
+    },
+  },
+  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', '&:focus': { outline: 'none' } },
+  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+};
+
 const Portefeuille = () => {
   const apiRef = useGridApiRef();
   const { canAdd, canModify, canDelete, canView } = usePermission();
@@ -348,10 +403,10 @@ const Portefeuille = () => {
 
         return [
           <GridActionsCellItem
-            icon={<EditOutlined sx={{ color: '#6366F1' }} />}
+            icon={<EditOutlined sx={{ color: T.accent }} />}
             label="Edit"
             onClick={handleEditClick(id)}
-            sx={{ bgcolor: '#EEF2FF', mr: 1 }}
+            sx={{ bgcolor: T.accW, mr: 1 }}
           />,
           <GridActionsCellItem
             icon={<DeleteOutline sx={{ color: '#EF4444' }} />}
@@ -371,57 +426,42 @@ const Portefeuille = () => {
   return (
     <Box sx={{
       p: 3, height: 'calc(100vh - 120px)',
-      width: 'calc(100vw - 130px)', bgcolor: '#F8FAFC', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+      width: 'calc(100vw - 130px)', bgcolor: T.canvas, display: 'flex', flexDirection: 'column', overflow: 'hidden'
     }}>
-      <Box sx={{ mb: 4 }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-          <Chip
-            label={compteName}
-            sx={{
-              borderRadius: '4px', // Rectangulaire comme demandé
-              bgcolor: '#F1F5F9',
-              color: '#475569',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: '1px solid #E2E8F0',
-              height: 24,
-            }}
-          />
-          {/* --- BREADCRUMBS --- */}
-          <Breadcrumbs
-            separator={<NavigateNext fontSize="small" />}
-            sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
-          >
-            <Link underline="hover" color="inherit" href="/dashboard" sx={{ display: 'flex', alignItems: 'center' }}>
-              <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
-            </Link>
-            <Typography color="text.primary" sx={{ fontWeight: 600, color: '#64748B' }}>Portefeuilles</Typography>
-          </Breadcrumbs>
+      {/* --- EN-TÊTE --- */}
+      <Box sx={{ mb: 2.5, flexShrink: 0 }}>
+        <Breadcrumbs
+          separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
+          sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
+        >
+          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+            <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
+          </Link>
+          <Typography sx={{ color: T.ink, fontWeight: 700 }}>Portefeuilles</Typography>
+        </Breadcrumbs>
 
-        </Stack>
-
-        {/* --- HEADER --- */}
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: '#1E293B' }}>Gestion des Portefeuilles</Typography>
-            <Typography variant="caption" sx={{ color: '#64748B' }}>Organisez vos dossiers par catégories</Typography>
-          </Box>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box sx={{ width: 38, height: 38, flex: 'none', borderRadius: '11px', display: 'grid', placeItems: 'center', color: T.accent, bgcolor: `${T.accent}14`, '& svg': { fontSize: 20 } }}>
+              <FolderOutlined />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: '18px', fontWeight: 700, color: T.ink, letterSpacing: '.2px', lineHeight: 1.2 }}>
+                Portefeuilles
+              </Typography>
+              <Typography sx={{ fontSize: '12px', color: T.muted, mt: 0.2 }}>
+                Organisez vos dossiers par catégories · {compteName}
+              </Typography>
+            </Box>
+          </Stack>
 
           <Button
             variant="contained"
+            disableElevation
             onClick={handleAddRow}
             disabled={loading}
-            startIcon={<AddOutlined sx={{ color: '#10B981' }} />}
-            sx={{
-              bgcolor: '#000000',
-              color: '#FFFFFF',
-              textTransform: 'none',
-              borderRadius: '8px',
-              px: 3,
-              fontWeight: 700,
-              '&:hover': { bgcolor: '#222' },
-              '&:disabled': { bgcolor: '#CCCCCC', color: '#666' }
-            }}
+            startIcon={<AddOutlined />}
+            sx={{ ...primaryBtnSx, px: 3, height: 40 }}
           >
             Ajouter
           </Button>
@@ -429,7 +469,7 @@ const Portefeuille = () => {
       </Box>
 
       {/* --- DATAGRID --- */}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Paper elevation={0} sx={{ ...panelSx, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -443,28 +483,7 @@ const Portefeuille = () => {
           checkboxSelection
           disableSelectionOnClick
           apiRef={apiRef}
-          sx={{
-            border: 'none',
-            flex: 1,
-            minHeight: 0,
-            '& .MuiDataGrid-columnHeaders': {
-              bgcolor: '#F8FAFC',
-              borderBottom: '1px solid #E2E8F0',
-              '& .MuiDataGrid-columnHeaderTitle': {
-                fontSize: '0.7rem',
-                fontWeight: 800,
-                color: '#64748B',
-                textTransform: 'uppercase',
-              }
-            },
-            '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #F1F5F9',
-              '&:focus': { outline: 'none' }
-            },
-            '& .MuiDataGrid-row:hover': {
-              bgcolor: '#F1F5F930'
-            }
-          }}
+          sx={gridSx}
         />
       </Paper>
 
