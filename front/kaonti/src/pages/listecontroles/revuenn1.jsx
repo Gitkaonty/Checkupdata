@@ -40,7 +40,7 @@ const MoneyCell = ({ value }) => {
   const v = Number(value) || 0;
   return (
     <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: v !== 0 ? 600 : 400 }}>
-      {(value ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {(value ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s/g, ' ')}
     </Typography>
   );
 };

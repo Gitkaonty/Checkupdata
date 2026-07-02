@@ -28,8 +28,9 @@ import {
   TablePagination,
   TableRow,
   Breadcrumbs,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
 import {
   CheckCircleOutline,
   ChatBubbleOutline,
@@ -39,7 +40,8 @@ import {
   WarningAmberRounded,
   RadioButtonUnchecked,
   TaskAltRounded,
-  ChatBubbleOutlineOutlined
+  ChatBubbleOutlineOutlined,
+  Search
 } from '@mui/icons-material';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import useAuth from '../../hooks/useAuth';
@@ -67,26 +69,53 @@ const T = {
   accent: '#0E7C86', pos: '#1F8A70', warn: '#B5791A', neg: '#BE3A2F', info: '#3A6EA5', accW: '#E2F0F1',
 };
 const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
-const gridSx = {
-  border: 'none',
-  fontSize: '13px',
-  '& .MuiDataGrid-main': { overflow: 'auto' },
-  '& .MuiDataGrid-columnHeaders': {
-    bgcolor: T.ledger,
-    borderBottom: `1px solid ${T.line}`,
-    '& .MuiDataGrid-columnHeaderTitle': { fontSize: '11px', fontWeight: 700, color: T.muted, letterSpacing: '.3px', textTransform: 'uppercase' },
-  },
-  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', color: T.text, '&:focus': { outline: 'none' } },
-  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
+// Formatage monétaire : séparateur de milliers TOUJOURS visible
+// (fr-FR produit une espace fine insécable U+202F souvent invisible → espace normale)
+const fmtMoney = (value) =>
+  (Number(value) || 0)
+    .toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .replace(/\s/g, ' ');
+// Tableau natif (MUI Table) : en-tête ET colonnes figés simultanément (le DataGrid
+// Community ne sait pas figer l'en-tête des colonnes épinglées — il le déplace par transform).
+// Largeurs fixes → offsets d'épinglage exacts. Gauche : compte(100)+libellé(300).
+// Droite : anomalies(80)/validé(70)/commentaire(200) → offsets 270/200/0.
+const w = (px) => ({ width: px, minWidth: px, maxWidth: px });
+const HEADSX = {
+  bgcolor: T.ledger, color: T.muted, fontWeight: 700, fontSize: '11px',
+  letterSpacing: '.3px', textTransform: 'uppercase', borderBottom: `1px solid ${T.line}`,
+  whiteSpace: 'nowrap', py: 1,
 };
+const CELLSX = { fontSize: '12.5px', color: T.text, borderBottom: '1px solid #F1F4F6', py: 0.5, whiteSpace: 'nowrap' };
+// z-index : corps normal 0 < corps épinglé 2 < en-tête normal 3 < coin épinglé 4
+const headNormalSx = { ...HEADSX, position: 'sticky', top: 0, zIndex: 3 };
+const headPinSx = (side, off, shadow) => ({ ...HEADSX, position: 'sticky', top: 0, [side]: off, zIndex: 4, ...(shadow ? { boxShadow: shadow } : {}) });
+const cellPinSx = (side, off, shadow) => ({ ...CELLSX, position: 'sticky', [side]: off, zIndex: 2, bgcolor: 'inherit', ...(shadow ? { boxShadow: shadow } : {}) });
+const SH_L = '6px 0 6px -6px rgba(16,39,51,.25)';
+const SH_R = '-6px 0 6px -6px rgba(16,39,51,.25)';
 const MoneyCell = ({ value, bold }) => {
   const v = Number(value) || 0;
   return (
     <Typography sx={{ ...NUM, fontSize: '12.5px', width: '100%', textAlign: 'right', color: v < 0 ? T.neg : T.text, fontWeight: bold ? 800 : (v !== 0 ? 600 : 400) }}>
-      {(value ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {fmtMoney(value)}
     </Typography>
   );
 };
+
+// Filtre déroulant compact (Tous / Oui / Non) pour les colonnes booléennes
+const FilterSelect = ({ label, value, onChange }) => (
+  <FormControl size="small" sx={{ minWidth: 148 }}>
+    <Select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      renderValue={(v) => `${label} : ${v === 'all' ? 'Tous' : v === 'oui' ? 'Oui' : 'Non'}`}
+      sx={{ borderRadius: '10px', bgcolor: T.canvas, fontSize: '13px', '& .MuiSelect-select': { py: 0.9 } }}
+    >
+      <MenuItem value="all">Tous</MenuItem>
+      <MenuItem value="oui">Oui</MenuItem>
+      <MenuItem value="non">Non</MenuItem>
+    </Select>
+  </FormControl>
+);
 
 const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercice: id_exercice_prop, id_periode: id_periode_prop }, ref) {
   const NAV_DARK = '#0B1120';
@@ -503,157 +532,33 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
     setPage(0);
   };
 
-  // Calcul des lignes à afficher pour la page courante
-  const displayedRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  // === Recherche & filtres ===
+  const [search, setSearch] = useState('');
+  const [anomalieFilter, setAnomalieFilter] = useState('all'); // all | oui | non
+  const [valideFilter, setValideFilter] = useState('all');     // all | oui | non
 
-  // Statistiques
+  const q = search.trim().toLowerCase();
+  const filteredRows = rows.filter((r) => {
+    if (q && !(`${r.compte || ''} ${r.libelle || ''}`.toLowerCase().includes(q))) return false;
+    if (anomalieFilter === 'oui' && !r.anomalies) return false;
+    if (anomalieFilter === 'non' && r.anomalies) return false;
+    if (valideFilter === 'oui' && !r.valide_anomalie) return false;
+    if (valideFilter === 'non' && r.valide_anomalie) return false;
+    return true;
+  });
+
+  // Ramener la pagination sur une page valide quand le filtre réduit le nombre de lignes
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(filteredRows.length / rowsPerPage) - 1);
+    if (page > maxPage) setPage(maxPage);
+  }, [filteredRows.length, rowsPerPage, page]);
+
+  // Lignes de la page courante
+  const displayedRows = filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  // Statistiques (sur l'ensemble, indépendamment du filtre)
   const totalAnomalies = rows.filter((r) => r.anomalies).length;
   const restantAValider = rows.filter((r) => r.anomalies && !r.valide_anomalie).length;
-
-  // Build dynamic columns based on API moisColumns
-  const columns = [
-    {
-      field: 'compte', headerName: 'Compte', width: 100,
-      renderCell: (p) => <Typography sx={{ ...NUM, fontSize: '12.5px', fontWeight: 700, color: T.ink }}>{p.value}</Typography>,
-    },
-    {
-      field: 'libelle', headerName: 'Libellé', width: 300,
-      renderCell: (p) => <Typography noWrap title={p.value || ''} sx={{ fontSize: '12.5px', color: T.text }}>{p.value}</Typography>,
-    },
-    {
-      field: 'total_exercice', headerName: 'Total', width: 120, type: 'number', align: 'right', headerAlign: 'right',
-      renderCell: (params) => <MoneyCell value={params.value} bold />,
-    },
-    ...moisColumns.map((mois) => ({
-      field: mois.nom, headerName: mois.nomAffiche, width: 110, type: 'number', align: 'right', headerAlign: 'right',
-      renderCell: (params) => <MoneyCell value={params.value} />,
-    })),
-    {
-      field: 'anomalies',
-      headerName: 'Anomalies',
-      width: 80,
-      align: 'center',
-      // renderCell: (params) => (
-      //   <Checkbox
-      //     size="small"
-      //     checked={!!params.value}
-      //     onChange={(e) => handleToggleAnomalie(params.row, e.target.checked)}
-      //     sx={{
-      //       p: 0,
-      //       color: params.value ? 'orange' : 'green',
-      //       '&.Mui-checked': { color: 'orange' }
-      //     }}
-      //   />
-      // )
-      renderCell: (params) => {
-        const hasAnomaly = !!params.value;
-        return (
-          <Tooltip title={hasAnomaly ? 'Anomalie signalée — cliquer pour retirer' : 'Conforme — cliquer pour signaler'} arrow>
-            <IconButton
-              size="small"
-              onClick={() => handleToggleAnomalie(params.row, !hasAnomaly)}
-              sx={{ p: 0.25, color: hasAnomaly ? T.warn : T.pos, transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
-            >
-              {hasAnomaly ? <WarningAmberRounded fontSize="small" /> : <CheckCircleOutline fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-        );
-      }
-    },
-    {
-      field: 'valide_anomalie',
-      headerName: 'Validé',
-      width: 70,
-      align: 'center',
-      renderCell: (params) => {
-        const isValid = !!params.value;
-        const isAnomaly = !!params.row.anomalies;
-        return (
-          <Tooltip title={isValid ? 'Validé — cliquer pour dévalider' : (isAnomaly ? 'À valider — cliquer pour valider' : 'Rien à valider')} arrow>
-            <span>
-              <IconButton
-                size="small"
-                onClick={() => handleToggleValide(params.row, !isValid)}
-                disabled={!isAnomaly && !isValid}
-                sx={{ p: 0.25, color: isValid ? T.pos : (isAnomaly ? T.warn : T.faint), transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
-              >
-                {isValid ? <TaskAltRounded fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
-              </IconButton>
-            </span>
-          </Tooltip>
-        );
-      }
-    },
-    {
-      field: 'commentaire',
-      headerName: 'Commentaire',
-      width: 200,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Badge
-            variant={params.value && String(params.value).trim() ? 'dot' : 'standard'}
-            overlap="circular"
-            sx={{
-              '& .MuiBadge-badge': {
-                backgroundColor: T.warn,
-                color: T.warn
-              }
-            }}
-          >
-            <Tooltip
-              title={params.value || ''}
-              arrow
-              componentsProps={{
-                tooltip: {
-                  sx: {
-                    backgroundColor: 'white',
-                    color: '#334155',
-                    fontSize: '12px',
-                    border: '1px solid #E2E8F0',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    maxWidth: 250
-                  }
-                },
-                arrow: {
-                  sx: {
-                    color: 'white'
-                  }
-                }
-              }}
-            >
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    setSelectedRow(params.row);
-                    setOpenCommentDialog(true);
-                  }}
-                  sx={{ color: (params.value && String(params.value).trim()) ? T.accent : T.faint, '&:hover': { bgcolor: T.accW } }}
-                >
-                  <ChatBubbleOutlineOutlined fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Badge>
-
-          {/* <Typography
-            sx={{
-              fontSize: '11px',
-              color: '#64748B',
-              fontStyle: 'italic',
-              maxWidth: '200px',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden'
-            }}
-          >
-            {params.value}
-          </Typography> */}
-        </Box>
-      )
-    }
-  ];
 
   return (
     <>
@@ -680,14 +585,147 @@ const RevueMensuelleTable = forwardRef(function RevueMensuelleTable({ id_exercic
             </Box>
           </Stack>
 
-          {/* ZONE DU TABLEAU AVEC SCROLL INTERNE */}
-          <Box sx={{ flexGrow: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              density="compact"
-              disableRowSelectionOnClick
-              sx={gridSx}
+          {/* BARRE DE RECHERCHE & FILTRES */}
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ px: 2.5, py: 1.25, bgcolor: T.surface, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
+            <TextField
+              size="small"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              placeholder="Rechercher un compte ou un libellé…"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start"><Search sx={{ fontSize: 18, color: T.faint }} /></InputAdornment>
+                ),
+              }}
+              sx={{ width: 320, '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: T.canvas, fontSize: '13px' } }}
+            />
+            <Box sx={{ flexGrow: 1 }} />
+            <FilterSelect label="Anomalie" value={anomalieFilter} onChange={(v) => { setAnomalieFilter(v); setPage(0); }} />
+            <FilterSelect label="Validé" value={valideFilter} onChange={(v) => { setValideFilter(v); setPage(0); }} />
+          </Stack>
+
+          {/* ZONE DU TABLEAU AVEC SCROLL INTERNE (en-tête + colonnes figés) */}
+          <Box sx={{ flexGrow: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <TableContainer sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+              <Table
+                stickyHeader
+                size="small"
+                sx={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 'max-content' }}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ ...headPinSx('left', 0), ...w(100) }}>Compte</TableCell>
+                    <TableCell sx={{ ...headPinSx('left', 100, SH_L), ...w(300) }}>Libellé</TableCell>
+                    <TableCell align="right" sx={{ ...headNormalSx, ...w(120) }}>Total</TableCell>
+                    {moisColumns.map((mois) => (
+                      <TableCell key={mois.nom} align="right" sx={{ ...headNormalSx, ...w(110) }}>{mois.nomAffiche}</TableCell>
+                    ))}
+                    <TableCell align="center" sx={{ ...headPinSx('right', 270, SH_R), ...w(80) }}>Anomalies</TableCell>
+                    <TableCell align="center" sx={{ ...headPinSx('right', 200), ...w(70) }}>Validé</TableCell>
+                    <TableCell align="center" sx={{ ...headPinSx('right', 0), ...w(200) }}>Commentaire</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {displayedRows.map((row) => {
+                    const hasAnomaly = !!row.anomalies;
+                    const isValid = !!row.valide_anomalie;
+                    const hasComment = row.commentaire && String(row.commentaire).trim();
+                    return (
+                      <TableRow
+                        key={row.id}
+                        sx={{ bgcolor: T.surface, '&:hover': { bgcolor: '#FAFBFB' } }}
+                      >
+                        {/* Compte (figé gauche) */}
+                        <TableCell sx={{ ...cellPinSx('left', 0), ...w(100) }}>
+                          <Typography sx={{ ...NUM, fontSize: '12.5px', fontWeight: 700, color: T.ink }}>{row.compte}</Typography>
+                        </TableCell>
+                        {/* Libellé (figé gauche) */}
+                        <TableCell sx={{ ...cellPinSx('left', 100, SH_L), ...w(300), overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Typography noWrap title={row.libelle || ''} sx={{ fontSize: '12.5px', color: T.text }}>{row.libelle}</Typography>
+                        </TableCell>
+                        {/* Total */}
+                        <TableCell align="right" sx={{ ...CELLSX, ...w(120) }}><MoneyCell value={row.total_exercice} bold /></TableCell>
+                        {/* Mois (défilants) */}
+                        {moisColumns.map((mois) => (
+                          <TableCell key={mois.nom} align="right" sx={{ ...CELLSX, ...w(110) }}><MoneyCell value={row[mois.nom]} /></TableCell>
+                        ))}
+                        {/* Anomalies (figé droite) */}
+                        <TableCell align="center" sx={{ ...cellPinSx('right', 270, SH_R), ...w(80) }}>
+                          <Tooltip title={hasAnomaly ? 'Anomalie signalée — cliquer pour retirer' : 'Conforme — cliquer pour signaler'} arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleToggleAnomalie(row, !hasAnomaly)}
+                              sx={{ p: 0.25, color: hasAnomaly ? T.warn : T.pos, transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
+                            >
+                              {hasAnomaly ? <WarningAmberRounded fontSize="small" /> : <CheckCircleOutline fontSize="small" />}
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                        {/* Validé (figé droite) */}
+                        <TableCell align="center" sx={{ ...cellPinSx('right', 200), ...w(70) }}>
+                          <Tooltip title={isValid ? 'Validé — cliquer pour dévalider' : (hasAnomaly ? 'À valider — cliquer pour valider' : 'Rien à valider')} arrow>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleToggleValide(row, !isValid)}
+                                disabled={!hasAnomaly && !isValid}
+                                sx={{ p: 0.25, color: isValid ? T.pos : (hasAnomaly ? T.warn : T.faint), transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}
+                              >
+                                {isValid ? <TaskAltRounded fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                        {/* Commentaire (figé droite) */}
+                        <TableCell align="center" sx={{ ...cellPinSx('right', 0), ...w(200) }}>
+                          <Badge
+                            variant={hasComment ? 'dot' : 'standard'}
+                            overlap="circular"
+                            sx={{ '& .MuiBadge-badge': { backgroundColor: T.warn, color: T.warn } }}
+                          >
+                            <Tooltip
+                              title={row.commentaire || ''}
+                              arrow
+                              componentsProps={{
+                                tooltip: { sx: { backgroundColor: 'white', color: '#334155', fontSize: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: 250 } },
+                                arrow: { sx: { color: 'white' } },
+                              }}
+                            >
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => { setSelectedRow(row); setOpenCommentDialog(true); }}
+                                  sx={{ color: hasComment ? T.accent : T.faint, '&:hover': { bgcolor: T.accW } }}
+                                >
+                                  <ChatBubbleOutlineOutlined fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {displayedRows.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5 + moisColumns.length} align="center" sx={{ ...CELLSX, color: T.faint, py: 4 }}>
+                        {loading ? 'Chargement…' : (rows.length > 0 ? 'Aucun résultat pour ces critères' : 'Aucune donnée')}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredRows.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[25, 50, 100, 200]}
+              labelRowsPerPage="Lignes par page"
+              sx={{ borderTop: `1px solid ${T.line}`, flexShrink: 0 }}
             />
           </Box>
         </Box>

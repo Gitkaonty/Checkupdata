@@ -803,10 +803,10 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                         </TableCell>
                         <TableCell sx={{ fontWeight: 800, fontSize: '0.85rem', color: T.ink, ...NUM }}>{group.id}</TableCell>
                         <TableCell sx={{ fontSize: '0.85rem', color: T.text, ...NUM }}>{group.compte}</TableCell>
-                        <TableCell sx={{ fontSize: '0.8rem', color: T.muted }}>{group.date},{group.compte},{group.journal},{group.piece},{group.libelle},                                                    {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                        <TableCell sx={{ fontSize: '0.8rem', color: T.muted }}>{group.date},{group.compte},{group.journal},{group.piece},{group.libelle},                                                    {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 }).replace(/\s/g, ' ')} €
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.85rem', color: T.text, ...NUM }}>
-                          {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                          {parseFloat(group.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2 }).replace(/\s/g, ' ')} €
                         </TableCell>
                         <TableCell align="center">
                           <Chip
@@ -883,10 +883,10 @@ const RechercheDoublons = forwardRef(({ id_exercice, id_periode }, ref) => {
                                           <TableCell sx={{ fontSize: '0.8rem', color: T.text }}>{libelle || '—'}</TableCell>
                                           <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600, color: T.text, ...NUM }}>{piece || '—'}</TableCell>
                                           <TableCell align="right" sx={{ fontSize: '0.8rem', color: T.text, ...NUM }}>
-                                            {debit === null ? '—' : debit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                                            {debit === null ? '—' : debit.toLocaleString('fr-FR', { minimumFractionDigits: 2 }).replace(/\s/g, ' ')}
                                           </TableCell>
                                           <TableCell align="right" sx={{ fontSize: '0.8rem', color: T.text, ...NUM }}>
-                                            {credit === null ? '—' : credit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                                            {credit === null ? '—' : credit.toLocaleString('fr-FR', { minimumFractionDigits: 2 }).replace(/\s/g, ' ')}
                                           </TableCell>
                                         </TableRow>
                                       );

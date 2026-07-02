@@ -66,8 +66,8 @@ const formatMontant = (value, options = {}) => {
         minimumFractionDigits: options.fractions || 2,
         maximumFractionDigits: options.fractions || 2
     });
-    // Remplacer l'espace insécable (U+00A0) par un espace normal
-    return formatted.replace(/\u00A0/g, ' ');
+    // Remplacer toutes les espaces (U+00A0, U+202F...) par un espace normal visible
+    return formatted.replace(/\s/g, ' ');
 };
 
 const RevisionDetails = React.memo(function RevisionDetails({ type, controles, onClose, onSaveComment, idCompte, idDossier, idExercice, idPeriode, dateDebut, dateFin, isPeriodeSelected, onValidationChange }) {
