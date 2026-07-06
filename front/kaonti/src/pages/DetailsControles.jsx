@@ -4,7 +4,8 @@ import {
   Divider, Button, Chip, Breadcrumbs, Link as MuiLink, TablePagination,
   Select,
   MenuItem,
-  Menu
+  Menu,
+  CircularProgress
 } from '@mui/material';
 import ExercicePeriodeContext from '../context/ExercicePeriodeContext';
 import {
@@ -17,6 +18,8 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useAxiosPrivate from '../hooks/useAxiosPrivate';
+import { fetchAnomaliesSynthese } from '../utils/anomaliesSynthese';
 import { jwtDecode } from 'jwt-decode';
 import RevueAnalytiqueTable from './listecontroles/revuenn1';
 import RevueMensuelleTable from './listecontroles/revuemensuelle';
@@ -46,13 +49,17 @@ const T = {
 const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
 
 const DetailsControles = () => {
-  const { selectedExerciceId, selectedPeriodeId, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
+  const { selectedExerciceId, selectedPeriodeId, selectedPeriodeDates, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
   const { auth } = useAuth();
+  const axiosPrivate = useAxiosPrivate();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteName = decoded?.UserInfo?.compte || 'Espace Client';
+  const id_compte = parseInt(decoded?.UserInfo?.compteId) || parseInt(sessionStorage.getItem('compteId')) || 1;
+  const id_dossier = parseInt(sessionStorage.getItem('fileId')) || 1;
   const [activeTab, setActiveTab] = useState(0);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [globalExporting, setGlobalExporting] = useState(false);
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
   const revueAnalytiqueRef = useRef(null);
   const revueMensuelleRef = useRef(null);
@@ -72,26 +79,101 @@ const DetailsControles = () => {
 
   const handleTabChange = (event, newValue) => setActiveTab(newValue);
 
-  const handleExportExcel = () => {
-    if (activeTab === 0) revueAnalytiqueRef.current?.exportExcel();
-    else if (activeTab === 1) revueMensuelleRef.current?.exportExcel();
-    else if (activeTab === 2) globalBalanceRef.current?.exportExcel();
-    else if (activeTab === 3) analyseTiersRef.current?.exportExcel();
-    else if (activeTab === 4) rechercheDoublonRef.current?.exportExcel();
-    else if (activeTab === 5) ecrituresSuspenseRef.current?.exportExcel();
-    else if (activeTab === 6) controleAnalytiqueRef.current?.exportExcel();
-    setExportAnchorEl(null);
+  const activeRef = () => {
+    if (activeTab === 0) return revueAnalytiqueRef.current;
+    if (activeTab === 1) return revueMensuelleRef.current;
+    if (activeTab === 2) return globalBalanceRef.current;
+    if (activeTab === 3) return analyseTiersRef.current;
+    if (activeTab === 4) return rechercheDoublonRef.current;
+    if (activeTab === 5) return ecrituresSuspenseRef.current;
+    if (activeTab === 6) return controleAnalytiqueRef.current;
+    return null;
   };
 
-  const handleExportPdf = () => {
-    if (activeTab === 0) revueAnalytiqueRef.current?.exportPdf();
-    else if (activeTab === 1) revueMensuelleRef.current?.exportPdf();
-    else if (activeTab === 2) globalBalanceRef.current?.exportPdf();
-    else if (activeTab === 3) analyseTiersRef.current?.exportPdf();
-    else if (activeTab === 4) rechercheDoublonRef.current?.exportPdf();
-    else if (activeTab === 5) ecrituresSuspenseRef.current?.exportPdf();
-    else if (activeTab === 6) controleAnalytiqueRef.current?.exportPdf();
+  const handleExportExcel = async () => {
     setExportAnchorEl(null);
+    try {
+      setGlobalExporting(true);
+      await activeRef()?.exportExcel();
+    } catch (error) {
+      console.error('Erreur export Excel (onglet courant):', error);
+    } finally {
+      setGlobalExporting(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportAnchorEl(null);
+    try {
+      setGlobalExporting(true);
+      await activeRef()?.exportPdf();
+    } catch (error) {
+      console.error('Erreur export PDF (onglet courant):', error);
+    } finally {
+      setGlobalExporting(false);
+    }
+  };
+
+  // Export GLOBAL : un seul fichier regroupant TOUS les contrôles
+  const downloadBlob = (data, mime, filename) => {
+    const blob = new Blob([data], { type: mime });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(link.href);
+  };
+
+  const buildGlobalUrl = (format) => {
+    let url = `/administration/detailsControles/${id_compte}/${id_dossier}/${selectedExerciceId}/export/global/${format}`;
+    if (selectedPeriodeId) url += `?id_periode=${selectedPeriodeId}`;
+    return url;
+  };
+
+  // Calcule la synthèse des anomalies (identique au dashboard) à joindre en 1re page.
+  const getSynthese = async () => {
+    try {
+      const id_periode = (selectedPeriodeId && selectedPeriodeId !== 'exercice') ? selectedPeriodeId : null;
+      return await fetchAnomaliesSynthese(axiosPrivate, {
+        id_compte, id_dossier, id_exercice: selectedExerciceId, id_periode,
+        periodeDates: selectedPeriodeDates || null,
+      });
+    } catch (error) {
+      console.error('Erreur calcul synthèse anomalies:', error);
+      return null;
+    }
+  };
+
+  const handleExportGlobalExcel = async () => {
+    setExportAnchorEl(null);
+    if (!selectedExerciceId) return;
+    try {
+      setGlobalExporting(true);
+      const synthese = await getSynthese();
+      const response = await axiosPrivate.post(buildGlobalUrl('excel'), { synthese }, { responseType: 'blob' });
+      downloadBlob(response.data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', `Controles_Globaux_${id_dossier}_${selectedExerciceId}.xlsx`);
+    } catch (error) {
+      console.error('Erreur export global Excel:', error);
+    } finally {
+      setGlobalExporting(false);
+    }
+  };
+
+  const handleExportGlobalPdf = async () => {
+    setExportAnchorEl(null);
+    if (!selectedExerciceId) return;
+    try {
+      setGlobalExporting(true);
+      const synthese = await getSynthese();
+      const response = await axiosPrivate.post(buildGlobalUrl('pdf'), { synthese }, { responseType: 'blob' });
+      downloadBlob(response.data, 'application/pdf', `Controles_Globaux_${id_dossier}_${selectedExerciceId}.pdf`);
+    } catch (error) {
+      console.error('Erreur export global PDF:', error);
+    } finally {
+      setGlobalExporting(false);
+    }
   };
 
   const menuControles = [
@@ -206,21 +288,38 @@ const DetailsControles = () => {
                 startIcon={<FileDownloadOutlined />}
                 endIcon={<ArrowDropDown />}
                 onClick={(e) => setExportAnchorEl(e.currentTarget)}
+                disabled={globalExporting}
                 sx={{ color: T.accent, textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
               >
-                Export
+                {globalExporting ? 'Export en cours…' : 'Export'}
               </Button>
+              {globalExporting && (
+                <CircularProgress size={18} thickness={5} sx={{ color: '#1976d2' }} />
+              )}
               <Menu
                 anchorEl={exportAnchorEl}
                 open={Boolean(exportAnchorEl)}
                 onClose={() => setExportAnchorEl(null)}
                 PaperProps={{ sx: { mt: 1, borderRadius: '10px', minWidth: 160, boxShadow: '0 8px 24px -12px rgba(16,39,51,.3)' } }}
               >
+                <Typography sx={{ px: 2, pt: 1, pb: 0.5, fontSize: '11px', fontWeight: 700, color: T.faint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Contrôle courant
+                </Typography>
                 <MenuItem onClick={handleExportExcel} sx={{ gap: 1.5, py: 1, fontSize: '13px' }}>
                   <TableChart sx={{ fontSize: 18, color: T.pos }} /> Export Excel
                 </MenuItem>
                 <MenuItem onClick={handleExportPdf} sx={{ gap: 1.5, py: 1, fontSize: '13px' }}>
                   <PictureAsPdf sx={{ fontSize: 18, color: T.neg }} /> Export PDF
+                </MenuItem>
+                <Divider sx={{ my: 0.5 }} />
+                <Typography sx={{ px: 2, pt: 0.5, pb: 0.5, fontSize: '11px', fontWeight: 700, color: T.faint, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Tous les contrôles
+                </Typography>
+                <MenuItem onClick={handleExportGlobalExcel} sx={{ gap: 1.5, py: 1, fontSize: '13px' }}>
+                  <TableChart sx={{ fontSize: 18, color: T.pos }} /> Tout exporter (Excel)
+                </MenuItem>
+                <MenuItem onClick={handleExportGlobalPdf} sx={{ gap: 1.5, py: 1, fontSize: '13px' }}>
+                  <PictureAsPdf sx={{ fontSize: 18, color: T.neg }} /> Tout exporter (PDF)
                 </MenuItem>
               </Menu>
             </Stack>

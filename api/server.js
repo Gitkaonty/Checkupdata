@@ -149,6 +149,9 @@ app.use('/administration/ecrituresSuspense', require('./Routes/Administration/ec
 // Routes pour la révision analytique
 app.use('/administration/revisionAnalytique', require('./Routes/Administration/revisionAnalytiqueRoute'));
 
+// Route pour l'export global de tous les contrôles (Détails des contrôles)
+app.use('/administration/detailsControles', require('./Routes/Administration/detailsControlesRoutes'));
+
 /*app.all('*', (req,res) => {
     res.status(404);
     if(req.accepts('html')) {

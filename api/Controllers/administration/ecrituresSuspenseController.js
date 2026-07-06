@@ -4,6 +4,7 @@ const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
+const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 
 const journals = db.journals;
 const codejournals = db.codejournals;
@@ -79,7 +80,112 @@ const getSuspenseData = async (id_compte, id_dossier, id_exercice, date_debut, d
   }));
 };
 
-module.exports = {
+exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
+    return await getSuspenseData(id_compte, id_dossier, id_exercice, date_debut, date_fin);
+};
+
+exports.buildPdfSection = (data, ctx = {}) => {
+    const tableBody = [
+      ['Compte', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
+    ];
+
+    let totalDebit = 0, totalCredit = 0;
+    (data || []).forEach((row, i) => {
+      const debit = parseFloat(row.debit) || 0;
+      const credit = parseFloat(row.credit) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+      tableBody.push([
+        { text: row.compte || '', style: 'cell', fillColor: rowColor },
+        { text: row.journal || '', style: 'cell', fillColor: rowColor },
+        { text: row.piece || '', style: 'cell', fillColor: rowColor },
+        { text: row.libelle || '', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(debit), alignment: 'right', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(credit), alignment: 'right', style: 'cell', fillColor: rowColor }
+      ]);
+    });
+
+    tableBody.push([
+      { text: 'Total', colSpan: 4, alignment: 'right', style: 'totalRow' }, {}, {}, {},
+      { text: formatMontant(totalDebit), alignment: 'right', style: 'totalRow' },
+      { text: formatMontant(totalCredit), alignment: 'right', style: 'totalRow' }
+    ]);
+
+    const content = [
+        { table: { headerRows: 1, widths: ['10%', '10%', '12%', '*', '12%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } },
+        { text: `Total : ${(data || []).length} écriture(s)`, style: 'noData', margin: [0, 10, 0, 0] }
+    ];
+
+    const styles = {
+        tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+        cell: { fontSize: 7, color: '#2C3E50' },
+        totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
+        noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+    };
+
+    return { content, styles };
+};
+
+exports.addExcelSheets = (workbook, data, ctx = {}) => {
+    const worksheet = workbook.addWorksheet('Écritures en suspens');
+
+    worksheet.columns = [
+        { key: 'compte', width: 14 },
+        { key: 'journal', width: 12 },
+        { key: 'piece', width: 12 },
+        { key: 'libelle', width: 40 },
+        { key: 'debit', width: 14 },
+        { key: 'credit', width: 14 }
+    ];
+
+    const lastCol = worksheet.columns.length; // 6
+
+    // Bloc titre style Kaonty (au-dessus du tableau).
+    worksheet.mergeCells(1, 1, 1, lastCol);
+    worksheet.getRow(1).getCell(1).value = 'ÉCRITURES EN SUSPENS';
+
+    worksheet.mergeCells(2, 1, 2, lastCol);
+    worksheet.getRow(2).getCell(1).value = `Dossier : ${ctx.dossierName || ''}`;
+
+    worksheet.mergeCells(3, 1, 3, lastCol);
+    worksheet.getRow(3).getCell(1).value = `Période : ${ctx.periodeText || ''}`;
+
+    // Ligne 4 : vide.
+
+    // Ligne 5 : en-tête.
+    const HEADER_ROW = 5;
+    worksheet.getRow(HEADER_ROW).values = ['Compte', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit'];
+    const headerRow = worksheet.getRow(HEADER_ROW);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+    headerRow.alignment = { horizontal: 'center' };
+
+    // Lignes 6+ : données.
+    let rowNo = HEADER_ROW;
+    (data || []).forEach(row => {
+        rowNo += 1;
+        worksheet.getRow(rowNo).values = [
+            row.compte || '',
+            row.journal || '',
+            row.piece || '',
+            row.libelle || '',
+            Number(row.debit) || 0,
+            Number(row.credit) || 0
+        ];
+    });
+
+    // Format debit/credit columns (données uniquement).
+    for (let i = HEADER_ROW + 1; i <= rowNo; i++) {
+        const row = worksheet.getRow(i);
+        row.getCell(5).numFmt = '#,##0.00';
+        row.getCell(6).numFmt = '#,##0.00';
+    }
+
+    return worksheet;
+};
+
+Object.assign(module.exports, {
     getLignes: async (req, res) => {
         try {
             const { id_compte, id_dossier, id_exercice } = req.params;
@@ -177,32 +283,7 @@ module.exports = {
               ]
             });
 
-            const tableBody = [
-              ['Compte', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
-            ];
-
-            let totalDebit = 0, totalCredit = 0;
-            data.forEach((row, i) => {
-              const debit = parseFloat(row.debit) || 0;
-              const credit = parseFloat(row.credit) || 0;
-              totalDebit += debit;
-              totalCredit += credit;
-              const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
-              tableBody.push([
-                { text: row.compte || '', style: 'cell', fillColor: rowColor },
-                { text: row.journal || '', style: 'cell', fillColor: rowColor },
-                { text: row.piece || '', style: 'cell', fillColor: rowColor },
-                { text: row.libelle || '', style: 'cell', fillColor: rowColor },
-                { text: formatMontant(debit), alignment: 'right', style: 'cell', fillColor: rowColor },
-                { text: formatMontant(credit), alignment: 'right', style: 'cell', fillColor: rowColor }
-              ]);
-            });
-
-            tableBody.push([
-              { text: 'Total', colSpan: 4, alignment: 'right', style: 'totalRow' }, {}, {}, {},
-              { text: formatMontant(totalDebit), alignment: 'right', style: 'totalRow' },
-              { text: formatMontant(totalCredit), alignment: 'right', style: 'totalRow' }
-            ]);
+            const section = module.exports.buildPdfSection(data);
 
             const docDefinition = {
                 pageSize: 'A4',
@@ -211,17 +292,13 @@ module.exports = {
                 defaultStyle: { font: 'Helvetica', fontSize: 8 },
                 content: [
                     { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
-                    { table: { headerRows: 1, widths: ['10%', '10%', '12%', '*', '12%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } },
-                    { text: `Total : ${data.length} écriture(s)`, style: 'noData', margin: [0, 10, 0, 0] }
+                    ...section.content
                 ],
                 styles: {
                     header: { fontSize: 16, bold: true, color: '#2C3E50' },
                     subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
                     subheader2: { fontSize: 9, color: '#566573' },
-                    tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
-                    cell: { fontSize: 7, color: '#2C3E50' },
-                    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
-                    noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+                    ...section.styles
                 }
             };
 
@@ -248,44 +325,22 @@ module.exports = {
 
             const data = await getSuspenseData(id_compte, id_dossier, id_exercice, date_debut, date_fin);
 
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Écritures en suspens');
+            const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+            const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
 
-            worksheet.columns = [
-                { header: 'Compte', key: 'compte', width: 14 },
-                { header: 'Journal', key: 'journal', width: 12 },
-                { header: 'Pièce', key: 'piece', width: 12 },
-                { header: 'Libellé', key: 'libelle', width: 40 },
-                { header: 'Débit', key: 'debit', width: 14 },
-                { header: 'Crédit', key: 'credit', width: 14 }
-            ];
-
-            // Style header
-            worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-            worksheet.getRow(1).alignment = { horizontal: 'center' };
-
-            data.forEach(row => {
-                worksheet.addRow({
-                    compte: row.compte || '',
-                    journal: row.journal || '',
-                    piece: row.piece || '',
-                    libelle: row.libelle || '',
-                    debit: Number(row.debit) || 0,
-                    credit: Number(row.credit) || 0
-                });
-            });
-
-            // Format debit/credit columns
-            const lastRow = worksheet.rowCount;
-            for (let i = 2; i <= lastRow; i++) {
-                const row = worksheet.getRow(i);
-                row.getCell(5).numFmt = '#,##0.00';
-                row.getCell(6).numFmt = '#,##0.00';
+            const dossierName = dossier?.dossier || id_dossier;
+            let periodeText = exercice?.libelle || id_exercice;
+            if (date_debut || date_fin) {
+                periodeText += ` (${formatDate(date_debut) || '...'} - ${formatDate(date_fin) || '...'})`;
             }
+
+            const workbook = new ExcelJS.Workbook();
+            module.exports.addExcelSheets(workbook, data, { dossierName, periodeText });
 
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             res.setHeader('Content-Disposition', `attachment; filename=Ecritures_Suspense_${id_dossier}_${id_exercice}.xlsx`);
+
+            workbook.worksheets.forEach(ws => applyKaontyStyle(ws));
 
             await workbook.xlsx.write(res);
             res.end();
@@ -295,4 +350,4 @@ module.exports = {
             return res.status(500).json({ state: false, message: 'Erreur export Excel', error: error.message });
         }
     }
-};
+});

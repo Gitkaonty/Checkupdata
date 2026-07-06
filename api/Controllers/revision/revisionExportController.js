@@ -4,6 +4,7 @@ const ExcelJS = require('exceljs');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
+const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 
 const dossiers = db.dossiers;
 const exercices = db.exercices;
@@ -1186,6 +1187,7 @@ exports.exportExcel = async (req, res) => {
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Revision_${id_controle}_${id_dossier}_${id_exercice}.xlsx`);
+    workbook.worksheets.forEach(ws => applyKaontyStyle(ws));
     await workbook.xlsx.write(res);
     res.end();
 
@@ -1496,6 +1498,70 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
   return rowCursor;
 };
 
+// ── Reusable PDF section builder (all types) ─────────────────────────────────
+// Builds the per-type sections (no logo, no global header). Returns the
+// pdfmake content nodes and the styles used by those sections.
+
+exports.buildPdfSection = async ({ id_compte, id_dossier, id_exercice, date_debut, date_fin, id_periode }) => {
+  // Fetch all controls for this exercice
+  const allControles = await revisionControle.findAll({
+    where: { id_compte, id_dossier, id_exercice },
+    order: [['Type', 'ASC'], ['id_controle', 'ASC']]
+  });
+
+  // Group by Type
+  const byType = new Map();
+  for (const c of allControles) {
+    const key = c.Type || '';
+    if (!key) continue;
+    if (!byType.has(key)) byType.set(key, []);
+    byType.get(key).push(c);
+  }
+
+  const content = [];
+
+  // Iterate over each type
+  const types = Array.from(byType.keys()).sort();
+  for (const type of types) {
+    const controlesForType = byType.get(type);
+
+    // Section header for this type
+    const description = controlesForType[0]?.description || type;
+    content.push({
+      text: `${description} (${type})`,
+      style: 'typeSectionHeader',
+      margin: [0, 15, 0, 5]
+    });
+
+    // Fetch anomalies for each controle in this type
+    for (const controle of controlesForType) {
+      try {
+        const { anomalies } = await getRevisionDetailsData(
+          id_compte, id_dossier, id_exercice, controle.id_controle,
+          date_debut, date_fin, id_periode
+        );
+        const typeContent = buildTypeContent(type, anomalies, controle);
+        content.push(...typeContent);
+      } catch (err) {
+        console.error(`[REVISION][GLOBAL_PDF] Error fetching data for controle ${controle.id_controle}:`, err.message);
+        content.push({ text: `Erreur pour le contrôle ${controle.id_controle}`, style: 'noData' });
+      }
+    }
+  }
+
+  const styles = {
+    typeSectionHeader: { fontSize: 13, bold: true, color: '#0E7C86', margin: [0, 15, 0, 5] },
+    anomalyHeader: { fontSize: 10, bold: true, color: '#2C3E50', margin: [0, 10, 0, 5] },
+    tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+    cell: { fontSize: 7, color: '#2C3E50' },
+    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
+    soldeRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#FDEBD0' },
+    noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+  };
+
+  return { content, styles };
+};
+
 // ── Global PDF Export (all types) ────────────────────────────────────────────
 
 exports.exportGlobalPdf = async (req, res) => {
@@ -1509,21 +1575,6 @@ exports.exportGlobalPdf = async (req, res) => {
 
     const dossier = await dossiers.findByPk(id_dossier);
     const exercice = await exercices.findByPk(id_exercice);
-
-    // Fetch all controls for this exercice
-    const allControles = await revisionControle.findAll({
-      where: { id_compte, id_dossier, id_exercice },
-      order: [['Type', 'ASC'], ['id_controle', 'ASC']]
-    });
-
-    // Group by Type
-    const byType = new Map();
-    for (const c of allControles) {
-      const key = c.Type || '';
-      if (!key) continue;
-      if (!byType.has(key)) byType.set(key, []);
-      byType.get(key).push(c);
-    }
 
     const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
     const printer = new PdfPrinter(fonts);
@@ -1545,36 +1596,12 @@ exports.exportGlobalPdf = async (req, res) => {
       ]
     });
 
-    const content = [{ columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] }];
+    const section = await exports.buildPdfSection({ id_compte, id_dossier, id_exercice, date_debut, date_fin, id_periode });
 
-    // Iterate over each type
-    const types = Array.from(byType.keys()).sort();
-    for (const type of types) {
-      const controlesForType = byType.get(type);
-
-      // Section header for this type
-      const description = controlesForType[0]?.description || type;
-      content.push({
-        text: `${description} (${type})`,
-        style: 'typeSectionHeader',
-        margin: [0, 15, 0, 5]
-      });
-
-      // Fetch anomalies for each controle in this type
-      for (const controle of controlesForType) {
-        try {
-          const { anomalies } = await getRevisionDetailsData(
-            id_compte, id_dossier, id_exercice, controle.id_controle,
-            date_debut, date_fin, id_periode
-          );
-          const typeContent = buildTypeContent(type, anomalies, controle);
-          content.push(...typeContent);
-        } catch (err) {
-          console.error(`[REVISION][GLOBAL_PDF] Error fetching data for controle ${controle.id_controle}:`, err.message);
-          content.push({ text: `Erreur pour le contrôle ${controle.id_controle}`, style: 'noData' });
-        }
-      }
-    }
+    const content = [
+      { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+      ...section.content
+    ];
 
     const docDefinition = {
       pageSize: 'A4',
@@ -1586,13 +1613,7 @@ exports.exportGlobalPdf = async (req, res) => {
         header: { fontSize: 16, bold: true, color: '#2C3E50' },
         subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
         subheader2: { fontSize: 9, color: '#566573' },
-        typeSectionHeader: { fontSize: 13, bold: true, color: '#0E7C86', margin: [0, 15, 0, 5] },
-        anomalyHeader: { fontSize: 10, bold: true, color: '#2C3E50', margin: [0, 10, 0, 5] },
-        tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
-        cell: { fontSize: 7, color: '#2C3E50' },
-        totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
-        soldeRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#FDEBD0' },
-        noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+        ...section.styles
       }
     };
 
@@ -1608,6 +1629,91 @@ exports.exportGlobalPdf = async (req, res) => {
   }
 };
 
+// ── Reusable Excel sheet builder (all types) ─────────────────────────────────
+// Adds one worksheet per control type to the workbook PASSED IN.
+// Does not create a workbook and does not write to a response.
+
+exports.addExcelSheets = async (workbook, { id_compte, id_dossier, id_exercice, date_debut, date_fin, id_periode }, ctx = {}) => {
+  const dossier = await dossiers.findByPk(id_dossier);
+  const exercice = await exercices.findByPk(id_exercice);
+
+  const allControles = await revisionControle.findAll({
+    where: { id_compte, id_dossier, id_exercice },
+    order: [['Type', 'ASC'], ['id_controle', 'ASC']]
+  });
+
+  const byType = new Map();
+  for (const c of allControles) {
+    const key = c.Type || '';
+    if (!key) continue;
+    if (!byType.has(key)) byType.set(key, []);
+    byType.get(key).push(c);
+  }
+
+  const logo = ctx.logo || tryReadLogo();
+
+  const periodeText = (date_debut && date_fin)
+    ? `${formatDate(date_debut)} au ${formatDate(date_fin)}`
+    : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
+
+  // Create one sheet per type
+  const types = Array.from(byType.keys()).sort();
+  for (const type of types) {
+    const controlesForType = byType.get(type);
+    const description = controlesForType[0]?.description || type;
+
+    // Sheet name max 31 chars for Excel
+    const sheetName = type.substring(0, 31);
+    const ws = workbook.addWorksheet(sheetName);
+
+    ws.columns = [
+      { width: 12 }, { width: 14 }, { width: 12 }, { width: 40 },
+      { width: 14 }, { width: 14 }, { width: 10 }, { width: 12 },
+      { width: 8 }, { width: 30 }
+    ];
+
+    // Logo
+    if (logo?.buffer) {
+      const imageId = workbook.addImage({ buffer: logo.buffer, extension: logo.extension || 'png' });
+      ws.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 45 } });
+    }
+
+    // Header info
+    ws.mergeCells('A2:J2');
+    ws.getCell('A2').value = `RÉVISION - ${description}`;
+    ws.getCell('A2').font = { bold: true, size: 14 };
+    ws.getCell('A2').alignment = { horizontal: 'center' };
+
+    ws.mergeCells('A3:J3');
+    ws.getCell('A3').value = `Dossier : ${dossier?.dossier || ''}`;
+    ws.getCell('A3').font = { bold: true, size: 11 };
+    ws.getCell('A3').alignment = { horizontal: 'center' };
+
+    ws.mergeCells('A4:J4');
+    ws.getCell('A4').value = `Période : ${periodeText}`;
+    ws.getCell('A4').font = { bold: true, size: 9 };
+    ws.getCell('A4').alignment = { horizontal: 'center' };
+
+    let rowCursor = 6;
+
+    for (const controle of controlesForType) {
+      try {
+        const { anomalies } = await getRevisionDetailsData(
+          id_compte, id_dossier, id_exercice, controle.id_controle,
+          date_debut, date_fin, id_periode
+        );
+        rowCursor = addTypeRowsToSheet(ws, type, anomalies, controle, rowCursor);
+      } catch (err) {
+        console.error(`[REVISION][GLOBAL_EXCEL] Error for controle ${controle.id_controle}:`, err.message);
+        ws.getRow(rowCursor).values = [`Erreur pour le contrôle ${controle.id_controle}`];
+        rowCursor += 2;
+      }
+    }
+  }
+
+  return workbook;
+};
+
 // ── Global Excel Export (all types) ─────────────────────────────────────────
 
 exports.exportGlobalExcel = async (req, res) => {
@@ -1619,86 +1725,13 @@ exports.exportGlobalExcel = async (req, res) => {
       return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
     }
 
-    const dossier = await dossiers.findByPk(id_dossier);
-    const exercice = await exercices.findByPk(id_exercice);
-
-    const allControles = await revisionControle.findAll({
-      where: { id_compte, id_dossier, id_exercice },
-      order: [['Type', 'ASC'], ['id_controle', 'ASC']]
-    });
-
-    const byType = new Map();
-    for (const c of allControles) {
-      const key = c.Type || '';
-      if (!key) continue;
-      if (!byType.has(key)) byType.set(key, []);
-      byType.get(key).push(c);
-    }
-
     const workbook = new ExcelJS.Workbook();
-    const logo = tryReadLogo();
 
-    const periodeText = (date_debut && date_fin)
-      ? `${formatDate(date_debut)} au ${formatDate(date_fin)}`
-      : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
-
-    // Create one sheet per type
-    const types = Array.from(byType.keys()).sort();
-    for (const type of types) {
-      const controlesForType = byType.get(type);
-      const description = controlesForType[0]?.description || type;
-
-      // Sheet name max 31 chars for Excel
-      const sheetName = type.substring(0, 31);
-      const ws = workbook.addWorksheet(sheetName);
-
-      ws.columns = [
-        { width: 12 }, { width: 14 }, { width: 12 }, { width: 40 },
-        { width: 14 }, { width: 14 }, { width: 10 }, { width: 12 },
-        { width: 8 }, { width: 30 }
-      ];
-
-      // Logo
-      if (logo?.buffer) {
-        const imageId = workbook.addImage({ buffer: logo.buffer, extension: logo.extension || 'png' });
-        ws.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 45 } });
-      }
-
-      // Header info
-      ws.mergeCells('A2:J2');
-      ws.getCell('A2').value = `RÉVISION - ${description}`;
-      ws.getCell('A2').font = { bold: true, size: 14 };
-      ws.getCell('A2').alignment = { horizontal: 'center' };
-
-      ws.mergeCells('A3:J3');
-      ws.getCell('A3').value = `Dossier : ${dossier?.dossier || ''}`;
-      ws.getCell('A3').font = { bold: true, size: 11 };
-      ws.getCell('A3').alignment = { horizontal: 'center' };
-
-      ws.mergeCells('A4:J4');
-      ws.getCell('A4').value = `Période : ${periodeText}`;
-      ws.getCell('A4').font = { bold: true, size: 9 };
-      ws.getCell('A4').alignment = { horizontal: 'center' };
-
-      let rowCursor = 6;
-
-      for (const controle of controlesForType) {
-        try {
-          const { anomalies } = await getRevisionDetailsData(
-            id_compte, id_dossier, id_exercice, controle.id_controle,
-            date_debut, date_fin, id_periode
-          );
-          rowCursor = addTypeRowsToSheet(ws, type, anomalies, controle, rowCursor);
-        } catch (err) {
-          console.error(`[REVISION][GLOBAL_EXCEL] Error for controle ${controle.id_controle}:`, err.message);
-          ws.getRow(rowCursor).values = [`Erreur pour le contrôle ${controle.id_controle}`];
-          rowCursor += 2;
-        }
-      }
-    }
+    await exports.addExcelSheets(workbook, { id_compte, id_dossier, id_exercice, date_debut, date_fin, id_periode });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Revision_Globale_${id_dossier}_${id_exercice}.xlsx`);
+    workbook.worksheets.forEach(ws => applyKaontyStyle(ws));
     await workbook.xlsx.write(res);
     res.end();
 

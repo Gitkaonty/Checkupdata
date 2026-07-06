@@ -4,6 +4,7 @@ const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
+const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 
 // ==========================================
 // SECTION 1: Extraction des critères
@@ -723,6 +724,149 @@ const tryReadLogo = () => {
   return null;
 };
 
+// ==========================================
+// SECTION 6: Fonctions réutilisables pour l'export global
+// ==========================================
+
+/**
+ * Récupère les données de doublons pour l'export (PDF / Excel).
+ * Extrait la requête inline utilisée par exportPdf / exportExcel.
+ * Retourne le tableau `resultats`.
+ */
+exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
+  const whereClause = { id_dossier, id_exercice };
+  if (id_periode) whereClause.id_periode = id_periode;
+
+  const resultats = await db.rechercheDoublons.findAll({
+    where: whereClause,
+    order: [['id_doublon', 'ASC'], ['id', 'ASC']]
+  });
+
+  return resultats;
+};
+
+/**
+ * Construit la section PDF (tableau uniquement) pour la Recherche de Doublons.
+ * @param {Array} data - tableau resultats issu de getExportData
+ * @returns {{ content: Array, styles: Object }}
+ *   content = uniquement le nœud table (groupement + rowSpan) ; pas de logo/titre/headerColumns.
+ *   styles  = uniquement les styles nommés utilisés par le tableau ; pas de header/subheader.
+ */
+exports.buildPdfSection = (data, ctx = {}) => {
+  const resultats = data || [];
+
+  // Group by id_doublon
+  const grouped = {};
+  resultats.forEach(item => {
+    if (!grouped[item.id_doublon]) {
+      grouped[item.id_doublon] = [];
+    }
+    grouped[item.id_doublon].push(item);
+  });
+
+  const tableBody = [
+    [{ text: 'Groupe', style: 'tableHeader', alignment: 'center' }, { text: 'Compte', style: 'tableHeader', alignment: 'center' }, { text: 'Date', style: 'tableHeader', alignment: 'center' }, { text: 'Journal', style: 'tableHeader', alignment: 'center' }, { text: 'Pièce', style: 'tableHeader', alignment: 'center' }, { text: 'Libellé', style: 'tableHeader', alignment: 'center' }, { text: 'Débit', style: 'tableHeader', alignment: 'center' }, { text: 'Crédit', style: 'tableHeader', alignment: 'center' }, { text: 'Statut', style: 'tableHeader', alignment: 'center' }]
+  ];
+
+  let rowCounter = 1;
+  Object.keys(grouped).sort((a, b) => parseInt(a) - parseInt(b)).forEach(groupId => {
+    const group = grouped[groupId];
+    group.forEach((item, idx) => {
+      const rowColor = rowCounter % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+      tableBody.push([
+        idx === 0 ? { text: `GRP-${groupId}`, rowSpan: group.length, style: 'cell', alignment: 'center', fillColor: rowColor } : {},
+        { text: item.compte || '', style: 'cell', fillColor: rowColor },
+        { text: formatDate(item.date), style: 'cell', fillColor: rowColor },
+        { text: item.journal || '', style: 'cell', fillColor: rowColor },
+        { text: item.piece || '', style: 'cell', fillColor: rowColor },
+        { text: item.libelle || '', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(item.debit), alignment: 'right', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(item.credit), alignment: 'right', style: 'cell', fillColor: rowColor },
+        { text: item.statut === 'VALIDE' ? 'Validé' : 'Non validé', alignment: 'center', style: 'cell', fillColor: rowColor }
+      ]);
+      rowCounter++;
+    });
+  });
+
+  const content = [
+    { table: { headerRows: 1, widths: ['8%', '10%', '10%', '10%', '12%', '25%', '10%', '10%', '5%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } }
+  ];
+
+  const styles = {
+    tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+    cell: { fontSize: 7, color: '#2C3E50' }
+  };
+
+  return { content, styles };
+};
+
+/**
+ * Ajoute l'onglet 'Doublons' au workbook passé en paramètre.
+ * Colonnes / en-têtes / formatage identiques à l'export existant.
+ */
+exports.addExcelSheets = (workbook, data, ctx = {}) => {
+  const resultats = data || [];
+  const worksheet = workbook.addWorksheet('Doublons');
+
+  // Colonnes sans en-tête (le bloc titre + l'en-tête sont écrits manuellement).
+  worksheet.columns = [
+    { key: 'groupe', width: 10 },
+    { key: 'compte', width: 12 },
+    { key: 'date', width: 12 },
+    { key: 'journal', width: 12 },
+    { key: 'piece', width: 15 },
+    { key: 'libelle', width: 35 },
+    { key: 'debit', width: 12 },
+    { key: 'credit', width: 12 },
+    { key: 'statut', width: 12 }
+  ];
+
+  // --- Bloc titre style Kaonty (le styliseur le colorera a posteriori) ---
+  worksheet.mergeCells('A1:I1');
+  worksheet.getCell('A1').value = 'RECHERCHE DE DOUBLONS';
+
+  worksheet.mergeCells('A2:I2');
+  worksheet.getCell('A2').value = `Dossier : ${ctx.dossierName || ''}`;
+
+  worksheet.mergeCells('A3:I3');
+  worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
+
+  // Ligne 4 : vide
+
+  // --- En-tête du tableau (ligne 5) ---
+  worksheet.getRow(5).values = ['Groupe', 'Compte', 'Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Statut'];
+  const headerRow = worksheet.getRow(5);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+  headerRow.alignment = { horizontal: 'center' };
+
+  // --- Données (lignes 6+) ---
+  let rowIndex = 6;
+  resultats.forEach(item => {
+    const row = worksheet.getRow(rowIndex);
+    row.values = [
+      `GRP-${item.id_doublon}`,
+      item.compte || '',
+      formatDate(item.date),
+      item.journal || '',
+      item.piece || '',
+      item.libelle || '',
+      item.debit || 0,
+      item.credit || 0,
+      item.statut === 'VALIDE' ? 'Validé' : 'Non validé'
+    ];
+    row.getCell(7).numFmt = '#,##0.00';
+    row.getCell(8).numFmt = '#,##0.00';
+    rowIndex++;
+  });
+
+  return worksheet;
+};
+
+// ==========================================
+// SECTION 7: Endpoints d'export
+// ==========================================
+
 /**
  * Export PDF for Recherche Doublons
  */
@@ -731,13 +875,7 @@ exports.exportPdf = async (req, res) => {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { id_periode } = req.query;
 
-    const whereClause = { id_dossier, id_exercice };
-    if (id_periode) whereClause.id_periode = id_periode;
-
-    const resultats = await db.rechercheDoublons.findAll({
-      where: whereClause,
-      order: [['id_doublon', 'ASC'], ['id', 'ASC']]
-    });
+    const resultats = await exports.getExportData(id_compte, id_dossier, id_exercice, id_periode);
 
     const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
     const printer = new PdfPrinter(fonts);
@@ -757,38 +895,7 @@ exports.exportPdf = async (req, res) => {
       ]
     });
 
-    // Group by id_doublon
-    const grouped = {};
-    resultats.forEach(item => {
-      if (!grouped[item.id_doublon]) {
-        grouped[item.id_doublon] = [];
-      }
-      grouped[item.id_doublon].push(item);
-    });
-
-    const tableBody = [
-      [{ text: 'Groupe', style: 'tableHeader', alignment: 'center' }, { text: 'Compte', style: 'tableHeader', alignment: 'center' }, { text: 'Date', style: 'tableHeader', alignment: 'center' }, { text: 'Journal', style: 'tableHeader', alignment: 'center' }, { text: 'Pièce', style: 'tableHeader', alignment: 'center' }, { text: 'Libellé', style: 'tableHeader', alignment: 'center' }, { text: 'Débit', style: 'tableHeader', alignment: 'center' }, { text: 'Crédit', style: 'tableHeader', alignment: 'center' }, { text: 'Statut', style: 'tableHeader', alignment: 'center' }]
-    ];
-
-    let rowCounter = 1;
-    Object.keys(grouped).sort((a, b) => parseInt(a) - parseInt(b)).forEach(groupId => {
-      const group = grouped[groupId];
-      group.forEach((item, idx) => {
-        const rowColor = rowCounter % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
-        tableBody.push([
-          idx === 0 ? { text: `GRP-${groupId}`, rowSpan: group.length, style: 'cell', alignment: 'center', fillColor: rowColor } : {},
-          { text: item.compte || '', style: 'cell', fillColor: rowColor },
-          { text: formatDate(item.date), style: 'cell', fillColor: rowColor },
-          { text: item.journal || '', style: 'cell', fillColor: rowColor },
-          { text: item.piece || '', style: 'cell', fillColor: rowColor },
-          { text: item.libelle || '', style: 'cell', fillColor: rowColor },
-          { text: formatMontant(item.debit), alignment: 'right', style: 'cell', fillColor: rowColor },
-          { text: formatMontant(item.credit), alignment: 'right', style: 'cell', fillColor: rowColor },
-          { text: item.statut === 'VALIDE' ? 'Validé' : 'Non validé', alignment: 'center', style: 'cell', fillColor: rowColor }
-        ]);
-        rowCounter++;
-      });
-    });
+    const section = exports.buildPdfSection(resultats);
 
     const docDefinition = {
       pageSize: 'A4',
@@ -797,14 +904,13 @@ exports.exportPdf = async (req, res) => {
       defaultStyle: { font: 'Helvetica', fontSize: 8 },
       content: [
         { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
-        { table: { headerRows: 1, widths: ['8%', '10%', '10%', '10%', '12%', '25%', '10%', '10%', '5%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } }
+        ...section.content
       ],
       styles: {
         header: { fontSize: 16, bold: true, color: '#2C3E50' },
         subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
         subheader2: { fontSize: 9, color: '#566573' },
-        tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
-        cell: { fontSize: 7, color: '#2C3E50' }
+        ...section.styles
       }
     };
 
@@ -827,56 +933,22 @@ exports.exportExcel = async (req, res) => {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { id_periode } = req.query;
 
-    const whereClause = { id_dossier, id_exercice };
-    if (id_periode) whereClause.id_periode = id_periode;
+    const resultats = await exports.getExportData(id_compte, id_dossier, id_exercice, id_periode);
 
-    const resultats = await db.rechercheDoublons.findAll({
-      where: whereClause,
-      order: [['id_doublon', 'ASC'], ['id', 'ASC']]
-    });
+    // Dossier / période : même logique que l'export PDF (en-tête PDF affiche Dossier + Période)
+    const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+    const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
+    const ctx = {
+      dossierName: dossier?.dossier || id_dossier,
+      periodeText: exercice?.libelle || id_exercice
+    };
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Doublons');
-
-    worksheet.columns = [
-      { header: 'Groupe', key: 'groupe', width: 10 },
-      { header: 'Compte', key: 'compte', width: 12 },
-      { header: 'Date', key: 'date', width: 12 },
-      { header: 'Journal', key: 'journal', width: 12 },
-      { header: 'Pièce', key: 'piece', width: 15 },
-      { header: 'Libellé', key: 'libelle', width: 35 },
-      { header: 'Débit', key: 'debit', width: 12 },
-      { header: 'Crédit', key: 'credit', width: 12 },
-      { header: 'Statut', key: 'statut', width: 12 }
-    ];
-
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-    worksheet.getRow(1).alignment = { horizontal: 'center' };
-
-    resultats.forEach(item => {
-      worksheet.addRow({
-        groupe: `GRP-${item.id_doublon}`,
-        compte: item.compte || '',
-        date: formatDate(item.date),
-        journal: item.journal || '',
-        piece: item.piece || '',
-        libelle: item.libelle || '',
-        debit: item.debit || 0,
-        credit: item.credit || 0,
-        statut: item.statut === 'VALIDE' ? 'Validé' : 'Non validé'
-      });
-    });
-
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 1) {
-        row.getCell(7).numFmt = '#,##0.00';
-        row.getCell(8).numFmt = '#,##0.00';
-      }
-    });
+    exports.addExcelSheets(workbook, resultats, ctx);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Recherche_Doublons_${id_dossier}_${id_exercice}.xlsx`);
+    workbook.worksheets.forEach(ws => applyKaontyStyle(ws));
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {

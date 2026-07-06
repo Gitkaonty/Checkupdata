@@ -5,6 +5,7 @@ const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
+const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 
 const round2 = (value) => Math.round(value * 100) / 100;
 
@@ -775,13 +776,114 @@ const getMensuelleData = async (id_compte, id_dossier, id_exercice, id_periode, 
     return { dossier, exercice, finalData, finalMoisColumns };
 };
 
+// Expose internal data fetcher for reuse (global combined export)
+exports.getExportData = getMensuelleData;
+
+// Build the PDF data-table section (no logo/global title/headerColumns), for combined PDF
+exports.buildPdfSection = (data, ctx = {}) => {
+    const { finalData, finalMoisColumns } = data;
+
+    const tableHeader = ['Compte', 'Libellé'];
+    finalMoisColumns.forEach(m => tableHeader.push(m.nomAffiche));
+    tableHeader.push('Anomalies', 'Validé', 'Commentaire');
+
+    const tableBody = [tableHeader.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))];
+
+    finalData.forEach((r, i) => {
+        const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+        const row = [{ text: r.compte, style: 'cell' }, { text: r.libelle, style: 'cell' }];
+        finalMoisColumns.forEach(m => {
+            const val = r[m.nom] || 0;
+            row.push({ text: formatMontant(val), alignment: 'right', style: 'cell' });
+        });
+        row.push(
+            { text: r.anomalies ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            { text: r.valide_anomalie ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            { text: r.commentaire || '', style: 'cell' }
+        );
+        tableBody.push(row.map(cell => ({ ...cell, fillColor: rowColor })));
+    });
+
+    const content = [
+        { table: { headerRows: 1, widths: ['8%', '15%', ...finalMoisColumns.map(() => '6%'), '6%', '6%', '15%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3 } }
+    ];
+
+    const styles = {
+        tableHeader: { bold: true, fontSize: 7, color: '#2C3E50' },
+        cell: { fontSize: 6, color: '#2C3E50' }
+    };
+
+    return { content, styles };
+};
+
+// Add the 'Revue Mensuelle' worksheet to an existing workbook, for combined Excel
+exports.addExcelSheets = (workbook, data, ctx = {}) => {
+    const { dossier, exercice, finalData, finalMoisColumns } = data;
+    const logo = ctx.logo || tryReadLogo();
+    const periodeText = (ctx.date_debut && ctx.date_fin)
+        ? `${formatDate(ctx.date_debut)} au ${formatDate(ctx.date_fin)}`
+        : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
+
+    const ws = workbook.addWorksheet('Revue Mensuelle');
+
+    if (logo?.buffer) {
+        const imageId = workbook.addImage({ buffer: logo.buffer, extension: logo.extension || 'png' });
+        ws.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 45 } });
+    }
+
+    const headerEndCol = String.fromCharCode(65 + 2 + finalMoisColumns.length + 2);
+    ws.mergeCells(`A2:${headerEndCol}2`);
+    ws.getCell('A2').value = 'REVUE ANALYTIQUE MENSUELLE';
+    ws.getCell('A2').font = { bold: true, size: 14 };
+    ws.getCell('A2').alignment = { horizontal: 'center' };
+
+    ws.mergeCells(`A3:${headerEndCol}3`);
+    ws.getCell('A3').value = `Dossier : ${dossier?.dossier || ''}`;
+    ws.getCell('A3').font = { bold: true, size: 11 };
+    ws.getCell('A3').alignment = { horizontal: 'center' };
+
+    ws.mergeCells(`A4:${headerEndCol}4`);
+    ws.getCell('A4').value = `Période : ${periodeText}`;
+    ws.getCell('A4').font = { bold: true, size: 9 };
+    ws.getCell('A4').alignment = { horizontal: 'center' };
+
+    ws.columns = [{ width: 12 }, { width: 30 }, ...finalMoisColumns.map(() => ({ width: 10 })), { width: 10 }, { width: 10 }, { width: 30 }];
+
+    const headerRow = ws.getRow(7);
+    const headerValues = ['Compte', 'Libellé'];
+    finalMoisColumns.forEach(m => headerValues.push(m.nomAffiche));
+    headerValues.push('Anomalies', 'Validé', 'Commentaire');
+    headerRow.values = headerValues;
+    headerRow.font = { bold: true, size: 9 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } };
+    headerRow.alignment = { horizontal: 'center' };
+
+    finalData.forEach((r, i) => {
+        const row = ws.getRow(8 + i);
+        const rowValues = [r.compte, r.libelle];
+        finalMoisColumns.forEach(m => rowValues.push(r[m.nom] || 0));
+        rowValues.push(r.anomalies ? 'Oui' : 'Non', r.valide_anomalie ? 'Oui' : 'Non', r.commentaire || '');
+        row.values = rowValues;
+
+        for (let j = 2; j < 2 + finalMoisColumns.length; j++) {
+            row.getCell(j + 1).numFmt = '#,##0.00';
+            row.getCell(j + 1).alignment = { horizontal: 'right' };
+        }
+        row.getCell(2 + finalMoisColumns.length + 1).alignment = { horizontal: 'center' };
+        row.getCell(2 + finalMoisColumns.length + 2).alignment = { horizontal: 'center' };
+    });
+
+    return ws;
+};
+
 // Export PDF
 exports.exportPdf = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
         const { id_periode, date_debut, date_fin } = req.query;
 
-        const { dossier, exercice, finalData, finalMoisColumns } = await getMensuelleData(id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin);
+        const data = await getMensuelleData(id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin);
+        const { dossier, exercice } = data;
 
         const fonts = { Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' } };
         const printer = new PdfPrinter(fonts);
@@ -800,40 +902,20 @@ exports.exportPdf = async (req, res) => {
             ]
         });
 
-        const tableHeader = ['Compte', 'Libellé'];
-        finalMoisColumns.forEach(m => tableHeader.push(m.nomAffiche));
-        tableHeader.push('Anomalies', 'Validé', 'Commentaire');
-
-        const tableBody = [tableHeader.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))];
-
-        finalData.forEach((r, i) => {
-            const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
-            const row = [{ text: r.compte, style: 'cell' }, { text: r.libelle, style: 'cell' }];
-            finalMoisColumns.forEach(m => {
-                const val = r[m.nom] || 0;
-                row.push({ text: formatMontant(val), alignment: 'right', style: 'cell' });
-            });
-            row.push(
-                { text: r.anomalies ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
-                { text: r.valide_anomalie ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
-                { text: r.commentaire || '', style: 'cell' }
-            );
-            tableBody.push(row.map(cell => ({ ...cell, fillColor: rowColor })));
-        });
+        const section = exports.buildPdfSection(data, { date_debut, date_fin });
 
         const docDefinition = {
             pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 7 },
             content: [
                 { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
-                { table: { headerRows: 1, widths: ['8%', '15%', ...finalMoisColumns.map(() => '6%'), '6%', '6%', '15%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3 } }
+                ...section.content
             ],
             styles: {
                 header: { fontSize: 16, bold: true, color: '#2C3E50' },
                 subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
                 subheader2: { fontSize: 9, color: '#566573' },
-                tableHeader: { bold: true, fontSize: 7, color: '#2C3E50' },
-                cell: { fontSize: 6, color: '#2C3E50' }
+                ...section.styles
             }
         };
 
@@ -854,63 +936,14 @@ exports.exportExcel = async (req, res) => {
         const { id_compte, id_dossier, id_exercice } = req.params;
         const { id_periode, date_debut, date_fin } = req.query;
 
-        const { dossier, exercice, finalData, finalMoisColumns } = await getMensuelleData(id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin);
+        const data = await getMensuelleData(id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin);
 
         const workbook = new ExcelJS.Workbook();
-        const logo = tryReadLogo();
-        const periodeText = (date_debut && date_fin) ? `${formatDate(date_debut)} au ${formatDate(date_fin)}` : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
-
-        const ws = workbook.addWorksheet('Revue Mensuelle');
-
-        if (logo?.buffer) {
-            const imageId = workbook.addImage({ buffer: logo.buffer, extension: logo.extension || 'png' });
-            ws.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 45 } });
-        }
-
-        const headerEndCol = String.fromCharCode(65 + 2 + finalMoisColumns.length + 2);
-        ws.mergeCells(`A2:${headerEndCol}2`);
-        ws.getCell('A2').value = 'REVUE ANALYTIQUE MENSUELLE';
-        ws.getCell('A2').font = { bold: true, size: 14 };
-        ws.getCell('A2').alignment = { horizontal: 'center' };
-
-        ws.mergeCells(`A3:${headerEndCol}3`);
-        ws.getCell('A3').value = `Dossier : ${dossier?.dossier || ''}`;
-        ws.getCell('A3').font = { bold: true, size: 11 };
-        ws.getCell('A3').alignment = { horizontal: 'center' };
-
-        ws.mergeCells(`A4:${headerEndCol}4`);
-        ws.getCell('A4').value = `Période : ${periodeText}`;
-        ws.getCell('A4').font = { bold: true, size: 9 };
-        ws.getCell('A4').alignment = { horizontal: 'center' };
-
-        ws.columns = [{ width: 12 }, { width: 30 }, ...finalMoisColumns.map(() => ({ width: 10 })), { width: 10 }, { width: 10 }, { width: 30 }];
-
-        const headerRow = ws.getRow(7);
-        const headerValues = ['Compte', 'Libellé'];
-        finalMoisColumns.forEach(m => headerValues.push(m.nomAffiche));
-        headerValues.push('Anomalies', 'Validé', 'Commentaire');
-        headerRow.values = headerValues;
-        headerRow.font = { bold: true, size: 9 };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } };
-        headerRow.alignment = { horizontal: 'center' };
-
-        finalData.forEach((r, i) => {
-            const row = ws.getRow(8 + i);
-            const rowValues = [r.compte, r.libelle];
-            finalMoisColumns.forEach(m => rowValues.push(r[m.nom] || 0));
-            rowValues.push(r.anomalies ? 'Oui' : 'Non', r.valide_anomalie ? 'Oui' : 'Non', r.commentaire || '');
-            row.values = rowValues;
-            
-            for (let j = 2; j < 2 + finalMoisColumns.length; j++) {
-                row.getCell(j + 1).numFmt = '#,##0.00';
-                row.getCell(j + 1).alignment = { horizontal: 'right' };
-            }
-            row.getCell(2 + finalMoisColumns.length + 1).alignment = { horizontal: 'center' };
-            row.getCell(2 + finalMoisColumns.length + 2).alignment = { horizontal: 'center' };
-        });
+        exports.addExcelSheets(workbook, data, { date_debut, date_fin });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=Revue_Mensuelle_${id_dossier}_${id_exercice}.xlsx`);
+        workbook.worksheets.forEach(ws => applyKaontyStyle(ws));
         await workbook.xlsx.write(res);
         res.end();
     } catch (error) {
