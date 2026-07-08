@@ -4,6 +4,7 @@ const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
+const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -51,6 +52,137 @@ const getAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_periode)
     credit: item.credit,
     total_analytiques: item.total_analytiques
   }));
+};
+
+/**
+ * Récupère les données pour l'export global (signature standardisée).
+ * date_debut / date_fin sont ignorés ici (non utilisés par ce contrôle).
+ */
+exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
+    return await getAnalytiqueData(id_compte, id_dossier, id_exercice, id_periode);
+};
+
+/**
+ * Construit la section PDF (tableau + ligne de totaux) réutilisable pour l'export combiné.
+ * @param {Array} data - tableau de lignes
+ * @param {Object} ctx - contexte optionnel
+ * @returns {{content: Array, styles: Object}}
+ */
+exports.buildPdfSection = (data, ctx = {}) => {
+    const rows = Array.isArray(data) ? data : [];
+
+    const tableBody = [
+      ['Date', 'Compte', 'Libellé', 'Débit', 'Crédit', 'Total Analytiques'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
+    ];
+
+    let totalDebit = 0, totalCredit = 0, totalAnalytiques = 0;
+    rows.forEach((row, i) => {
+      const debit = parseFloat(row.debit) || 0;
+      const credit = parseFloat(row.credit) || 0;
+      const analytiques = parseFloat(row.total_analytiques) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      totalAnalytiques += analytiques;
+      const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+      tableBody.push([
+        { text: formatDate(row.date), style: 'cell', fillColor: rowColor },
+        { text: row.compte || '', style: 'cell', fillColor: rowColor },
+        { text: row.libelle || '', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(debit), alignment: 'right', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(credit), alignment: 'right', style: 'cell', fillColor: rowColor },
+        { text: formatMontant(analytiques), alignment: 'right', style: 'cell', fillColor: rowColor }
+      ]);
+    });
+
+    tableBody.push([
+      { text: 'Total', colSpan: 3, alignment: 'right', style: 'totalRow' }, {}, {},
+      { text: formatMontant(totalDebit), alignment: 'right', style: 'totalRow' },
+      { text: formatMontant(totalCredit), alignment: 'right', style: 'totalRow' },
+      { text: formatMontant(totalAnalytiques), alignment: 'right', style: 'totalRow' }
+    ]);
+
+    const content = [
+      { table: { headerRows: 1, widths: ['10%', '10%', '*', '12%', '12%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } },
+      { text: `Total : ${rows.length} écriture(s) sans analytiques`, style: 'noData', margin: [0, 10, 0, 0] }
+    ];
+
+    const styles = {
+      tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+      cell: { fontSize: 7, color: '#2C3E50' },
+      totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
+      noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+    };
+
+    return { content, styles };
+};
+
+/**
+ * Ajoute l'onglet 'Contrôle Analytique' au workbook fourni (réutilisable pour l'export combiné).
+ * @param {ExcelJS.Workbook} workbook
+ * @param {Array} data
+ * @param {Object} ctx - contexte optionnel (ctx.logo)
+ */
+exports.addExcelSheets = (workbook, data, ctx = {}) => {
+    const rows = Array.isArray(data) ? data : [];
+    const worksheet = workbook.addWorksheet('Contrôle Analytique');
+
+    // Colonnes : on garde uniquement key + width (les libellés d'en-tête
+    // sont écrits explicitement en ligne 5 pour laisser place au bloc titre).
+    worksheet.columns = [
+        { key: 'date', width: 14 },
+        { key: 'compte', width: 14 },
+        { key: 'libelle', width: 40 },
+        { key: 'debit', width: 14 },
+        { key: 'credit', width: 14 },
+        { key: 'total_analytiques', width: 18 }
+    ];
+
+    const NB_COLS = 6;
+    const lastColLetter = worksheet.getColumn(NB_COLS).letter;
+
+    // Bloc titre style Kaonty (lignes 1 à 4).
+    worksheet.mergeCells(`A1:${lastColLetter}1`);
+    worksheet.getCell('A1').value = 'CONTRÔLE ANALYTIQUE';
+
+    worksheet.mergeCells(`A2:${lastColLetter}2`);
+    worksheet.getCell('A2').value = `Dossier : ${ctx.dossierName || ''}`;
+
+    worksheet.mergeCells(`A3:${lastColLetter}3`);
+    worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
+
+    // Ligne 4 : vide (séparateur).
+
+    // Ligne 5 : en-tête du tableau (mêmes libellés qu'avant).
+    const headerRow = worksheet.getRow(5);
+    headerRow.values = ['Date', 'Compte', 'Libellé', 'Débit', 'Crédit', 'Total Analytiques'];
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+    headerRow.alignment = { horizontal: 'center' };
+
+    // Lignes 6+ : données.
+    let rowNo = 6;
+    rows.forEach(row => {
+        worksheet.getRow(rowNo).values = [
+            row.date || '',
+            row.compte || '',
+            row.libelle || '',
+            Number(row.debit) || 0,
+            Number(row.credit) || 0,
+            Number(row.total_analytiques) || 0
+        ];
+        rowNo++;
+    });
+
+    // Format numeric columns (colonnes montants), à partir des données.
+    const lastRow = worksheet.rowCount;
+    for (let i = 6; i <= lastRow; i++) {
+        const row = worksheet.getRow(i);
+        row.getCell(4).numFmt = '#,##0.00';
+        row.getCell(5).numFmt = '#,##0.00';
+        row.getCell(6).numFmt = '#,##0.00';
+    }
+
+    return worksheet;
 };
 
 /**
@@ -385,35 +517,7 @@ exports.exportPdf = async (req, res) => {
           ]
         });
 
-        const tableBody = [
-          ['Date', 'Compte', 'Libellé', 'Débit', 'Crédit', 'Total Analytiques'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
-        ];
-
-        let totalDebit = 0, totalCredit = 0, totalAnalytiques = 0;
-        data.forEach((row, i) => {
-          const debit = parseFloat(row.debit) || 0;
-          const credit = parseFloat(row.credit) || 0;
-          const analytiques = parseFloat(row.total_analytiques) || 0;
-          totalDebit += debit;
-          totalCredit += credit;
-          totalAnalytiques += analytiques;
-          const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
-          tableBody.push([
-            { text: formatDate(row.date), style: 'cell', fillColor: rowColor },
-            { text: row.compte || '', style: 'cell', fillColor: rowColor },
-            { text: row.libelle || '', style: 'cell', fillColor: rowColor },
-            { text: formatMontant(debit), alignment: 'right', style: 'cell', fillColor: rowColor },
-            { text: formatMontant(credit), alignment: 'right', style: 'cell', fillColor: rowColor },
-            { text: formatMontant(analytiques), alignment: 'right', style: 'cell', fillColor: rowColor }
-          ]);
-        });
-
-        tableBody.push([
-          { text: 'Total', colSpan: 3, alignment: 'right', style: 'totalRow' }, {}, {},
-          { text: formatMontant(totalDebit), alignment: 'right', style: 'totalRow' },
-          { text: formatMontant(totalCredit), alignment: 'right', style: 'totalRow' },
-          { text: formatMontant(totalAnalytiques), alignment: 'right', style: 'totalRow' }
-        ]);
+        const section = exports.buildPdfSection(data);
 
         const docDefinition = {
             pageSize: 'A4',
@@ -422,17 +526,13 @@ exports.exportPdf = async (req, res) => {
             defaultStyle: { font: 'Helvetica', fontSize: 8 },
             content: [
                 { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
-                { table: { headerRows: 1, widths: ['10%', '10%', '*', '12%', '12%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : undefined, hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } },
-                { text: `Total : ${data.length} écriture(s) sans analytiques`, style: 'noData', margin: [0, 10, 0, 0] }
+                ...section.content
             ],
             styles: {
                 header: { fontSize: 16, bold: true, color: '#2C3E50' },
                 subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
                 subheader2: { fontSize: 9, color: '#566573' },
-                tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
-                cell: { fontSize: 7, color: '#2C3E50' },
-                totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
-                noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 10, 0, 10] }
+                ...section.styles
             }
         };
 
@@ -459,45 +559,19 @@ exports.exportExcel = async (req, res) => {
 
         const data = await getAnalytiqueData(id_compte, id_dossier, id_exercice, id_periode);
 
+        // Dossier / période : même logique que l'export PDF de ce fichier.
+        const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
+        const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
+        const dossierName = dossier?.dossier || id_dossier;
+        const periodeText = exercice?.libelle || id_exercice;
+
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Contrôle Analytique');
-
-        worksheet.columns = [
-            { header: 'Date', key: 'date', width: 14 },
-            { header: 'Compte', key: 'compte', width: 14 },
-            { header: 'Libellé', key: 'libelle', width: 40 },
-            { header: 'Débit', key: 'debit', width: 14 },
-            { header: 'Crédit', key: 'credit', width: 14 },
-            { header: 'Total Analytiques', key: 'total_analytiques', width: 18 }
-        ];
-
-        // Style header
-        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-        worksheet.getRow(1).alignment = { horizontal: 'center' };
-
-        data.forEach(row => {
-            worksheet.addRow({
-                date: row.date || '',
-                compte: row.compte || '',
-                libelle: row.libelle || '',
-                debit: Number(row.debit) || 0,
-                credit: Number(row.credit) || 0,
-                total_analytiques: Number(row.total_analytiques) || 0
-            });
-        });
-
-        // Format numeric columns
-        const lastRow = worksheet.rowCount;
-        for (let i = 2; i <= lastRow; i++) {
-            const row = worksheet.getRow(i);
-            row.getCell(4).numFmt = '#,##0.00';
-            row.getCell(5).numFmt = '#,##0.00';
-            row.getCell(6).numFmt = '#,##0.00';
-        }
+        exports.addExcelSheets(workbook, data, { dossierName, periodeText });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=Controle_Analytique_${id_dossier}_${id_exercice}.xlsx`);
+
+        workbook.worksheets.forEach(ws => applyKaontyStyle(ws));
 
         await workbook.xlsx.write(res);
         res.end();

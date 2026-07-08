@@ -1079,7 +1079,7 @@ const GestionRevisionCycles = () => {
             >
               <ToggleButton value="OUI" sx={{ fontSize: '0.6rem', fontWeight: 800, px: 1.5, '&.Mui-selected': { bgcolor: '#ECFDF5', color: '#10B981' } }}>OUI</ToggleButton>
               <ToggleButton value="NON" sx={{ fontSize: '0.6rem', fontWeight: 800, px: 1.5, '&.Mui-selected': { bgcolor: '#FEF2F2', color: '#EF4444' } }}>NON</ToggleButton>
-              <ToggleButton value="NA" sx={{ fontSize: '0.6rem', fontWeight: 800, px: 1.5, '&.Mui-selected': { bgcolor: '#F1F5F9', color: '#64748B' } }}>N/A</ToggleButton>
+              <ToggleButton value="NA" sx={{ fontSize: '0.6rem', fontWeight: 800, px: 1.5, '&.Mui-selected': { bgcolor: '#FEFCE8', color: '#000000' } }}>N/A</ToggleButton>
             </ToggleButtonGroup>
           )
         }

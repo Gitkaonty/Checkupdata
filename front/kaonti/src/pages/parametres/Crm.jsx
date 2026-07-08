@@ -30,7 +30,8 @@ import {
   DataGrid,
   GridRowModes,
   GridActionsCellItem,
-  GridRowEditStopReasons
+  GridRowEditStopReasons,
+  GridToolbar
 } from '@mui/x-data-grid';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -449,6 +450,20 @@ const CodesJournauxDataGrid = ({ fileId, compteId, axiosPrivate, pc }) => {
           disableRowSelectionOnClick
           density="compact"
           // hideFooterPagination={rows.length <= 10}
+
+          // Toolbar avec recherche rapide
+          slots={{
+            toolbar: GridToolbar,
+          }}
+          slotProps={{
+            toolbar: {
+              showQuickFilter: true,
+              quickFilterProps: {
+                debounceMs: 500,
+                placeholder: "Rechercher ...",
+              },
+            },
+          }}
 
           // 🔥 sélection contrôlée (1 seule ligne)
           rowSelectionModel={selectedRow ? [selectedRow.id] : []}
@@ -1774,6 +1789,26 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           editMode="row"
           rowModesModel={pcRowModesModel}
           onRowModesModelChange={setPcRowModesModel}
+          processRowUpdate={processPcRowUpdate}
+          checkboxSelection
+          disableRowSelectionOnClick
+          density="compact"
+          getRowId={(row) => row.id}
+
+          // Toolbar avec recherche
+          slots={{
+            toolbar: GridToolbar,
+          }}
+
+          slotProps={{
+            toolbar: {
+              showQuickFilter: true,
+              quickFilterProps: {
+                debounceMs: 500,
+                placeholder: "Rechercher un compte...",
+              },
+            },
+          }}
 
           onRowEditStop={(params, event) => {
             if (params.reason === GridRowEditStopReasons.rowFocusOut) {
@@ -1781,13 +1816,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
             }
           }}
 
-          processRowUpdate={processPcRowUpdate}
-          checkboxSelection
-          disableRowSelectionOnClick
-          density="compact"
-          getRowId={(row) => row.id}
-
-          // 🔥 sélection contrôlée (1 seule ligne)
+          // Sélection contrôlée (1 seule ligne)
           rowSelectionModel={selectedPc ? [selectedPc.id] : []}
 
           onRowSelectionModelChange={(ids) => {
@@ -1805,29 +1834,41 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
           sx={{
             flex: 1,
             minHeight: 0,
-            border: 'none',
+            border: "none",
 
-            '& .MuiDataGrid-columnHeaders': {
-              bgcolor: '#F8FAFC',
+            "& .MuiDataGrid-columnHeaders": {
+              bgcolor: "#F8FAFC",
               fontSize: 12,
-              fontWeight: 800
+              fontWeight: 800,
             },
 
-            '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #F1F5F9'
+            "& .MuiDataGrid-toolbarContainer": {
+              padding: "8px 12px",
+              borderBottom: "1px solid #E5E7EB",
+              backgroundColor: "#FAFAFA",
             },
 
-            '& .MuiDataGrid-cell--editing': {
-              bgcolor: '#fff !important',
+            "& .MuiDataGrid-toolbarContainer .MuiInputBase-root": {
+              width: 300,
+              backgroundColor: "#fff",
+              borderRadius: "8px",
             },
 
-            '& .MuiDataGrid-cell--editing .MuiInputBase-root': {
-              bgcolor: 'transparent !important',
+            "& .MuiDataGrid-cell": {
+              borderBottom: "1px solid #F1F5F9",
             },
 
-            '& .MuiDataGrid-row:hover': {
-              bgcolor: '#F1F5F930'
-            }
+            "& .MuiDataGrid-cell--editing": {
+              bgcolor: "#fff !important",
+            },
+
+            "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
+              bgcolor: "transparent !important",
+            },
+
+            "& .MuiDataGrid-row:hover": {
+              bgcolor: "#F1F5F930",
+            },
           }}
         />
       </Paper>
