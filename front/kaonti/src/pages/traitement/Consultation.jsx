@@ -870,7 +870,26 @@ const ConsultationComptes = () => {
               <Select value={selectedExerciceId} onChange={(e) => handleChangeExercice(e.target.value)} variant="standard" disableUnderline sx={{ fontSize: '0.9rem', fontWeight: 800 }}>
                 {listeExercice.map((option) => (
                   <MenuItem key={option.id} value={option.id} sx={{ fontSize: 15 }}>
-                    {option.libelle_rang}: {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        px: 0.75,
+                        py: '2px',
+                        mr: 0.75,
+                        borderRadius: '5px',
+                        bgcolor: '#E7F2EE',
+                        color: '#1F8A70',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        lineHeight: 1.4,
+                        textAlign: 'center',
+                        width: 30,
+                      }}
+                    >
+                      {option.libelle_rang}
+                    </Box>
+                    : {format(option.date_debut, "dd/MM/yyyy")} - {format(option.date_fin, "dd/MM/yyyy")}
                   </MenuItem>
                 ))}
               </Select>
@@ -883,16 +902,22 @@ const ConsultationComptes = () => {
               <Stack direction="row" spacing={1} alignItems="center" >
                 <Autocomplete
                   sx={{ width: 300 }}
+                  slotProps={{
+                    popper: {
+                      placement: 'bottom-start',
+                      sx: { width: '620px !important' },
+                    },
+                    paper: { sx: { width: 620 } },
+                  }}
                   value={listePlanComptable.find(item => item.id === Number(valSelectedCompte)) || null}
                   onChange={(event, newValue) => {
                     setValSelectedCompte(newValue?.id || null);
                   }}
                   disabled={!canView || !selectedExerciceId || selectedExerciceId === 0}
                   renderOption={(props, option) => (
-                    <li {...props}>
-                      <span>
-                        {option.compte} - {option.libelle}{' '}
-
+                    <li {...props} style={{ ...props.style, whiteSpace: 'nowrap' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {option.compte} - {option.libelle}
                       </span>
                     </li>
                   )}
@@ -1009,6 +1034,7 @@ const ConsultationComptes = () => {
           pageSizeOptions={[5, 10, 20, 30, 50, 100]}
           columnVisibilityModel={{
             id: false,
+            dossier: false,
           }}
           rowSelectionModel={rowSelectionModel}
           onRowSelectionModelChange={(ids) => {

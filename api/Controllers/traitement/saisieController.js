@@ -2322,11 +2322,13 @@ exports.getAllJournal = async (req, res) => {
             SELECT
                 J.*,
                 PC.COMPTE,
-                D.DOSSIER
+                D.DOSSIER,
+                CJ.CODE AS JOURNAL
             FROM
                 JOURNALS J
                 LEFT JOIN DOSSIERPLANCOMPTABLES PC ON PC.ID = J.ID_NUMCPT
                 LEFT JOIN DOSSIERS D ON D.ID = J.ID_DOSSIER
+                LEFT JOIN CODEJOURNALS CJ ON CJ.ID = J.ID_JOURNAL
             WHERE
                 J.ID_DOSSIER = :id_dossier
                 AND J.ID_COMPTE = :id_compte
