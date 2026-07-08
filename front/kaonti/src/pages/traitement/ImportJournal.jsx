@@ -833,7 +833,6 @@ const ImportJournal = () => {
             const listeDevisesParams = [...new Set((devises || []).map(d => d.code))];
             const devisesNotInParams = existance(listeDevisesParams, listeUniqueDevises);
             // const devisesNotInParams = [];
-            const numberOfEmptyDevises = activeData.filter(row => !row.Idevise || row.Idevise.trim() === '').length;
 
             const codeJournalNotInParamsFiltered = [...new Set(codeJournalNotInParams.map(val => val))];
 
@@ -869,16 +868,6 @@ const ImportJournal = () => {
             // Anomalies devises manquantes (seront créées automatiquement)
             if (devisesNotInParamsFiltered.length > 0) {
               msg.push(`${pluralizeDevise(devisesNotInParamsFiltered.length)} pas encore dans votre dossier : ${devisesNotInParamsFiltered.join(', ')}`);
-              nbrAnom = nbrAnom + 1;
-              setNbrAnomalie(nbrAnom);
-              setCouleurBoutonAnomalie(couleurAnom);
-            }
-
-            // Anomalies devises vides (par défaut MGA)
-            if (numberOfEmptyDevises > 0) {
-              const hasMGA = listeDevisesParams.includes('MGA') || devisesNotInParamsFiltered.includes('MGA');
-              const suffix = hasMGA ? '' : " (MGA sera créé au besoin)";
-              msg.push(`Certaines lignes n'ont pas de devise : elles utiliseront la devise par défaut 'MGA'${suffix}.`);
               nbrAnom = nbrAnom + 1;
               setNbrAnomalie(nbrAnom);
               setCouleurBoutonAnomalie(couleurAnom);
