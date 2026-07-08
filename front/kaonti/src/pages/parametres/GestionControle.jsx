@@ -101,6 +101,7 @@ const GestionControles = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [activatingAll, setActivatingAll] = useState(false);
 
   // Chargement initial des données
   useEffect(() => {
@@ -245,6 +246,39 @@ const GestionControles = () => {
       ...oldModel,
       [tempId]: { mode: GridRowModes.Edit, fieldToFocus: 'controle' },
     }));
+  };
+
+  // Bascule : activer OU désactiver TOUS les contrôles en une seule fois
+  const savableRows = rows.filter((r) => !r.isNew && r.controle);
+  const allActivated = savableRows.length > 0 && savableRows.every((r) => r.etat);
+
+  const handleToggleAll = async () => {
+    const target = !allActivated; // si tout est activé → on désactive, sinon on active
+    const toUpdate = savableRows.filter((r) => Boolean(r.etat) !== target);
+    if (toUpdate.length === 0) {
+      setRows((prev) => prev.map((r) => (r.isNew ? r : { ...r, etat: target })));
+      return;
+    }
+    try {
+      setActivatingAll(true);
+      setError(null);
+      await Promise.all(toUpdate.map((r) => axiosPrivate.post('/param/revisionControleMatrix', {
+        id_controle: r.controle,
+        Type: r.Type || 'GENERAL',
+        compte: r.compte || '*',
+        test: r.test || 'EXISTE',
+        description: r.description || '',
+        anomalies: r.anomalies || '',
+        Valider: target,
+        paramUn: r.param ? parseInt(r.param, 10) || null : null,
+      })));
+      setRows((prev) => prev.map((r) => (r.isNew ? r : { ...r, etat: target })));
+    } catch (err) {
+      console.error('Erreur bascule globale:', err);
+      setError(`Erreur lors de l'${target ? 'activation' : 'désactivation'} de tous les contrôles`);
+    } finally {
+      setActivatingAll(false);
+    }
   };
 
   const typeValueOptions = useMemo(() => {
@@ -416,15 +450,36 @@ const GestionControles = () => {
             </Box>
           </Stack>
 
-          <Button
-            variant="contained"
-            disableElevation
-            startIcon={<AddOutlined />}
-            onClick={handleAddRow}
-            sx={{ ...primaryBtnSx, px: 3, height: 40 }}
-          >
-            Nouveau contrôle
-          </Button>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Button
+              variant="outlined"
+              disableElevation
+              startIcon={activatingAll
+                ? <CircularProgress size={16} sx={{ color: allActivated ? T.neg : T.accent }} />
+                : (allActivated ? <DoDisturbOnOutlined /> : <CheckCircleOutline />)}
+              onClick={handleToggleAll}
+              disabled={activatingAll || savableRows.length === 0}
+              sx={{
+                textTransform: 'none', fontWeight: 600, fontSize: '13px', px: 2.5, height: 40,
+                borderRadius: '8px',
+                color: allActivated ? T.neg : T.accent,
+                borderColor: allActivated ? T.neg : T.accent,
+                '&:hover': { borderColor: allActivated ? T.neg : T.accentDark, bgcolor: allActivated ? '#F7E7E4' : T.accW },
+                '&.Mui-disabled': { color: T.faint, borderColor: T.line },
+              }}
+            >
+              {activatingAll ? (allActivated ? 'Désactivation…' : 'Activation…') : (allActivated ? 'Tout désactiver' : 'Tout activer')}
+            </Button>
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={<AddOutlined />}
+              onClick={handleAddRow}
+              sx={{ ...primaryBtnSx, px: 3, height: 40 }}
+            >
+              Nouveau contrôle
+            </Button>
+          </Stack>
         </Stack>
       </Box>
 
