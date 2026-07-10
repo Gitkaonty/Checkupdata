@@ -135,12 +135,14 @@ const getRevisionDetailsData = async (id_compte, id_dossier, id_exercice, id_con
 
 // ── ATYPIQUE: Grouping by compte (one table per compte) ─────────────────────
 
-const groupAnomaliesByCompte = (anomalies) => {
+const groupAnomaliesByCompte = (anomalies, preferAux = false) => {
   const grouped = {};
   anomalies.forEach(anomalie => {
     if (!Array.isArray(anomalie.journalLines)) return;
     anomalie.journalLines.forEach(line => {
-      const compte = line?.comptegen || line?.compteaux;
+      const compte = preferAux
+        ? (line?.compteaux || line?.comptegen)
+        : (line?.comptegen || line?.compteaux);
       if (!compte) return;
       if (!grouped[compte]) grouped[compte] = { anomalies: [], allLines: [] };
       if (!grouped[compte].anomalies.includes(anomalie)) grouped[compte].anomalies.push(anomalie);
@@ -253,7 +255,7 @@ exports.exportPdf = async (req, res) => {
       });
     } else if (type === 'ATYPIQUE') {
 
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
       console.log('[REVISION][PDF] ATYPIQUE grouped comptes:', comptes.length, comptes.slice(0, 5));
 
@@ -868,8 +870,8 @@ exports.exportExcel = async (req, res) => {
     if (anomalies.length === 0) {
       ws.getRow(rowCursor).values = ['Aucune anomalie détectée'];
     } else if (type === 'ATYPIQUE') {
-      // ── ATYPIQUE : un seul tableau par compte ──
-      const grouped = groupAnomaliesByCompte(anomalies);
+      // ── ATYPIQUE : un seul tableau par compte (auxiliaire) ──
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach(compte => {
@@ -1208,7 +1210,7 @@ const buildTypeContent = (type, anomalies, controle) => {
   }
 
   if (type === 'ATYPIQUE') {
-    const grouped = groupAnomaliesByCompte(anomalies);
+    const grouped = groupAnomaliesByCompte(anomalies, true);
     const comptes = Object.keys(grouped).sort();
     comptes.forEach((compte) => {
       const data = grouped[compte];
@@ -1393,7 +1395,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
   };
 
   if (type === 'ATYPIQUE') {
-    const grouped = groupAnomaliesByCompte(anomalies);
+    const grouped = groupAnomaliesByCompte(anomalies, true);
     const comptes = Object.keys(grouped).sort();
     comptes.forEach(compte => {
       const data = grouped[compte];

@@ -50,4 +50,9 @@ router.post('/updateAccountsLengthInJournals', paramCRMController.updateAccounts
 // Mis à jour des longueurs ds compte dans le dossiier plan comptable V2
 router.post('/updateAccountsLengthInPlanComptable', paramCRMController.updateAccountsLengthInPlanComptable);
 
+// Liste des comptes TVA (compte + nature) — pour le contrôle UTIL_CPT_TVA
+router.get('/listeComptesTva/:id', paramCRMController.getListeComptesTva);
+router.post('/compteTva', verifyJWT, verifyPermission('EDIT'), paramCRMController.compteTva);
+router.post('/compteTvaDelete', verifyJWT, verifyPermission('EDIT'), paramCRMController.deleteCompteTva);
+
 module.exports = router;

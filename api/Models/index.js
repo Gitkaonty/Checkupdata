@@ -71,6 +71,7 @@ db.caSections = require('./caSectionsModel')(sequelize, DataTypes);
 
 //paramétres - comptabilité
 db.dossierplancomptables = require('./dossierPCModel')(sequelize, DataTypes);
+db.tvaComptesNature = require('./tvaCompteNatureModel')(sequelize, DataTypes);
 db.dossierpcdetailcptchg = require('./dossierPCDetailCptChgModel')(sequelize, DataTypes);
 db.dossierpcdetailcpttva = require('./dossierPCDetailCptTvaModel')(sequelize, DataTypes);
 db.localites = require('./localites')(sequelize, DataTypes);

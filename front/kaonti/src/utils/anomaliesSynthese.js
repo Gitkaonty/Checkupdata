@@ -7,7 +7,7 @@
 // typeRevue === null → ligne affichée mais non calculée (comme dans le dashboard).
 export const SYNTHESE_ITEMS = [
   { nom: 'Revue analytique N/N-1', typeRevue: 'analytiqueNN1' },
-  { nom: 'Revue analytique mensuelle', typeRevue: null },
+  { nom: 'Revue analytique mensuelle', typeRevue: 'analytiqueMensuelle' },
   { nom: 'Analyse globale des comptes', typeRevue: 'controleAuto' },
   { nom: 'Analyse fournisseur / Client', typeRevue: 'fournisseurClient' },
   { nom: 'Recherche doublon', typeRevue: 'doublons' },

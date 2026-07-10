@@ -22,10 +22,11 @@ import {
     DialogActions,
     Autocomplete,
     IconButton,
-    Stack
+    Stack,
+    Badge
 } from '@mui/material';
 import { init } from '../../../init';
-import { ArrowBack, Cancel, CheckCircle, ArrowForward, CalendarToday, AccountBalance, Description, PlayArrow, FilterList, PictureAsPdf, TableChart, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { ArrowBack, Cancel, CheckCircle, ArrowForward, CalendarToday, AccountBalance, Description, PlayArrow, FilterList, PictureAsPdf, TableChart, ChevronLeft, ChevronRight, TaskAltRounded, RadioButtonUnchecked, ChatBubbleOutlineOutlined } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import DoneAllIcon from '@mui/icons-material/DoneAll'
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -270,7 +271,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
             // Pour chaque anomalie, regrouper ses lignes par compte individuel
             if (Array.isArray(anomalie.journalLines)) {
                 anomalie.journalLines.forEach((line) => {
-                    const compte = line?.comptegen || line?.compteaux || 'N/A';
+                    const compte = line?.compteaux || line?.comptegen || 'N/A';
                     if (!groupedByCompte[compte]) {
                         groupedByCompte[compte] = {
                             anomalies: [],
@@ -308,7 +309,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
         anomalies.forEach(a => {
             if (Array.isArray(a.journalLines)) {
                 a.journalLines.forEach(l => {
-                    const c = l?.comptegen || l?.compteaux;
+                    const c = l?.compteaux || l?.comptegen;
                     if (c) comptes.add(c);
                 });
             }
@@ -904,6 +905,34 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
             return anomalies.find(a => String(a.id_jnl) === String(line.id_ecriture)) || null;
         }
         return anomalies.find(a => String(a.id_jnl) === String(line.id)) || null;
+    };
+
+    // Rendu icône "Validé" cliquable (style Revue Analytique)
+    const renderValideCell = (isValid, onToggle, enabled = true) => (
+        <Tooltip title={isValid ? 'Validé — cliquer pour dévalider' : (enabled ? 'À valider — cliquer pour valider' : 'Rien à valider')} arrow>
+            <span>
+                <IconButton size="small" onClick={onToggle} disabled={!enabled}
+                    sx={{ p: 0.25, color: isValid ? '#1F8A70' : (enabled ? '#B5791A' : '#9AA6B2'), transition: '.15s', '&:hover': { transform: 'scale(1.12)' } }}>
+                    {isValid ? <TaskAltRounded fontSize="small" /> : <RadioButtonUnchecked fontSize="small" />}
+                </IconButton>
+            </span>
+        </Tooltip>
+    );
+
+    // Rendu icône "Commentaire" cliquable (style Revue Analytique)
+    const renderCommentCell = (comment, onComment, enabled = true) => {
+        const has = comment && String(comment).trim();
+        return (
+            <Badge variant={has ? 'dot' : 'standard'} overlap="circular" sx={{ '& .MuiBadge-badge': { backgroundColor: '#B5791A' } }}>
+                <Tooltip title={comment || 'Ajouter un commentaire'} arrow>
+                    <span>
+                        <IconButton size="small" onClick={onComment} disabled={!enabled} sx={{ color: has ? '#0E7C86' : '#9AA6B2' }}>
+                            <ChatBubbleOutlineOutlined fontSize="small" />
+                        </IconButton>
+                    </span>
+                </Tooltip>
+            </Badge>
+        );
     };
 
     // Fonctions d'export
@@ -1904,37 +1933,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                             },
                                                             { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
                                                             { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie?.valide ? 'Oui' : 'Non'} color={p.row._anomalie?.valide ? 'success' : 'error'} size="small" /> },
-                                                            {
-                                                                field: 'commentaire',
-                                                                headerName: 'Commentaire',
-                                                                width: 140,
-                                                                valueGetter: p => p.row._anomalie?.commentaire || '-'
-                                                            },
-                                                            {
-                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                        <Tooltip title="Ajouter/Modifier commentaire">
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                color="primary"
-                                                                                onClick={() => handleCommentAnomaly(p.row._anomalie)} >
-                                                                                <CommentIcon fontSize="small" />
-                                                                            </IconButton>
-                                                                        </Tooltip>
-
-                                                                        <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                onClick={() => handleValidateLine(p.row, p.row._anomalie)}
-                                                                                sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}
-                                                                            >
-                                                                                {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                    </Box>
-                                                                )
-                                                            },
+                                                            { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderValideCell(!!p.row._anomalie?.valide, () => handleValidateLine(p.row, p.row._anomalie), !!p.row._anomalie) },
+                                                            { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderCommentCell(p.row._anomalie?.commentaire, () => handleCommentAnomaly(p.row._anomalie), !!p.row._anomalie) },
                                                         ]}
                                                     />
                                                 ) : (
@@ -2084,26 +2084,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     },
                                                                     { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
                                                                     { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                                    { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={getAnomalyForLine(p.row)?.valide ? 'Oui' : 'Non'} color={getAnomalyForLine(p.row)?.valide ? 'success' : 'error'} size="small" /> },
-                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => getAnomalyForLine(p.row)?.commentaire || '-' },
-                                                                    {
-                                                                        field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => {
-                                                                            const lineAnomaly = getAnomalyForLine(p.row);
-                                                                            return (
-                                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                        <IconButton size="small" color="primary" onClick={() => handleCommentLine(p.row, lineAnomaly || p.row._anomalies[0])} ><CommentIcon fontSize="small" /></IconButton>
-
-                                                                                    </Tooltip>
-                                                                                    <Tooltip title={lineAnomaly?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, lineAnomaly || p.row._anomalies[0])} sx={{ color: lineAnomaly?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                                            {lineAnomaly?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                </Box>
-                                                                            );
-                                                                        }
-                                                                    },
+                                                                    { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => { const a = getAnomalyForLine(p.row); return renderValideCell(!!a?.valide, () => handleValidateLine(p.row, a || p.row._anomalies[0]), !!a); } },
+                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => { const a = getAnomalyForLine(p.row); return renderCommentCell(a?.commentaire, () => handleCommentLine(p.row, a || p.row._anomalies[0]), !!a); } },
                                                                 ]}
                                                             />
                                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, p: 1, backgroundColor: '#e3f2fd' }}>
@@ -2221,26 +2203,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     },
                                                                     { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
                                                                     { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                                    { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={getAnomalyForLine(p.row)?.valide ? 'Oui' : 'Non'} color={getAnomalyForLine(p.row)?.valide ? 'success' : 'error'} size="small" /> },
-                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => getAnomalyForLine(p.row)?.commentaire || '-' },
-                                                                    {
-                                                                        field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => {
-                                                                            const lineAnomaly = getAnomalyForLine(p.row);
-                                                                            return (
-                                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                        <IconButton size="small" color="primary" onClick={() => handleCommentLine(p.row, lineAnomaly || p.row._anomalies[0])} ><CommentIcon fontSize="small" /></IconButton>
-
-                                                                                    </Tooltip>
-                                                                                    <Tooltip title={lineAnomaly?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, lineAnomaly || p.row._anomalies[0])} sx={{ color: lineAnomaly?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                                            {lineAnomaly?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                </Box>
-                                                                            );
-                                                                        }
-                                                                    },
+                                                                    { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => { const a = getAnomalyForLine(p.row); return renderValideCell(!!a?.valide, () => handleValidateLine(p.row, a || p.row._anomalies[0]), !!a); } },
+                                                                    { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => { const a = getAnomalyForLine(p.row); return renderCommentCell(a?.commentaire, () => handleCommentLine(p.row, a || p.row._anomalies[0]), !!a); } },
                                                                 ]}
                                                             />
                                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, p: 1, backgroundColor: '#e3f2fd' }}>
@@ -2310,30 +2274,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                             },
                                                             { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
                                                             { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
-                                                            { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
-                                                            {
-                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                                        <Tooltip title="Ajouter/Modifier commentaire">
-                                                                            <IconButton size="small" color="primary" onClick={() => handleCommentAnomaly(p.row._anomalie)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                        </Tooltip>
-                                                                        <Tooltip title={p.row._anomalie.valide ? "Annuler la validation" : "Valider l'anomalie"}>
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                onClick={() => handleToggleValidateAnomaly(p.row._anomalie)}
-                                                                                color={p.row._anomalie.valide ? "error" : "success"}
-                                                                            >
-                                                                                {p.row._anomalie.valide ? (
-                                                                                    <Cancel fontSize="small" />
-                                                                                ) : (
-                                                                                    <CheckCircle fontSize="small" />
-                                                                                )}
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                    </Stack>
-                                                                )
-                                                            },
+                                                            { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderValideCell(!!p.row._anomalie?.valide, () => handleToggleValidateAnomaly(p.row._anomalie), !!p.row._anomalie) },
+                                                            { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderCommentCell(p.row._anomalie?.commentaire, () => handleCommentAnomaly(p.row._anomalie), !!p.row._anomalie) },
                                                         ]}
                                                     />
                                                 </Box>
@@ -2408,30 +2350,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                         { field: 'credit', headerName: 'Crédit', width: 110, align: 'right', valueGetter: p => p.row.credit ? formatMontant(p.row.credit) : '-' },
                                                                         { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
                                                                         { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                                        { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomaly?.valide ? 'Oui' : 'Non'} color={p.row._anomaly?.valide ? 'success' : 'error'} size="small" /> },
-                                                                        { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomaly?.commentaire || '-' },
-                                                                        {
-                                                                            field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                                <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                        <IconButton size="small" color="primary" onClick={() => p.row._anomaly && handleCommentAnomaly(p.row._anomaly)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                                    </Tooltip>
-                                                                                    <Tooltip title={p.row._anomaly?.valide ? "Annuler la validation" : "Valider l'anomalie"}>
-                                                                                        <IconButton
-                                                                                            size="small"
-                                                                                            onClick={() => p.row._anomaly && handleToggleValidateAnomaly(p.row._anomaly)}
-                                                                                            color={p.row._anomaly?.valide ? "error" : "success"}
-                                                                                        >
-                                                                                            {p.row._anomaly?.valide ? (
-                                                                                                <Cancel fontSize="small" />
-                                                                                            ) : (
-                                                                                                <CheckCircle fontSize="small" />
-                                                                                            )}
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                </Stack>
-                                                                            )
-                                                                        },
+                                                                        { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderValideCell(!!p.row._anomaly?.valide, () => p.row._anomaly && handleToggleValidateAnomaly(p.row._anomaly), !!p.row._anomaly) },
+                                                                        { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderCommentCell(p.row._anomaly?.commentaire, () => p.row._anomaly && handleCommentAnomaly(p.row._anomaly), !!p.row._anomaly) },
                                                                     ]}
                                                                 />
                                                             );
@@ -2502,26 +2422,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                                         ? formatMontant(params.value)
                                                                                         : '-'
                                                                             },
-                                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
-                                                                            { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
-                                                                            {
-                                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                                        <Tooltip title="Ajouter/Modifier commentaire">
-                                                                                            <IconButton
-                                                                                                size="small" color="primary"
-                                                                                                onClick={() => handleCommentAnomaly(p.row._anomalie)} >
-                                                                                                <CommentIcon fontSize="small" />
-                                                                                            </IconButton>
-                                                                                        </Tooltip>
-                                                                                        <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                                            <IconButton size="small" onClick={() => handleValidateLine(p.row, p.row._anomalie)} sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                                                {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                                            </IconButton>
-                                                                                        </Tooltip>
-                                                                                    </Box>
-                                                                                )
-                                                                            },
+                                                                            { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderValideCell(!!p.row._anomalie?.valide, () => handleValidateLine(p.row, p.row._anomalie), !!p.row._anomalie) },
+                                                                            { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderCommentCell(p.row._anomalie?.commentaire, () => handleCommentAnomaly(p.row._anomalie), !!p.row._anomalie) },
                                                                         ]}
                                                                     />
                                                                 ) : (
@@ -2590,57 +2492,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                             },
                                                             { field: 'lettrage', headerName: 'Lettrage', width: 90, valueGetter: p => p.row.lettrage || '-' },
                                                             { field: 'analytique', headerName: 'Analytique', width: 100, valueGetter: p => p.row.analytique || '-' },
-                                                            { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._relatedAnomaly?.valide ? 'Oui' : 'Non'} color={p.row._relatedAnomaly?.valide ? 'success' : 'error'} size="small" /> },
-                                                            { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._relatedAnomaly?.commentaire || '-' },
-                                                            {
-                                                                field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                                        <Tooltip title="Ajouter/Modifier commentaire">
-                                                                            <IconButton size="small" color="primary" disabled={!p.row._relatedAnomaly} onClick={() => p.row._relatedAnomaly && handleCommentAnomaly(p.row._relatedAnomaly)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                        </Tooltip>
-                                                                        <Tooltip
-                                                                            title={
-                                                                                !p.row._relatedAnomaly
-                                                                                    ? "Aucune anomalie liée"
-                                                                                    : p.row._relatedAnomaly?.valide
-                                                                                        ? "Annuler la validation"
-                                                                                        : "Valider"
-                                                                            }
-                                                                        >
-                                                                            <span>
-                                                                                {/* span obligatoire pour que Tooltip fonctionne avec disabled */}
-                                                                                <Tooltip
-                                                                                    title={
-                                                                                        !p.row._relatedAnomaly
-                                                                                            ? "Aucune anomalie liée"
-                                                                                            : p.row._relatedAnomaly?.valide
-                                                                                                ? "Annuler la validation"
-                                                                                                : "Valider"
-                                                                                    }
-                                                                                >
-                                                                                    <span>
-                                                                                        <IconButton
-                                                                                            size="small"
-                                                                                            color={p.row._relatedAnomaly?.valide ? "error" : "success"}
-                                                                                            disabled={!p.row._relatedAnomaly}
-                                                                                            onClick={() =>
-                                                                                                p.row._relatedAnomaly &&
-                                                                                                handleToggleValidateAnomaly(p.row._relatedAnomaly)
-                                                                                            }
-                                                                                        >
-                                                                                            {p.row._relatedAnomaly?.valide ? (
-                                                                                                <Cancel fontSize="small" />
-                                                                                            ) : (
-                                                                                                <CheckCircle fontSize="small" />
-                                                                                            )}
-                                                                                        </IconButton>
-                                                                                    </span>
-                                                                                </Tooltip>
-                                                                            </span>
-                                                                        </Tooltip>
-                                                                    </Stack>
-                                                                )
-                                                            },
+                                                            { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderValideCell(!!p.row._relatedAnomaly?.valide, () => p.row._relatedAnomaly && handleToggleValidateAnomaly(p.row._relatedAnomaly), !!p.row._relatedAnomaly) },
+                                                            { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderCommentCell(p.row._relatedAnomaly?.commentaire, () => p.row._relatedAnomaly && handleCommentAnomaly(p.row._relatedAnomaly), !!p.row._relatedAnomaly) },
                                                         ]}
                                                     />
                                                 ) : (
@@ -2693,22 +2546,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     ? formatMontant(params.value)
                                                                     : '-'
                                                         },
-                                                        { field: 'valide', headerName: 'Validé', width: 90, align: 'center', renderCell: p => <Chip label={p.row._anomalie.valide ? 'Oui' : 'Non'} color={p.row._anomalie.valide ? 'success' : 'error'} size="small" /> },
-                                                        { field: 'commentaire', headerName: 'Commentaire', width: 140, valueGetter: p => p.row._anomalie.commentaire || '-' },
-                                                        {
-                                                            field: 'action', headerName: 'Action', width: 160, align: 'center', renderCell: p => (
-                                                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, alignItems: 'center' }}>
-                                                                    <Tooltip title={p.row._anomalie?.valide ? 'Annuler la validation' : 'Valider'}>
-                                                                        <IconButton size="small" onClick={() => handleValidateLine(p.row, p.row._anomalie)} sx={{ color: p.row._anomalie?.valide ? '#d32f2f' : '#10B981' }}>
-                                                                            {p.row._anomalie?.valide ? <CloseIcon fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                    <Tooltip title="Ajouter/Modifier commentaire">
-                                                                        <IconButton size="small" color="primary" onClick={() => handleCommentAnomaly(p.row._anomalie)} ><CommentIcon fontSize="small" /></IconButton>
-                                                                    </Tooltip>
-                                                                </Box>
-                                                            )
-                                                        },
+                                                        { field: 'valide', headerName: 'Validé', width: 80, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderValideCell(!!p.row._anomalie?.valide, () => handleValidateLine(p.row, p.row._anomalie), !!p.row._anomalie) },
+                                                        { field: 'commentaire', headerName: 'Commentaire', width: 120, align: 'center', headerAlign: 'center', sortable: false, renderCell: p => renderCommentCell(p.row._anomalie?.commentaire, () => handleCommentAnomaly(p.row._anomalie), !!p.row._anomalie) },
                                                     ]}
                                                 />
                                             ) : null}

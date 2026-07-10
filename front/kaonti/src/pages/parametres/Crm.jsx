@@ -1884,6 +1884,197 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
   );
 };
 
+// ─── Comptes TVA (compte + nature) — liste manuelle utilisée par le contrôle UTIL_CPT_TVA ───
+const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
+  const [liste, setListe] = useState([]);
+  const [natures, setNatures] = useState(['IMMO', 'DED', 'COLL', 'CA', 'AUTRE']);
+  const [loading, setLoading] = useState(false);
+  const [selectedCompte, setSelectedCompte] = useState(null);
+  const [nature, setNature] = useState('IMMO');
+  const [editId, setEditId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
+  const fetchListe = useCallback(() => {
+    if (!fileId) return;
+    setLoading(true);
+    axiosPrivate.get(`/paramCrm/listeComptesTva/${fileId}`)
+      .then((response) => {
+        const resData = response.data;
+        if (resData.state) {
+          setListe(resData.liste || []);
+          if (Array.isArray(resData.natures) && resData.natures.length) setNatures(resData.natures);
+        }
+      })
+      .catch(() => toast.error('Erreur lors du chargement des comptes TVA'))
+      .finally(() => setLoading(false));
+  }, [fileId, axiosPrivate]);
+
+  useEffect(() => { fetchListe(); }, [fetchListe]);
+
+  const resetForm = () => { setSelectedCompte(null); setNature('IMMO'); setEditId(null); };
+
+  const handleEdit = (row) => {
+    setEditId(row.id);
+    const found = pc.find((p) => Number(p.id) === Number(row.id_compte))
+      || pc.find((p) => p.compte === row.compte) || null;
+    setSelectedCompte(found || { id: row.id_compte, compte: row.compte });
+    setNature(row.nature);
+  };
+
+  const handleSave = () => {
+    if (!selectedCompte || !selectedCompte.id || !nature) { toast.error('Compte et nature requis'); return; }
+    setSaving(true);
+    axiosPrivate.post('/paramCrm/compteTva', {
+      id: editId || undefined,
+      idCompte: selectedCompte.id,
+      idDossier: fileId,
+      compte: String(selectedCompte.compte || '').trim(),
+      nature,
+    })
+      .then((response) => {
+        const resData = response.data;
+        if (resData.state) {
+          toast.success(resData.msg || 'Enregistré');
+          resetForm();
+          fetchListe();
+        } else {
+          toast.error(resData.msg || "Erreur lors de l'enregistrement");
+        }
+      })
+      .catch(() => toast.error("Erreur lors de l'enregistrement"))
+      .finally(() => setSaving(false));
+  };
+
+  const handleDelete = () => {
+    axiosPrivate.post('/paramCrm/compteTvaDelete', { idToDelete: deleteId })
+      .then((response) => {
+        const resData = response.data;
+        if (resData.state) {
+          toast.success(resData.msg || 'Supprimé');
+          if (editId === deleteId) resetForm();
+          fetchListe();
+        } else {
+          toast.error(resData.msg || 'Erreur lors de la suppression');
+        }
+      })
+      .catch(() => toast.error('Erreur lors de la suppression'))
+      .finally(() => setDeleteId(null));
+  };
+
+  const NATURE_LABELS = { IMMO: 'Immobilisations', DED: 'Déductible', COLL: 'Collectée', CA: "Chiffre d'affaires", AUTRE: 'Autre' };
+  const NATURE_COLORS = { IMMO: T.accent, DED: '#3A6EA5', COLL: '#1F8A70', CA: '#B5791A', AUTRE: T.muted };
+  const natureColor = (n) => NATURE_COLORS[n] || T.muted;
+
+  // Regrouper les comptes TVA par nature → un tableau distinct par nature
+  const groupsMap = liste.reduce((acc, r) => { (acc[r.nature] = acc[r.nature] || []).push(r); return acc; }, {});
+  const NATURE_ORDER = ['IMMO', 'DED', 'COLL', 'CA', 'AUTRE'];
+  const groupKeys = Object.keys(groupsMap).sort((a, b) => {
+    const ia = NATURE_ORDER.indexOf(a), ib = NATURE_ORDER.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+  const thSx = { fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger };
+
+  const FieldLabel = ({ children }) => (
+    <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.02rem' }}>
+      {children}
+    </Typography>
+  );
+
+  return (
+    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <Paper elevation={0} sx={{ ...panelSx, p: 3, mb: 2 }}>
+        <Grid container spacing={2} alignItems="flex-end">
+          <Grid item xs={12} md={5}>
+            <FieldLabel>Compte</FieldLabel>
+            <Autocomplete
+              options={pc.filter((p) => String(p.compte || '').startsWith('445'))}
+              value={selectedCompte}
+              onChange={(e, v) => setSelectedCompte(v)}
+              isOptionEqualToValue={(opt, val) => Number(opt?.id) === Number(val?.id)}
+              getOptionLabel={(opt) => { if (!opt) return ''; const lib = opt.libelle || opt.intitule; return `${opt.compte}${lib ? ' — ' + lib : ''}`; }}
+              size="small"
+              renderInput={(params) => (<TextField {...params} placeholder="Sélectionner un compte " />)}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FieldLabel>Nature</FieldLabel>
+            <Select value={nature} onChange={(e) => setNature(e.target.value)} fullWidth size="small">
+              {natures.map((n) => (<MenuItem key={n} value={n}>{NATURE_LABELS[n] || n}</MenuItem>))}
+            </Select>
+          </Grid>
+          <Grid item xs={12} md={3} sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained" disableElevation startIcon={<SaveOutlined />}
+              sx={{ ...primaryBtnSx, height: '40px', flex: 1 }}
+              onClick={handleSave} disabled={saving}
+            >
+              {editId ? 'Modifier' : 'Ajouter'}
+            </Button>
+            {editId && (
+              <Button variant="text" sx={{ height: '40px', textTransform: 'none', color: T.muted }} onClick={resetForm}>
+                Annuler
+              </Button>
+            )}
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {liste.length === 0 && !loading ? (
+        <Paper elevation={0} sx={{ ...panelSx, p: 4, textAlign: 'center' }}>
+          <Typography sx={{ color: T.faint, fontSize: '13px' }}>Aucun compte TVA saisi.</Typography>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {groupKeys.map((n) => (
+            <Paper key={n} elevation={0} sx={{ ...panelSx, p: 0, overflow: 'hidden' }}>
+              {/* En-tête du tableau de la nature */}
+              <Box sx={{ px: 2, py: 1.2, bgcolor: `${natureColor(n)}12`, borderBottom: `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 18, borderRadius: 2, bgcolor: natureColor(n) }} />
+                <Typography sx={{ fontSize: '13px', fontWeight: 800, color: T.ink }}>{NATURE_LABELS[n] || 'Comptes TVA'}</Typography>
+                <Chip label={n} size="small" sx={{ height: 20, fontSize: '10px', fontWeight: 700, color: natureColor(n), bgcolor: `${natureColor(n)}18` }} />
+                <Typography sx={{ ml: 'auto', fontSize: '12px', fontWeight: 600, color: T.muted }}>{groupsMap[n].length} compte{groupsMap[n].length > 1 ? 's' : ''}</Typography>
+              </Box>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={thSx}>Compte</TableCell>
+                      <TableCell align="right" sx={{ ...thSx, width: 110 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {groupsMap[n].map((row) => (
+                      <TableRow key={row.id} hover>
+                        <TableCell sx={{ fontFamily: MONO, fontSize: '13px', color: T.ink }}>{row.compte}</TableCell>
+                        <TableCell align="right">
+                          <IconButton size="small" onClick={() => handleEdit(row)} sx={{ color: T.muted }}>
+                            <EditOutlined fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => setDeleteId(row.id)} sx={{ color: T.neg }}>
+                            <DeleteOutline fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          ))}
+        </Box>
+      )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        message="Êtes-vous sûr de vouloir supprimer ce compte TVA ?"
+      />
+    </Box>
+  );
+};
+
 const CRM = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -2318,6 +2509,7 @@ const CRM = () => {
               { value: 1, label: 'Plan comptable', icon: <MenuBookOutlined /> },
               { value: 2, label: 'Codes journaux', icon: <ListAltOutlined /> },
               { value: 3, label: 'Analytique', icon: <AccountTreeOutlined /> },
+              { value: 5, label: 'Comptes TVA', icon: <AnalyticsOutlined /> },
               { value: 0, label: 'Seuils', icon: <SettingsOutlined /> },
             ].map((s) => {
               const active = activeTab === s.value;
@@ -2443,6 +2635,11 @@ const CRM = () => {
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <AnalytiqueDataGrid fileId={fileId} compteId={compteId} axiosPrivate={axiosPrivate} />
             </Box>
+          )}
+
+          {/* COMPTES TVA (nature) */}
+          {activeTab === 5 && (
+            <ComptesTvaSection fileId={fileId} compteId={compteId} axiosPrivate={axiosPrivate} pc={pc} />
           )}
         </Box>
       </Box>

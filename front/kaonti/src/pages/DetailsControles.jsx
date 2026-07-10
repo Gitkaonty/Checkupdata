@@ -198,7 +198,7 @@ const DetailsControles = () => {
           separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
           sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <MuiLink component={Link} to="/dashboard" underline="hover" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+          <MuiLink component={Link} to={`/tab/dashboard/${id_dossier}`} underline="hover" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
             <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </MuiLink>
           <Typography sx={{ color: T.ink, fontWeight: 700 }}>Détails des contrôles</Typography>

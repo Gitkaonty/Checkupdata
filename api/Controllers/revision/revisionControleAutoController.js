@@ -1354,15 +1354,15 @@ exports.executeAll = async (req, res) => {
       else if (type === 'UTIL_CPT_TVA') {
         // console.log('DEBUG UTIL_CPT_TVA - Démarrage du contrôle');
 
-        // 1. Récupérer les comptes TVA immobilisation depuis ParamTVA (nature = IMMO)
+        // 1. Récupérer les comptes TVA immobilisation depuis la liste CRM (tva_comptes_nature, nature = IMMO)
+        //    Saisie manuelle dans le CRM : comptes TVA (445...) tagués IMMO. On récupère le compte
+        //    depuis dossierplancomptables via id_compte (comme la logique d'origine).
         const paramTvaQuery = `
           SELECT dpc.compte as compte_tva
-          FROM paramtvas pt
-          JOIN listecodetvas lct ON pt.type = lct.id
-          JOIN dossierplancomptables dpc ON pt.id_cptcompta = dpc.id
-          WHERE pt.id_compte = ${id_compte}
-            AND pt.id_dossier = ${id_dossier}
-            AND lct.nature = 'IMMO'
+          FROM tva_comptes_nature tcn
+          JOIN dossierplancomptables dpc ON tcn.id_compte = dpc.id
+          WHERE tcn.id_dossier = ${id_dossier}
+            AND tcn.nature = 'IMMO'
         `;
         // console.log('DEBUG UTIL_CPT_TVA - paramTvaQuery:', paramTvaQuery);
         const paramTvaImmo = await db.sequelize.query(paramTvaQuery, { type: db.Sequelize.QueryTypes.SELECT });
@@ -1596,14 +1596,15 @@ exports.executeAll = async (req, res) => {
                 AND j.id_dossier = ${id_dossier}
                 AND j.id_exercice = ${id_exercice}
                 ${dateCondition}
-                AND j.comptegen IS NOT NULL
+                AND j.compteaux IS NOT NULL
+                AND TRIM(j.compteaux) <> ''
             ), stats AS (
               SELECT
-                comptegen,
+                compteaux,
                 AVG(montant) AS moyenne,
                 STDDEV_POP(montant) AS ecart_type
               FROM base
-              GROUP BY comptegen
+              GROUP BY compteaux
             )
             SELECT
               b.*,
@@ -1611,11 +1612,11 @@ exports.executeAll = async (req, res) => {
               s.ecart_type,
               (s.moyenne + (${K} * s.ecart_type)) AS seuil
             FROM base b
-            JOIN stats s ON s.comptegen = b.comptegen
+            JOIN stats s ON s.compteaux = b.compteaux
             WHERE s.ecart_type IS NOT NULL
               AND s.ecart_type > 0
               AND (b.montant - s.moyenne - (${K} * s.ecart_type)) > 0
-            ORDER BY b.comptegen ASC, b.dateecriture ASC, b.id ASC
+            ORDER BY b.compteaux ASC, b.dateecriture ASC, b.id ASC
           `;
 
           console.log(`[DEBUG ATYPIQUE] Requête: ${atypiqueQuery}`);
@@ -1626,7 +1627,7 @@ exports.executeAll = async (req, res) => {
           }
 
           for (const row of rows) {
-            const compte = row.comptegen;
+            const compte = row.compteaux;
             const montant = parseFloat(row.montant) || 0;
             const moyenne = parseFloat(row.moyenne) || 0;
             const ecartType = parseFloat(row.ecart_type) || 0;
