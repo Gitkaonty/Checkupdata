@@ -1962,7 +1962,18 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
       .finally(() => setDeleteId(null));
   };
 
-  const natureColor = (n) => (n === 'IMMO' ? T.accent : T.muted);
+  const NATURE_LABELS = { IMMO: 'Immobilisations', DED: 'Déductible', COLL: 'Collectée', CA: "Chiffre d'affaires", AUTRE: 'Autre' };
+  const NATURE_COLORS = { IMMO: T.accent, DED: '#3A6EA5', COLL: '#1F8A70', CA: '#B5791A', AUTRE: T.muted };
+  const natureColor = (n) => NATURE_COLORS[n] || T.muted;
+
+  // Regrouper les comptes TVA par nature → un tableau distinct par nature
+  const groupsMap = liste.reduce((acc, r) => { (acc[r.nature] = acc[r.nature] || []).push(r); return acc; }, {});
+  const NATURE_ORDER = ['IMMO', 'DED', 'COLL', 'CA', 'AUTRE'];
+  const groupKeys = Object.keys(groupsMap).sort((a, b) => {
+    const ia = NATURE_ORDER.indexOf(a), ib = NATURE_ORDER.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+  const thSx = { fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger };
 
   const FieldLabel = ({ children }) => (
     <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.02rem' }}>
@@ -1983,13 +1994,13 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
               isOptionEqualToValue={(opt, val) => Number(opt?.id) === Number(val?.id)}
               getOptionLabel={(opt) => { if (!opt) return ''; const lib = opt.libelle || opt.intitule; return `${opt.compte}${lib ? ' — ' + lib : ''}`; }}
               size="small"
-              renderInput={(params) => (<TextField {...params} placeholder="Sélectionner un compte (ex. 445…)" />)}
+              renderInput={(params) => (<TextField {...params} placeholder="Sélectionner un compte " />)}
             />
           </Grid>
           <Grid item xs={12} md={4}>
             <FieldLabel>Nature</FieldLabel>
             <Select value={nature} onChange={(e) => setNature(e.target.value)} fullWidth size="small">
-              {natures.map((n) => (<MenuItem key={n} value={n}>{n}</MenuItem>))}
+              {natures.map((n) => (<MenuItem key={n} value={n}>{NATURE_LABELS[n] || n}</MenuItem>))}
             </Select>
           </Grid>
           <Grid item xs={12} md={3} sx={{ display: 'flex', gap: 1 }}>
@@ -2009,45 +2020,50 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
         </Grid>
       </Paper>
 
-      <Paper elevation={0} sx={{ ...panelSx, p: 0 }}>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger }}>Compte</TableCell>
-                <TableCell sx={{ fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger }}>Nature</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger, width: 110 }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {liste.length === 0 && !loading && (
-                <TableRow>
-                  <TableCell colSpan={3} sx={{ textAlign: 'center', color: T.faint, py: 4, fontSize: '13px' }}>
-                    Aucun compte TVA saisi.
-                  </TableCell>
-                </TableRow>
-              )}
-              {liste.map((row) => (
-                <TableRow key={row.id} hover>
-                  <TableCell sx={{ fontFamily: MONO, fontSize: '13px', color: T.ink }}>{row.compte}</TableCell>
-                  <TableCell>
-                    <Chip label={row.nature} size="small"
-                      sx={{ height: 22, fontSize: '11px', fontWeight: 700, color: natureColor(row.nature), bgcolor: `${natureColor(row.nature)}14` }} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => handleEdit(row)} sx={{ color: T.muted }}>
-                      <EditOutlined fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => setDeleteId(row.id)} sx={{ color: T.neg }}>
-                      <DeleteOutline fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+      {liste.length === 0 && !loading ? (
+        <Paper elevation={0} sx={{ ...panelSx, p: 4, textAlign: 'center' }}>
+          <Typography sx={{ color: T.faint, fontSize: '13px' }}>Aucun compte TVA saisi.</Typography>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {groupKeys.map((n) => (
+            <Paper key={n} elevation={0} sx={{ ...panelSx, p: 0, overflow: 'hidden' }}>
+              {/* En-tête du tableau de la nature */}
+              <Box sx={{ px: 2, py: 1.2, bgcolor: `${natureColor(n)}12`, borderBottom: `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 18, borderRadius: 2, bgcolor: natureColor(n) }} />
+                <Typography sx={{ fontSize: '13px', fontWeight: 800, color: T.ink }}>{NATURE_LABELS[n] || 'Comptes TVA'}</Typography>
+                <Chip label={n} size="small" sx={{ height: 20, fontSize: '10px', fontWeight: 700, color: natureColor(n), bgcolor: `${natureColor(n)}18` }} />
+                <Typography sx={{ ml: 'auto', fontSize: '12px', fontWeight: 600, color: T.muted }}>{groupsMap[n].length} compte{groupsMap[n].length > 1 ? 's' : ''}</Typography>
+              </Box>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={thSx}>Compte</TableCell>
+                      <TableCell align="right" sx={{ ...thSx, width: 110 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {groupsMap[n].map((row) => (
+                      <TableRow key={row.id} hover>
+                        <TableCell sx={{ fontFamily: MONO, fontSize: '13px', color: T.ink }}>{row.compte}</TableCell>
+                        <TableCell align="right">
+                          <IconButton size="small" onClick={() => handleEdit(row)} sx={{ color: T.muted }}>
+                            <EditOutlined fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => setDeleteId(row.id)} sx={{ color: T.neg }}>
+                            <DeleteOutline fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       <ConfirmDeleteDialog
         open={!!deleteId}
