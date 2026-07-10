@@ -906,6 +906,57 @@ const updateAccountsLengthInPlanComptable = async (req, res) => {
   }
 };
 
+// ===== Comptes TVA (compte + nature) — liste manuelle pour le contrôle UTIL_CPT_TVA =====
+const NATURES_TVA = ['IMMO', 'DED', 'COLL', 'CA', 'AUTRE'];
+
+const getListeComptesTva = async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const liste = await db.tvaComptesNature.findAll({
+      where: { id_dossier: fileId },
+      order: [['nature', 'ASC'], ['compte', 'ASC']],
+    });
+    return res.json({ state: true, natures: NATURES_TVA, liste });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ state: false, msg: 'Erreur lors de la lecture des comptes TVA' });
+  }
+};
+
+const compteTva = async (req, res) => {
+  try {
+    const { id, idCompte, idDossier, compte, nature } = req.body;
+    if (!idCompte || !idDossier || !compte || !nature) {
+      return res.json({ state: false, msg: 'Compte et nature requis' });
+    }
+    let row;
+    if (id) {
+      row = await db.tvaComptesNature.findByPk(id);
+      if (!row) return res.json({ state: false, msg: 'Introuvable' });
+      await row.update({ compte: String(compte).trim(), nature });
+    } else {
+      row = await db.tvaComptesNature.create({
+        id_compte: idCompte, id_dossier: idDossier, compte: String(compte).trim(), nature,
+      });
+    }
+    return res.json({ state: true, msg: 'Enregistré', row });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ state: false, msg: 'Erreur lors de l\'enregistrement' });
+  }
+};
+
+const deleteCompteTva = async (req, res) => {
+  try {
+    const { idToDelete } = req.body;
+    const n = await db.tvaComptesNature.destroy({ where: { id: idToDelete } });
+    return res.json({ state: !!n, msg: n ? 'Supprimé' : 'Introuvable' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ state: false, msg: 'Erreur lors de la suppression' });
+  }
+};
+
 module.exports = {
   getInfosCRM,
   modifyingInfos,
@@ -921,5 +972,8 @@ module.exports = {
   getListePays,
   updateAccountsLength,
   updateAccountsLengthInJournals,
-  updateAccountsLengthInPlanComptable
+  updateAccountsLengthInPlanComptable,
+  getListeComptesTva,
+  compteTva,
+  deleteCompteTva
 };
