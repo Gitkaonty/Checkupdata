@@ -49,10 +49,10 @@ const SECTIONS_CONFIG = [
         id: "revueMensuelle",
         title: "Revue analytique mensuelle",
         icon: <AssessmentIcon />,
-        endpoint: "",
-        route: "",
-        typeRevue: "",
-        hasAnomalies: false,
+        endpoint: "/dashboard/revuAnalytiqueMensuelle",
+        route: "/tab/dashboard/revuAnalytiqueMensuelle",
+        typeRevue: "analytiqueMensuelle",
+        hasAnomalies: true,
         anomalies: 0,
         remaining: 0
       }
