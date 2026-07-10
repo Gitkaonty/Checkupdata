@@ -22,6 +22,16 @@ const rechercheDoublon = require('./rechercheDoublonController');
 const ecrituresSuspense = require('./ecrituresSuspenseController');
 const revisionAnalytique = require('./revisionAnalytiqueController');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { statsBand } = require('../../Middlewares/exportPdfTheme');
+
+// Stats revue analytique (N/N-1 ou mensuelle) : total = comptes en anomalie ; restant = non validés
+const revueAnomaliesStats = (rows) => {
+  const list = rows || [];
+  return {
+    total: list.filter(r => r.anomalies).length,
+    restant: list.filter(r => r.anomalies && !r.valide_anomalie).length,
+  };
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -345,13 +355,19 @@ exports.exportGlobalPdf = async (req, res) => {
     // 0 — Revue Analytique N/N-1
     try {
       const data = await revueAnalytique.getExportData(id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin);
-      pushSection('revueAnalytique', revueAnalytique.buildPdfSection(data, { periodeText }));
+      const section = revueAnalytique.buildPdfSection(data, { periodeText });
+      const st = revueAnomaliesStats(data.results);
+      section.content = [statsBand(st.total, st.restant), ...section.content];
+      pushSection('revueAnalytique', section);
     } catch (e) { console.error('[GLOBAL_PDF] revueAnalytique:', e.message); pushError('revueAnalytique', e); }
 
     // 1 — Revue Mensuelle
     try {
       const data = await revueMensuelle.getExportData(id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin);
-      pushSection('revueMensuelle', revueMensuelle.buildPdfSection(data, { periodeText }));
+      const section = revueMensuelle.buildPdfSection(data, { periodeText });
+      const st = revueAnomaliesStats(data.finalData);
+      section.content = [statsBand(st.total, st.restant), ...section.content];
+      pushSection('revueMensuelle', section);
     } catch (e) { console.error('[GLOBAL_PDF] revueMensuelle:', e.message); pushError('revueMensuelle', e); }
 
     // 2 — Contrôle Global Balance (révision auto, une sous-section par type)

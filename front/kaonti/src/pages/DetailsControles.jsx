@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import {
   Box, Typography, Stack, Tabs, Tab, Paper,
   Divider, Button, Chip, Breadcrumbs, Link as MuiLink, TablePagination,
@@ -49,7 +49,10 @@ const T = {
 const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
 
 const DetailsControles = () => {
-  const { selectedExerciceId, selectedPeriodeId, selectedPeriodeDates, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
+  const { selectedExerciceId, selectedPeriodeId, selectedPeriodeDates, setSelectedExerciceId, setSelectedPeriodeId, listePeriodes, handleChangePeriode: ctxChangePeriode } = useContext(ExercicePeriodeContext);
+
+  // Une période est-elle réellement sélectionnée ? (sinon on vide les contrôles)
+  const hasPeriode = !!selectedPeriodeId && selectedPeriodeId !== 'exercice';
   const { auth } = useAuth();
   const axiosPrivate = useAxiosPrivate();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
@@ -74,8 +77,22 @@ const DetailsControles = () => {
   };
 
   const handleChangePeriode = (periodeId) => {
-    setSelectedPeriodeId(periodeId);
+    // Utilise le handler du contexte pour aussi renseigner les dates de la période
+    if (ctxChangePeriode) ctxChangePeriode(periodeId);
+    else setSelectedPeriodeId(periodeId);
   };
+
+  // Auto-sélection de la première période à l'ouverture (une fois par exercice).
+  // Si l'utilisateur retire ensuite la période, on ne la réimpose pas → les contrôles se vident.
+  const autoSelectedRef = useRef(false);
+  useEffect(() => { autoSelectedRef.current = false; }, [selectedExerciceId]);
+  useEffect(() => {
+    if (autoSelectedRef.current) return;
+    if (!selectedExerciceId || !Array.isArray(listePeriodes) || listePeriodes.length === 0) return;
+    const valid = hasPeriode && listePeriodes.some((p) => String(p.id) === String(selectedPeriodeId));
+    autoSelectedRef.current = true;
+    if (!valid) handleChangePeriode(listePeriodes[0].id);
+  }, [selectedExerciceId, listePeriodes, selectedPeriodeId, hasPeriode]);
 
   const handleTabChange = (event, newValue) => setActiveTab(newValue);
 
@@ -334,6 +351,18 @@ const DetailsControles = () => {
             minHeight: 0,
             overflow: 'auto'
           }}>
+            {!hasPeriode ? (
+              <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5, p: 4, textAlign: 'center' }}>
+                <CalendarMonthOutlined sx={{ fontSize: 44, color: T.faint }} />
+                <Typography sx={{ fontSize: '15px', fontWeight: 700, color: T.ink }}>
+                  Sélectionnez une période
+                </Typography>
+                <Typography sx={{ fontSize: '13px', color: T.muted, maxWidth: 360 }}>
+                  Choisissez une période dans le sélecteur en haut à droite pour afficher les résultats de ce contrôle.
+                </Typography>
+              </Box>
+            ) : (
+              <>
             {activeTab === 0 && <RevueAnalytiqueTable
               ref={revueAnalytiqueRef}
               id_exercice={selectedExerciceId}
@@ -379,6 +408,8 @@ const DetailsControles = () => {
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
+            )}
+              </>
             )}
           </Box>
         </Box>

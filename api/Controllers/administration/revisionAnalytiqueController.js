@@ -5,6 +5,7 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -150,7 +151,8 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     worksheet.mergeCells(`A3:${lastColLetter}3`);
     worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
 
-    // Ligne 4 : vide (séparateur).
+    // Ligne 4 : statistiques (Anomalies)
+    writeExcelStats(worksheet, 4, rows.length, null);
 
     // Ligne 5 : en-tête du tableau (mêmes libellés qu'avant).
     const headerRow = worksheet.getRow(5);
@@ -513,7 +515,7 @@ exports.exportPdf = async (req, res) => {
           stack: [
             { text: 'CONTRÔLE CODES ANALYTIQUES', style: 'header', alignment: 'center' },
             { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
-            { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+            { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader2', alignment: 'center' }
           ]
         });
 
@@ -525,7 +527,8 @@ exports.exportPdf = async (req, res) => {
             pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 8 },
             content: [
-                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+                statsBand(Array.isArray(data) ? data.length : 0, null),
                 ...section.content
             ],
             styles: {
@@ -563,7 +566,7 @@ exports.exportExcel = async (req, res) => {
         const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
         const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
         const dossierName = dossier?.dossier || id_dossier;
-        const periodeText = exercice?.libelle || id_exercice;
+        const periodeText = exerciceLabel(exercice) || id_exercice;
 
         const workbook = new ExcelJS.Workbook();
         exports.addExcelSheets(workbook, data, { dossierName, periodeText });

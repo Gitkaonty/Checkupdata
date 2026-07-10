@@ -4,6 +4,7 @@ const ExcelJS = require('exceljs');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
+const { xlValide } = require('../../Middlewares/exportPdfTheme');
 
 const dossiers = db.dossiers;
 const exercices = db.exercices;
@@ -397,7 +398,7 @@ exports.exportExcel = async (req, res) => {
     wsA.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7C86' } };
     anomalies.forEach((a, idx) => {
       const rowIndex = 2 + idx;
-      wsA.getRow(rowIndex).values = [a.compteNum || a.id_jnl || '', a.message || '', a.valide ? 'Oui' : 'Non', a.commentaire || ''];
+      wsA.getRow(rowIndex).values = [a.compteNum || a.id_jnl || '', a.message || '', xlValide(a.valide), a.commentaire || ''];
     });
     wsA.columns = [{ width: 18 }, { width: 80 }, { width: 10 }, { width: 40 }];
 

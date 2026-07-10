@@ -5,6 +5,7 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
 
 const journals = db.journals;
 const codejournals = db.codejournals;
@@ -151,7 +152,8 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     worksheet.mergeCells(3, 1, 3, lastCol);
     worksheet.getRow(3).getCell(1).value = `Période : ${ctx.periodeText || ''}`;
 
-    // Ligne 4 : vide.
+    // Ligne 4 : statistiques (Anomalies)
+    writeExcelStats(worksheet, 4, (data || []).length, null);
 
     // Ligne 5 : en-tête.
     const HEADER_ROW = 5;
@@ -279,7 +281,7 @@ Object.assign(module.exports, {
               stack: [
                 { text: 'ÉCRITURES EN SUSPENS', style: 'header', alignment: 'center' },
                 { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
-                { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+                { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader2', alignment: 'center' }
               ]
             });
 
@@ -291,7 +293,8 @@ Object.assign(module.exports, {
                 pageMargins: [15, 15, 15, 25],
                 defaultStyle: { font: 'Helvetica', fontSize: 8 },
                 content: [
-                    { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+                    { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+                    statsBand((data || []).length, null),
                     ...section.content
                 ],
                 styles: {
@@ -329,7 +332,7 @@ Object.assign(module.exports, {
             const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
 
             const dossierName = dossier?.dossier || id_dossier;
-            let periodeText = exercice?.libelle || id_exercice;
+            let periodeText = exerciceLabel(exercice) || id_exercice;
             if (date_debut || date_fin) {
                 periodeText += ` (${formatDate(date_debut) || '...'} - ${formatDate(date_fin) || '...'})`;
             }

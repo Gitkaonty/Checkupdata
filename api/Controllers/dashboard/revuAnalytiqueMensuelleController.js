@@ -6,8 +6,18 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { valideIconCell, anomalieIconCell, setExcelAnomalieCell: setAnomalieCell, setExcelValideCell: setValideCell, statsBand, writeExcelStats } = require('../../Middlewares/exportPdfTheme');
 
 const round2 = (value) => Math.round(value * 100) / 100;
+
+// Stats revue mensuelle : total = comptes en anomalie ; restant = anomalies non validées
+const mensuelleStats = (finalData) => {
+  const list = finalData || [];
+  return {
+    total: list.filter(r => r.anomalies).length,
+    restant: list.filter(r => r.anomalies && !r.valide_anomalie).length,
+  };
+};
 
 // Fonction pour générer la liste des mois d'un exercice
 function generateMonthsForExercice(dateDebut, dateFin) {
@@ -797,15 +807,21 @@ exports.buildPdfSection = (data, ctx = {}) => {
             row.push({ text: formatMontant(val), alignment: 'right', style: 'cell' });
         });
         row.push(
-            { text: r.anomalies ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
-            { text: r.valide_anomalie ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            anomalieIconCell(r.anomalies),
+            valideIconCell(r.valide_anomalie),
             { text: r.commentaire || '', style: 'cell' }
         );
         tableBody.push(row.map(cell => ({ ...cell, fillColor: rowColor })));
     });
 
+    // Largeurs proportionnelles : réserve fixe (Compte/Libellé/Anomalies/Validé/Commentaire)
+    // puis répartit le reste sur les mois → le total reste ≤ 100 % (plus de colonnes rognées à droite).
+    const nMois = finalMoisColumns.length || 1;
+    const moisPct = Math.max(2.5, (100 - 44) / nMois);
+    const widths = ['8%', '16%', ...finalMoisColumns.map(() => `${moisPct}%`), '5%', '5%', '10%'];
+
     const content = [
-        { table: { headerRows: 1, widths: ['8%', '15%', ...finalMoisColumns.map(() => '6%'), '6%', '6%', '15%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3 } }
+        { table: { headerRows: 1, widths, body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3 } }
     ];
 
     const styles = {
@@ -847,6 +863,12 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     ws.getCell('A4').font = { bold: true, size: 9 };
     ws.getCell('A4').alignment = { horizontal: 'center' };
 
+    // Ligne 5 : statistiques
+    {
+      const { total, restant } = mensuelleStats(finalData);
+      writeExcelStats(ws, 5, total, restant);
+    }
+
     ws.columns = [{ width: 12 }, { width: 30 }, ...finalMoisColumns.map(() => ({ width: 10 })), { width: 10 }, { width: 10 }, { width: 30 }];
 
     const headerRow = ws.getRow(7);
@@ -862,15 +884,15 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
         const row = ws.getRow(8 + i);
         const rowValues = [r.compte, r.libelle];
         finalMoisColumns.forEach(m => rowValues.push(r[m.nom] || 0));
-        rowValues.push(r.anomalies ? 'Oui' : 'Non', r.valide_anomalie ? 'Oui' : 'Non', r.commentaire || '');
+        rowValues.push('', '', r.commentaire || '');
         row.values = rowValues;
 
         for (let j = 2; j < 2 + finalMoisColumns.length; j++) {
             row.getCell(j + 1).numFmt = '#,##0.00';
             row.getCell(j + 1).alignment = { horizontal: 'right' };
         }
-        row.getCell(2 + finalMoisColumns.length + 1).alignment = { horizontal: 'center' };
-        row.getCell(2 + finalMoisColumns.length + 2).alignment = { horizontal: 'center' };
+        setAnomalieCell(row.getCell(2 + finalMoisColumns.length + 1), r.anomalies);
+        setValideCell(row.getCell(2 + finalMoisColumns.length + 2), r.valide_anomalie);
     });
 
     return ws;
@@ -908,7 +930,8 @@ exports.exportPdf = async (req, res) => {
             pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 7 },
             content: [
-                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+                (() => { const { total, restant } = mensuelleStats(data.finalData); return statsBand(total, restant); })(),
                 ...section.content
             ],
             styles: {
