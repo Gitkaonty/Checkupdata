@@ -124,8 +124,6 @@ exports.getAnomaliesByControle = async (req, res) => {
         ${periodeFilter}
       ORDER BY a.id ASC
     `, { type: db.Sequelize.QueryTypes.SELECT });
-    console.error(`[DEBUG ANOMALIES] Nombre d'anomalies`, { type: db.Sequelize.QueryTypes.SELECT });
-    console.error(`[DEBUG ANOMALIES] Nombre d'anomalies trouvées: ${anomaliesRaw.length}`);
 
     // DEBUG: Afficher les résultats bruts de la requête SQL
     // console.log('DEBUG SQL RAW RESULTS:', anomaliesRaw.map(r => ({
@@ -160,18 +158,6 @@ exports.getAnomaliesByControle = async (req, res) => {
     // Récupérer les lignes de journal selon le mode
     const idJnlKeys = [...new Set(anomalies.map(a => a.id_jnl).filter(Boolean))];
 
-    if (controle?.Type === 'ATYPIQUE') {
-      console.error('[DEBUG ATYPIQUE getAnomaliesByControle] controle:', {
-        Type: controle?.Type,
-        id_controle: controle?.id_controle,
-        Affichage: controle?.Affichage,
-        affichage_utilise: affichage,
-        anomalies_count: anomalies.length,
-        idJnlKeys_count: idJnlKeys.length,
-        idJnlKeys_sample: idJnlKeys.slice(0, 10)
-      });
-    }
-
     let journalLines = [];
     let comptesList = []; // Pour SENS_SOLDE (comptes concernés, pas les IDs de lignes)
 
@@ -197,7 +183,8 @@ exports.getAnomaliesByControle = async (req, res) => {
         // console.log('getAnomaliesByControle ligne mode (individuel) - where:', whereClause);
         const lines = await db.journals.findAll({
           where: whereClause,
-          order: [['dateecriture', 'ASC'], ['id', 'ASC']]
+          order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+          raw: true
         });
         journalLines = lines;
         // console.log(`getAnomaliesByControle - ${lines.length} lignes individuelles trouvées`);
@@ -219,7 +206,8 @@ exports.getAnomaliesByControle = async (req, res) => {
         // console.log('getAnomaliesByControle UTIL_CPT_TVA - where:', whereClause);
         const lines = await db.journals.findAll({
           where: whereClause,
-          order: [['dateecriture', 'ASC'], ['id', 'ASC']]
+          order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+          raw: true
         });
         journalLines = lines;
         // console.log(`getAnomaliesByControle UTIL_CPT_TVA - ${lines.length} lignes trouvées pour écritures:`, idJnlKeys);
@@ -236,7 +224,8 @@ exports.getAnomaliesByControle = async (req, res) => {
       // console.log('getAnomaliesByControle ecriture mode - where:', whereClause);
       const lines = await db.journals.findAll({
         where: whereClause,
-        order: [['dateecriture', 'ASC'], ['id', 'ASC']]
+        order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+        raw: true
       });
       journalLines = lines;
     } else {
@@ -255,25 +244,10 @@ exports.getAnomaliesByControle = async (req, res) => {
         };
         // console.log('getAnomaliesByControle ligne mode - where:', whereClause);
         const lines = await db.journals.findAll({
-          where: whereClause
+          where: whereClause,
+          raw: true
         });
         journalLines = lines;
-
-        if (controle?.Type === 'ATYPIQUE') {
-          console.error('[DEBUG ATYPIQUE getAnomaliesByControle] journalLines fetched (ligne mode):', {
-            ids_count: ids.length,
-            fetched_count: journalLines.length,
-            fetched_sample: journalLines.slice(0, 3).map(l => ({
-              id: l.id,
-              id_ecriture: l.id_ecriture,
-              comptegen: l.comptegen,
-              compteaux: l.compteaux,
-              dateecriture: l.dateecriture,
-              debit: l.debit,
-              credit: l.credit
-            }))
-          });
-        }
       }
     }
 
@@ -309,24 +283,6 @@ exports.getAnomaliesByControle = async (req, res) => {
         compteNum: compteNum
       };
     });
-
-    if (controle?.Type === 'ATYPIQUE') {
-      console.error('[DEBUG ATYPIQUE getAnomaliesByControle] payload attach summary:', {
-        payload_count: payload.length,
-        with_lines: payload.filter(p => Array.isArray(p.journalLines) && p.journalLines.length > 0).length,
-        without_lines: payload.filter(p => !Array.isArray(p.journalLines) || p.journalLines.length === 0).length,
-        sample: payload.slice(0, 5).map(p => ({
-          id: p.id,
-          id_jnl: p.id_jnl,
-          journalLinesCount: Array.isArray(p.journalLines) ? p.journalLines.length : 0,
-          journalLineIds: Array.isArray(p.journalLines) ? p.journalLines.map(l => l.id) : [],
-          journalLineSample: Array.isArray(p.journalLines) && p.journalLines.length > 0 ? {
-            debit: p.journalLines[0].debit,
-            credit: p.journalLines[0].credit
-          } : null
-        }))
-      });
-    }
 
     // if (controle?.Type === 'ATYPIQUE') {
     //   //console.log('DEBUG ATYPIQUE FINAL - payload:', payload.map(p => ({ id: p.id, id_jnl: p.id_jnl, journalLinesCount: p.journalLines?.length })));
@@ -372,9 +328,6 @@ exports.updateAnomalyByKey = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { id_controle, id_jnl, valide, commentaire, id_periode } = req.body;
-
-    console.log('=== UPDATE BY KEY ===');
-    console.log({ id_controle, id_jnl, valide, commentaire, id_periode });
 
     if (!id_controle || !id_jnl) {
       return res.status(400).json({
@@ -575,69 +528,7 @@ exports.getStats = async (req, res) => {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { id_periode } = req.query;
 
-    const whereClause = {
-      id_compte,
-      id_dossier,
-      id_exercice
-    };
-
-    if (id_periode) {
-      whereClause.id_periode = id_periode;
-    }
-
-    const statsQuery = `
-      WITH base AS (
-        SELECT
-          a.id,
-          a.id_jnl,
-          a.id_num_compte,
-          a."codeCtrl" AS code_ctrl,
-          COALESCE(c.valide, false) AS valide,
-          CASE
-            WHEN a."codeCtrl" IN ('SENS_ECRITURE', 'SENS_SOLDE') THEN CONCAT(a."codeCtrl", '::COMPTE::', COALESCE(a.id_num_compte, ''))
-            WHEN a."codeCtrl" IN ('UTIL_CPT_TVA') THEN CONCAT(a."codeCtrl", '::ECRITURE::', COALESCE(a.id_jnl, ''))
-            WHEN a."codeCtrl" IN ('ATYPIQUE', 'IMMO_CHARGE') THEN CONCAT(a."codeCtrl", '::LIGNE::', a.id::text)
-            ELSE CONCAT(a."codeCtrl", '::LIGNE::', a.id::text)
-          END AS group_key
-        FROM table_controle_anomalies a
-        LEFT JOIN revision_commentaire_anomalies c
-          ON c.id_controle = a.id_controle
-          AND c.id_jnl = a.id_jnl
-          AND a.id_compte = c.id_compte
-          AND a.id_dossier = c.id_dossier
-          AND a.id_exercice = c.id_exercice
-          AND ((a.id_periode IS NULL AND c.id_periode IS NULL) OR (a.id_periode = c.id_periode))
-        WHERE a.id_compte = :id_compte
-          AND a.id_dossier = :id_dossier
-          AND a.id_exercice = :id_exercice
-          ${id_periode ? 'AND a.id_periode = :id_periode' : ''}
-      ), grouped AS (
-        SELECT
-          group_key,
-          BOOL_AND(valide = true) AS group_valide
-        FROM base
-        GROUP BY group_key
-      )
-      SELECT
-        COUNT(*) AS total_anomalies,
-        COALESCE(SUM(CASE WHEN group_valide = true THEN 1 ELSE 0 END), 0) AS valide_anomalies
-      FROM grouped
-    `;
-
-    const [statsRow] = await db.sequelize.query(statsQuery, {
-      type: db.Sequelize.QueryTypes.SELECT,
-      replacements: {
-        id_compte,
-        id_dossier,
-        id_exercice,
-        ...(id_periode ? { id_periode } : {})
-      }
-    });
-
-    const totalAnomalies = parseInt(statsRow?.total_anomalies || 0, 10);
-    const valideAnomalies = parseInt(statsRow?.valide_anomalies || 0, 10);
-
-    // Total par type de contrôle depuis table_revisions_controles
+    // Total par type de contrôle (les totaux globaux en sont dérivés → 1 seule requête)
     const detailsQuery = `
       WITH base AS (
         SELECT
@@ -691,14 +582,19 @@ exports.getStats = async (req, res) => {
       }
     });
 
+    // Totaux globaux dérivés du détail (les group_key incluent le type → uniques)
+    const totalAnomalies = detailsByType.reduce((s, r) => s + parseInt(r.total_groups || 0, 10), 0);
+    const remaining = detailsByType.reduce((s, r) => s + parseInt(r.remaining_groups || 0, 10), 0);
+    const valideAnomalies = Math.max(totalAnomalies - remaining, 0);
+
     return res.status(200).json({
       state: true,
       data: {
         total_anomalies: totalAnomalies,
         total: totalAnomalies,
         valide: valideAnomalies,
-        restantes: Math.max(totalAnomalies - valideAnomalies, 0),
-        nonValide: Math.max(totalAnomalies - valideAnomalies, 0),
+        restantes: remaining,
+        nonValide: remaining,
         details: detailsByType
       }
     });

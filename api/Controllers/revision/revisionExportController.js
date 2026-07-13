@@ -132,7 +132,7 @@ const getRevisionDetailsData = async (id_compte, id_dossier, id_exercice, id_con
     anomalieData.journalLines = lines;
     // compteNum = le compte de la ligne (comptegen), pas l'id_jnl
     anomalieData.compteNum = (type === 'SENS_SOLDE' || type === 'SENS_ECRITURE' || type === 'IMMO_CHARGE')
-      ? (lines[0]?.comptegen || lines[0]?.compteaux || a.id_jnl)
+      ? (lines[0]?.compteaux || a.id_jnl)
       : null;
     return anomalieData;
   });
@@ -148,7 +148,7 @@ const groupAnomaliesByCompte = (anomalies, preferAux = false) => {
     if (!Array.isArray(anomalie.journalLines)) return;
     anomalie.journalLines.forEach(line => {
       const compte = preferAux
-        ? (line?.compteaux || line?.comptegen)
+        ? (line?.compteaux)
         : (line?.comptegen || line?.compteaux);
       if (!compte) return;
       if (!grouped[compte]) grouped[compte] = { anomalies: [], allLines: [] };
@@ -314,7 +314,7 @@ exports.exportPdf = async (req, res) => {
 
             tableBody.push([
               { text: formatDate(l.dateecriture), style: 'cell' },
-              { text: l.comptegen || l.compteaux || '', style: 'cell' },
+              { text: l.compteaux || '', style: 'cell' },
               { text: l.piece || '', style: 'cell' },
               { text: l.libelle || '', style: 'cell' },
               { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
@@ -361,7 +361,7 @@ exports.exportPdf = async (req, res) => {
 
     } else if (type === 'IMMO_CHARGE') {
 
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach((compte) => {
@@ -412,7 +412,7 @@ exports.exportPdf = async (req, res) => {
 
             tableBody.push([
               { text: formatDate(l.dateecriture), style: 'cell' },
-              { text: l.comptegen || l.compteaux || '', style: 'cell' },
+              { text: l.compteaux || '', style: 'cell' },
               { text: l.piece || '', style: 'cell' },
               { text: l.libelle || '', style: 'cell' },
               { text: formatMontant(debit), alignment: 'right', style: 'cell' },
@@ -491,7 +491,7 @@ exports.exportPdf = async (req, res) => {
 
     } else if (type === 'SENS_SOLDE') {
 
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach((compte) => {
@@ -525,7 +525,7 @@ exports.exportPdf = async (req, res) => {
 
             tableBody.push([
               { text: formatDate(l.dateecriture), style: 'cell' },
-              { text: l.comptegen || l.compteaux || '', style: 'cell' },
+              { text: l.compteaux || '', style: 'cell' },
               { text: l.piece || '', style: 'cell' },
               { text: l.libelle || '', style: 'cell' },
               { text: formatMontant(debit), alignment: 'right', style: 'cell' },
@@ -570,7 +570,7 @@ exports.exportPdf = async (req, res) => {
 
     } else if (type === 'SENS_ECRITURE') {
 
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach((compte) => {
@@ -600,7 +600,7 @@ exports.exportPdf = async (req, res) => {
 
             tableBody.push([
               { text: formatDate(l.dateecriture), style: 'cell' },
-              { text: l.comptegen || l.compteaux || '', style: 'cell' },
+              { text: l.compteaux || '', style: 'cell' },
               { text: l.piece || '', style: 'cell' },
               { text: l.libelle || '', style: 'cell' },
               { text: formatMontant(debit), alignment: 'right', style: 'cell' },
@@ -651,7 +651,7 @@ exports.exportPdf = async (req, res) => {
             const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
             tableBody.push([
               { text: formatDate(l.dateecriture), style: 'cell' },
-              { text: l.comptegen || l.compteaux || '', style: 'cell' },
+              { text: l.compteaux || '', style: 'cell' },
               { text: l.piece || '', style: 'cell' },
               { text: l.libelle || '', style: 'cell' },
               { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
@@ -696,7 +696,7 @@ exports.exportPdf = async (req, res) => {
             const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
             tableBody.push([
               { text: formatDate(l.dateecriture), style: 'cell' },
-              { text: l.comptegen || l.compteaux || '', style: 'cell' },
+              { text: l.compteaux || '', style: 'cell' },
               { text: l.piece || '', style: 'cell' },
               { text: l.libelle || '', style: 'cell' },
               { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
@@ -946,7 +946,7 @@ exports.exportExcel = async (req, res) => {
           const dataRow = ws.getRow(rowCursor);
           dataRow.values = [
             formatDate(l.dateecriture),
-            l.comptegen || l.compteaux || '',
+            l.compteaux || '',
             l.piece || '',
             l.libelle || '',
             parseFloat(l.debit) || 0,
@@ -966,7 +966,7 @@ exports.exportExcel = async (req, res) => {
       });
     } else if (type === 'IMMO_CHARGE') {
       // ── IMMO_CHARGE : un seul tableau par compte ──
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach(compte => {
@@ -1001,7 +1001,7 @@ exports.exportExcel = async (req, res) => {
           const dataRow = ws.getRow(rowCursor);
           dataRow.values = [
             formatDate(l.dateecriture),
-            l.comptegen || l.compteaux || '',
+            l.compteaux || '',
             l.piece || '',
             l.libelle || '',
             debit,
@@ -1045,7 +1045,7 @@ exports.exportExcel = async (req, res) => {
       });
     } else if (type === 'SENS_SOLDE') {
       // ── SENS_SOLDE : groupé par compte avec total et solde ──
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach(compte => {
@@ -1082,7 +1082,7 @@ exports.exportExcel = async (req, res) => {
           totalCredit += credit;
           const dataRow = ws.getRow(rowCursor);
           dataRow.values = [
-            formatDate(l.dateecriture), l.comptegen || l.compteaux || '', l.piece || '', l.libelle || '',
+            formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
             debit, credit, l.lettrage || '', l.analytique || '',
             xlValide(relatedAnomaly?.valide), relatedAnomaly?.commentaire || ''
           ];
@@ -1115,7 +1115,7 @@ exports.exportExcel = async (req, res) => {
       });
     } else if (type === 'SENS_ECRITURE') {
       // ── SENS_ECRITURE : groupé par compte avec total ──
-      const grouped = groupAnomaliesByCompte(anomalies);
+      const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
 
       comptes.forEach(compte => {
@@ -1145,7 +1145,7 @@ exports.exportExcel = async (req, res) => {
           totalCredit += credit;
           const dataRow = ws.getRow(rowCursor);
           dataRow.values = [
-            formatDate(l.dateecriture), l.comptegen || l.compteaux || '', l.piece || '', l.libelle || '',
+            formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
             debit, credit, l.lettrage || '', l.analytique || '',
             xlValide(relatedAnomaly?.valide), relatedAnomaly?.commentaire || ''
           ];
@@ -1186,7 +1186,7 @@ exports.exportExcel = async (req, res) => {
           lines.forEach(l => {
             const dataRow = ws.getRow(rowCursor);
             dataRow.values = [
-              formatDate(l.dateecriture), l.comptegen || l.compteaux || '', l.piece || '', l.libelle || '',
+              formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
               parseFloat(l.debit) || 0, parseFloat(l.credit) || 0, l.lettrage || '', l.analytique || '',
               xlValide(anomalie.valide), anomalie.commentaire || ''
             ];
@@ -1219,7 +1219,7 @@ exports.exportExcel = async (req, res) => {
           lines.forEach(l => {
             const dataRow = ws.getRow(rowCursor);
             dataRow.values = [
-              formatDate(l.dateecriture), l.comptegen || l.compteaux || '', l.piece || '', l.libelle || '',
+              formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
               parseFloat(l.debit) || 0, parseFloat(l.credit) || 0, l.lettrage || '', l.analytique || '',
               xlValide(anomalie.valide), anomalie.commentaire || ''
             ];
@@ -1271,7 +1271,7 @@ const buildTypeContent = (type, anomalies, controle) => {
           const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
           tableBody.push([
             { text: formatDate(l.dateecriture), style: 'cell' },
-            { text: l.comptegen || l.compteaux || '', style: 'cell' },
+            { text: l.compteaux || '', style: 'cell' },
             { text: l.piece || '', style: 'cell' },
             { text: l.libelle || '', style: 'cell' },
             { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
@@ -1288,7 +1288,7 @@ const buildTypeContent = (type, anomalies, controle) => {
       }
     });
   } else if (type === 'IMMO_CHARGE' || type === 'SENS_SOLDE' || type === 'SENS_ECRITURE') {
-    const grouped = groupAnomaliesByCompte(anomalies);
+    const grouped = groupAnomaliesByCompte(anomalies, true);
     const comptes = Object.keys(grouped).sort();
     comptes.forEach((compte) => {
       const data = grouped[compte];
@@ -1315,7 +1315,7 @@ const buildTypeContent = (type, anomalies, controle) => {
           const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
           tableBody.push([
             { text: formatDate(l.dateecriture), style: 'cell' },
-            { text: l.comptegen || l.compteaux || '', style: 'cell' },
+            { text: l.compteaux || '', style: 'cell' },
             { text: l.piece || '', style: 'cell' },
             { text: l.libelle || '', style: 'cell' },
             { text: formatMontant(debit), alignment: 'right', style: 'cell' },
@@ -1366,7 +1366,7 @@ const buildTypeContent = (type, anomalies, controle) => {
           const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
           tableBody.push([
             { text: formatDate(l.dateecriture), style: 'cell' },
-            { text: l.comptegen || l.compteaux || '', style: 'cell' },
+            { text: l.compteaux || '', style: 'cell' },
             { text: l.piece || '', style: 'cell' },
             { text: l.libelle || '', style: 'cell' },
             { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
@@ -1392,7 +1392,7 @@ const buildTypeContent = (type, anomalies, controle) => {
           const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
           tableBody.push([
             { text: formatDate(l.dateecriture), style: 'cell' },
-            { text: l.comptegen || l.compteaux || '', style: 'cell' },
+            { text: l.compteaux || '', style: 'cell' },
             { text: l.piece || '', style: 'cell' },
             { text: l.libelle || '', style: 'cell' },
             { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
@@ -1433,7 +1433,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
   const addDataRow = (cursor, l, valideText, commentaireText) => {
     const dataRow = ws.getRow(cursor);
     dataRow.values = [
-      formatDate(l.dateecriture), l.comptegen || l.compteaux || '', l.piece || '', l.libelle || '',
+      formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
       parseFloat(l.debit) || 0, parseFloat(l.credit) || 0, l.lettrage || '', l.analytique || '',
       valideText, commentaireText
     ];
@@ -1462,7 +1462,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       rowCursor += 1;
     });
   } else if (type === 'IMMO_CHARGE' || type === 'SENS_SOLDE' || type === 'SENS_ECRITURE') {
-    const grouped = groupAnomaliesByCompte(anomalies);
+    const grouped = groupAnomaliesByCompte(anomalies, true);
     const comptes = Object.keys(grouped).sort();
     comptes.forEach(compte => {
       const data = grouped[compte];

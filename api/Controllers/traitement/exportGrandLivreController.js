@@ -30,9 +30,11 @@ module.exports = {
         return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
       }
 
-      const dossier = await dossiers.findByPk(fileId);
-      const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const [dossier, exercice, compte] = await Promise.all([
+        dossiers.findByPk(fileId),
+        exercices.findByPk(exerciceId),
+        userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true })
+      ]);
 
       const { buildSections, groups } = await generateGrandLivreContent(compteId, fileId, exerciceId, compteAux, dateDebut, dateFin);
       if (!groups || Object.keys(groups).length === 0) {
@@ -88,9 +90,11 @@ module.exports = {
         return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
       }
 
-      const dossier = await dossiers.findByPk(fileId);
-      const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const [dossier, exercice, compte] = await Promise.all([
+        dossiers.findByPk(fileId),
+        exercices.findByPk(exerciceId),
+        userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true })
+      ]);
 
       const workbook = new ExcelJS.Workbook();
       await exportGrandLivreTableExcel(compteId, fileId, exerciceId, compteAux, dateDebut, dateFin, workbook, dossier?.dossier, compte?.nom, exercice?.date_debut, exercice?.date_fin);
