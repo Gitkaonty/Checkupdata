@@ -465,20 +465,26 @@ exports.getStats = async (req, res) => {
         const { id_dossier, id_exercice } = req.params;
         const { id_periode } = req.query;
 
-        const whereClause = { id_dossier, id_exercice };
-        if (id_periode) whereClause.id_periode = id_periode;
+        const replacements = { id_dossier, id_exercice };
+        let whereSql = 'id_dossier = :id_dossier AND id_exercice = :id_exercice';
+        if (id_periode) {
+            whereSql += ' AND id_periode = :id_periode';
+            replacements.id_periode = id_periode;
+        }
 
-        const nbLignes = await db.rechercheDoublons.count({ where: whereClause });
-        const nbGroupes = await db.rechercheDoublons.count({
-            where: whereClause,
-            distinct: true,
-            col: 'id_doublon'
-        });
-        const nbGroupesValides = await db.rechercheDoublons.count({
-            where: { ...whereClause, statut: 'VALIDE' },
-            distinct: true,
-            col: 'id_doublon'
-        });
+        const [stats] = await db.sequelize.query(
+            `SELECT
+                COUNT(*) AS nb_lignes,
+                COUNT(DISTINCT id_doublon) AS nb_groupes,
+                COUNT(DISTINCT id_doublon) FILTER (WHERE statut = 'VALIDE') AS nb_valides
+             FROM recherche_doublons
+             WHERE ${whereSql}`,
+            { type: QueryTypes.SELECT, replacements }
+        );
+
+        const nbLignes = Number(stats.nb_lignes) || 0;
+        const nbGroupes = Number(stats.nb_groupes) || 0;
+        const nbGroupesValides = Number(stats.nb_valides) || 0;
         const nbGroupesNonValides = Math.max(nbGroupes - nbGroupesValides, 0);
 
         return res.status(200).json({
@@ -633,17 +639,7 @@ exports.validerGroupeDoublon = async (req, res) => {
         }
 
         const idsJnl = ecrituresGroupe.map(e => e.id_jnl);
-        
-        // Vérifier d'abord ce qui existe
-        const avant = await db.rechercheDoublons.findAll({
-            where: { 
-                id_dossier, 
-                id_exercice, 
-                id_doublon: parseInt(id_doublon) 
-            },
-            transaction
-        });
-        
+
         const [updateRechercheResult] = await db.rechercheDoublons.update(
             { 
                 statut: 'VALIDE',
@@ -658,16 +654,7 @@ exports.validerGroupeDoublon = async (req, res) => {
                 },
                 transaction
             }
-        );        
-        // Vérifier après
-        const apres = await db.rechercheDoublons.findAll({
-            where: { 
-                id_dossier, 
-                id_exercice, 
-                id_doublon: parseInt(id_doublon) 
-            },
-            transaction
-        });
+        );
 
         await transaction.commit();
 

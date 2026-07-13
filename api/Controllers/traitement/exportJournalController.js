@@ -27,9 +27,11 @@ module.exports = {
         return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
       }
 
-      const dossier = await dossiers.findByPk(fileId);
-      const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const [dossier, exercice, compte] = await Promise.all([
+        dossiers.findByPk(fileId),
+        exercices.findByPk(exerciceId),
+        userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true })
+      ]);
 
       const { buildJournalTable, list } = await generateJournalContent(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin);
       if (!list || list.length === 0) {
@@ -106,9 +108,11 @@ module.exports = {
         return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
       }
 
-      const dossier = await dossiers.findByPk(fileId);
-      const exercice = await exercices.findByPk(exerciceId);
-      const compte = await userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true });
+      const [dossier, exercice, compte] = await Promise.all([
+        dossiers.findByPk(fileId),
+        exercices.findByPk(exerciceId),
+        userscomptes.findByPk(compteId, { attributes: ['id','nom'], raw: true })
+      ]);
 
       const workbook = new ExcelJS.Workbook();
       await exportJournalTableExcel(compteId, fileId, exerciceId, journalCodes, dateDebut, dateFin, workbook, dossier?.dossier, compte?.nom, exercice?.date_debut, exercice?.date_fin);

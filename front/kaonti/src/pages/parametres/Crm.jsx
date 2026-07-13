@@ -4,26 +4,19 @@ import {
   Box, Typography, Stack, Button, IconButton, Paper, Grid,
   TextField, Chip, Breadcrumbs, Link, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  List, ListItemButton, ListItemText, ListItemIcon,
-  Tab, Tabs, Select, InputAdornment,
-  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, FormHelperText, Autocomplete,
-  Input
+  List, ListItemButton, ListItemText, ListItemIcon, Select,
+  Autocomplete,
+
 } from '@mui/material';
 import {
   SettingsOutlined, NavigateNext, BusinessOutlined,
   AddOutlined, EditOutlined, DeleteOutline, SaveOutlined,
   AnalyticsOutlined, MenuBookOutlined, AccountTreeOutlined,
-  ListAltOutlined, AdminPanelSettingsOutlined, CheckOutlined, CloseOutlined, ChevronRight,
+  ListAltOutlined, AdminPanelSettingsOutlined, CheckOutlined, CloseOutlined, 
   DashboardOutlined,
-  CheckCircleOutline as CheckIcon,
-  Cancel as CancelIcon
+
 } from '@mui/icons-material';
 import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import DeleteIcon from '@mui/icons-material/DeleteOutline';
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import {
@@ -90,27 +83,6 @@ const primaryBtnSx = {
   boxShadow: 'none',
   '&:hover': { bgcolor: T.accentDark },
   '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint },
-};
-// Style commun des DataGrid (en-têtes « ledger », lignes fines)
-const gridSx = {
-  border: 'none',
-  flex: 1,
-  minHeight: 0,
-  fontSize: '12.5px',
-  '& .MuiDataGrid-columnHeaders': {
-    bgcolor: T.ledger,
-    borderBottom: `1px solid ${T.line}`,
-    '& .MuiDataGrid-columnHeaderTitle': {
-      fontSize: '11px',
-      fontWeight: 700,
-      color: T.muted,
-      letterSpacing: '.3px',
-      textTransform: 'uppercase',
-    },
-  },
-  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', '&:focus': { outline: 'none' } },
-  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
-  '& .Mui-selected': { bgcolor: `${T.accW} !important` },
 };
 
 // Composant DataGrid pour Codes Journaux
@@ -1887,7 +1859,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
 // ─── Comptes TVA (compte + nature) — liste manuelle utilisée par le contrôle UTIL_CPT_TVA ───
 const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
   const [liste, setListe] = useState([]);
-  const [natures, setNatures] = useState(['IMMO', 'DED', 'COLL', 'CA', 'AUTRE']);
+  const [natures, setNatures] = useState(['IMMO', 'DED', 'COLL', 'AUTRE']);
   const [loading, setLoading] = useState(false);
   const [selectedCompte, setSelectedCompte] = useState(null);
   const [nature, setNature] = useState('IMMO');
@@ -1962,13 +1934,13 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
       .finally(() => setDeleteId(null));
   };
 
-  const NATURE_LABELS = { IMMO: 'Immobilisations', DED: 'Déductible', COLL: 'Collectée', CA: "Chiffre d'affaires", AUTRE: 'Autre' };
-  const NATURE_COLORS = { IMMO: T.accent, DED: '#3A6EA5', COLL: '#1F8A70', CA: '#B5791A', AUTRE: T.muted };
+  const NATURE_LABELS = { IMMO: 'Immobilisations', DED: 'Déductible', COLL: 'Collectée', AUTRE: 'Intra Com' };
+  const NATURE_COLORS = { IMMO: T.accent, DED: '#3A6EA5', COLL: '#1F8A70', AUTRE: '#B5791A' };
   const natureColor = (n) => NATURE_COLORS[n] || T.muted;
 
   // Regrouper les comptes TVA par nature → un tableau distinct par nature
   const groupsMap = liste.reduce((acc, r) => { (acc[r.nature] = acc[r.nature] || []).push(r); return acc; }, {});
-  const NATURE_ORDER = ['IMMO', 'DED', 'COLL', 'CA', 'AUTRE'];
+  const NATURE_ORDER = ['IMMO', 'DED', 'COLL', 'AUTRE'];
   const groupKeys = Object.keys(groupsMap).sort((a, b) => {
     const ia = NATURE_ORDER.indexOf(a), ib = NATURE_ORDER.indexOf(b);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);

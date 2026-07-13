@@ -59,7 +59,7 @@ const getSuspenseData = async (id_compte, id_dossier, id_exercice, date_debut, d
     }
   }
 
-  const result = await journals.findAndCountAll({
+  const rows = await journals.findAll({
     where: whereClause,
     include: [{ model: codejournals, attributes: ['code'], required: false }],
     order: [['dateecriture', 'ASC'], ['id', 'ASC']],
@@ -68,7 +68,7 @@ const getSuspenseData = async (id_compte, id_dossier, id_exercice, date_debut, d
     nest: true
   });
 
-  return (result.rows || []).map((row) => ({
+  return (rows || []).map((row) => ({
     id: row.id,
     compte: row.comptegen,
     journal: row.codejournal?.code ?? row.codejournals?.code ?? null,

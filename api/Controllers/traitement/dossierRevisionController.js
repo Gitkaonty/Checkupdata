@@ -416,8 +416,6 @@ exports.getEcrituresByComptes = async (req, res) => {
     const { id_compte, id_dossier, id_exercice, id_periode } = req.params;
     const { comptes } = req.query; // Format: "401,101,53"
 
-    console.log('[DEBUG] getEcrituresByComptes params:', { id_compte, id_dossier, id_exercice, id_periode, comptes });
-
     if (!id_compte || !id_dossier || !id_exercice || !id_periode) {
       return res.status(400).json({
         state: false,
@@ -466,7 +464,8 @@ exports.getEcrituresByComptes = async (req, res) => {
         'id_ecriture'
       ],
       order: [['dateecriture', 'DESC'], ['id', 'DESC']],
-      limit: 1000 // Limiter à 1000 écritures pour des raisons de performance
+      limit: 1000, // Limiter à 1000 écritures pour des raisons de performance
+      raw: true
     });
 
     // Formater les résultats pour le frontend

@@ -75,7 +75,8 @@ const getRevisionDetailsData = async (id_compte, id_dossier, id_exercice, id_con
   const affichage = controle?.Affichage || 'ligne';
   const anomalies = await tableControleAnomalies.findAll({
     where: { id_compte, id_dossier, id_exercice, id_controle },
-    order: [['id', 'ASC']]
+    order: [['id', 'ASC']],
+    raw: true
   });
 
   const dateFilter = (date_debut && date_fin)
@@ -89,26 +90,29 @@ const getRevisionDetailsData = async (id_compte, id_dossier, id_exercice, id_con
     if (controle?.Type === 'SENS_SOLDE' || controle?.Type === 'SENS_ECRITURE' || controle?.Type === 'IMMO_CHARGE') {
       journalLines = await journals.findAll({
         where: { comptegen: { [Op.in]: idJnlKeys }, id_compte, id_dossier, id_exercice, ...dateFilter },
-        order: [['dateecriture', 'ASC'], ['id', 'ASC']]
+        order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+        raw: true
       });
     } else if (controle?.Type === 'UTIL_CPT_TVA' || affichage === 'ecriture') {
       journalLines = await journals.findAll({
         where: { id_ecriture: { [Op.in]: idJnlKeys }, id_compte, id_dossier, id_exercice, ...dateFilter },
-        order: [['dateecriture', 'ASC'], ['id', 'ASC']]
+        order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+        raw: true
       });
     } else {
       const ids = idJnlKeys.map(v => parseInt(v, 10)).filter(v => Number.isFinite(v));
       if (ids.length > 0) {
         journalLines = await journals.findAll({
           where: { id: { [Op.in]: ids }, id_compte, id_dossier, id_exercice, ...dateFilter },
-          order: [['dateecriture', 'ASC'], ['id', 'ASC']]
+          order: [['dateecriture', 'ASC'], ['id', 'ASC']],
+          raw: true
         });
       }
     }
   }
 
   const anomaliesWithLines = anomalies.map((a) => {
-    const anomalieData = a.toJSON();
+    const anomalieData = { ...a };
     let lines = [];
 
     if (controle?.Type === 'SENS_SOLDE' || controle?.Type === 'SENS_ECRITURE') {
@@ -161,8 +165,10 @@ exports.exportPdf = async (req, res) => {
       return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
     }
 
-    const dossier = await dossiers.findByPk(id_dossier);
-    const exercice = await exercices.findByPk(id_exercice);
+    const [dossier, exercice] = await Promise.all([
+      dossiers.findByPk(id_dossier),
+      exercices.findByPk(id_exercice)
+    ]);
     const { controle, anomalies, rows } = await getRevisionDetailsData(id_compte, id_dossier, id_exercice, id_controle, date_debut, date_fin);
 
     const fonts = {
@@ -300,8 +306,10 @@ exports.exportExcel = async (req, res) => {
       return res.status(400).json({ state: false, msg: 'Paramètres manquants' });
     }
 
-    const dossier = await dossiers.findByPk(id_dossier);
-    const exercice = await exercices.findByPk(id_exercice);
+    const [dossier, exercice] = await Promise.all([
+      dossiers.findByPk(id_dossier),
+      exercices.findByPk(id_exercice)
+    ]);
     const { controle, anomalies, rows } = await getRevisionDetailsData(id_compte, id_dossier, id_exercice, id_controle, date_debut, date_fin);
 
     const workbook = new ExcelJS.Workbook();

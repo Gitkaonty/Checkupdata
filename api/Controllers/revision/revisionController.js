@@ -1,7 +1,6 @@
 const db = require('../../Models');
 const { Op } = require('sequelize');
 
-
 // Créer ou mettre à jour une révision
 exports.addOrUpdateRevision = async (req, res) => {
   try {

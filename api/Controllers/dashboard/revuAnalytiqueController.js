@@ -24,8 +24,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
             if (periode) {
                 date_debut = periode.date_debut;
                 date_fin = periode.date_fin;
-            } else {
-                console.log('[DEBUG NN1] Période non trouvée pour id:', id_periode);
             }
         }
 
@@ -37,7 +35,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
         const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
         const seuilPourcent = dossier && dossier.seuil_revu_analytique ? dossier.seuil_revu_analytique : 30.0;
         const seuilDecimal = seuilPourcent / 100.0; // ex: 30.0 -> 0.3
-        console.log('[revuAnalytiqueNN1] seuil dossier:', { id_dossier, seuilPourcent, seuilDecimal });
 
         // Récupérer l'exercice N
         const exerciceN = await exercices.findOne({
@@ -213,49 +210,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
             replacements: replacements,
             type: db.Sequelize.QueryTypes.SELECT
         });
-
-        // Totaux pour N
-        const totals = await db.sequelize.query(
-            `SELECT COUNT(*) as lignes, SUM(debit) as total_debit, SUM(credit) as total_credit
-             FROM journals
-             WHERE id_compte = :id_compte AND id_dossier = :id_dossier AND id_exercice = :id_exercice`,
-            {
-                replacements: { id_compte, id_dossier, id_exercice },
-                type: db.Sequelize.QueryTypes.SELECT
-            }
-        );
-
-        // Comptes distincts pour N
-        const comptesDistincts = await db.sequelize.query(
-            `SELECT DISTINCT TRIM(comptegen) as compte
-             FROM journals
-             WHERE id_compte = :id_compte AND id_dossier = :id_dossier AND id_exercice = :id_exercice
-               AND comptegen IS NOT NULL AND TRIM(comptegen) != ''
-             ORDER BY compte`,
-            {
-                replacements: { id_compte, id_dossier, id_exercice },
-                type: db.Sequelize.QueryTypes.SELECT
-            }
-        );
-
-        if (id_exerciceN1) {
-            const comptesDistinctsN1 = await db.sequelize.query(
-                `SELECT DISTINCT TRIM(comptegen) as compte
-                 FROM journals
-                 WHERE id_compte = :id_compte AND id_dossier = :id_dossier AND id_exercice = :id_exerciceN1
-                   AND comptegen IS NOT NULL AND TRIM(comptegen) != ''
-                 ORDER BY compte`,
-                {
-                    replacements: { id_compte, id_dossier, id_exerciceN1 },
-                    type: db.Sequelize.QueryTypes.SELECT
-                }
-            );
-
-            const setN = new Set((comptesDistincts || []).map(r => r.compte));
-            const setN1 = new Set((comptesDistinctsN1 || []).map(r => r.compte));
-            const onlyInN = Array.from(setN).filter(c => !setN1.has(c));
-            const onlyInN1 = Array.from(setN1).filter(c => !setN.has(c));
-        }
 
         // Formatter les résultats
         const formattedResults = results.map((row, index) => {

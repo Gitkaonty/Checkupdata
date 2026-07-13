@@ -176,7 +176,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
         anomalies.forEach(a => {
             if (Array.isArray(a.journalLines)) {
                 a.journalLines.forEach(l => {
-                    const c = l?.comptegen || l?.compteaux;
+                    const c = l?.compteaux;
                     if (c) comptes.add(c);
                 });
             }
@@ -193,7 +193,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
         anomalies.forEach(a => {
             if (Array.isArray(a.journalLines)) {
                 a.journalLines.forEach(l => {
-                    const c = l?.comptegen || l?.compteaux;
+                    const c = l?.compteaux;
                     if (c) comptes.add(c);
                 });
             }
@@ -271,7 +271,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
             // Pour chaque anomalie, regrouper ses lignes par compte individuel
             if (Array.isArray(anomalie.journalLines)) {
                 anomalie.journalLines.forEach((line) => {
-                    const compte = line?.compteaux || line?.comptegen || 'N/A';
+                    const compte = line?.compteaux || 'N/A';
                     if (!groupedByCompte[compte]) {
                         groupedByCompte[compte] = {
                             anomalies: [],
@@ -309,7 +309,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
         anomalies.forEach(a => {
             if (Array.isArray(a.journalLines)) {
                 a.journalLines.forEach(l => {
-                    const c = l?.compteaux || l?.comptegen;
+                    const c = l?.compteaux;
                     if (c) comptes.add(c);
                 });
             }
@@ -347,14 +347,14 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
             // Priorité 3: chercher dans ecritureComplete
             if (Array.isArray(a.ecritureComplete)) {
                 a.ecritureComplete.forEach(l => {
-                    const c = l?.comptegen || l?.compteaux;
+                    const c = l?.compteaux;
                     if (c) comptes.add(c);
                 });
             }
             // Priorité 4: chercher dans journalLines
             if (Array.isArray(a.journalLines)) {
                 a.journalLines.forEach(l => {
-                    const c = l?.comptegen || l?.compteaux;
+                    const c = l?.compteaux;
                     if (c) comptes.add(c);
                 });
             }
@@ -385,13 +385,13 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
         return anomalies.filter(a => {
             const lines = a.journalLines || [];
             return lines.some(l => {
-                const cpt = l.comptegen || l.compteaux || '';
+                const cpt = l.compteaux || '';
                 return !cpt.startsWith('28');
             });
         }).map(a => ({
             ...a,
             journalLines: (a.journalLines || []).filter(l => {
-                const cpt = l.comptegen || l.compteaux || '';
+                const cpt = l.compteaux || '';
                 return !cpt.startsWith('28');
             })
         })).filter(a => a.journalLines.length > 0);
@@ -1156,7 +1156,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
     // Extraire les options uniques pour les filtres
     const compteOptions = useMemo(() => {
         if (!ecritures || ecritures.length === 0) return [];
-        const comptes = [...new Set(ecritures.map(e => e.comptegen || e.compteaux).filter(Boolean))];
+        const comptes = [...new Set(ecritures.map(e => e.compteaux).filter(Boolean))];
         return comptes.sort();
     }, [ecritures]);
 
@@ -1189,7 +1189,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
     const anomaliesByCompte = useMemo(() => {
         const grouped = {};
         anomaliesJournalLines.forEach(l => {
-            const compte = l?.comptegen || l?.compteaux || 'N/A';
+            const compte = l?.compteaux || 'N/A';
             if (!grouped[compte]) {
                 grouped[compte] = [];
             }
@@ -1208,7 +1208,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                 journal: e.id_journal || '-',
                 piece: e.piece || '-',
                 libelle: e.libelle || '-',
-                compte: e.comptegen || e.compteaux || '-',
+                compte: e.compteaux || '-',
                 lettrage: e.lettrage || '-',
                 analytique: e.analytique || '-',
                 debit: e.debit || 0,
@@ -1512,7 +1512,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 )}
                                 {(() => {
                                     const compteAnomalies = anomalies.filter(a =>
-                                        a.journalLines?.some(l => (l.comptegen || l.compteaux) === soldeCurrentCompte)
+                                        a.journalLines?.some(l => (l.compteaux) === soldeCurrentCompte)
                                     );
                                     const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
                                     const hasAnomalies = compteAnomalies.length > 0;
@@ -1621,7 +1621,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 </Stack>
                                 {(() => {
                                     const compteAnomalies = anomalies.filter(a =>
-                                        a.journalLines?.some(l => (l.comptegen || l.compteaux) === ecritureCurrentCompte)
+                                        a.journalLines?.some(l => (l.compteaux) === ecritureCurrentCompte)
                                     );
                                     const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
                                     const hasAnomalies = compteAnomalies.length > 0;
@@ -1734,7 +1734,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                     </Stack>
                                     {(() => {
                                         const compteAnomalies = anomalies.filter(a =>
-                                            a.journalLines?.some(l => (l.comptegen || l.compteaux) === atypiqueCurrentCompte)
+                                            a.journalLines?.some(l => (l.compteaux) === atypiqueCurrentCompte)
                                         );
                                         const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
                                         const hasAnomalies = compteAnomalies.length > 0;
@@ -1843,7 +1843,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                 </Stack>
                                 {(() => {
                                     const compteAnomalies = anomalies.filter(a =>
-                                        a.journalLines?.some(l => (l.comptegen || l.compteaux) === immobCurrentCompte)
+                                        a.journalLines?.some(l => (l.compteaux) === immobCurrentCompte)
                                     );
                                     const allValidated = compteAnomalies.length > 0 && compteAnomalies.every(a => a.valide);
                                     const hasAnomalies = compteAnomalies.length > 0;
@@ -1916,7 +1916,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                             {
                                                                 field: 'dateecriture', headerName: 'Date', width: 100, valueFormatter: (params) => params.value || '-'
                                                             },
-                                                            { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                            { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.compteaux || '-' },
                                                             { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
                                                             { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
                                                             {
@@ -1975,7 +1975,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                 if (!Array.isArray(anomalie.journalLines)) return;
 
                                                 anomalie.journalLines.forEach(line => {
-                                                    const compte = line?.comptegen || line?.compteaux;
+                                                    const compte = line?.compteaux;
                                                     if (!compte) return;
 
                                                     if (!groupedByCompte[compte]) {
@@ -2067,7 +2067,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                             return params.value;
                                                                         }
                                                                     },
-                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.compteaux || '-' },
                                                                     { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
                                                                     { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                                     {
@@ -2117,7 +2117,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                             anomalies.forEach(anomalie => {
                                                 if (!Array.isArray(anomalie.journalLines)) return;
                                                 anomalie.journalLines.forEach(line => {
-                                                    const compte = line?.comptegen || line?.compteaux;
+                                                    const compte = line?.compteaux;
                                                     if (!compte) return;
                                                     if (!groupedByCompte[compte]) {
                                                         groupedByCompte[compte] = { anomalies: [], allLines: [], allValidated: true };
@@ -2186,7 +2186,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                             return params.value;
                                                                         }
                                                                     },
-                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                    { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.compteaux || '-' },
                                                                     { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
                                                                     { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                                     {
@@ -2253,7 +2253,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                             {
                                                                 field: 'comptegen', headerName: 'Compte', width: 120, renderCell: p => (
                                                                     <Box sx={{ fontWeight: (p.row.comptegen?.startsWith('2') || p.row.compteaux?.startsWith('2')) ? 700 : 400, color: (p.row.comptegen?.startsWith('2') || p.row.compteaux?.startsWith('2')) ? 'primary.main' : 'inherit' }}>
-                                                                        {p.row.comptegen || p.row.compteaux || '-'}
+                                                                        {p.row.compteaux || '-'}
                                                                         {((p.row.comptegen?.startsWith('4456') || p.row.compteaux?.startsWith('4456')) && <Chip label="TVA" size="small" color="info" sx={{ ml: 1, fontSize: '0.7rem' }} />)}
                                                                     </Box>
                                                                 )
@@ -2343,7 +2343,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     }))}
                                                                     columns={[
                                                                         { field: 'dateecriture', headerName: 'Date', width: 110, valueGetter: p => p.row.dateecriture ? new Date(p.row.dateecriture).toLocaleDateString('fr-FR') : '-' },
-                                                                        { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                        { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.compteaux || '-' },
                                                                         { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
                                                                         { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                                         { field: 'debit', headerName: 'Débit', width: 110, align: 'right', valueGetter: p => p.row.debit ? formatMontant(p.row.debit) : '-' },
@@ -2407,7 +2407,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                                         ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
                                                                                         : '-'
                                                                             },
-                                                                            { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                                            { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.compteaux || '-' },
                                                                             { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
                                                                             { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
                                                                             {
@@ -2475,7 +2475,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                         ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
                                                                         : '-'
                                                             },
-                                                            { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                            { field: 'comptegen', headerName: 'Compte', width: 120, valueGetter: p => p.row.compteaux || '-' },
                                                             { field: 'piece', headerName: 'Pièce', width: 150, valueGetter: p => p.row.piece || '-' },
                                                             { field: 'libelle', headerName: 'Libellé', width: 350, valueGetter: p => p.row.libelle || '-' },
                                                             {
@@ -2531,7 +2531,7 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                                                                     ? new Date(params.row.dateecriture).toLocaleDateString('fr-FR')
                                                                     : '-'
                                                         },
-                                                        { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.comptegen || p.row.compteaux || '-' },
+                                                        { field: 'comptegen', headerName: 'Compte', width: 100, valueGetter: p => p.row.compteaux || '-' },
                                                         { field: 'piece', headerName: 'Pièce', width: 90, valueGetter: p => p.row.piece || '-' },
                                                         { field: 'libelle', headerName: 'Libellé', width: 180, valueGetter: p => p.row.libelle || '-' },
                                                         {
