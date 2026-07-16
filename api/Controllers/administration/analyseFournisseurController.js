@@ -5,6 +5,14 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
+
+// Stats analyse tiers : total = anomalies détectées ; restant = non validées
+const sectionAnomalyStats = (sections) => {
+  const all = [];
+  sections.forEach(sec => (sec || []).forEach(c => (c.lignes || []).forEach(l => (l.anomalies || []).forEach(a => all.push(a)))));
+  return { total: all.length, restant: all.filter(a => !a.valider).length };
+};
 
 /**
  * Analyse Fournisseur/Client Controller
@@ -843,34 +851,68 @@ const ANOMALIE_LABELS = {
 };
 
 /**
- * Helper: construit le body d'un tableau pdfmake pour une section (Fournisseurs ou Clients).
- * Réutilisé par buildPdfSection et exportPdf.
+ * Helper: construit les nœuds pdfmake d'une section (Fournisseurs ou Clients)
+ * au format « grand livre » : un sous-tableau par compte, avec en-tête de compte
+ * et ligne de totaux, plutôt qu'une liste brute.
  */
-const buildTableBody = (data, title) => {
-  const tableBody = [
-    [{ text: title, colSpan: 9, style: 'sectionHeader', alignment: 'center' }, '', '', '', '', '', '', '', ''],
-    [{ text: 'Compte', style: 'tableHeader', alignment: 'center' }, { text: 'Date', style: 'tableHeader', alignment: 'center' }, { text: 'Pièce', style: 'tableHeader', alignment: 'center' }, { text: 'Libellé', style: 'tableHeader', alignment: 'center' }, { text: 'Débit', style: 'tableHeader', alignment: 'center' }, { text: 'Crédit', style: 'tableHeader', alignment: 'center' }, { text: 'Let.', style: 'tableHeader', alignment: 'center' }, { text: 'Type anomalie', style: 'tableHeader', alignment: 'center' }, { text: 'Commentaire', style: 'tableHeader', alignment: 'center' }]
-  ];
+const WIDTHS = ['10%', '12%', '*', '12%', '12%', '6%', '16%', '16%'];
+const buildSectionNodes = (data, title) => {
+  const nodes = [{ text: title, style: 'sectionHeader' }];
+
+  if (!data || data.length === 0) {
+    nodes.push({ text: 'Aucune anomalie', style: 'noData' });
+    return nodes;
+  }
 
   data.forEach((compte) => {
+    nodes.push({
+      text: `Compte ${compte.compte}${compte.libelle ? ' — ' + compte.libelle : ''}`,
+      style: 'anomalyHeader',
+    });
+
+    const body = [
+      ['Date', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Let.', "Type d'anomalie", 'Commentaire']
+        .map((h) => ({ text: h, style: 'tableHeader', alignment: 'center' })),
+    ];
+
+    let td = 0, tc = 0;
     compte.lignes.forEach((ligne) => {
       ligne.anomalies.forEach((anomalie) => {
-        tableBody.push([
-          { text: compte.compte, style: 'cell' },
+        const debit = parseFloat(ligne.debit) || 0;
+        const credit = parseFloat(ligne.credit) || 0;
+        td += debit; tc += credit;
+        body.push([
           { text: formatDate(ligne.date_ecriture), style: 'cell' },
           { text: ligne.piece || '', style: 'cell' },
           { text: ligne.libelle || '', style: 'cell' },
-          { text: formatMontant(ligne.debit), alignment: 'right', style: 'cell' },
-          { text: formatMontant(ligne.credit), alignment: 'right', style: 'cell' },
+          { text: formatMontant(debit), alignment: 'right', style: 'cell' },
+          { text: formatMontant(credit), alignment: 'right', style: 'cell' },
           { text: ligne.lettrage || '-', alignment: 'center', style: 'cell' },
           { text: ANOMALIE_LABELS[anomalie.type] || anomalie.type, style: 'cell' },
-          { text: anomalie.commentaire_validation || '', style: 'cell' }
+          { text: anomalie.commentaire_validation || '', style: 'cell' },
         ]);
       });
     });
+
+    body.push([
+      { text: 'Total', colSpan: 3, alignment: 'right', style: 'totalRow' }, {}, {},
+      { text: formatMontant(td), alignment: 'right', style: 'totalRow' },
+      { text: formatMontant(tc), alignment: 'right', style: 'totalRow' },
+      { text: '', colSpan: 3, style: 'totalRow' }, {}, {},
+    ]);
+
+    nodes.push({
+      table: { headerRows: 1, widths: WIDTHS, body },
+      layout: {
+        fillColor: (ri) => (ri === 0 ? '#E8EEF7' : undefined),
+        hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0',
+        hLineWidth: () => 0.3, vLineWidth: () => 0.3,
+        paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 4, paddingRight: () => 4,
+      },
+    });
   });
 
-  return tableBody;
+  return nodes;
 };
 
 /**
@@ -879,21 +921,19 @@ const buildTableBody = (data, title) => {
  */
 const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
   const worksheet = workbook.addWorksheet(sheetName);
-  // Colonnes SANS 'header' : on garde uniquement key + width pour libérer les
-  // premières lignes au profit d'un bloc titre (l'en-tête sera écrit en ligne 5).
+  // Grand livre : Compte est porté par une bande de groupe, plus de colonne « Compte ».
   worksheet.columns = [
-    { key: 'compte', width: 12 },
-    { key: 'date', width: 12 },
-    { key: 'piece', width: 15 },
-    { key: 'libelle', width: 35 },
-    { key: 'debit', width: 12 },
-    { key: 'credit', width: 12 },
-    { key: 'lettrage', width: 10 },
-    { key: 'type_anomalie', width: 25 },
-    { key: 'commentaire', width: 30 }
+    { width: 12 }, // Date
+    { width: 15 }, // Pièce
+    { width: 40 }, // Libellé
+    { width: 14 }, // Débit
+    { width: 14 }, // Crédit
+    { width: 10 }, // Lettrage
+    { width: 25 }, // Type anomalie
+    { width: 30 }  // Commentaire
   ];
 
-  const nbCols = worksheet.columns.length; // 9
+  const nbCols = worksheet.columns.length; // 8
 
   // ── Bloc titre (lignes 1 à 4) ──────────────────────────────────────────────
   worksheet.mergeCells(1, 1, 1, nbCols);
@@ -905,13 +945,14 @@ const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
   worksheet.mergeCells(3, 1, 3, nbCols);
   worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
 
-  // Ligne 4 : vide (laissée telle quelle).
+  // Ligne 4 : statistiques (Anomalies / Restant à valider) pour cette section
+  {
+    const { total, restant } = sectionAnomalyStats([data]);
+    writeExcelStats(worksheet, 4, total, restant);
+  }
 
-  // ── Ligne 5 : en-tête du tableau (mêmes libellés qu'avant) ─────────────────
-  const HEADER_LABELS = [
-    'Compte', 'Date', 'Pièce', 'Libellé', 'Débit',
-    'Crédit', 'Lettrage', 'Type anomalie', 'Commentaire'
-  ];
+  // ── Ligne 5 : en-tête du tableau (une seule fois, style grand livre) ────────
+  const HEADER_LABELS = ['Date', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', "Type d'anomalie", 'Commentaire'];
   const headerRow = worksheet.getRow(5);
   headerRow.values = HEADER_LABELS;
   headerRow.eachCell((cell) => {
@@ -920,28 +961,59 @@ const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
   });
 
-  // ── Lignes 6+ : données ────────────────────────────────────────────────────
+  // ── Lignes 6+ : un groupe par compte (bande + écritures + total) ────────────
   let rowNo = 6;
+  if (!data || data.length === 0) {
+    worksheet.getRow(rowNo).getCell(1).value = 'Aucune anomalie';
+    return worksheet;
+  }
+
   data.forEach((compte) => {
+    // Bande de compte (fusionnée sur toute la largeur)
+    worksheet.mergeCells(rowNo, 1, rowNo, nbCols);
+    const band = worksheet.getRow(rowNo).getCell(1);
+    band.value = `Compte ${compte.compte}${compte.libelle ? ' — ' + compte.libelle : ''}`;
+    band.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 11 };
+    band.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0F1' } };
+    band.alignment = { horizontal: 'left', vertical: 'middle' };
+    rowNo++;
+
+    let td = 0, tc = 0;
     compte.lignes.forEach((ligne) => {
       ligne.anomalies.forEach((anomalie) => {
+        const debit = Number(ligne.debit) || 0;
+        const credit = Number(ligne.credit) || 0;
+        td += debit; tc += credit;
         const row = worksheet.getRow(rowNo);
         row.values = [
-          compte.compte,
           formatDate(ligne.date_ecriture),
           ligne.piece || '',
           ligne.libelle || '',
-          ligne.debit || 0,
-          ligne.credit || 0,
+          debit,
+          credit,
           ligne.lettrage || '-',
           ANOMALIE_LABELS[anomalie.type] || anomalie.type,
           anomalie.commentaire_validation || ''
         ];
+        row.getCell(4).numFmt = '#,##0.00';
         row.getCell(5).numFmt = '#,##0.00';
-        row.getCell(6).numFmt = '#,##0.00';
         rowNo++;
       });
     });
+
+    // Ligne de total du compte
+    const totalRow = worksheet.getRow(rowNo);
+    totalRow.getCell(3).value = 'Total';
+    totalRow.getCell(3).alignment = { horizontal: 'right' };
+    totalRow.getCell(4).value = td;
+    totalRow.getCell(5).value = tc;
+    totalRow.getCell(4).numFmt = '#,##0.00';
+    totalRow.getCell(5).numFmt = '#,##0.00';
+    [3, 4, 5].forEach((c) => {
+      totalRow.getCell(c).font = { bold: true, color: { argb: 'FF2C3E50' } };
+      totalRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
+    });
+    rowNo += 2; // ligne vide entre les comptes
   });
 
   return worksheet;
@@ -964,19 +1036,18 @@ exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, d
 exports.buildPdfSection = (data, ctx = {}) => {
   const { fournisseurs = [], clients = [] } = data || {};
 
-  const fournisseurTable = buildTableBody(fournisseurs, 'FOURNISSEURS');
-  const clientTable = buildTableBody(clients, 'CLIENTS');
-
   const content = [
-    { table: { headerRows: 2, widths: ['10%', '10%', '12%', '25%', '10%', '10%', '6%', '12%', '5%'], body: fournisseurTable }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri === 1 ? '#D1E8FF' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3 } },
-    { text: '', margin: [0, 10, 0, 0] },
-    { table: { headerRows: 2, widths: ['10%', '10%', '12%', '25%', '10%', '10%', '6%', '12%', '5%'], body: clientTable }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri === 1 ? '#D1E8FF' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3 } }
+    ...buildSectionNodes(fournisseurs, 'FOURNISSEURS'),
+    ...buildSectionNodes(clients, 'CLIENTS'),
   ];
 
   const styles = {
-    tableHeader: { fontSize: 9, bold: true, color: '#1E293B', fillColor: '#F1F5F9' },
-    sectionHeader: { fontSize: 11, bold: true, color: '#0F172A', fillColor: '#DBEAFE' },
-    cell: { fontSize: 8 }
+    tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
+    sectionHeader: { fontSize: 12, bold: true, color: '#0E7C86', margin: [0, 10, 0, 6] },
+    anomalyHeader: { fontSize: 10, bold: true, color: '#2C3E50', margin: [0, 8, 0, 3] },
+    cell: { fontSize: 7, color: '#2C3E50' },
+    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
+    noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 6, 0, 10] },
   };
 
   return { content, styles };
@@ -1014,8 +1085,8 @@ exports.exportPdf = async (req, res) => {
       width: '*',
       stack: [
         { text: 'ANALYSE TIERS (FOURNISSEURS & CLIENTS)', style: 'header', alignment: 'center' },
-        { text: `Dossier: ${dossier?.nom || id_dossier}`, style: 'subheader', alignment: 'center' },
-        { text: `Exercice: ${exercice?.libelle || id_exercice}`, style: 'subheader', alignment: 'center' }
+        { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
+        { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader', alignment: 'center' }
       ]
     });
 
@@ -1027,7 +1098,8 @@ exports.exportPdf = async (req, res) => {
       pageMargins: [15, 15, 15, 25],
       defaultStyle: { font: 'Helvetica', fontSize: 8 },
       content: [
-        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+        (() => { const { total, restant } = sectionAnomalyStats([data.fournisseurs, data.clients]); return statsBand(total, restant); })(),
         ...section.content
       ],
       styles: {
@@ -1064,7 +1136,7 @@ exports.exportExcel = async (req, res) => {
     const periodeText = (date_debut && date_fin)
       ? `${formatDate(date_debut)} au ${formatDate(date_fin)}`
       : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
-    const dossierName = dossier?.dossier || dossier?.nom || id_dossier;
+    const dossierName = dossier?.dossier || id_dossier;
 
     const workbook = new ExcelJS.Workbook();
     exports.addExcelSheets(workbook, data, { dossierName, periodeText });

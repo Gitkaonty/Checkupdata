@@ -7,8 +7,18 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { valideIconCell, anomalieIconCell, setExcelAnomalieCell: setAnomalieCell, setExcelValideCell: setValideCell, statsBand, writeExcelStats } = require('../../Middlewares/exportPdfTheme');
 
 const round2 = (value) => Math.round(value * 100) / 100;
+
+// Stats revue : total = comptes en anomalie ; restant = anomalies non validées
+const revueStats = (results) => {
+  const list = results || [];
+  return {
+    total: list.filter(r => r.anomalies).length,
+    restant: list.filter(r => r.anomalies && !r.valide_anomalie).length,
+  };
+};
 
 exports.getRevuAnalytiqueNN1 = async (req, res) => {
     try {
@@ -411,8 +421,8 @@ exports.buildPdfSection = (data, ctx = {}) => {
             { text: formatMontant(r.soldeN1 || 0), alignment: 'right', style: 'cell' },
             { text: formatMontant(r.var), alignment: 'right', style: 'cell' },
             { text: r.varPourcent !== null ? `${r.varPourcent}%` : '-', alignment: 'right', style: 'cell' },
-            { text: r.anomalies ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
-            { text: r.valide_anomalie ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            anomalieIconCell(r.anomalies),
+            valideIconCell(r.valide_anomalie),
             { text: r.commentaire, style: 'cell' }
         ].map(cell => ({ ...cell, fillColor: rowColor })));
     });
@@ -457,6 +467,12 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     ws.getCell('A4').font = { bold: true, size: 9 };
     ws.getCell('A4').alignment = { horizontal: 'center' };
 
+    // Ligne 5 : statistiques
+    {
+      const { total, restant } = revueStats(results);
+      writeExcelStats(ws, 5, total, restant);
+    }
+
     ws.columns = [{ width: 12 }, { width: 35 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 30 }];
 
     const headerRow = ws.getRow(7);
@@ -467,7 +483,7 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
 
     results.forEach((r, i) => {
         const row = ws.getRow(8 + i);
-        row.values = [r.compte, r.libelle, r.soldeN, r.soldeN1 || 0, r.var, r.varPourcent !== null ? `${r.varPourcent}%` : '-', r.anomalies ? 'Oui' : 'Non', r.valide_anomalie ? 'Oui' : 'Non', r.commentaire];
+        row.values = [r.compte, r.libelle, r.soldeN, r.soldeN1 || 0, r.var, r.varPourcent !== null ? `${r.varPourcent}%` : '-', '', '', r.commentaire];
         row.getCell(3).numFmt = '#,##0.00';
         row.getCell(4).numFmt = '#,##0.00';
         row.getCell(5).numFmt = '#,##0.00';
@@ -476,8 +492,8 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
         row.getCell(4).alignment = { horizontal: 'right' };
         row.getCell(5).alignment = { horizontal: 'right' };
         row.getCell(6).alignment = { horizontal: 'right' };
-        row.getCell(7).alignment = { horizontal: 'center' };
-        row.getCell(8).alignment = { horizontal: 'center' };
+        setAnomalieCell(row.getCell(7), r.anomalies);
+        setValideCell(row.getCell(8), r.valide_anomalie);
     });
 
     return ws;
@@ -515,7 +531,8 @@ exports.exportPdf = async (req, res) => {
             pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 8 },
             content: [
-                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+                (() => { const { total, restant } = revueStats(data.results); return statsBand(total, restant); })(),
                 ...section.content
             ],
             styles: {

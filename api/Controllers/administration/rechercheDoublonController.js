@@ -5,6 +5,16 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { valideIconCell, xlValide, statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
+
+// Stats doublons : total = nb de groupes ; restant = groupes non validés
+const doublonStats = (resultats) => {
+  const g = {};
+  (resultats || []).forEach(r => { if (g[r.id_doublon] === undefined) g[r.id_doublon] = (r.statut === 'VALIDE'); });
+  const total = Object.keys(g).length;
+  const restant = Object.values(g).filter(v => !v).length;
+  return { total, restant };
+};
 
 // ==========================================
 // SECTION 1: Extraction des critères
@@ -769,7 +779,7 @@ exports.buildPdfSection = (data, ctx = {}) => {
         { text: item.libelle || '', style: 'cell', fillColor: rowColor },
         { text: formatMontant(item.debit), alignment: 'right', style: 'cell', fillColor: rowColor },
         { text: formatMontant(item.credit), alignment: 'right', style: 'cell', fillColor: rowColor },
-        { text: item.statut === 'VALIDE' ? 'Validé' : 'Non validé', alignment: 'center', style: 'cell', fillColor: rowColor }
+        { ...valideIconCell(item.statut === 'VALIDE'), fillColor: rowColor }
       ]);
       rowCounter++;
     });
@@ -818,7 +828,11 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
   worksheet.mergeCells('A3:I3');
   worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
 
-  // Ligne 4 : vide
+  // Ligne 4 : statistiques (Anomalies / Restant à valider)
+  {
+    const { total, restant } = doublonStats(resultats);
+    writeExcelStats(worksheet, 4, total, restant);
+  }
 
   // --- En-tête du tableau (ligne 5) ---
   worksheet.getRow(5).values = ['Groupe', 'Compte', 'Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Statut'];
@@ -840,10 +854,11 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
       item.libelle || '',
       item.debit || 0,
       item.credit || 0,
-      item.statut === 'VALIDE' ? 'Validé' : 'Non validé'
+      xlValide(item.statut === 'VALIDE')
     ];
     row.getCell(7).numFmt = '#,##0.00';
     row.getCell(8).numFmt = '#,##0.00';
+    row.getCell(9).alignment = { horizontal: 'center' };
     rowIndex++;
   });
 
@@ -878,7 +893,7 @@ exports.exportPdf = async (req, res) => {
       stack: [
         { text: 'RECHERCHE DE DOUBLONS', style: 'header', alignment: 'center' },
         { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
-        { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+        { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader2', alignment: 'center' }
       ]
     });
 
@@ -890,7 +905,8 @@ exports.exportPdf = async (req, res) => {
       pageMargins: [15, 15, 15, 25],
       defaultStyle: { font: 'Helvetica', fontSize: 8 },
       content: [
-        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+        (() => { const { total, restant } = doublonStats(resultats); return statsBand(total, restant); })(),
         ...section.content
       ],
       styles: {
@@ -927,7 +943,7 @@ exports.exportExcel = async (req, res) => {
     const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
     const ctx = {
       dossierName: dossier?.dossier || id_dossier,
-      periodeText: exercice?.libelle || id_exercice
+      periodeText: exerciceLabel(exercice) || id_exercice
     };
 
     const workbook = new ExcelJS.Workbook();

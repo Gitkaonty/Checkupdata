@@ -5,6 +5,13 @@ const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { valideIconCell, xlValide, statsBand, writeExcelStats } = require('../../Middlewares/exportPdfTheme');
+
+// Statistiques d'un contrôle à partir de ses anomalies
+const computeStats = (anomalies) => {
+  const list = anomalies || [];
+  return { total: list.length, restant: list.filter(a => !a.valide).length };
+};
 
 const dossiers = db.dossiers;
 const exercices = db.exercices;
@@ -236,9 +243,15 @@ exports.exportPdf = async (req, res) => {
       {
         columns: headerColumns,
         columnGap: 10,
-        margin: [0, 0, 0, 15]
+        margin: [0, 0, 0, 12]
       }
     ];
+
+    // ---------------- STATS ----------------
+    {
+      const { total, restant } = computeStats(anomalies);
+      content.push(statsBand(total, restant));
+    }
 
     // ---------------- CONTENT ----------------
     console.log('[REVISION][PDF] anomalies count:', anomalies?.length, 'type:', type);
@@ -281,7 +294,9 @@ exports.exportPdf = async (req, res) => {
             'Débit',
             'Crédit',
             'Lettrage',
-            'Analytique'
+            'Analytique',
+            'Validé',
+            'Commentaire'
           ].map(h => ({
             text: h,
             style: 'tableHeader',
@@ -305,7 +320,9 @@ exports.exportPdf = async (req, res) => {
               { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
               { text: formatMontant(parseFloat(l.credit) || 0), alignment: 'right', style: 'cell' },
               { text: l.lettrage || '', style: 'cell' },
-              { text: l.analytique || '', style: 'cell' }             
+              { text: l.analytique || '', style: 'cell' },
+              valideIconCell(relatedAnomaly?.valide),
+              { text: relatedAnomaly?.commentaire || '', style: 'cell' }
             ].map(cell => ({
               ...cell,
               fillColor: rowColor
@@ -315,7 +332,7 @@ exports.exportPdf = async (req, res) => {
           content.push({
             table: {
               headerRows: 1,
-              widths: ['10%', '10%', '10%', '*', '12%', '12%', '10%', '12%'],
+              widths: ['9%', '9%', '8%', '*', '11%', '11%', '7%', '9%', '6%', '12%'],
               body: tableBody
             },
             layout: {
@@ -402,7 +419,7 @@ exports.exportPdf = async (req, res) => {
               { text: formatMontant(credit), alignment: 'right', style: 'cell' },
               { text: l.lettrage || '', style: 'cell' },
               { text: l.analytique || '', style: 'cell' },
-              { text: relatedAnomaly?.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+              valideIconCell(relatedAnomaly?.valide),
               { text: relatedAnomaly?.commentaire || '', style: 'cell' }
             ].map(cell => ({
               ...cell,
@@ -515,7 +532,7 @@ exports.exportPdf = async (req, res) => {
               { text: formatMontant(credit), alignment: 'right', style: 'cell' },
               { text: l.lettrage || '', style: 'cell' },
               { text: l.analytique || '', style: 'cell' },
-              { text: relatedAnomaly?.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+              valideIconCell(relatedAnomaly?.valide),
               { text: relatedAnomaly?.commentaire || '', style: 'cell' }
             ].map(cell => ({ ...cell, fillColor: rowColor })));
           });
@@ -590,7 +607,7 @@ exports.exportPdf = async (req, res) => {
               { text: formatMontant(credit), alignment: 'right', style: 'cell' },
               { text: l.lettrage || '', style: 'cell' },
               { text: l.analytique || '', style: 'cell' },
-              { text: relatedAnomaly?.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+              valideIconCell(relatedAnomaly?.valide),
               { text: relatedAnomaly?.commentaire || '', style: 'cell' }
             ].map(cell => ({ ...cell, fillColor: rowColor })));
           });
@@ -641,7 +658,7 @@ exports.exportPdf = async (req, res) => {
               { text: formatMontant(parseFloat(l.credit) || 0), alignment: 'right', style: 'cell' },
               { text: l.lettrage || '', style: 'cell' },
               { text: l.analytique || '', style: 'cell' },
-              { text: anomalie.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+              valideIconCell(anomalie.valide),
               { text: anomalie.commentaire || '', style: 'cell' }
             ].map(cell => ({ ...cell, fillColor: rowColor })));
           });
@@ -686,7 +703,7 @@ exports.exportPdf = async (req, res) => {
               { text: formatMontant(parseFloat(l.credit) || 0), alignment: 'right', style: 'cell' },
               { text: l.lettrage || '', style: 'cell' },
               { text: l.analytique || '', style: 'cell' },
-              { text: anomalie.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+              valideIconCell(anomalie.valide),
               { text: anomalie.commentaire || '', style: 'cell' }
             ].map(cell => ({ ...cell, fillColor: rowColor })));
           });
@@ -707,14 +724,38 @@ exports.exportPdf = async (req, res) => {
     }
 
     // ---------------- DOCUMENT ----------------
+    // En-tête de page dynamique : contrôle (fixe) + sous-contrôle (compte) courant.
+    content.forEach((n) => { if (n && n.style === 'anomalyHeader' && n.headlineLevel === undefined) n.headlineLevel = 2; });
+    const ctrlLabel = `${controle?.description || 'Contrôle'}`;
+    const sectionsL2 = [];
+    const lastAtOrBefore = (arr, page) => arr.filter(s => s.page <= page).sort((a, b) => a.page - b.page).pop();
+
     const docDefinition = {
       pageSize: 'A4',
       pageOrientation: 'landscape',
-      pageMargins: [15, 15, 15, 25],
+      pageMargins: [15, 34, 15, 25],
 
       defaultStyle: {
         font: 'Helvetica',
         fontSize: 8
+      },
+
+      pageBreakBefore: (currentNode) => {
+        const pg = currentNode.startPosition && currentNode.startPosition.pageNumber;
+        if (pg && currentNode.headlineLevel === 2) sectionsL2.push({ page: pg, label: currentNode.text });
+        return false;
+      },
+
+      header: (currentPage) => {
+        if (currentPage === 1) return null;
+        const sous = lastAtOrBefore(sectionsL2, currentPage);
+        return {
+          margin: [15, 12, 15, 0],
+          columns: [
+            { text: ctrlLabel, bold: true, fontSize: 8, color: '#0E7C86' },
+            { text: sous ? sous.label : '', alignment: 'right', fontSize: 8, color: '#6A7785' },
+          ],
+        };
       },
 
       content,
@@ -865,7 +906,12 @@ exports.exportExcel = async (req, res) => {
       { width: 30 }   // Commentaire
     ];
 
-    let rowCursor = 7;
+    // Bandeau de statistiques (Anomalies / Restant à valider)
+    let rowCursor = 6;
+    {
+      const { total, restant } = computeStats(anomalies);
+      rowCursor = writeExcelStats(ws, rowCursor, total, restant);
+    }
 
     if (anomalies.length === 0) {
       ws.getRow(rowCursor).values = ['Aucune anomalie détectée'];
@@ -907,7 +953,7 @@ exports.exportExcel = async (req, res) => {
             parseFloat(l.credit) || 0,
             l.lettrage || '',
             l.analytique || '',
-            relatedAnomaly?.valide ? 'Oui' : 'Non',
+            xlValide(relatedAnomaly?.valide),
             relatedAnomaly?.commentaire || ''
           ];
           dataRow.getCell('E').numFmt = '#,##0.00';
@@ -962,7 +1008,7 @@ exports.exportExcel = async (req, res) => {
             credit,
             l.lettrage || '',
             l.analytique || '',
-            relatedAnomaly?.valide ? 'Oui' : 'Non',
+            xlValide(relatedAnomaly?.valide),
             relatedAnomaly?.commentaire || ''
           ];
           dataRow.getCell('E').numFmt = '#,##0.00';
@@ -1038,7 +1084,7 @@ exports.exportExcel = async (req, res) => {
           dataRow.values = [
             formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
             debit, credit, l.lettrage || '', l.analytique || '',
-            relatedAnomaly?.valide ? 'Oui' : 'Non', relatedAnomaly?.commentaire || ''
+            xlValide(relatedAnomaly?.valide), relatedAnomaly?.commentaire || ''
           ];
           dataRow.getCell('E').numFmt = '#,##0.00';
           dataRow.getCell('F').numFmt = '#,##0.00';
@@ -1101,7 +1147,7 @@ exports.exportExcel = async (req, res) => {
           dataRow.values = [
             formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
             debit, credit, l.lettrage || '', l.analytique || '',
-            relatedAnomaly?.valide ? 'Oui' : 'Non', relatedAnomaly?.commentaire || ''
+            xlValide(relatedAnomaly?.valide), relatedAnomaly?.commentaire || ''
           ];
           dataRow.getCell('E').numFmt = '#,##0.00';
           dataRow.getCell('F').numFmt = '#,##0.00';
@@ -1142,7 +1188,7 @@ exports.exportExcel = async (req, res) => {
             dataRow.values = [
               formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
               parseFloat(l.debit) || 0, parseFloat(l.credit) || 0, l.lettrage || '', l.analytique || '',
-              anomalie.valide ? 'Oui' : 'Non', anomalie.commentaire || ''
+              xlValide(anomalie.valide), anomalie.commentaire || ''
             ];
             dataRow.getCell('E').numFmt = '#,##0.00';
             dataRow.getCell('F').numFmt = '#,##0.00';
@@ -1175,7 +1221,7 @@ exports.exportExcel = async (req, res) => {
             dataRow.values = [
               formatDate(l.dateecriture), l.compteaux || '', l.piece || '', l.libelle || '',
               parseFloat(l.debit) || 0, parseFloat(l.credit) || 0, l.lettrage || '', l.analytique || '',
-              anomalie.valide ? 'Oui' : 'Non', anomalie.commentaire || ''
+              xlValide(anomalie.valide), anomalie.commentaire || ''
             ];
             dataRow.getCell('E').numFmt = '#,##0.00';
             dataRow.getCell('F').numFmt = '#,##0.00';
@@ -1219,7 +1265,7 @@ const buildTypeContent = (type, anomalies, controle) => {
       const label = firstAnomaly?.message || `Anomalie (${data.anomalies.length})`;
       content.push({ text: `Compte ${compte} - ${label}`, style: 'anomalyHeader' });
       if (lines.length > 0) {
-        const tableBody = [['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))];
+        const tableBody = [['Date', 'Compte', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', 'Analytique', 'Validé', 'Commentaire'].map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))];
         lines.forEach((l, i) => {
           const relatedAnomaly = data.anomalies.find(a => a.journalLines?.some(jl => jl.id === l.id)) || firstAnomaly;
           const rowColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
@@ -1231,10 +1277,12 @@ const buildTypeContent = (type, anomalies, controle) => {
             { text: formatMontant(parseFloat(l.debit) || 0), alignment: 'right', style: 'cell' },
             { text: formatMontant(parseFloat(l.credit) || 0), alignment: 'right', style: 'cell' },
             { text: l.lettrage || '', style: 'cell' },
-            { text: l.analytique || '', style: 'cell' }
+            { text: l.analytique || '', style: 'cell' },
+            valideIconCell(relatedAnomaly?.valide),
+            { text: relatedAnomaly?.commentaire || '', style: 'cell' }
           ].map(cell => ({ ...cell, fillColor: rowColor })));
         });
-        content.push({ table: { headerRows: 1, widths: ['10%', '10%', '10%', '*', '12%', '12%', '10%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } });
+        content.push({ table: { headerRows: 1, widths: ['9%', '9%', '8%', '*', '11%', '11%', '7%', '9%', '6%', '12%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 3, paddingBottom: () => 3, paddingLeft: () => 4, paddingRight: () => 4 } });
       } else {
         content.push({ text: 'Aucune ligne pour ce compte', style: 'noData' });
       }
@@ -1274,7 +1322,7 @@ const buildTypeContent = (type, anomalies, controle) => {
             { text: formatMontant(credit), alignment: 'right', style: 'cell' },
             { text: l.lettrage || '', style: 'cell' },
             { text: l.analytique || '', style: 'cell' },
-            { text: relatedAnomaly?.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            valideIconCell(relatedAnomaly?.valide),
             { text: relatedAnomaly?.commentaire || '', style: 'cell' }
           ].map(cell => ({ ...cell, fillColor: rowColor })));
         });
@@ -1325,7 +1373,7 @@ const buildTypeContent = (type, anomalies, controle) => {
             { text: formatMontant(parseFloat(l.credit) || 0), alignment: 'right', style: 'cell' },
             { text: l.lettrage || '', style: 'cell' },
             { text: l.analytique || '', style: 'cell' },
-            { text: anomalie.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            valideIconCell(anomalie.valide),
             { text: anomalie.commentaire || '', style: 'cell' }
           ].map(cell => ({ ...cell, fillColor: rowColor })));
         });
@@ -1351,7 +1399,7 @@ const buildTypeContent = (type, anomalies, controle) => {
             { text: formatMontant(parseFloat(l.credit) || 0), alignment: 'right', style: 'cell' },
             { text: l.lettrage || '', style: 'cell' },
             { text: l.analytique || '', style: 'cell' },
-            { text: anomalie.valide ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            valideIconCell(anomalie.valide),
             { text: anomalie.commentaire || '', style: 'cell' }
           ].map(cell => ({ ...cell, fillColor: rowColor })));
         });
@@ -1409,7 +1457,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       rowCursor = addHeaderRow(rowCursor);
       lines.forEach(l => {
         const relatedAnomaly = data.anomalies.find(a => a.journalLines?.some(jl => jl.id === l.id)) || firstAnomaly;
-        rowCursor = addDataRow(rowCursor, l, relatedAnomaly?.valide ? 'Oui' : 'Non', relatedAnomaly?.commentaire || '');
+        rowCursor = addDataRow(rowCursor, l, xlValide(relatedAnomaly?.valide), relatedAnomaly?.commentaire || '');
       });
       rowCursor += 1;
     });
@@ -1440,7 +1488,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
         const credit = parseFloat(l.credit) || 0;
         totalDebit += debit;
         totalCredit += credit;
-        rowCursor = addDataRow(rowCursor, l, relatedAnomaly?.valide ? 'Oui' : 'Non', relatedAnomaly?.commentaire || '');
+        rowCursor = addDataRow(rowCursor, l, xlValide(relatedAnomaly?.valide), relatedAnomaly?.commentaire || '');
       });
 
       // Total row
@@ -1475,7 +1523,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       if (lines.length > 0) {
         rowCursor = addHeaderRow(rowCursor);
         lines.forEach(l => {
-          rowCursor = addDataRow(rowCursor, l, anomalie.valide ? 'Oui' : 'Non', anomalie.commentaire || '');
+          rowCursor = addDataRow(rowCursor, l, xlValide(anomalie.valide), anomalie.commentaire || '');
         });
       }
       rowCursor += 1;
@@ -1490,7 +1538,7 @@ const addTypeRowsToSheet = (ws, type, anomalies, controle, rowCursor) => {
       if (lines.length > 0) {
         rowCursor = addHeaderRow(rowCursor);
         lines.forEach(l => {
-          rowCursor = addDataRow(rowCursor, l, anomalie.valide ? 'Oui' : 'Non', anomalie.commentaire || '');
+          rowCursor = addDataRow(rowCursor, l, xlValide(anomalie.valide), anomalie.commentaire || '');
         });
       }
       rowCursor += 1;
@@ -1522,34 +1570,49 @@ exports.buildPdfSection = async ({ id_compte, id_dossier, id_exercice, date_debu
 
   const content = [];
 
-  // Iterate over each type
+  // En-tête d'un contrôle : titre unique + saut de page (sauf le tout premier).
+  // headlineLevel:1 permet à l'en-tête de page dynamique de retrouver le contrôle courant.
+  const controlHeader = (label) => ({
+    text: label,
+    style: 'typeSectionHeader',
+    headlineLevel: 1,
+    pageBreak: content.length ? 'before' : undefined,
+    margin: [0, 0, 0, 6],
+  });
+
+  // Iterate over each type — un en-tête PAR contrôle (plus de doublon de titre),
+  // chaque contrôle démarre sur une nouvelle page.
   const types = Array.from(byType.keys()).sort();
   for (const type of types) {
     const controlesForType = byType.get(type);
 
-    // Section header for this type
-    const description = controlesForType[0]?.description || type;
-    content.push({
-      text: `${description} (${type})`,
-      style: 'typeSectionHeader',
-      margin: [0, 15, 0, 5]
-    });
-
-    // Fetch anomalies for each controle in this type
+    let anyAnomaly = false;
     for (const controle of controlesForType) {
       try {
         const { anomalies } = await getRevisionDetailsData(
           id_compte, id_dossier, id_exercice, controle.id_controle,
           date_debut, date_fin, id_periode
         );
-        const typeContent = buildTypeContent(type, anomalies, controle);
-        content.push(...typeContent);
+        if (!anomalies || anomalies.length === 0) continue;
+        anyAnomaly = true;
+        const { total, restant } = computeStats(anomalies);
+        content.push(controlHeader(`${controle.description || 'Contrôle'}`));
+        content.push(statsBand(total, restant));
+        content.push(...buildTypeContent(type, anomalies, controle));
       } catch (err) {
         console.error(`[REVISION][GLOBAL_PDF] Error fetching data for controle ${controle.id_controle}:`, err.message);
         content.push({ text: `Erreur pour le contrôle ${controle.id_controle}`, style: 'noData' });
       }
     }
+    if (!anyAnomaly) {
+      const c0 = controlesForType[0];
+      content.push(controlHeader(`${c0?.description || type}`));
+      content.push({ text: 'Aucune anomalie détectée', style: 'noData' });
+    }
   }
+
+  // Marque les sous-en-têtes (par compte / écriture) pour l'en-tête de page dynamique.
+  content.forEach((n) => { if (n && n.style === 'anomalyHeader' && n.headlineLevel === undefined) n.headlineLevel = 2; });
 
   const styles = {
     typeSectionHeader: { fontSize: 13, bold: true, color: '#0E7C86', margin: [0, 15, 0, 5] },
@@ -1605,12 +1668,41 @@ exports.exportGlobalPdf = async (req, res) => {
       ...section.content
     ];
 
+    // En-tête de page dynamique : on enregistre, pendant la mise en page, la page
+    // de début de chaque contrôle (headlineLevel 1) et sous-contrôle (headlineLevel 2),
+    // puis l'en-tête affiche, pour chaque page, le contrôle/sous-contrôle courant.
+    const sectionsL1 = [];
+    const sectionsL2 = [];
+    const lastAtOrBefore = (arr, page) => arr.filter(s => s.page <= page).sort((a, b) => a.page - b.page).pop();
+
     const docDefinition = {
       pageSize: 'A4',
       pageOrientation: 'landscape',
-      pageMargins: [15, 15, 15, 25],
+      pageMargins: [15, 34, 15, 25],
       defaultStyle: { font: 'Helvetica', fontSize: 8 },
       content,
+      pageBreakBefore: (currentNode) => {
+        const pg = currentNode.startPosition && currentNode.startPosition.pageNumber;
+        if (pg) {
+          if (currentNode.headlineLevel === 1) sectionsL1.push({ page: pg, label: currentNode.text });
+          else if (currentNode.headlineLevel === 2) sectionsL2.push({ page: pg, label: currentNode.text });
+        }
+        return false;
+      },
+      header: (currentPage) => {
+        if (currentPage === 1) return null; // page 1 : le grand bloc titre suffit
+        const ctrl = lastAtOrBefore(sectionsL1, currentPage);
+        if (!ctrl) return null;
+        const sous = lastAtOrBefore(sectionsL2, currentPage);
+        const sousLabel = (sous && sous.page >= ctrl.page) ? sous.label : '';
+        return {
+          margin: [15, 12, 15, 0],
+          columns: [
+            { text: ctrl.label, bold: true, fontSize: 8, color: '#0E7C86' },
+            { text: sousLabel, alignment: 'right', fontSize: 8, color: '#6A7785' },
+          ],
+        };
+      },
       styles: {
         header: { fontSize: 16, bold: true, color: '#2C3E50' },
         subheader: { fontSize: 10, bold: true, color: '#34495E', margin: [0, 2, 0, 2] },
@@ -1698,18 +1790,31 @@ exports.addExcelSheets = async (workbook, { id_compte, id_dossier, id_exercice, 
 
     let rowCursor = 6;
 
+    // On saute les contrôles sans anomalie pour éviter la répétition de
+    // « Aucune anomalie détectée » ; message écrit une seule fois si le type est vide.
+    let anyAnomaly = false;
     for (const controle of controlesForType) {
       try {
         const { anomalies } = await getRevisionDetailsData(
           id_compte, id_dossier, id_exercice, controle.id_controle,
           date_debut, date_fin, id_periode
         );
+        if (!anomalies || anomalies.length === 0) continue;
+        anyAnomaly = true;
+        const { total, restant } = computeStats(anomalies);
+        // Libellé seulement s'il y a plusieurs contrôles dans le type (sinon = titre de l'onglet).
+        const statLabel = controlesForType.length > 1 ? (controle.description || `Contrôle ${controle.id_controle}`) : null;
+        rowCursor = writeExcelStats(ws, rowCursor, total, restant, statLabel);
         rowCursor = addTypeRowsToSheet(ws, type, anomalies, controle, rowCursor);
       } catch (err) {
         console.error(`[REVISION][GLOBAL_EXCEL] Error for controle ${controle.id_controle}:`, err.message);
         ws.getRow(rowCursor).values = [`Erreur pour le contrôle ${controle.id_controle}`];
         rowCursor += 2;
       }
+    }
+    if (!anyAnomaly) {
+      ws.getRow(rowCursor).values = ['Aucune anomalie détectée'];
+      rowCursor += 2;
     }
   }
 
