@@ -2437,7 +2437,7 @@ const CRM = () => {
           separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
           sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+          <Link underline="hover" onClick={() => navigate(`/tab/dashboard/${fileId}`)} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: T.muted }}>
             <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </Link>
           <Typography sx={{ color: T.ink, fontWeight: 700 }}>Paramètres · CRM</Typography>

@@ -329,6 +329,7 @@ const MainLayout = ({ children }) => {
         handleClose={() => setOpenPopupDisconnect(false)}
         handleDisconnect={handleDisconnect}
       />
+      
     </Box>
   );
 };
