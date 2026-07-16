@@ -1,6 +1,10 @@
 import axios from "axios";
-const BASE_URL = 'http://localhost:5100';
+// const BASE_URL = 'http://localhost:5100';
 //const BASE_URL = 'https://finance.inframad.com/api';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
+
+console.log('BASE_URL : ', BASE_URL);
 
 export default axios.create({
     baseURL: BASE_URL,

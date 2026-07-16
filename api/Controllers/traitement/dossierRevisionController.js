@@ -435,8 +435,6 @@ exports.getEcrituresByComptes = async (req, res) => {
       return res.json({ state: true, ecritures: [] });
     }
 
-    // Construire les conditions WHERE pour chaque préfixe de compte
-    // Utiliser comptegen qui contient le numéro de compte général
     const whereConditions = comptesList.map(prefix => ({
       [db.Sequelize.Op.or]: [
         { comptegen: { [db.Sequelize.Op.like]: `${prefix}%` } },

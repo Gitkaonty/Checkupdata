@@ -1485,7 +1485,7 @@ const GestionRevisionCycles = () => {
           separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
           sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+          <Link underline="hover" href={`/tab/dashboard/${sessionStorage.getItem('fileId')}`} sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
             <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </Link>
           <Typography sx={{ color: T.ink, fontWeight: 700 }}>Dossier de révision</Typography>
@@ -1532,9 +1532,35 @@ const GestionRevisionCycles = () => {
           elevation={0}
           sx={{ ...panelSx, width: 264, flex: 'none', display: 'flex', flexDirection: 'column' }}
         >
-          <List sx={{ p: 1, overflowY: 'auto' }}>
-            {menuCycles.map((cycleName) => {
-              const isAvancement = cycleName === "ETAT D'AVANCEMENT";
+          {/* En-tête FIXE : État d'avancement (ne scrolle pas) */}
+          {(() => {
+            const cycleName = "ETAT D'AVANCEMENT";
+            const isActive = activeCycle === cycleName.toLowerCase();
+            return (
+              <Box sx={{ px: 1, pt: 1, pb: 0.5, flexShrink: 0 }}>
+                <ListItemButton
+                  selected={isActive}
+                  onClick={() => { setActiveCycle(cycleName.toLowerCase()); setActiveTab(0); }}
+                  sx={{
+                    borderRadius: K_THEME.radius,
+                    background: 'radial-gradient(circle at 10% 20%, #16384a 0%, #0E2733 100%)',
+                    '& .MuiTypography-root': { color: '#fff' },
+                    '& .MuiListItemIcon-root': { color: T.accent },
+                    '&:hover': { background: 'radial-gradient(circle at 10% 20%, #1e4a60 0%, #0E2733 100%)' }
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 32, color: T.accent }}>
+                    <PieChart sx={{ fontSize: '1.1rem' }} />
+                  </ListItemIcon>
+                  <ListItemText primary={cycleName} primaryTypographyProps={{ fontSize: '12.5px', fontWeight: 600 }} />
+                </ListItemButton>
+              </Box>
+            );
+          })()}
+
+          {/* Liste SCROLLABLE des cycles (sous l'en-tête fixe) */}
+          <List sx={{ p: 1, pt: 0, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+            {menuCycles.filter((cycleName) => cycleName !== "ETAT D'AVANCEMENT").map((cycleName) => {
               const isActive = activeCycle === cycleName.toLowerCase();
               return (
                 <ListItemButton
@@ -1543,23 +1569,13 @@ const GestionRevisionCycles = () => {
                   onClick={() => { setActiveCycle(cycleName.toLowerCase()); setActiveTab(0); }}
                   sx={{
                     borderRadius: K_THEME.radius, mb: 0.5,
-                    ...(isAvancement ? {
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 2,
-                      background: 'radial-gradient(circle at 10% 20%, #16384a 0%, #0E2733 100%)',
-                      '& .MuiTypography-root': { color: '#fff' },
-                      '& .MuiListItemIcon-root': { color: T.accent },
-                      '&:hover': { background: 'radial-gradient(circle at 10% 20%, #1e4a60 0%, #0E2733 100%)' }
-                    } : {
-                      '&.Mui-selected': { bgcolor: T.accW, borderLeft: `3px solid ${T.accent}` }
-                    })
+                    '&.Mui-selected': { bgcolor: T.accW, borderLeft: `3px solid ${T.accent}` }
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 32, color: isActive ? T.accent : T.faint }}>
-                    {React.cloneElement(isAvancement ? <PieChart /> : <FiberManualRecord />, { sx: { fontSize: '1.1rem' } })}
+                    <FiberManualRecord sx={{ fontSize: '1.1rem' }} />
                   </ListItemIcon>
-                  <ListItemText primary={cycleName} primaryTypographyProps={{ fontSize: '12.5px', fontWeight: 600, color: isActive && !isAvancement ? T.ink : undefined }} />
+                  <ListItemText primary={cycleName} primaryTypographyProps={{ fontSize: '12.5px', fontWeight: 600, color: isActive ? T.ink : undefined }} />
                 </ListItemButton>
               );
             })}
