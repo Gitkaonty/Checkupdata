@@ -442,13 +442,20 @@ exports.getEcrituresByComptes = async (req, res) => {
       ]
     }));
 
+    // Restreindre les écritures aux dates de la période sélectionnée
+    const whereEcritures = {
+      id_compte,
+      id_dossier,
+      id_exercice,
+      [db.Sequelize.Op.or]: whereConditions
+    };
+    const periode = await db.periodes.findByPk(id_periode, { attributes: ['date_debut', 'date_fin'], raw: true });
+    if (periode && periode.date_debut && periode.date_fin) {
+      whereEcritures.dateecriture = { [db.Sequelize.Op.between]: [periode.date_debut, periode.date_fin] };
+    }
+
     const ecritures = await db.journals.findAll({
-      where: {
-        id_compte,
-        id_dossier,
-        id_exercice,
-        [db.Sequelize.Op.or]: whereConditions
-      },
+      where: whereEcritures,
       attributes: [
         'id',
         'dateecriture',
