@@ -258,32 +258,58 @@ const createNewFile = async (req, res) => {
 
 const deleteCreatedFile = async (req, res) => {
   try {
-    const { id_dossier } = req.body;
-    let resData = {
-      state: false,
-      msg: '',
+    const id_dossier = Number(req.body.id_dossier);
+    if (!id_dossier) {
+      return res.json({ state: false, msg: 'Dossier invalide' });
     }
 
-    const deleteState = await dossier.destroy({
-      where: { id: id_dossier }
+    // Suppression en cascade de TOUT ce qui est lié à id_dossier, en une transaction.
+    // Boucle générique + SAVEPOINT : les tables bloquées par une FK sont réessayées à
+    // la passe suivante → l'ordre « enfant avant parent » se résout automatiquement.
+    await db.sequelize.transaction(async (t) => {
+      // Tous les modèles possédant une colonne id_dossier, sauf le dossier lui-même
+      let restants = Object.values(db).filter(
+        (m) => m && m.rawAttributes && m.rawAttributes.id_dossier && m !== db.dossiers
+      );
+
+      while (restants.length) {
+        const echecs = [];
+        let progres = false;
+
+        for (const model of restants) {
+          await db.sequelize.query('SAVEPOINT sp', { transaction: t });
+          let ok = true;
+          try {
+            await model.destroy({ where: { id_dossier }, transaction: t });
+          } catch (e) {
+            const code = e?.original?.code || e?.parent?.code;
+            if (code !== '23503') throw e; // pas une violation de FK → vraie erreur → rollback global
+            ok = false;
+            await db.sequelize.query('ROLLBACK TO SAVEPOINT sp', { transaction: t });
+          }
+          await db.sequelize.query('RELEASE SAVEPOINT sp', { transaction: t });
+          if (ok) progres = true; else echecs.push(model);
+        }
+
+        if (!progres) {
+          const noms = echecs.map((m) => (m.getTableName ? m.getTableName() : m.name)).join(', ');
+          throw new Error(`Suppression bloquée (dépendance circulaire ou FK externe) : ${noms}`);
+        }
+        restants = echecs;
+      }
+
+      // Le dossier lui-même, en dernier
+      await db.dossiers.destroy({ where: { id: id_dossier }, transaction: t });
     });
 
-    // Suppression simplifiée - seulement le dossier principal
-    // await dossierplancomptable.destroy({
-    //   where: { id_dossier: id_dossier }
-    // });
-
-    if (deleteState) {
-      resData.state = true;
-      resData.msg = 'Suppression du dossier effectuée avec succès';
-    } else {
-      resData.state = false;
-      resData.msg = 'Une erreur est survenue lors de la suppression du dossier';
-    }
-
-    return res.json(resData);
+    return res.json({ state: true, msg: 'Suppression du dossier effectuée avec succès' });
   } catch (error) {
     console.log(error);
+    return res.status(500).json({
+      state: false,
+      msg: 'Une erreur est survenue lors de la suppression du dossier',
+      error: error.message
+    });
   }
 }
 
