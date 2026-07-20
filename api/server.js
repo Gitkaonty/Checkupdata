@@ -72,16 +72,16 @@ app.use('/sous-compte', require('./Routes/User/SousComptes/sousCompteRoutes'));
 //----------------------------------------------------------------------------------------------------------------
 // MENU GESTION DES MEMBRES
 //----------------------------------------------------------------------------------------------------------------
-app.use('/api/membres', require('./Routes/gestionMembre/membreRoute'));
-app.use('/api/membres-updates', require('./Routes/gestionMembre/membreUpdateRoute'));
-app.use('/api/membres-situation', require('./Routes/gestionMembre/membreSituationRoute'));
+// app.use('/api/membres', require('./Routes/gestionMembre/membreRoute'));
+// app.use('/api/membres-updates', require('./Routes/gestionMembre/membreUpdateRoute'));
+// app.use('/api/membres-situation', require('./Routes/gestionMembre/membreSituationRoute'));
 
 //--------------------------------------------------------------------------------------------------------
 //MENU PARAMETRES
 //-------------------------------------------------------------------------------------------------------------
-app.use('/api/exercices', require('./Routes/parametres/exerciceRoute'));
+// app.use('/api/exercices', require('./Routes/parametres/exerciceRoute'));
 app.use('/paramExercice', require('./Routes/parametres/exerciceRoute')); // alias
-app.use('/api/grille-tarifaire', require('./Routes/parametres/grilleTarifaireRoute'));
+// app.use('/api/grille-tarifaire', require('./Routes/parametres/grilleTarifaireRoute'));
 
 app.use('/param/revisionControleMatrix', require('./Routes/parametres/revisionControleMatrixRoute'));
 
@@ -117,8 +117,8 @@ app.use('/administration/revisionControleAuto', require('./Routes/revision/revis
 //--------------------------------------------------------------------------------------------------------
 //MENU COTISATION
 //-------------------------------------------------------------------------------------------------------------
-app.use("/api/cotisations", require('./Routes/cotisation/appelRoute'));
-app.use('/api/paiements', require('./Routes/cotisation/paiementRoute'));
+// app.use("/api/cotisations", require('./Routes/cotisation/appelRoute'));
+// app.use('/api/paiements', require('./Routes/cotisation/paiementRoute'));
 
 //routes pour home
 app.use('/home', require('./Routes/Home/homeRoute'));

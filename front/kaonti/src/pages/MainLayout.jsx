@@ -131,7 +131,7 @@ const MainLayout = ({ children }) => {
 <br />
         <ListItemButton onClick={() => navigate('/home')} selected={location.pathname === '/home'} sx={menuItemStyle}>
           <ListItemIcon sx={iconStyle}><HomeOutlined /></ListItemIcon>
-          <ListItemText primary="Accueil" sx={{ opacity: isHovered ? 1 : 0 }} />
+          <ListItemText primary="Dossiers" sx={{ opacity: isHovered ? 1 : 0 }} />
         </ListItemButton>
 
         <ListItemButton onClick={() => navigate(`/tab/dashboard/${fileId}`)} selected={location.pathname.startsWith('/tab/dashboard')} sx={menuItemStyle}>
