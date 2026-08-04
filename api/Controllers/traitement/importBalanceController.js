@@ -59,7 +59,6 @@ const createNotExistingCompte = async (req, res)  => {
 
     return res.json(resData);
   }catch (error){
-    console.log(error);
   }
 }
 
@@ -144,7 +143,6 @@ const importBalance = async (req, res)  => {
     
     return res.json(resData);
   }catch (error){
-    console.log(error);
   }
 }
 

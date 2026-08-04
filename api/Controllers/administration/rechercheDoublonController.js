@@ -10,9 +10,6 @@ const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 // SECTION 1: Extraction des critères
 // ==========================================
 
-/**
- * Extrait les critères 
- */
 const extractCriteres = (query) => ({
     date: query.critere_date === 'true',
     compte: query.critere_compte === 'true',
@@ -36,9 +33,6 @@ const validateCriteres = (criteres) => {
 // SECTION 2: Construction des champs SQL
 // ==========================================
 
-/**
- * Configuration des champs SQL pour chaque critère
- */
 const CRITERIA_CONFIG = {
     date: { 
         groupBy: 'j.dateecriture', 
@@ -73,9 +67,6 @@ const CRITERIA_CONFIG = {
     }
 };
 
-/**
- * Construit les champs GROUP BY et SELECT selon les critères activés
- */
 const buildSqlFields = (criteres) => {
     const groupByFields = [];
     const selectFields = [];
@@ -99,9 +90,6 @@ const buildSqlFields = (criteres) => {
     return { groupByFields, selectFields };
 };
 
-/**
- * Construit la clé de groupement pour une ligne
- */
 const buildGroupKey = (groupByFields, row, montantType = null) => {
     const parts = groupByFields.map(field => {
         if (field === 'j.dateecriture') return CRITERIA_CONFIG.date.rowExtractor(row);
@@ -125,8 +113,6 @@ const buildGroupKey = (groupByFields, row, montantType = null) => {
 // SECTION 3: Exécution SQL
 // ==========================================
 
-// Correspondance champ SQL (interne) -> alias de colonne en sortie, pour pouvoir
-// trier/filtrer dans la requête externe qui ne voit que les alias.
 const GROUPFIELD_ALIAS = {
     'j.dateecriture': 'dateecriture',
     'j.compteAux': 'compte',
@@ -138,10 +124,7 @@ const GROUPFIELD_ALIAS = {
 };
 const toAlias = (f) => GROUPFIELD_ALIAS[f] || f;
 
-/**
- * Insère les résultats en INSERT brut multi-lignes par lots (bien plus rapide que
- * bulkCreate de l'ORM, qui instancie chaque ligne).
- */
+
 const insertDoublonsRaw = async (rows) => {
     if (!rows || rows.length === 0) return;
 
@@ -167,11 +150,7 @@ const insertDoublonsRaw = async (rows) => {
     }
 };
 
-/**
- * Exécute la requête de recherche de doublons pour DÉBIT uniquement.
- * Le filtre occurrences >= 2 est appliqué EN SQL (requête externe) pour ne ramener
- * que les lignes appartenant à un groupe de doublons (au lieu de toute la période).
- */
+
 const executeDebitSearchQuery = async (params, groupByFields) => {
     const { id_dossier, id_exercice, date_debut, date_fin } = params;
 
@@ -214,9 +193,7 @@ const executeDebitSearchQuery = async (params, groupByFields) => {
     });
 };
 
-/**
- * Exécute la requête de recherche de doublons pour CRÉDIT uniquement
- */
+
 const executeCreditSearchQuery = async (params, groupByFields) => {
     const { id_dossier, id_exercice, date_debut, date_fin } = params;
 
@@ -262,9 +239,7 @@ const executeCreditSearchQuery = async (params, groupByFields) => {
 // SECTION 4: Traitement des résultats
 // ==========================================
 
-/**
- * Traite les données brutes et assigne les ID de doublons
- */
+
 const processResults = (journalsData, groupByFields, params, montantType = null) => {
     const { id_dossier, id_exercice, id_periode } = params;
     
@@ -328,9 +303,6 @@ const formatResponse = (items) => items.map(item => ({
 // SECTION 5: Endpoints API
 // ==========================================
 
-/**
- * POST /administration/rechercheDoublon/:id_compte/:id_dossier/:id_exercice
- */
 exports.rechercherDoublons = async (req, res) => {
     try {
         // --- Étape 1: Paramètres ---
@@ -456,10 +428,6 @@ exports.rechercherDoublons = async (req, res) => {
     }
 };
 
-/**
- * GET /administration/rechercheDoublon/:id_dossier/:id_exercice/stats
- * Récupère les statistiques de recherche
- */
 exports.getStats = async (req, res) => {
     try {
         const { id_dossier, id_exercice } = req.params;
@@ -505,10 +473,6 @@ exports.getStats = async (req, res) => {
     }
 };
 
-/**
- * GET /administration/rechercheDoublon/:id_dossier/:id_exercice
- * Récupère les résultats d'une recherche précédente
- */
 exports.getResultats = async (req, res) => {
     try {
         const { id_dossier, id_exercice } = req.params;
@@ -547,9 +511,6 @@ exports.getResultats = async (req, res) => {
     }
 };
 
-/**
- * Supprime les résultats d'une recherche
- */
 exports.supprimerResultats = async (req, res) => {
     try {
         const { id_dossier, id_exercice } = req.params;
@@ -574,10 +535,6 @@ exports.supprimerResultats = async (req, res) => {
         });
     }
 };
-
-/**
- * Valide un groupe de doublons
- */
 
 exports.validerGroupeDoublon = async (req, res) => {
     const transaction = await db.sequelize.transaction();
@@ -719,7 +676,6 @@ const tryReadLogo = () => {
       return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
     }
   } catch (err) {
-    console.log('Logo not found:', err.message);
   }
   return null;
 };
@@ -728,11 +684,6 @@ const tryReadLogo = () => {
 // SECTION 6: Fonctions réutilisables pour l'export global
 // ==========================================
 
-/**
- * Récupère les données de doublons pour l'export (PDF / Excel).
- * Extrait la requête inline utilisée par exportPdf / exportExcel.
- * Retourne le tableau `resultats`.
- */
 exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
   const whereClause = { id_dossier, id_exercice };
   if (id_periode) whereClause.id_periode = id_periode;
@@ -745,13 +696,6 @@ exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, d
   return resultats;
 };
 
-/**
- * Construit la section PDF (tableau uniquement) pour la Recherche de Doublons.
- * @param {Array} data - tableau resultats issu de getExportData
- * @returns {{ content: Array, styles: Object }}
- *   content = uniquement le nœud table (groupement + rowSpan) ; pas de logo/titre/headerColumns.
- *   styles  = uniquement les styles nommés utilisés par le tableau ; pas de header/subheader.
- */
 exports.buildPdfSection = (data, ctx = {}) => {
   const resultats = data || [];
 
@@ -800,10 +744,6 @@ exports.buildPdfSection = (data, ctx = {}) => {
   return { content, styles };
 };
 
-/**
- * Ajoute l'onglet 'Doublons' au workbook passé en paramètre.
- * Colonnes / en-têtes / formatage identiques à l'export existant.
- */
 exports.addExcelSheets = (workbook, data, ctx = {}) => {
   const resultats = data || [];
   const worksheet = workbook.addWorksheet('Doublons');
@@ -867,9 +807,6 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
 // SECTION 7: Endpoints d'export
 // ==========================================
 
-/**
- * Export PDF for Recherche Doublons
- */
 exports.exportPdf = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -925,9 +862,6 @@ exports.exportPdf = async (req, res) => {
   }
 };
 
-/**
- * Export Excel for Recherche Doublons
- */
 exports.exportExcel = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;

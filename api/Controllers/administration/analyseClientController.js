@@ -1,10 +1,6 @@
 const db = require('../../Models');
 const { Op, Sequelize } = require('sequelize');
 
-/**
- * Gère l'analyse des comptes clients avec détection d'anomalies
- */
-
 // Types d'anomalies
 const ANOMALIE_TYPES = {
   PAIEMENT_SANS_FACTURE: 'paiement_sans_facture',
@@ -36,10 +32,6 @@ const cleanupOldData = async (id_compte, id_dossier, id_exercice, id_periode) =>
   });
 };
 
-/**
- * Récupérer les écritures des comptes clients (411*) pour une période
- * Règle: Code journal BANQUE et sans lettrage
- */
 const getClientEcritures = async (id_compte, id_dossier, id_exercice, date_debut, date_fin) => {  
   // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
@@ -75,11 +67,6 @@ const getClientEcritures = async (id_compte, id_dossier, id_exercice, date_debut
   return results;
 };
 
-/**
- * Récupérer les factures VENTE non réglées depuis plus de N jours
- * Règle: date_controle - date_facture >= retard_jours et lettrage vide
- * retard_jours provient du champ retard_clt du dossier (par défaut 3 mois = 90j)
- */
 const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, date_fin, date_controle, retard_jours = 90) => {
 
   // Convertir les dates au format YYYY-MM-DD
@@ -156,9 +143,6 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
   return results;
 };
 
-/**
- * Récupérer les ajustements non traités (journal != VENTE/BANQUE/RAN + lettrage vide)
- */
 const getAjustementsNonTraites = async (id_dossier, id_exercice, date_debut, date_fin) => {
   
   // Convertir les dates au format YYYY-MM-DD
@@ -195,9 +179,6 @@ const getAjustementsNonTraites = async (id_dossier, id_exercice, date_debut, dat
   return results;
 };
 
-/**
- * Récupérer les soldes en suspens (journal RAN + lettrage vide)
- */
 const getSoldesSuspens = async (id_dossier, id_exercice, date_debut, date_fin) => {
   
   // Convertir les dates au format YYYY-MM-DD
@@ -234,9 +215,6 @@ const getSoldesSuspens = async (id_dossier, id_exercice, date_debut, date_fin) =
   return results;
 };
 
-/**
- * Analyser une ligne pour détecter les anomalies
- */
 const analyzeLine = (line, typeRegle) => {
   const anomalies = [];
   const compte = line.compteaux;
@@ -295,9 +273,6 @@ const analyzeLine = (line, typeRegle) => {
   return anomalies;
 };
 
-/**
- * Exécuter l'analyse des clients
- */
 exports.executerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -442,9 +417,6 @@ exports.executerAnalyse = async (req, res) => {
   }
 };
 
-/**
- * Traiter une ligne avec anomalies (insertion en base)
- */
 const processAnomalieLine = async (line, anomalies, id_compte, id_dossier, id_exercice, id_periode, lignesAvecAnomalies) => {
   const compte = line.compteaux;
   
@@ -538,9 +510,6 @@ const processAnomalieLine = async (line, anomalies, id_compte, id_dossier, id_ex
   });
 };
 
-/**
- * Récupérer les résultats d'analyse (lignes avec anomalies groupées par compte)
- */
 exports.getResultats = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -613,9 +582,6 @@ exports.getResultats = async (req, res) => {
   }
 };
 
-/**
- * Valider une anomalie
- */
 exports.validerAnomalie = async (req, res) => {
   try {
     const { id } = req.params;
@@ -650,9 +616,6 @@ exports.validerAnomalie = async (req, res) => {
   }
 };
 
-/**
- * Supprimer les résultats d'analyse
- */
 exports.supprimerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;

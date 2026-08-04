@@ -58,7 +58,6 @@ module.exports = {
 // Écrire le fichier seeder
 fs.writeFileSync(outputFile, seederContent, 'utf8');
 
-console.log(`✅ Seeder généré : ${outputFile}`);
 
 // const entries = lines.map(line => {
 //   const [id, id_rubrique, id_etat, compte, nature, senscalcul, condition, equation, par_default, active, tableau] = line.split(',');

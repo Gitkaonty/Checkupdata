@@ -5,7 +5,6 @@ exports.saveRevision = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice, id_periode, id_code, statut, commentaire } = req.body;
 
-    // Validation
     if (!id_compte || !id_dossier || !id_exercice || !id_periode || !id_code) {
       return res.status(400).json({
         state: false,
@@ -34,14 +33,12 @@ exports.saveRevision = async (req, res) => {
 
     let result;
     if (existing) {
-      // Mise à jour
       await existing.update({
         statut: statut !== undefined ? statut : existing.statut,
         commentaire: commentaire !== undefined ? commentaire : existing.commentaire
       });
       result = existing;
     } else {
-      // Création
       result = await db.dossierRevision.create({
         id_compte,
         id_dossier,
@@ -328,7 +325,6 @@ exports.getSyntheseByCycle = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice, id_periode, cycle } = req.params;
 
-    // Récupérer les items (diligences) du cycle
     const cycleItems = await db.dossierRevisionMatrice.findAll({
       where: { cycle: cycle.toUpperCase() },
       order: [['code', 'ASC']]
@@ -345,7 +341,6 @@ exports.getSyntheseByCycle = async (req, res) => {
       });
     }
 
-    // Récupérer les révisions pour ce contexte
     const revisions = await db.dossierRevision.findAll({
       where: {
         id_compte,
@@ -356,13 +351,11 @@ exports.getSyntheseByCycle = async (req, res) => {
       }
     });
 
-    // Transformer les révisions en objet indexé par id_code
     const revisionsByCode = {};
     revisions.forEach(r => {
       revisionsByCode[r.id_code] = r;
     });
 
-    // Calculer la progression et les points de vigilance
     const totalItems = cycleItems.length;
     const completedItems = cycleItems.filter(item => {
       const status = revisionsByCode[String(item.code)]?.statut;
@@ -375,7 +368,6 @@ exports.getSyntheseByCycle = async (req, res) => {
       return status === 'NON';
     }).length;
 
-    // Sauvegarder ou mettre à jour la synthèse dans la table
     const [synthese, created] = await db.dossierRevisionSynthese.findOrCreate({
       where: {
         id_compte,
@@ -416,7 +408,6 @@ exports.getEcrituresByComptes = async (req, res) => {
     const { id_compte, id_dossier, id_exercice, id_periode } = req.params;
     const { comptes } = req.query; // Format: "401,101,53"
 
-    console.log('[DEBUG] getEcrituresByComptes params:', { id_compte, id_dossier, id_exercice, id_periode, comptes });
 
     if (!id_compte || !id_dossier || !id_exercice || !id_periode) {
       return res.status(400).json({
@@ -425,20 +416,16 @@ exports.getEcrituresByComptes = async (req, res) => {
       });
     }
 
-    // Si pas de comptes fournis, retourner tableau vide
     if (!comptes || comptes.trim() === '') {
       return res.json({ state: true, ecritures: [] });
     }
 
-    // Parser la liste des comptes/préfixes
     const comptesList = comptes.split(',').map(c => c.trim()).filter(c => c !== '');
 
     if (comptesList.length === 0) {
       return res.json({ state: true, ecritures: [] });
     }
 
-    // Construire les conditions WHERE pour chaque préfixe de compte
-    // Utiliser comptegen qui contient le numéro de compte général
     const whereConditions = comptesList.map(prefix => ({
       [db.Sequelize.Op.or]: [
         { comptegen: { [db.Sequelize.Op.like]: `${prefix}%` } },
@@ -466,7 +453,7 @@ exports.getEcrituresByComptes = async (req, res) => {
         'id_ecriture'
       ],
       order: [['dateecriture', 'DESC'], ['id', 'DESC']],
-      limit: 1000 // Limiter à 1000 écritures pour des raisons de performance
+      limit: 1000
     });
 
     // Formater les résultats pour le frontend
@@ -578,11 +565,9 @@ exports.saveValidationAnalytique = async (req, res) => {
 
     let result;
     if (existing) {
-      // Mise à jour
       await existing.update({ valider: validerBoolean });
       result = existing;
     } else {
-      // Création
       result = await db.dossierRevisionAnalytique.create({
         id_compte,
         id_dossier,
@@ -609,7 +594,6 @@ exports.toggleValidationAnalytique = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice, id_periode, id_jnl } = req.body;
 
-    // Validation
     if (!id_compte || !id_dossier || !id_exercice || !id_jnl) {
       return res.status(400).json({
         state: false,
@@ -642,7 +626,6 @@ exports.toggleValidationAnalytique = async (req, res) => {
       await existing.update({ valider: newStatus });
       result = existing;
     } else {
-      // Créer avec valider = true (par défaut quand on toggle)
       newStatus = true;
       result = await db.dossierRevisionAnalytique.create({
         id_compte,
@@ -671,7 +654,6 @@ exports.deleteValidationAnalytique = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice, id_periode, id_jnl } = req.body;
 
-    // Validation
     if (!id_compte || !id_dossier || !id_exercice || !id_jnl) {
       return res.status(400).json({
         state: false,

@@ -611,7 +611,6 @@ exports.generateImmoEcritures = async (req, res) => {
                 type: db.Sequelize.QueryTypes.SELECT,
             }).then(result => {
                 if (result && result.length > 0) {
-                    console.log('[IMMO][DEBUG] Champs disponibles:', Object.keys(result[0]));
                 }
                 return result;
             }),

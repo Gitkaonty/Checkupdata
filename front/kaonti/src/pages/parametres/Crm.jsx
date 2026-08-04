@@ -862,7 +862,7 @@ const AnalytiqueDataGrid = ({ fileId, compteId, axiosPrivate }) => {
               rowSelectionModel={selectedAxe ? [selectedAxe.id] : []}
 
               onRowSelectionModelChange={(ids) => {
-                const selectedId = ids.at(-1); // garde uniquement le dernier sélectionné
+                const selectedId = ids.at(-1);
 
                 if (!selectedId) {
                   setSelectedAxe(null);

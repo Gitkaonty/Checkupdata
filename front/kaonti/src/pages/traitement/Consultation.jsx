@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Typography, Stack, Paper, MenuItem, Select,
-  Autocomplete, TextField, IconButton, Divider, Tooltip, Chip,
+  Autocomplete, TextField, Divider, Tooltip, Chip,
   Breadcrumbs, Button,
   Link,
   CircularProgress
@@ -18,6 +18,7 @@ import { GrNext } from "react-icons/gr";
 
 import usePermission from '../../hooks/usePermission';
 import useAxiosPrivate from '../../../config/axiosPrivate';
+import PopupTestSelectedFile from '../../components/PopupTestSelectedFile';
 
 import {
   NavigateNext, DashboardOutlined
@@ -29,27 +30,27 @@ const ConsultationComptes = () => {
 
   const axiosPrivate = useAxiosPrivate();
   const [typeComptabilite, setTypeComptabilite] = useState(null);
-  const [isTypeComptaAutre, setIsTypeComptaAutre] = useState(false);
+  const [, setIsTypeComptaAutre] = useState(false);
 
-  const [fileInfos, setFileInfos] = useState('');
+  const [, setFileInfos] = useState('');
   const [fileId, setFileId] = useState(0);
   const [noFile, setNoFile] = useState(false);
   const [listeExercice, setListeExercice] = useState([]);
-  const [listeSituation, setListeSituation] = useState([]);
+  const [setListeSituation] = useState([]);
   const [selectedExerciceId, setSelectedExerciceId] = useState(0);
   const [selectedPeriodeId, setSelectedPeriodeId] = useState(0);
 
-  const [openSaisiePopup, setOpenSaisiePopup] = useState(false);
-  const [openAnalytiquePopup, setOpenAnalytiquePopup] = useState(false);
-  const [openPopupAddEcriture, setOpenPopupAddEcriture] = useState(false);
-  const [idJournal, setIdJournal] = useState(null);
+  const [setOpenSaisiePopup] = useState(false);
+  const [setOpenAnalytiquePopup] = useState(false);
+  const [setOpenPopupAddEcriture] = useState(false);
+  const [setIdJournal] = useState(null);
 
   const [selectedRows, setSelectedRows] = useState([]);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
   const [isRefresehed, setIsRefreshed] = useState(false);
-  const [refreshListAxeSection, setRefreshListAxeSection] = useState(false);
-  const [listCa, setListCa] = useState([]);
+  const [refreshListAxeSection] = useState(false);
+  const [setListCa] = useState([]);
   const [isCaActive, setIsCaActive] = useState(false);
 
   const { id } = useParams();
@@ -58,25 +59,24 @@ const ConsultationComptes = () => {
   const [filteredList, setFilteredList] = useState(null);
   const [listePlanComptable, setListePlanComptable] = useState([]);
   const [listePlanComptableInitiale, setListePlanComptableInitiale] = useState([]);
-  const [listePlanComptablePourAjout, setListePlanComptablePourAjout] = useState([]);
-  const [listeCodeJournaux, setListeCodeJournaux] = useState([]);
+  const [setListeCodeJournaux] = useState([]);
   const [listeDevise, setListeDevise] = useState([]);
-  const [listeAnnee, setListeAnnee] = useState([]);
+  const [setListeAnnee] = useState([]);
 
-  const [isRefreshedPlanComptable, setIsRefreshedPlanComptable] = useState(false);
+  const [isRefreshedPlanComptable] = useState(false);
 
-  const [filtrageCompte, setFiltrageCompte] = useState("0");
+  const [filtrageCompte] = useState("0");
   const [selectedLigneDesequilibre, setSelectedLigneDesequilibre] = useState([]);
-  const [openLettrageDesequilibrePopup, setOpenLettrageDesequilibrePopup] = useState(false);
-  const [messageLettrageDesequlibre, setMessageLettrageDesequilibre] = useState('');
+  const [setOpenLettrageDesequilibrePopup] = useState(false);
+  const [setMessageLettrageDesequilibre] = useState('');
 
   // Vérifier si la sélection contient un type RAN
-  const isRanTypeSelected = useMemo(() => {
-    if (selectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
-    const selectedJournalId = Number(selectedRows[0].id_journal);
-    const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
-    return codeJournal?.type === 'RAN';
-  }, [selectedRows, listeCodeJournaux]);
+  // const isRanTypeSelected = useMemo(() => {
+  //   if (selectedRows.length === 0 || listeCodeJournaux.length === 0) return false;
+  //   const selectedJournalId = Number(selectedRows[0].id_journal);
+  //   const codeJournal = listeCodeJournaux.find(cj => Number(cj.id) === selectedJournalId);
+  //   return codeJournal?.type === 'RAN';
+  // }, [selectedRows, listeCodeJournaux]);
 
   //Valeur du listbox choix compte
   const [valSelectedCompte, setValSelectedCompte] = useState('')
@@ -99,7 +99,7 @@ const ConsultationComptes = () => {
         setTypeComptabilite(resData?.fileInfos[0]?.typecomptabilite);
         setIsTypeComptaAutre(resData.fileInfos[0].typecomptabilite === 'Autres');
         setIsCaActive(resData?.fileInfos[0]?.avecanalytique);
-        setNoFile(false);
+        setNoFile(false); 
       } else {
         setFileInfos([]);
         setNoFile(true);
@@ -109,7 +109,7 @@ const ConsultationComptes = () => {
 
   const sendToHome = (value) => {
     setNoFile(!value);
-    navigate('/tab/home');
+    navigate('/home');
   }
 
   //Choix exercice
@@ -119,9 +119,9 @@ const ConsultationComptes = () => {
     setSelectedPeriodeId(exercice_id);
   }
 
-  const handleCloseSaisieAddPopup = (value) => {
-    setOpenSaisiePopup(value);
-  }
+  // const handleCloseSaisieAddPopup = (value) => {
+  //   setOpenSaisiePopup(value);
+  // }
 
   //Récupérer la liste des exercices
   const GetListeExercice = (id) => {
@@ -826,6 +826,11 @@ const ConsultationComptes = () => {
     getListAxeSection();
   }, [selectedPeriodeId, refreshListAxeSection])
 
+
+  // Aucun dossier sélectionné -> on renvoie vers l'accueil (même comportement que l'import journal).
+  if (noFile) {
+    return <PopupTestSelectedFile confirmationState={sendToHome} />;
+  }
 
   return (
     <Box sx={{ p: 2, bgcolor: '#F8FAFC', height: 'calc(100vh - 120px)', width: 'calc(100vw - 130px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

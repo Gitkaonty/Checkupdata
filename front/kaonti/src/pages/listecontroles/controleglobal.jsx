@@ -74,7 +74,17 @@ const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,5
 const panelSx = { border: `1px solid ${T.line}`, borderRadius: '16px', bgcolor: T.surface, boxShadow: CARD_SHADOW, overflow: 'hidden' };
 const statLabelSx = { fontSize: '10px', color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' };
 
-const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) {
+// Libellés lisibles par type de contrôle (pour la confirmation de révision scopée).
+const TYPE_LABELS = {
+    ATYPIQUE: 'Recherche de montants atypiques',
+    SENS_SOLDE: 'Conformité du solde au sens normal des comptes',
+    SENS_ECRITURE: "Sens d'enregistrement des factures d'achats et de ventes",
+    IMMO_CHARGE: 'Conformité du seuil de capitalisation des immobilisations',
+    UTIL_CPT_TVA: 'Utilisation des comptes de TVA',
+    EXISTENCE: 'Existence du compte de capital',
+};
+
+const Revision = forwardRef(function Revision({ id_exercice, id_periode, filterType }, ref) {
     let initial = init[0];
     const axiosPrivate = useAxiosPrivate();
     const navigate = useNavigate();
@@ -271,7 +281,11 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
             const response = await axiosPrivate.get(url);
 
             if (response.data.state) {
-                const newControles = response.data.controles || [];
+                const allControles = response.data.controles || [];
+                // Si filterType est fourni, on scope l'affichage à ce seul type de contrôle.
+                const newControles = filterType
+                    ? allControles.filter((c) => c?.Type === filterType)
+                    : allControles;
                 setControles(newControles);
                 await fetchInitialTotals();
             }
@@ -280,7 +294,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
         } finally {
             if (!silent) setLoadingControles(false);
         }
-    }, [axiosPrivate, effectiveExerciceId, resolvedPeriodeDates, effectivePeriodeId]);
+    }, [axiosPrivate, effectiveExerciceId, resolvedPeriodeDates, effectivePeriodeId, filterType]);
 
     // Charger automatiquement les controles quand l'exo et la période changent
     useEffect(() => {
@@ -397,15 +411,17 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
         try {
             let url = `/administration/revisionControleAuto/${id_compte}/${id_dossier}/${effectiveExerciceId}/executeAll`;
 
+            const params = new URLSearchParams();
             const resolvedDates = await resolveDatesForAnalysis();
             if (resolvedDates && effectivePeriodeId) {
-                const params = new URLSearchParams();
                 params.append('date_debut', resolvedDates.date_debut);
                 params.append('date_fin', resolvedDates.date_fin);
                 params.append('id_periode', effectivePeriodeId);
-                url += `?${params.toString()}`;
-                // console.log('DEBUG FRONT - URL handleControler:', url);
             }
+            // Entrée séparée (page Détails) -> révision scopée à ce seul type.
+            if (filterType) params.append('type', filterType);
+            const qs = params.toString();
+            if (qs) url += `?${qs}`;
 
             const response = await axiosPrivate.post(url);
 
@@ -414,7 +430,9 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                 await fetchControles();
                 setReviserPopup({
                     open: true,
-                    message: `Contrôle terminé!`,
+                    message: filterType
+                        ? `Révision de « ${TYPE_LABELS[filterType] || filterType} » terminée !`
+                        : `Contrôle terminé!`,
                     success: true
                 });
             } else {
@@ -624,14 +642,22 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
         return Array.from(byType.values()).sort((a, b) => a.Type.localeCompare(b.Type));
     }, [controles]);
 
+    // Total d'anomalies affiché en "Points critiques".
+    // En vue filtrée (entrée séparée), on ne compte QUE le type concerné, pas tous les contrôles.
+    const pointsCritiques = filterType
+        ? (Number(initialTotals[filterType]) || controlesGrouped.reduce((sum, c) => sum + (Number(c.anomalies) || 0), 0))
+        : (Object.values(initialTotals).reduce((sum, v) => sum + (Number(v) || 0), 0) || controlesGrouped.reduce((sum, c) => sum + (Number(c.anomalies) || 0), 0));
+
     return (
         <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: T.canvas }}>
             <ConfirmActionDialog
                 open={confirmReviserPopup}
                 onClose={() => setConfirmReviserPopup(false)}
                 onConfirm={() => handleConfirmReviser(true)}
-                title="Réviser"
-                message="Confirmer l'exécution de la révision ?"
+                title={filterType ? 'Réviser ce contrôle' : 'Réviser'}
+                message={filterType
+                    ? `Confirmer la révision de « ${TYPE_LABELS[filterType] || filterType} » ?`
+                    : "Confirmer l'exécution de la révision (tous les contrôles) ?"}
                 confirmText="Confirmer"
                 cancelText="Annuler"
                 loading={confirmReviserLoading}
@@ -642,7 +668,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                     <Typography sx={statLabelSx}>Points critiques</Typography>
                     <Stack direction="row" spacing={0.75} alignItems="center">
                         <Typography sx={{ ...NUM, color: T.neg, fontWeight: 800, fontSize: '20px', lineHeight: 1 }}>
-                            {`${Object.values(initialTotals).reduce((sum, v) => sum + (Number(v) || 0), 0) || controlesGrouped.reduce((sum, c) => sum + (Number(c.anomalies) || 0), 0)}`}
+                            {pointsCritiques}
                         </Typography>
                         <ErrorOutline sx={{ color: T.neg, fontSize: 18 }} />
                     </Stack>
@@ -668,7 +694,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                     <Button
                         variant="contained"
                         onClick={handleControler}
-                        disabled={!effectiveExerciceId}
+                        disabled={!effectiveExerciceId || confirmReviserLoading}
                         sx={{
                             height: 34,
                             bgcolor: T.accent,
@@ -680,7 +706,7 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                             '&:hover': { bgcolor: T.accentDark, boxShadow: 'none' },
                         }}
                     >
-                        Réviser
+                        {confirmReviserLoading ? 'Révision…' : 'Réviser'}
                     </Button>
                 </Box>
             </Stack>
@@ -695,6 +721,23 @@ const Revision = forwardRef(function Revision({ id_exercice, id_periode }, ref) 
                     <Alert severity="info">
                         Aucun contrôle trouvé pour cet exercice. Les contrôles seront créés automatiquement.
                     </Alert>
+                ) : filterType ? (
+                    // Entrée séparée (un seul type) : tableau affiché directement, sans carte ni drawer.
+                    <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                        <RevisionDetails
+                            type={filterType}
+                            controles={controlesByType.get(filterType) || []}
+                            onClose={() => {}}
+                            idCompte={ids.id_compte}
+                            idDossier={ids.id_dossier}
+                            idExercice={effectiveExerciceId}
+                            idPeriode={effectivePeriodeId}
+                            dateDebut={formatDateYYYYMMDD(resolvedPeriodeDates?.date_debut)}
+                            dateFin={formatDateYYYYMMDD(resolvedPeriodeDates?.date_fin)}
+                            isPeriodeSelected={!!resolvedPeriodeDates && !!effectivePeriodeId && effectivePeriodeId !== 'exercice'}
+                            onValidationChange={() => fetchControles(false, true)}
+                        />
+                    </Box>
                 ) : (
                     <Stack spacing={1.5} sx={{ width: '100%', flex: 1, minHeight: 0, overflow: 'auto' }}>
                         {controlesGrouped.map((item) => {

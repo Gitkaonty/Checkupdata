@@ -6,11 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
 
-/**
- * Analyse Fournisseur/Client Controller
- * Gère l'analyse des comptes fournisseurs avec détection d'anomalies
- */
-
 // Types d'anomalies
 const ANOMALIE_TYPES = {
   PAIEMENT_SANS_FACTURE: 'paiement_sans_facture',
@@ -30,8 +25,6 @@ const COMMENTAIRES = {
 };
 
 const cleanupOldData = async (id_compte, id_dossier, id_exercice, id_periode) => {
-  // Supprimer uniquement les lignes temporaires
-  // Les anomalies restent avec leurs validations
   await db.analyseFournisseurLignes.destroy({ 
     where: {
       id_compte,
@@ -42,10 +35,6 @@ const cleanupOldData = async (id_compte, id_dossier, id_exercice, id_periode) =>
   });
 };
 
-/**
- * Récupérer les écritures des comptes fournisseurs (401*) pour une période
- * Règle: Code journal BANQUE et sans lettrage
- */
 const getFournisseurEcritures = async (id_compte, id_dossier, id_exercice, date_debut, date_fin) => {  
   // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
@@ -81,11 +70,6 @@ const getFournisseurEcritures = async (id_compte, id_dossier, id_exercice, date_
   return results;
 };
 
-/**
- * Récupérer les factures ACHAT non réglées depuis plus de N jours
- * Règle: date_controle - date_facture >= retard_jours et lettrage vide
- * retard_jours provient du champ retard_fourns du dossier (par défaut 3 mois = 90j)
- */
 const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, date_fin, date_controle, retard_jours = 90) => {
 
   // Convertir les dates au format YYYY-MM-DD
@@ -93,14 +77,12 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   const dateControleFormatted = date_controle ? new Date(date_controle).toISOString().split('T')[0] : null;
 
-  // console.log('[DEBUG] Dates formatées:', { dateDebutFormatted, dateFinFormatted, dateControleFormatted });
 
   // Calculer la date limite (date_controle - retard_jours)
   const dateLimite = new Date(date_controle);
   dateLimite.setDate(dateLimite.getDate() - retard_jours);
   const dateLimiteFormatted = dateLimite.toISOString().split('T')[0];
   
-  // console.log('[DEBUG] Date limite (90j avant):', dateLimiteFormatted);
   
   const query = `
     SELECT 
@@ -143,7 +125,6 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
       AND cj.type = 'ACHAT'
   `;
   const debugResult = await db.sequelize.query(debugQuery, { type: db.Sequelize.QueryTypes.SELECT });
-  // console.log('[DEBUG] Stats ACHAT:', debugResult[0]);
   
   // Debug: voir les factures ACHAT sans lettrage dans la période
   const debugQuery2 = `
@@ -161,24 +142,13 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
     ORDER BY j.dateecriture
   `;
   const debugResult2 = await db.sequelize.query(debugQuery2, { type: db.Sequelize.QueryTypes.SELECT });
-  // console.log('[DEBUG] ACHAT sans lettrage dans période:', debugResult2.length);
-  // console.log('[DEBUG] Détail:', debugResult2);
   
   const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
-  
-  // console.log('[DEBUG] Nombre de factures >90j:', results.length);
-  // console.log('[DEBUG] Résultats:', results);
   
   return results;
 };
 
-/**
- * Récupérer les ajustements non traités (journal != ACHAT/BANQUE/RAN + lettrage vide)
- */
 const getAjustementsNonTraites = async (id_dossier, id_exercice, date_debut, date_fin) => {
-  // console.log('[DEBUG] getAjustementsNonTraites - Paramètres:', { id_dossier, id_exercice, date_debut, date_fin });
-  
-  // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   
@@ -206,24 +176,14 @@ const getAjustementsNonTraites = async (id_dossier, id_exercice, date_debut, dat
       AND (j.lettrage IS NULL OR j.lettrage = '')
     ORDER BY j.compteaux, j.dateecriture
   `;
-  
-  // console.log('[DEBUG] SQL Query ajustements:', query);
-  
+    
   const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
   
-  // console.log('[DEBUG] Nombre d\'ajustements non traités:', results.length);
-  // console.log('[DEBUG] Résultats:', results);
   
   return results;
 };
 
-/**
- * Récupérer les soldes en suspens (journal RAN + lettrage vide)
- */
 const getSoldesSuspens = async (id_dossier, id_exercice, date_debut, date_fin) => {
-  // console.log('[DEBUG] getSoldesSuspens - Paramètres:', { id_dossier, id_exercice, date_debut, date_fin });
-  
-  // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   
@@ -251,20 +211,12 @@ const getSoldesSuspens = async (id_dossier, id_exercice, date_debut, date_fin) =
       AND (j.lettrage IS NULL OR j.lettrage = '')
     ORDER BY j.compteaux, j.dateecriture
   `;
-  
-  // console.log('[DEBUG] SQL Query RAN:', query);
-  
+    
   const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
-  
-  // console.log('[DEBUG] Nombre de soldes suspens:', results.length);
-  // console.log('[DEBUG] Résultats:', results);
   
   return results;
 };
 
-/**
- * Analyser une ligne pour détecter les anomalies
- */
 const analyzeLine = (line, typeRegle) => {
   const anomalies = [];
   const compte = line.compteaux;
@@ -323,20 +275,12 @@ const analyzeLine = (line, typeRegle) => {
   return anomalies;
 };
 
-/**
- * Exécuter l'analyse des fournisseurs
- */
 exports.executerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { date_debut, date_fin, id_periode } = req.query;
 
-    // console.log('[DEBUG] executerAnalyse - req.params:', req.params);
-    // console.log('[DEBUG] executerAnalyse - req.query:', req.query);
-
-    // Validation des paramètres
     if (!date_debut || !date_fin) {
-      // console.log('[DEBUG] Validation échouée - dates manquantes');
       return res.status(400).json({
         state: false,
         message: 'Les dates de début et fin sont requises'
@@ -351,12 +295,10 @@ exports.executerAnalyse = async (req, res) => {
     const retardMois = dossier?.retard_fourns || 3;
     const retardJours = retardMois * 30;
 
-    // console.log('[DEBUG] Nettoyage des anciennes données...');
     // Nettoyer les anciennes données
     await cleanupOldData(id_compte, id_dossier, id_exercice, id_periode || null);
 
     // ========== RÈGLE 1: Paiement sans facture (BANQUE sans lettrage) ==========
-    // console.log('[DEBUG] === RÈGLE 1: Paiement sans facture ===');
     const ecrituresBanque = await getFournisseurEcritures(
       id_compte,
       id_dossier,
@@ -364,10 +306,6 @@ exports.executerAnalyse = async (req, res) => {
       date_debut,
       date_fin
     );
-    // console.log('[DEBUG] BANQUE trouvées:', ecrituresBanque.length);
-
-    // ========== RÈGLE 2: Facture +N mois non réglée ==========
-    // console.log('[DEBUG] === RÈGLE 2: Facture >' + retardMois + ' mois non réglée ===');
     const ecrituresAchat = await getFactures3MoisNonReglees(
       id_dossier,
       id_exercice,
@@ -376,27 +314,21 @@ exports.executerAnalyse = async (req, res) => {
       date_fin,  // date de contrôle = date fin période
       retardJours
     );
-    // console.log('[DEBUG] ACHAT >90j trouvées:', ecrituresAchat.length);
 
-    // ========== RÈGLE 3: Ajustements non traités ==========
-    // console.log('[DEBUG] === RÈGLE 3: Ajustements non traités ===');
     const ecrituresAjustement = await getAjustementsNonTraites(
       id_dossier, 
       id_exercice, 
       date_debut, 
       date_fin
     );
-    // console.log('[DEBUG] Ajustements trouvés:', ecrituresAjustement.length);
 
     // ========== RÈGLE 4: Soldes suspens (RAN sans lettrage) ==========
-    // console.log('[DEBUG] === RÈGLE 4: Soldes suspens ===');
     const ecrituresRan = await getSoldesSuspens(
       id_dossier, 
       id_exercice, 
       date_debut, 
       date_fin
     );
-    // console.log('[DEBUG] RAN trouvés:', ecrituresRan.length);
 
     // Analyser chaque ligne et stocker les résultats
     const lignesAvecAnomalies = [];
@@ -483,9 +415,6 @@ exports.executerAnalyse = async (req, res) => {
   }
 };
 
-/**
- * Traiter une ligne avec anomalies (insertion en base)
- */
 const processAnomalieLine = async (line, anomalies, id_compte, id_dossier, id_exercice, id_periode, lignesAvecAnomalies) => {
   const compte = line.compteaux ;
   
@@ -579,9 +508,6 @@ const processAnomalieLine = async (line, anomalies, id_compte, id_dossier, id_ex
   });
 };
 
-/**
- * Récupérer les résultats d'analyse (lignes avec anomalies groupées par compte)
- */
 exports.getResultats = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -654,9 +580,6 @@ exports.getResultats = async (req, res) => {
   }
 };
 
-/**
- * Valider une anomalie
- */
 exports.validerAnomalie = async (req, res) => {
   try {
     const { id } = req.params;
@@ -691,9 +614,6 @@ exports.validerAnomalie = async (req, res) => {
   }
 };
 
-/**
- * Supprimer les résultats d'analyse
- */
 exports.supprimerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -716,10 +636,6 @@ exports.supprimerAnalyse = async (req, res) => {
   }
 };
 
-/**
- * GET /administration/analyseFournisseurClient/:id_compte/:id_dossier/:id_exercice/stats
- * Récupère les statistiques des anomalies (fournisseurs + clients)
- */
 exports.getStats = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -815,7 +731,6 @@ const tryReadLogo = () => {
       return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
     }
   } catch (err) {
-    console.log('Logo not found:', err.message);
   }
   return null;
 };
@@ -877,10 +792,6 @@ const ANOMALIE_LABELS = {
   'solde_suspens': 'Solde en suspens'
 };
 
-/**
- * Helper: construit le body d'un tableau pdfmake pour une section (Fournisseurs ou Clients).
- * Réutilisé par buildPdfSection et exportPdf.
- */
 const buildTableBody = (data, title) => {
   const tableBody = [
     [{ text: title, colSpan: 9, style: 'sectionHeader', alignment: 'center' }, '', '', '', '', '', '', '', ''],
@@ -908,14 +819,8 @@ const buildTableBody = (data, title) => {
   return tableBody;
 };
 
-/**
- * Helper: ajoute un onglet Excel pour une section (Fournisseurs ou Clients).
- * Réutilisé par addExcelSheets et exportExcel.
- */
 const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
   const worksheet = workbook.addWorksheet(sheetName);
-  // Colonnes SANS 'header' : on garde uniquement key + width pour libérer les
-  // premières lignes au profit d'un bloc titre (l'en-tête sera écrit en ligne 5).
   worksheet.columns = [
     { key: 'compte', width: 12 },
     { key: 'date', width: 12 },
@@ -982,20 +887,12 @@ const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
   return worksheet;
 };
 
-/**
- * Récupère les données pour l'export global (fournisseurs + clients).
- * date_debut/date_fin ignorés (non utilisés par ce contrôle).
- */
 exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
   const fournisseurs = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'fournisseur');
   const clients = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'client');
   return { fournisseurs, clients };
 };
 
-/**
- * Construit la section PDF (tableaux Fournisseurs + Clients) pour un classeur combiné.
- * Retourne les nœuds de contenu et les styles nommés utilisés par ces tableaux.
- */
 exports.buildPdfSection = (data, ctx = {}) => {
   const { fournisseurs = [], clients = [] } = data || {};
 
@@ -1017,18 +914,13 @@ exports.buildPdfSection = (data, ctx = {}) => {
   return { content, styles };
 };
 
-/**
- * Ajoute les onglets 'Fournisseurs' et 'Clients' au workbook passé en paramètre.
- */
+
 exports.addExcelSheets = (workbook, data, ctx = {}) => {
   const { fournisseurs = [], clients = [] } = data || {};
   addWorksheet(workbook, fournisseurs, 'Fournisseurs', 'ANALYSE FOURNISSEURS', ctx);
   addWorksheet(workbook, clients, 'Clients', 'ANALYSE CLIENTS', ctx);
 };
 
-/**
- * Export PDF for Analyse Tiers
- */
 exports.exportPdf = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -1083,9 +975,6 @@ exports.exportPdf = async (req, res) => {
   }
 };
 
-/**
- * Export Excel for Analyse Tiers
- */
 exports.exportExcel = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;

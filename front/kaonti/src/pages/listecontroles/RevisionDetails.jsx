@@ -37,10 +37,11 @@ import axios from '../../../config/axios'
 import CommentIcon from '@mui/icons-material/Comment';
 
 // Helper pour créer un DataGrid standardisé
-const StandardDataGrid = ({ rows, columns, pageSize = 10, ...props }) => {
+const StandardDataGrid = ({ rows, columns, pageSize = 10, height, ...props }) => {
     return (
         <Box sx={{ width: '100%', bgcolor: '#ffffffff' }}>
             <DataGrid
+                autoHeight
                 rows={rows}
                 columns={columns}
                 pageSize={pageSize}
@@ -50,7 +51,6 @@ const StandardDataGrid = ({ rows, columns, pageSize = 10, ...props }) => {
                 density="compact"
                 sx={{
                     border: 'none',
-                    height: '40vh',
                     '& .MuiDataGrid-columnHeaders': { bgcolor: '#F8FAFC', color: '#64748B', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' },
                     '& .MuiDataGrid-cell': { fontSize: '0.8rem', borderBottom: '1px solid #F1F5F9' },
                     '& .font-bold': { fontWeight: 700 }
@@ -1879,8 +1879,8 @@ const RevisionDetails = React.memo(function RevisionDetails({ type, controles, o
                 )}
             </Box>
 
-            {/* MAIN CONTENT - DATAGRID GÈRE SON PROPRE SCROLL */}
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            {/* MAIN CONTENT - zone scrollable (le DataGrid est en autoHeight et grandit avec le contenu) */}
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
                 <Grid container spacing={3} alignItems="flex-start">
                     {/* LEFT SIDE - INFOS + TABLE */}
                     <Grid item xs={12} md={12}>

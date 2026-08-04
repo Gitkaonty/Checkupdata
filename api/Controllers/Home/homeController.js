@@ -133,7 +133,6 @@ const recupListDossier = async (req, res) => {
     return res.json(resData);
 
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       state: false,
       msg: 'Erreur serveur',
@@ -167,7 +166,6 @@ const getAllDossierByCompte = async (req, res) => {
     return res.json(resData);
 
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       state: false,
       msg: 'Erreur serveur',
@@ -204,7 +202,6 @@ const getCompteDossier = async (req, res) => {
     }
     return res.json(resData);
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       state: false,
       msg: 'Erreur serveur',
@@ -249,7 +246,6 @@ const createNewFile = async (req, res) => {
       return res.json(resData);
     }
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -283,7 +279,6 @@ const deleteCreatedFile = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -349,7 +344,6 @@ const informationsFile = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   } finally {
     // Add finally block to ensure cleanup
   }
@@ -375,7 +369,6 @@ const updateCentrefisc = async (req, res) => {
     }
     return res.status(404).json({ state: false, msg: 'Dossier introuvable' });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur serveur' });
   }
 }

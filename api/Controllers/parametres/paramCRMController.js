@@ -46,7 +46,6 @@ const getListePays = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -76,7 +75,6 @@ const getInfosCRM = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -203,7 +201,6 @@ const modifyingInfos = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -232,7 +229,6 @@ const getListeAssocie = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -260,7 +256,6 @@ const getListeFiliale = async (req, res) => {
     }
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -289,7 +284,6 @@ const getListeDomBank = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -365,7 +359,6 @@ const associe = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -435,7 +428,6 @@ const filiale = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -505,7 +497,6 @@ const domBank = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -537,7 +528,6 @@ const deleteAssocie = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -569,7 +559,6 @@ const deleteFiliale = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -601,7 +590,6 @@ const deleteDomBank = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -639,7 +627,6 @@ const updateAccountsLength = async (req, res) => {
     for (const compte of comptes) {
       const currentCompte = compte.compte;
       if (!currentCompte) {
-        console.log(`Compte ignoré (numéro vide): id=${compte.id}, libelle=${compte.libelle}`);
         continue;
       }
 
@@ -667,7 +654,6 @@ const updateAccountsLength = async (req, res) => {
             shouldUpdate = true;
           } else {
             // Laisser le compte tel quel si autocomplétion désactivée
-            console.log(`Autocomplétion désactivée: compte ${currentCompte} laissé tel quel`);
           }
         } else if (newLongueurAux < currentCompte.length) {
           // Cas 2: Nombre de caractères supérieur à celui modifié dans CRM
@@ -688,7 +674,6 @@ const updateAccountsLength = async (req, res) => {
           shouldUpdate = true;
         }
       } else {
-        console.log(`Compte ${currentCompte} ignoré: pas de changement nécessaire`);
       }
 
       // Mettre à jour le compte si nécessaire
@@ -714,7 +699,6 @@ const updateAccountsLength = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log('Erreur updateAccountsLength:', error);
     return res.json({
       state: false,
       msg: 'Erreur lors de la mise à jour des comptes',
@@ -918,7 +902,6 @@ const getListeComptesTva = async (req, res) => {
     });
     return res.json({ state: true, natures: NATURES_TVA, liste });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur lors de la lecture des comptes TVA' });
   }
 };
@@ -941,7 +924,6 @@ const compteTva = async (req, res) => {
     }
     return res.json({ state: true, msg: 'Enregistré', row });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur lors de l\'enregistrement' });
   }
 };
@@ -952,7 +934,6 @@ const deleteCompteTva = async (req, res) => {
     const n = await db.tvaComptesNature.destroy({ where: { id: idToDelete } });
     return res.json({ state: !!n, msg: n ? 'Supprimé' : 'Introuvable' });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur lors de la suppression' });
   }
 };

@@ -119,8 +119,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             }
         );
 
-        // // console.log('[revuAnalytiqueMensuelle] allComptes count', allComptes?.length || 0);
-        // // console.log('[revuAnalytiqueMensuelle] allComptes sample', (allComptes || []).slice(0, 20));
 
         const comptesDistincts = await db.sequelize.query(
             `SELECT DISTINCT NULLIF(TRIM(comptegen), '') AS compte_key
@@ -206,7 +204,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
         });
         
         const comptesAvecAvantExercice = avantExerciceResult.map(r => r.compte_key);
-        // // console.log(`[DEBUG] Comptes avec écritures avant exercice: ${comptesAvecAvantExercice.length} comptes`);
         
         // Créer la colonne pour le mois/année avant l'exercice
         const moisAvantExercice = new Date(exercice.date_debut);
@@ -214,7 +211,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
         const nomMoisAvantExercice = `${moisAvantExercice.toLocaleDateString('fr-FR', { month: 'long' })}_${moisAvantExercice.getFullYear()}`;
         const nomMoisAvantExerciceAffiche = moisAvantExercice.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
         
-        // // console.log(`[DEBUG] Colonne ajoutée: ${nomMoisAvantExercice} (${nomMoisAvantExerciceAffiche})`);
 
         allComptes.forEach((c, index) => {
             const row = {
@@ -235,7 +231,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             if (comptesAvecAvantExercice.includes(c.compte_key)) {
                 row[nomMoisAvantExercice] = 0;
                 if (comptesAvecAvantExercice.length <= 5) {
-                    // console.log(`[DEBUG] Ajout colonne ${nomMoisAvantExercice} pour ${c.compte_key}`);
                 }
             }
 
@@ -286,7 +281,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
         /**
          * 6️⃣ Remplissage mensuel - UTILISER LE TOTAL EXACT DE N/N-1
          */
-        // // console.log('[DEBUG] Début remplissage mensuel');
         
         // D'abord, récupérer les totaux exacts comme N/N-1
         const totalsQuery = `
@@ -308,12 +302,10 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT
         });
         
-        // // console.log('[DEBUG] Totaux exacts:', totalsResults.slice(0, 3));
         
         monthlyResults.forEach((r, idx) => {
             const row = map.get(r.compte_key);
             if (!row) {
-                // console.log(`[DEBUG] Compte ${r.compte_key} non trouvé dans le map`);
                 return;
             }
 
@@ -324,7 +316,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 row[nomMoisAvantExercice] = val;
                 row.total_exercice += val;
                 if (idx < 5) {
-                    // console.log(`[DEBUG] Assigné: ${r.compte_key} ${nomMoisAvantExercice} = ${val}`);
                 }
             } else {
                 // Gérer les mois normaux de l'exercice
@@ -337,18 +328,15 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                     row[mois.nom] = val;
                     row.total_exercice += val;
                     if (idx < 5) {
-                        // console.log(`[DEBUG] Assigné: ${r.compte_key} ${mois.nom} = ${val}`);
                     }
                 } else {
                     if (idx < 5) {
-                        // console.log(`[DEBUG] Mois non trouvé pour ${r.compte_key}: mois=${r.mois}, annee=${r.annee}`);
                     }
                 }
             }
         });
 
         // SANS CORRECTION: Garder les totaux calculés naturellement
-        // // console.log('\n=== VÉRIFICATION DES TOTAUX NATURELS ===');
         let totalCorrections = 0;
         totalsResults.forEach(total => {
             const row = map.get(total.compte_key);
@@ -358,7 +346,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 const difference = Math.abs(calculeTotal - exactTotal);
                 
                 if (difference > 0.01) {
-                    // console.log(`[DIFFÉRENCE] ${total.compte_key}: calculé=${calculeTotal}, exact=${exactTotal}, diff=${difference.toFixed(2)}`);
                     totalCorrections++;
                 }
             }
@@ -419,10 +406,8 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             }
         }
 
-        // // console.log('\n=== COMPARAISON TOTAUX MENSUELLE vs N/N-1 ===');
         
         // Identification simple des écritures problématiques pour TOUS les comptes
-        // // console.log('\n=== IDENTIFICATION DES ÉCRITURES PROBLÉMATIQUES ===');
         
         // 1. Total toutes écritures (comme N/N-1) - TOUS LES COMPTES
         const totalAllQuery = `
@@ -469,9 +454,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT
         });
         
-        // // console.log('Analyse des écarts pour tous les comptes:');
-        // // console.log('Compte\t\tÉcritures perdues\tMontant perdu\t% perdu');
-        // // console.log('--------------------------------------------------------------------');
         
         let totalEcrituresPerdues = 0;
         let totalMontantPerdu = 0;
@@ -490,16 +472,12 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 totalMontantGlobal += Math.abs(parseFloat(all.total_all));
                 
                 if (countDiff > 0 || Math.abs(montantDiff) > 0.01) {
-                    // console.log(`${all.compte_key}\t\t${countDiff}\t\t${montantDiff.toFixed(2)}\t\t${pourcentagePerdu.toFixed(2)}%`);
                 }
             }
         });
         
         const pourcentageGlobalPerdu = totalMontantGlobal > 0 ? (totalMontantPerdu / totalMontantGlobal) * 100 : 0;
         
-        // // console.log('--------------------------------------------------------------------');
-        // // console.log(`TOTAL\t\t${totalEcrituresPerdues}\t\t${totalMontantPerdu.toFixed(2)}\t\t${pourcentageGlobalPerdu.toFixed(2)}%`);
-        // // console.log('=== FIN IDENTIFICATION ===\n');
         
         // Debug simple: compter les écritures pour le compte 401000
         const countQuery = `
@@ -516,11 +494,9 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT
         });
         
-        // // console.log('[DEBUG] Compte 401000 - Écritures brutes:', countResult[0]);
         
         // Debug: voir les résultats mensuels pour 401000
         const monthly401000 = monthlyResults.filter(r => r.compte_key === '401000');
-        // // console.log('[DEBUG] Compte 401000 - Résultats mensuels:', monthly401000);
         
         // Récupérer les données N/N-1 pour comparaison (même requête que N/N-1)
         const nn1Query = `
@@ -543,12 +519,7 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             type: db.Sequelize.QueryTypes.SELECT
         });
 
-        // // console.log(`[DEBUG] N/N-1 results count: ${nn1Results.length}`);
-        // // console.log('[DEBUG] Sample N/N-1 results:', nn1Results.slice(0, 3));
 
-        // // console.log('Comparaison compte par compte:');
-        // // console.log('Compte\t\t\tTotal Mensuel\t\tSolde N/N-1\t\tDifférence');
-        // // console.log('--------------------------------------------------------------------');
 
         let totalMensuelGlobal = 0;
         let totalNn1Global = 0;
@@ -563,17 +534,12 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 totalMensuelGlobal += totalMensuel;
                 totalNn1Global += soldeNn1;
                 
-                    // // console.log(`${nn1.compte_key}\t\t${totalMensuel.toFixed(2)}\t\t${soldeNn1.toFixed(2)}\t\t${diff.toFixed(2)}`);
             } else {
                 const soldeNn1 = nn1.solden || 0; // CORRIGÉ: utiliser solden au lieu de soldeN
                 totalNn1Global += soldeNn1;
-                // // console.log(`${nn1.compte_key}\t\tABSENT\t\t\t${soldeNn1.toFixed(2)}\t\tMANQUANT`);
             }
         });
 
-        // // console.log('--------------------------------------------------------------------');
-        // // console.log(`TOTAL GLOBAL\t\t${totalMensuelGlobal.toFixed(2)}\t\t${totalNn1Global.toFixed(2)}\t\t${(totalMensuelGlobal - totalNn1Global).toFixed(2)}`);
-        // // console.log('=== FIN COMPARAISON ===\n');
 
         // Préparer les colonnes à renvoyer au frontend
         let finalMoisColumns = [...moisExercice];
@@ -586,7 +552,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 numero: new Date(exercice.date_debut).getMonth() + 1,
                 annee: new Date(exercice.date_debut).getFullYear() - 1
             });
-            // // console.log(`[DEBUG] Ajout de ${nomMoisAvantExercice} dans moisColumns`);
         }
 
         // Fusionner les données de commentaireAnalytiqueMensuelle (anomalies, valide_anomalie, commentaire)

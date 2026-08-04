@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Select, MenuItem, Stack, Typography, Box, Divider } from '@mui/material';
 import axios from '../../config/axios';
 import useAuth from '../hooks/useAuth';
@@ -13,9 +13,7 @@ const ExercicePeriodeSelector = ({
     disabled = false,
     showPeriodeOnly = false,
     size = "small",
-    sx = {},
-    exerciceSx = {},
-    periodeSx = {}
+    sx = {}
 }) => {
     const [listeExercice, setListeExercice] = useState([]);
     const [listePeriodes, setListePeriodes] = useState([]);
@@ -102,19 +100,6 @@ const ExercicePeriodeSelector = ({
             onPeriodeChange('');
         }
     };
-
-    // Récupérer les dates de l'exercice courant
-    const currentExerciceDates = useMemo(() => {
-        const exercice = listeExercice.find(e => e.id === selectedExerciceId);
-        if (exercice) {
-            return {
-                date_debut: exercice.date_debut,
-                date_fin: exercice.date_fin,
-                libelle_rang: exercice.libelle_rang
-            };
-        }
-        return null;
-    }, [listeExercice, selectedExerciceId]);
 
     return (
         <Stack
@@ -241,11 +226,6 @@ const ExercicePeriodeSelector = ({
                         <MenuItem value="">
                             <em>Sélectionner une période...</em>
                         </MenuItem>
-                        {/* {!showPeriodeOnly && (
-                        <MenuItem value="exercice">
-                            <em>Tout l'exercice</em>
-                        </MenuItem>
-                    )} */}
                         {listePeriodes.map((periode) => (
                             <MenuItem
                                 key={periode.id}
@@ -280,12 +260,6 @@ const ExercicePeriodeSelector = ({
                     </Select>
                 )}
             </Box>
-
-            {/* {currentExerciceDates && !showPeriodeOnly && (
-                <Typography variant="caption" sx={{ color: 'gray', ml: 1 }}>
-                    Exercice: {formatDate(currentExerciceDates.date_debut)} au {formatDate(currentExerciceDates.date_fin)}
-                </Typography>
-            )} */}
         </Stack>
     );
 };

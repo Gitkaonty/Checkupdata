@@ -25,7 +25,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
                 date_debut = periode.date_debut;
                 date_fin = periode.date_fin;
             } else {
-                console.log('[DEBUG NN1] Période non trouvée pour id:', id_periode);
             }
         }
 
@@ -37,7 +36,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
         const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
         const seuilPourcent = dossier && dossier.seuil_revu_analytique ? dossier.seuil_revu_analytique : 30.0;
         const seuilDecimal = seuilPourcent / 100.0; // ex: 30.0 -> 0.3
-        console.log('[revuAnalytiqueNN1] seuil dossier:', { id_dossier, seuilPourcent, seuilDecimal });
 
         // Récupérer l'exercice N
         const exerciceN = await exercices.findOne({
@@ -56,7 +54,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
         });
 
         const id_exerciceN1 = exerciceN1 ? exerciceN1.id : null;
-        // console.log('[revuAnalytiqueNN1] hasN1 =', !!exerciceN1, 'id_exerciceN1 =', id_exerciceN1);
 
         // Calcul du facteur de proratisation pour N-1
         let facteurProrata = 1; // Par défaut, pas de proratisation
@@ -84,7 +81,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
             }
         }
 
-        // console.log('[revuAnalytiqueNN1] prorata:', { nbrMoisPeriodeN, nbrMoisTotalN1, facteurProrata });
 
         // Requête SQL pour agréger les données des exercices N et N-1
         // Dans la requête SQL, on peut calculer directement var et var%
@@ -208,7 +204,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
         
 
         // Exécuter la requête
-        // console.log('[revuAnalytiqueNN1] params reçus:', { id_compte, id_dossier, id_exercice, id_exerciceN1 });
         const results = await db.sequelize.query(query, {
             replacements: replacements,
             type: db.Sequelize.QueryTypes.SELECT
@@ -489,7 +484,7 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     }
 
     ws.mergeCells('A2:I2');
-    ws.getCell('A2').value = 'REVUE ANALYTIQUE N/N-1';
+    ws.getCell('A2').value = 'CONTRÔLE GLOBAL';
     ws.getCell('A2').font = { bold: true, size: 14 };
     ws.getCell('A2').alignment = { horizontal: 'center' };
 
@@ -549,7 +544,7 @@ exports.exportPdf = async (req, res) => {
         headerColumns.push({
             width: '*',
             stack: [
-                { text: 'REVUE ANALYTIQUE N/N-1', style: 'header', alignment: 'center' },
+                { text: 'CONTRÔLE GLOBAL', style: 'header', alignment: 'center' },
                 { text: `Dossier : ${dossier?.dossier || ''}`, style: 'subheader', alignment: 'center' },
                 { text: `Période : ${periodeText}`, style: 'subheader2', alignment: 'center' }
             ]

@@ -1,10 +1,3 @@
-// Calcule la « Synthèse des anomalies » telle qu'affichée dans le dashboard.
-// Réutilise exactement les mêmes endpoints de stats et la même logique
-// d'extraction que DashboardHome.jsx, afin que l'export global affiche des
-// chiffres identiques à ceux du tableau de bord.
-
-// Contrôles affichés dans la synthèse du dashboard (ordre conservé).
-// typeRevue === null → ligne affichée mais non calculée (comme dans le dashboard).
 export const SYNTHESE_ITEMS = [
   { nom: 'Revue analytique N/N-1', typeRevue: 'analytiqueNN1' },
   { nom: 'Revue analytique mensuelle', typeRevue: 'analytiqueMensuelle' },
@@ -16,8 +9,6 @@ export const SYNTHESE_ITEMS = [
 
 const emptyStat = { anomalies: 0, restantes: 0 };
 
-// Récupère { anomalies, restantes } pour un type de contrôle donné, en miroir
-// de fetchAnomalyStats() du dashboard.
 const fetchOne = async (axiosPrivate, typeRevue, { id_compte, id_dossier, id_exercice, id_periode, periodeDates }) => {
   try {
     let url;
@@ -72,10 +63,7 @@ const fetchOne = async (axiosPrivate, typeRevue, { id_compte, id_dossier, id_exe
 
 const round = (n) => Math.round(n);
 
-// Retourne { rows: [{ nom, anomalies, restantes, progress }], totals }
 export async function fetchAnomaliesSynthese(axiosPrivate, { id_compte, id_dossier, id_exercice, id_periode, periodeDates }) {
-  // Comme le dashboard : déclencher la sauvegarde des anomalies des revues
-  // analytiques pour la période AVANT de lire les stats correspondantes.
   if (periodeDates && id_periode) {
     try {
       await Promise.all([

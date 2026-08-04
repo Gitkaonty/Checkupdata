@@ -29,7 +29,6 @@ const tryReadLogo = () => {
       return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
     }
   } catch (err) {
-    console.log('Logo not found:', err.message);
   }
   return null;
 };
@@ -54,20 +53,12 @@ const getAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_periode)
   }));
 };
 
-/**
- * Récupère les données pour l'export global (signature standardisée).
- * date_debut / date_fin sont ignorés ici (non utilisés par ce contrôle).
- */
+
 exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
     return await getAnalytiqueData(id_compte, id_dossier, id_exercice, id_periode);
 };
 
-/**
- * Construit la section PDF (tableau + ligne de totaux) réutilisable pour l'export combiné.
- * @param {Array} data - tableau de lignes
- * @param {Object} ctx - contexte optionnel
- * @returns {{content: Array, styles: Object}}
- */
+
 exports.buildPdfSection = (data, ctx = {}) => {
     const rows = Array.isArray(data) ? data : [];
 
@@ -116,18 +107,10 @@ exports.buildPdfSection = (data, ctx = {}) => {
     return { content, styles };
 };
 
-/**
- * Ajoute l'onglet 'Contrôle Analytique' au workbook fourni (réutilisable pour l'export combiné).
- * @param {ExcelJS.Workbook} workbook
- * @param {Array} data
- * @param {Object} ctx - contexte optionnel (ctx.logo)
- */
 exports.addExcelSheets = (workbook, data, ctx = {}) => {
     const rows = Array.isArray(data) ? data : [];
     const worksheet = workbook.addWorksheet('Contrôle Analytique');
 
-    // Colonnes : on garde uniquement key + width (les libellés d'en-tête
-    // sont écrits explicitement en ligne 5 pour laisser place au bloc titre).
     worksheet.columns = [
         { key: 'date', width: 14 },
         { key: 'compte', width: 14 },
@@ -185,11 +168,6 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     return worksheet;
 };
 
-/**
- * POST /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
- * Vérifie que chaque ligne des comptes 6* et 7* possèdent des analytiques
- * Algorithme : sélectionner toutes les lignes (6* et 7*) dont le total des analytiques = 0
- */
 exports.controlerAnalytiques = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
@@ -222,7 +200,6 @@ exports.controlerAnalytiques = async (req, res) => {
         });
 
         // Étape 2: Requête SQL pour trouver les lignes sans analytiques
-        // Comptes commençant par 6 ou 7 dont le total des analytiques = 0
         const query = `
             SELECT
                 j.id as id_jnl,
@@ -271,7 +248,6 @@ exports.controlerAnalytiques = async (req, res) => {
             type: QueryTypes.SELECT,
             replacements: { id_compte, id_dossier, id_exercice, date_debut, date_fin }
         });
-        console.log('[RevisionAnalytique] DEBUG - Écritures 6*/7*:', debugResult[0]);
 
         // DEBUG SPECIFIQUE pour la ligne 999765
         const specificDebug = await db.sequelize.query(`
@@ -404,10 +380,6 @@ exports.controlerAnalytiques = async (req, res) => {
     }
 };
 
-/**
- * GET /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
- * Récupère les résultats d'un contrôle précédent
- */
 exports.getResultats = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
@@ -455,10 +427,6 @@ exports.getResultats = async (req, res) => {
     }
 };
 
-/**
- * DELETE /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
- * Supprime les résultats d'un contrôle
- */
 exports.supprimerResultats = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;

@@ -73,7 +73,6 @@ const insertLineAnomaly = async ({
   idPeriode = null
 }) => {
   try {
-    // console.log(`DEBUG insertLineAnomaly - idPeriode reçu:`, idPeriode);
     // Use the journal line ID as id_jnl (individual per line)
     const lineId = line.id;
     // Extract the account number from the line (comptegen or compteaux)
@@ -131,14 +130,12 @@ exports.getOrCreateRevisionControles = async (req, res) => {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { date_debut, date_fin, id_periode } = req.query;
 
-    // console.log('Getting or creating revision controles for:', { id_compte, id_dossier, id_exercice, date_debut, date_fin, id_periode });
 
     // Rechercher la période correspondante si dates fournies
     let idPeriode = null;
     if (id_periode) {
       // Utiliser l'id_periode fourni explicitement
       idPeriode = parseInt(id_periode, 10);
-      // console.log('id_periode fourni explicitement:', idPeriode);
     } else if (date_debut && date_fin) {
       // Sinon chercher par dates (fallback)
       const debut = date_debut.split('T')[0];
@@ -157,7 +154,6 @@ exports.getOrCreateRevisionControles = async (req, res) => {
       const periodeResult = await db.sequelize.query(periodeQuery, { type: db.Sequelize.QueryTypes.SELECT });
       if (periodeResult.length > 0) {
         idPeriode = periodeResult[0].id;
-        // console.log('Période trouvée par dates:', idPeriode);
       }
     }
 
@@ -178,7 +174,6 @@ exports.getOrCreateRevisionControles = async (req, res) => {
 
     // Recalculer dynamiquement le nombre d'anomalies "cas par cas" pour chaque contrôle
     if (existingControles.length > 0) {
-      console.log('[DEBUG getOrCreateRevisionControles] idPeriode:', idPeriode, 'type:', typeof idPeriode);
       
       const anomaliesQuery = `
         WITH base AS (
@@ -227,7 +222,6 @@ exports.getOrCreateRevisionControles = async (req, res) => {
       `;
       
       const anomaliesCounts = await db.sequelize.query(anomaliesQuery, { type: db.Sequelize.QueryTypes.SELECT });
-      console.log('[DEBUG getOrCreateRevisionControles] anomaliesCounts:', anomaliesCounts);
       
       // Créer un map pour lookup rapide
       const anomaliesMap = {};
@@ -239,8 +233,6 @@ exports.getOrCreateRevisionControles = async (req, res) => {
         };
       }
       
-      console.log('[DEBUG getOrCreateRevisionControles] anomaliesMap:', anomaliesMap);
-      console.log('[DEBUG getOrCreateRevisionControles] controles avant modif:', existingControles.map(c => ({ id: c.id, id_controle: c.id_controle, anomalies: c.anomalies })));
       
       // Mettre à jour les contrôles avec les compteurs recalculés
       existingControles = existingControles.map(c => ({
@@ -249,16 +241,13 @@ exports.getOrCreateRevisionControles = async (req, res) => {
         total_anomalies: anomaliesMap[c.id_controle]?.total || 0
       }));
       
-      console.log('[DEBUG getOrCreateRevisionControles] controles après modif:', existingControles.map(c => ({ id: c.id, id_controle: c.id_controle, anomalies: c.anomalies })));
     }
 
     // Si aucun contrôle n'existe, les créer à partir des matrices
     if (existingControles.length === 0) {
-      // console.log('No controles found, creating from matrices...');
 
       // Vérifier qu'une période est sélectionnée (date_debut et date_fin fournis)
       if (!date_debut || !date_fin) {
-        // console.log('No period selected, returning empty controles list');
         return res.json({
           state: true,
           controles: [],
@@ -292,7 +281,6 @@ exports.getOrCreateRevisionControles = async (req, res) => {
         insertedControles.push(newControle);
       }
 
-      // console.log(`Created ${insertedControles.length} controles from matrices with id_periode=${idPeriode}`);
 
       res.json({
         state: true,
@@ -300,7 +288,6 @@ exports.getOrCreateRevisionControles = async (req, res) => {
         message: 'Contrôles créés automatiquement à partir des matrices'
       });
     } else {
-      // console.log(`Found ${existingControles.length} existing controles`);
 
       res.json({
         state: true,
@@ -323,7 +310,6 @@ exports.getControlesByType = async (req, res) => {
     const { id_compte, id_dossier, id_exercice, type } = req.params;
     const { id_periode } = req.query;
 
-    // console.log('Getting controles by type:', { id_compte, id_dossier, id_exercice, type, id_periode });
 
     let controles = await db.sequelize.query(`
       SELECT 
@@ -430,7 +416,6 @@ exports.getJournalEcrituresByComptePrefix = async (req, res) => {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { prefixes } = req.query; // Tableau de préfixes: ["53", "60", "40"]
 
-    // console.log('Getting journal ecritures:', { id_compte, id_dossier, id_exercice, prefixes });
 
     if (!prefixes || prefixes.length === 0) {
       return res.json({
@@ -476,7 +461,6 @@ exports.executeControle = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice, type } = req.params;
 
-    // console.log('Executing controle:', { id_compte, id_dossier, id_exercice, type });
 
     // 1. Récupérer tous les contrôles de ce Type (SQL)
     const controlesQuery = `
@@ -596,18 +580,19 @@ exports.executeControle = async (req, res) => {
 exports.executeAll = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
-    const { date_debut, date_fin, id_periode } = req.query;
+    const { date_debut, date_fin, id_periode, type: reqType } = req.query;
 
-    // console.log('=== DEBUG executeAll ===');
-    // console.log('Params reçus:', { id_compte, id_dossier, id_exercice });
-    // console.log('Query params date_debut:', date_debut);
-    // console.log('Query params date_fin:', date_fin);
-    // console.log('Query params id_periode:', id_periode);
+    // Révision scopée à UN seul type de contrôle (depuis une entrée séparée de la page Détails).
+    // Whitelist stricte -> interpolation SQL sûre. Sans type -> révision globale (comportement historique).
+    const VALID_TYPES = ['ATYPIQUE', 'SENS_SOLDE', 'SENS_ECRITURE', 'IMMO_CHARGE', 'UTIL_CPT_TVA', 'EXISTENCE'];
+    const scopeType = (reqType && VALID_TYPES.includes(reqType)) ? reqType : null;
+    const typeCtrlCond = scopeType ? `AND "Type" = '${scopeType}'` : '';        // table_revisions_controles / matrices
+    const typeAnoCond = scopeType ? `AND "codeCtrl" = '${scopeType}'` : '';      // table_controle_anomalies
+
 
     let idPeriode = null;
     if (id_periode) {
       idPeriode = parseInt(id_periode, 10);
-      // console.log('id_periode fourni explicitement:', idPeriode);
     } else if (date_debut && date_fin) {
       // Fallback: chercher par dates
       const debut = date_debut.split('T')[0];
@@ -623,11 +608,9 @@ exports.executeAll = async (req, res) => {
         ORDER BY date_debut ASC
         LIMIT 1
       `;
-      // console.log('DEBUG BACK - periodeQuery:', periodeQuery);
       const periodeResult = await db.sequelize.query(periodeQuery, { type: db.Sequelize.QueryTypes.SELECT });
       if (periodeResult.length > 0) {
         idPeriode = periodeResult[0].id;
-        // console.log('Période trouvée par dates:', idPeriode);
       }
     }
 
@@ -635,10 +618,6 @@ exports.executeAll = async (req, res) => {
     let dateCondition = '';
     if (date_debut && date_fin) {
       dateCondition = `AND dateecriture >= '${date_debut}' AND dateecriture <= '${date_fin}'`;
-      console.log('[DEBUG] dateCondition:', dateCondition);
-      console.log('[DEBUG] date_debut:', date_debut);
-      console.log('[DEBUG] date_fin:', date_fin);
-      console.log('[DEBUG] idPeriode:', idPeriode);
     }
 
     // 2. Sauvegarder les anomalies existantes (STRICTEMENT pour la période courante)
@@ -660,7 +639,6 @@ exports.executeAll = async (req, res) => {
         id_periode: item.id_periode
       };
     }
-    // console.log(`Sauvegarde de ${existingCommentaires.length} commentaires pour id_periode=${idPeriode}`);
 
     // 2. Supprimer les anciens contrôles pour cette période seulement (SQL)
     await db.sequelize.query(`
@@ -669,6 +647,7 @@ exports.executeAll = async (req, res) => {
         AND id_dossier = ${id_dossier}
         AND id_exercice = ${id_exercice}
         AND id_periode ${idPeriode === null ? 'IS NULL' : `= ${idPeriode}`}
+        ${typeCtrlCond}
     `, { type: db.Sequelize.QueryTypes.DELETE });
 
     // Supprimer UNIQUEMENT les anomalies de la période courante (pas les autres périodes)
@@ -680,6 +659,7 @@ exports.executeAll = async (req, res) => {
           AND id_dossier = ${id_dossier}
           AND id_exercice = ${id_exercice}
           AND id_periode = ${idPeriode}
+          ${typeAnoCond}
       `, { type: db.Sequelize.QueryTypes.DELETE });
     } else {
       // Si pas de période spécifiée, supprimer uniquement les anomalies sans période
@@ -689,13 +669,13 @@ exports.executeAll = async (req, res) => {
           AND id_dossier = ${id_dossier}
           AND id_exercice = ${id_exercice}
           AND id_periode IS NULL
+          ${typeAnoCond}
       `, { type: db.Sequelize.QueryTypes.DELETE });
     }  // console.log('Deleted anomalies without period (preserving anomalies with any period)');
 
     // 2. Recopier depuis la matrice (avec Affichage et id_periode) (SQL) - SEULEMENT les contrôles validés
-    const matricesQuery = `SELECT * FROM revisions_controles_matrices WHERE "Valider" = true`;
+    const matricesQuery = `SELECT * FROM revisions_controles_matrices WHERE "Valider" = true ${typeCtrlCond}`;
     const matrices = await db.sequelize.query(matricesQuery, { type: db.Sequelize.QueryTypes.SELECT });
-    console.log(`[DEBUG executeAll] Matrices found: ${matrices.length}`, matrices.map(m => ({ id_controle: m.id_controle, Type: m.Type, Valider: m.Valider })));
 
     const newControles = [];
     for (const matrix of matrices) {
@@ -715,7 +695,6 @@ exports.executeAll = async (req, res) => {
       const [newControle] = await db.sequelize.query(insertQuery, { type: db.Sequelize.QueryTypes.INSERT });
       newControles.push(newControle);
     }
-    // console.log(`Created ${newControles.length} controles from matrices with id_periode=${idPeriode}`);
 
     // Si aucun contrôle n'a été créé, ne pas continuer (sinon Object.keys(undefined) => 500)
     // Cela arrive notamment quand aucune matrice n'est "Valider" = true.
@@ -738,18 +717,14 @@ exports.executeAll = async (req, res) => {
     //     SET "Valider" = false 
     //     WHERE id IN (${matrixIds})
     //   `, { type: db.Sequelize.QueryTypes.UPDATE });
-    //   console.log(`Reset Valider to false for ${matrices.length} matrices`);
     // }
 
     // 3. Grouper les contrôles par Type
     const controlesByType = {};
-    // console.log('First controle object:', newControles[0]);
-    // console.log('First controle keys:', newControles[0] ? Object.keys(newControles[0]) : []);
     for (const controleWrapper of newControles) {
       // Le résultat de la requête SQL est un tableau, prendre le premier élément
       const controle = Array.isArray(controleWrapper) ? controleWrapper[0] : controleWrapper;
       const type = controle["Type"];
-      // console.log(`Controle ${controle.id}: type=${type}`);
       if (!controlesByType[type]) {
         controlesByType[type] = [];
       }
@@ -760,7 +735,6 @@ exports.executeAll = async (req, res) => {
     const resultsByType = {};
 
     for (const [type, controles] of Object.entries(controlesByType)) {
-      console.log(`[DEBUG executeAll] Processing type: ${type}, controles: ${controles.length}`);
 
       let anomaliesDetectees = [];
 
@@ -888,16 +862,11 @@ exports.executeAll = async (req, res) => {
             AND (${likeConditions})
             ${dateCondition}
         `;
-        // console.log('DEBUG SENS_SOLDE - ecrituresQuery:', ecrituresQuery);
         const ecritures = await db.sequelize.query(ecrituresQuery, { type: db.Sequelize.QueryTypes.SELECT });
-        // console.log('DEBUG SENS_SOLDE - Nombre écritures:', ecritures.length);
 
         // Log des dates pour vérifier le filtre
         if (ecritures.length > 0) {
           const dates = ecritures.map(e => e.dateecriture).sort();
-          // console.log('DEBUG SENS_SOLDE - dateCondition utilisée:', dateCondition || 'AUCUNE (tout l\'exercice)');
-          // console.log('DEBUG SENS_SOLDE - Première date écriture:', dates[0]);
-          // console.log('DEBUG SENS_SOLDE - Dernière date écriture:', dates[dates.length - 1]);
         }
 
         // Grouper les écritures par compte complet (4-6 caractères)
@@ -947,7 +916,6 @@ exports.executeAll = async (req, res) => {
               const key = `${idPeriode || 'NULL'}_${ligne.id}_${controle.id_controle}`;
               const savedData = anomaliesMap[key] || {};
 
-              // console.log(`DEBUG SENS_SOLDE - Recherche clé: ${key}, Trouvé:`, !!savedData.valide, 'valide:', savedData.valide);
 
               // Collecter l'anomalie pour insertion groupée (cf. flush après la boucle)
               sensSoldeAnomalies.push({
@@ -975,7 +943,6 @@ exports.executeAll = async (req, res) => {
                 });
               }
 
-              // console.log(`DEBUG SENS_SOLDE - Insertion anomalie individuelle: ligne=${ligne.id}, compte=${compte}, valide=${savedData.valide || false}`);
             }
 
             // Ajouter au résultat (une seule entrée pour l'affichage)
@@ -1038,16 +1005,11 @@ exports.executeAll = async (req, res) => {
             AND (${likeConditions})
             ${dateCondition}
         `;
-        // console.log('DEBUG SENS_ECRITURE - ecrituresQuery:', ecrituresQuery);
         const ecritures = await db.sequelize.query(ecrituresQuery, { type: db.Sequelize.QueryTypes.SELECT });
-        // console.log('DEBUG SENS_ECRITURE - Nombre écritures:', ecritures.length);
 
         // Log des dates pour vérifier le filtre
         if (ecritures.length > 0) {
           const dates = ecritures.map(e => e.dateecriture).sort();
-          // console.log('DEBUG SENS_ECRITURE - dateCondition utilisée:', dateCondition || 'AUCUNE (tout l\'exercice)');
-          // console.log('DEBUG SENS_ECRITURE - Première date écriture:', dates[0]);
-          // console.log('DEBUG SENS_ECRITURE - Dernière date écriture:', dates[dates.length - 1]);
         }
 
         // Grouper les écritures par compte complet
@@ -1082,9 +1044,7 @@ exports.executeAll = async (req, res) => {
             lignesAnormales = ecrituresCompte.filter(e => (parseFloat(e.debit) || 0) > 0);
           }
 
-          // console.log(`SENS_ECRITURE - Compte ${compte}, test=${testType}, lignesAnormales=${lignesAnormales.length}`);
           if (lignesAnormales.length > 0) {
-            // console.log(`SENS_ECRITURE - Lignes anormales:`, lignesAnormales.map(l => ({id: l.id, debit: l.debit, credit: l.credit})));
           }
 
           // Créer une anomalie individuelle pour CHAQUE ligne anormale
@@ -1093,7 +1053,6 @@ exports.executeAll = async (req, res) => {
             const savedData = anomaliesMap[key] || {};
             const messageSimple = controle.message || `Anomalie de sens d'imputation pour le compte ${compte}`;
 
-            // console.log(`SENS_ECRITURE DEBUG - Création anomalie: ligne=${ligne.id}, compte=${compte}, controle.id=${controle.id}, controle.id_controle=${controle.id_controle}`);
 
             // Collecter l'anomalie pour insertion groupée (cf. flush après la boucle)
             sensEcritureAnomalies.push({
@@ -1121,7 +1080,6 @@ exports.executeAll = async (req, res) => {
               });
             }
 
-            // console.log(`SENS_ECRITURE - Insertion anomalie individuelle: ligne=${ligne.id}, compte=${compte}, id_controle=${controle.id_controle}`);
           }
 
           // Ajouter au résultat si des lignes anormales existent
@@ -1203,7 +1161,6 @@ exports.executeAll = async (req, res) => {
           return debit > SEUIL_CAPITALISATION;
         });
 
-        // console.log(`IMMO_CHARGE - ${ecrituresImmoAnormales.length} immobilisations < ${SEUIL_CAPITALISATION}, ${ecrituresChargesAnormales.length} charges > ${SEUIL_CAPITALISATION}`);
 
         // Charger en UNE seule requête toutes les lignes des écritures concernées (au lieu d'un SELECT par ligne)
         const idsEcritures = [...new Set(
@@ -1345,14 +1302,12 @@ exports.executeAll = async (req, res) => {
                 details = '${detailsJson}'
             WHERE id = ${controle.id}
           `;
-          console.log(`[DEBUG UPDATE] Type ${type}: anomalies=${anomaliesControle.length}, controle.id=${controle.id}`);
           await db.sequelize.query(updateQuery, { type: db.Sequelize.QueryTypes.UPDATE });
         }
       }
 
       // ===== CONTRÔLE UTIL_CPT_TVA =====
       else if (type === 'UTIL_CPT_TVA') {
-        // console.log('DEBUG UTIL_CPT_TVA - Démarrage du contrôle');
 
         // 1. Récupérer les comptes TVA immobilisation depuis la liste CRM (tva_comptes_nature, nature = IMMO)
         //    Saisie manuelle dans le CRM : comptes TVA (445...) tagués IMMO. On récupère le compte
@@ -1364,13 +1319,10 @@ exports.executeAll = async (req, res) => {
           WHERE tcn.id_dossier = ${id_dossier}
             AND tcn.nature = 'IMMO'
         `;
-        // console.log('DEBUG UTIL_CPT_TVA - paramTvaQuery:', paramTvaQuery);
         const paramTvaImmo = await db.sequelize.query(paramTvaQuery, { type: db.Sequelize.QueryTypes.SELECT });
-        // console.log('DEBUG UTIL_CPT_TVA - Comptes TVA immo trouvés:', paramTvaImmo.length);
 
         // Créer un Set des comptes TVA immobilisation pour recherche rapide
         const comptesTvaImmo = new Set(paramTvaImmo.map(p => p.compte_tva).filter(Boolean));
-        // console.log('DEBUG UTIL_CPT_TVA - Set des comptes TVA immo:', [...comptesTvaImmo]);
 
         // Construire la condition pour récupérer les écritures (classe 2 OU comptes TVA immo)
         let tvaConditions = [];
@@ -1391,7 +1343,6 @@ exports.executeAll = async (req, res) => {
         `;
         const ranJournals = await db.sequelize.query(ranJournalsQuery, { type: db.Sequelize.QueryTypes.SELECT });
         const ranJournalIds = ranJournals.map(j => j.id).filter(Boolean);
-        // console.log('DEBUG UTIL_CPT_TVA - Journaux RAN à exclure:', ranJournalIds);
 
         // Construire la condition d'exclusion RAN
         const ranExcludeCondition = ranJournalIds.length > 0
@@ -1408,9 +1359,7 @@ exports.executeAll = async (req, res) => {
             ${ranExcludeCondition}
             ${dateCondition}
         `;
-        // console.log('DEBUG UTIL_CPT_TVA - ecrituresQuery:', ecrituresQuery);
         const ecritures = await db.sequelize.query(ecrituresQuery, { type: db.Sequelize.QueryTypes.SELECT });
-        // console.log('DEBUG UTIL_CPT_TVA - Nombre total de lignes:', ecritures.length);
 
         // Grouper les lignes par id_ecriture
         const ecrituresById = {};
@@ -1424,7 +1373,6 @@ exports.executeAll = async (req, res) => {
           ecrituresById[idEcriture].push(ligne);
         }
 
-        // console.log('DEBUG UTIL_CPT_TVA - Nombre d\'écritures uniques:', Object.keys(ecrituresById).length);
 
         // 3. Vérifier chaque écriture
         for (const [idEcriture, lignes] of Object.entries(ecrituresById)) {
@@ -1522,7 +1470,6 @@ exports.executeAll = async (req, res) => {
                 details = '${detailsJson}'
             WHERE id = ${controle.id}
           `;
-          console.log(`[DEBUG UPDATE] Type ${type}: anomalies=${anomaliesControle.length}, controle.id=${controle.id}`);
           await db.sequelize.query(updateQuery, { type: db.Sequelize.QueryTypes.UPDATE });
         }
       }
@@ -1530,11 +1477,6 @@ exports.executeAll = async (req, res) => {
       // ===== CONTRÔLE ATYPIQUE =====
       else if (type === 'ATYPIQUE') {
         const atypiqueAnomalies = []; // collecte pour insertion groupée
-        // console.log('\n========================================');
-        // console.log('🚀 CONTRÔLE ATYPIQUE DÉMARRÉ');
-        // console.log('========================================');
-        // console.log('Nombre de contrôles ATYPIQUE:', controles.length);
-        // console.log('IDs des contrôles:', controles.map(c => c.id_controle));
 
         // Traiter chaque contrôle individuellement avec son propre paramUn
         for (const controle of controles) {
@@ -1549,8 +1491,6 @@ exports.executeAll = async (req, res) => {
           const kRows = await db.sequelize.query(kQuery, { type: db.Sequelize.QueryTypes.SELECT });
           const paramUnDb = kRows?.[0]?.paramUn;
           const K = (paramUnDb === null || paramUnDb === undefined || paramUnDb === '') ? 3 : Number(paramUnDb);
-          console.log(`[DEBUG ATYPIQUE] Contrôle ${controle.id_controle} avec K=${K} (paramUn lu: ${paramUnDb})`);
-          console.log(`[DEBUG ATYPIQUE] dateCondition utilisée: ${dateCondition || 'AUCUNE'}`);
 
           // Vérifier d'abord les données brutes
           const baseQuery = `
@@ -1575,7 +1515,6 @@ exports.executeAll = async (req, res) => {
             LIMIT 10
           `;
           const baseRows = await db.sequelize.query(baseQuery, { type: db.Sequelize.QueryTypes.SELECT });
-          console.log(`[DEBUG ATYPIQUE] Base data sample (${baseRows.length} total):`, baseRows);
 
           // Requête pour ce contrôle spécifique avec son K
           const atypiqueQuery = `
@@ -1619,11 +1558,8 @@ exports.executeAll = async (req, res) => {
             ORDER BY b.compteaux ASC, b.dateecriture ASC, b.id ASC
           `;
 
-          console.log(`[DEBUG ATYPIQUE] Requête: ${atypiqueQuery}`);
           const rows = await db.sequelize.query(atypiqueQuery, { type: db.Sequelize.QueryTypes.SELECT });
-          console.log(`[DEBUG ATYPIQUE] Contrôle ${controle.id_controle}: ${rows.length} lignes atypiques trouvées`);
           if (rows.length > 0) {
-            console.log(`[DEBUG ATYPIQUE] Première ligne trouvée:`, rows[0]);
           }
 
           for (const row of rows) {
@@ -1705,11 +1641,9 @@ exports.executeAll = async (req, res) => {
                 details = '${detailsJson}'
             WHERE id = ${controle.id}
           `;
-          console.log(`[DEBUG UPDATE] Type ${type}: anomalies=${anomaliesControle.length}, controle.id=${controle.id}`);
           await db.sequelize.query(updateQuery, { type: db.Sequelize.QueryTypes.UPDATE });
         }
 
-        // console.log('DEBUG ATYPIQUE -', anomaliesDetectees.length, 'anomalies détectées au total');
       }
 
       resultsByType[type] = {
@@ -1718,7 +1652,6 @@ exports.executeAll = async (req, res) => {
         anomalies: anomaliesDetectees
       };
 
-      // console.log(`Type ${type}: ${anomaliesDetectees.length} anomalies detected`);
     }
 
     const totalEcritures = await db.tableControleAnomalies.count({
@@ -1755,11 +1688,6 @@ exports.saveCommentaireAnomalie = async (req, res) => {
     const { valide = false, commentaire = '', id_periode } = req.body;
 
     // 🔥 LOGS IMPORTANTS
-    console.log("===== DEBUG UPDATE ANOMALIE =====");
-    console.log("PARAMS:", req.params);
-    console.log("BODY:", req.body);
-    console.log("ID ANOMALIE:", id_anomalie);
-    console.log("================================");
 
     if (!id_anomalie) {
       return res.status(400).json({
@@ -1779,10 +1707,8 @@ exports.saveCommentaireAnomalie = async (req, res) => {
     `, { type: db.Sequelize.QueryTypes.SELECT });
 
     // 🔥 LOG
-    console.log("ANOMALIE TROUVÉE:", anomalie);
 
     if (anomalie.length === 0) {
-      console.log("❌ AUCUNE ANOMALIE TROUVÉE EN DB");
       return res.status(404).json({
         state: false,
         message: 'Anomalie non trouvée'
@@ -1802,7 +1728,6 @@ exports.saveCommentaireAnomalie = async (req, res) => {
       commentaire
     });
 
-    console.log("✅ UPDATE OK");
 
     return res.json({
       state: true,

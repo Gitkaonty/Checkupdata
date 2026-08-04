@@ -72,7 +72,6 @@ const getRevisionDetailsData = async (id_compte, id_dossier, id_exercice, id_con
   const idJnlKeys = [...new Set(anomalies.map(a => a.id_jnl).filter(Boolean))];
   let journalLines = [];
 
-  console.log('[REVISION][DATA] type:', type, 'idJnlKeys count:', idJnlKeys.length, 'idJnlKeys sample:', idJnlKeys.slice(0, 5));
 
   if (idJnlKeys.length > 0) {
     let rawLines = [];
@@ -104,7 +103,6 @@ const getRevisionDetailsData = async (id_compte, id_dossier, id_exercice, id_con
     journalLines = rawLines.map(r => (r?.get ? r.get({ plain: true }) : r));
   }
 
-  console.log('[REVISION][DATA] journalLines fetched:', journalLines.length);
 
   const anomaliesWithLines = anomalies.map((a) => {
     const anomalieData = a.toJSON();
@@ -241,11 +239,7 @@ exports.exportPdf = async (req, res) => {
     ];
 
     // ---------------- CONTENT ----------------
-    console.log('[REVISION][PDF] anomalies count:', anomalies?.length, 'type:', type);
     if (anomalies.length > 0) {
-      console.log('[REVISION][PDF] first anomaly keys:', Object.keys(anomalies[0]));
-      console.log('[REVISION][PDF] first anomaly journalLines count:', anomalies[0]?.journalLines?.length);
-      console.log('[REVISION][PDF] first anomaly id_jnl:', anomalies[0]?.id_jnl, 'compteNum:', anomalies[0]?.compteNum);
     }
 
     if (!anomalies || anomalies.length === 0) {
@@ -257,7 +251,6 @@ exports.exportPdf = async (req, res) => {
 
       const grouped = groupAnomaliesByCompte(anomalies, true);
       const comptes = Object.keys(grouped).sort();
-      console.log('[REVISION][PDF] ATYPIQUE grouped comptes:', comptes.length, comptes.slice(0, 5));
 
       comptes.forEach((compte) => {
         const data = grouped[compte];
@@ -1592,7 +1585,7 @@ exports.exportGlobalPdf = async (req, res) => {
     headerColumns.push({
       width: '*',
       stack: [
-        { text: 'RÉVISION GLOBALE', style: 'header', alignment: 'center' },
+        { text: 'REVUE ANALYTIQUE N/N-1', style: 'header', alignment: 'center' },
         { text: `Dossier : ${dossier?.dossier || ''}`, style: 'subheader', alignment: 'center' },
         { text: `Période : ${periodeText}`, style: 'subheader2', alignment: 'center' }
       ]
