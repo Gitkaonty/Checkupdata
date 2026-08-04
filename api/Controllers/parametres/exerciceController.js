@@ -38,7 +38,6 @@ const getListeExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -50,12 +49,10 @@ const getListeSituation = async (req, res) => {
       list: [],
     });
   } catch (error) {
-    console.log(error);
   }
 }
 
 const copydata = async (id_compte, id_dossier, createExercice, action) => {
-  console.log(`Exercice créé avec succès - ID: ${createExercice.id}, Action: ${action}`);
 
   if (!revisionControleMatrix || !revisionControle) {
     return;
@@ -126,7 +123,6 @@ const createFirstExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -186,7 +182,6 @@ const createNextExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -246,7 +241,6 @@ const createPreviewExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -303,7 +297,6 @@ const verrouillerExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -360,7 +353,6 @@ const deverrouillerExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -429,7 +421,6 @@ const deleteExercice = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -455,7 +446,6 @@ const getListeExerciceById = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -534,7 +524,6 @@ const getListePeriodes = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
   }
 }
@@ -590,7 +579,6 @@ const createPeriode = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
   }
 }
@@ -641,7 +629,6 @@ const updatePeriode = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
   }
 }
@@ -704,7 +691,6 @@ const deletePeriode = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
   }
 }

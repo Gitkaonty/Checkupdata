@@ -527,7 +527,6 @@ exports.listDetailsImmoLignes = async (req, res) => {
                 id_detail_immo: detailImmoId,
             },
             order: [['id', 'ASC']],
-            raw: true,
         });
         return res.json({ state: true, list: rows || [] });
     } catch (err) {
@@ -610,6 +609,10 @@ exports.generateImmoEcritures = async (req, res) => {
             `, {
                 replacements: { fileId, compteId, exerciceId },
                 type: db.Sequelize.QueryTypes.SELECT,
+            }).then(result => {
+                if (result && result.length > 0) {
+                }
+                return result;
             }),
             db.detailsImmoLignes.findAll({
                 where: { id_dossier: fileId, id_compte: compteId, id_exercice: exerciceId },

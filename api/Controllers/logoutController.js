@@ -3,7 +3,6 @@ require('dotenv').config();
 
 const User = db.users;
 const dossierPasswordAccess = db.dossierPasswordAccess;
-console.log(db);
 
 const handleLogout = async (req, res) => {
     const cookies = req.cookies;

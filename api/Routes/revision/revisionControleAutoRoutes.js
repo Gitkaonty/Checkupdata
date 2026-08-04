@@ -4,10 +4,8 @@ const revisionControleAutoController = require('../../Controllers/revision/revis
 const revisionControleAnomaliesController = require('../../Controllers/revision/revisionControleAnomaliesController');
 const revisionExportController = require('../../Controllers/revision/revisionExportController');
 const verifyJWT = require('../../Middlewares/verifyJWT');
-console.log("✅ revisionControleAutoRoutes LOADED");
 // Middleware d'authentification
 router.use((req, res, next) => {
-    console.log("➡️ ROUTE HIT:", req.method, req.originalUrl);
     next();
 });
 

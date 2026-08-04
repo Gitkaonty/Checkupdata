@@ -33,7 +33,6 @@ const tryReadLogo = () => {
       return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
     }
   } catch (err) {
-    console.log('Logo not found:', err.message);
   }
   return null;
 };
@@ -83,6 +82,39 @@ const getSuspenseData = async (id_compte, id_dossier, id_exercice, date_debut, d
 
 exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
     return await getSuspenseData(id_compte, id_dossier, id_exercice, date_debut, date_fin);
+};
+
+// Stats pour le dashboard : nombre d'écritures en suspens (comptes 47x) sur la période.
+// Pas de notion de validation ici → restantes = total.
+exports.getStats = async (req, res) => {
+  try {
+    const { id_compte, id_dossier, id_exercice } = req.params;
+    const { date_debut, date_fin } = req.query;
+
+    const whereClause = {
+      id_compte: parseInt(id_compte),
+      id_dossier: parseInt(id_dossier),
+      id_exercice: parseInt(id_exercice),
+      comptegen: { [Op.iLike]: '47%' }
+    };
+    if (date_debut && date_fin) {
+      whereClause[Op.and] = [where(fn('DATE', col('dateecriture')), { [Op.between]: [date_debut, date_fin] })];
+    } else if (date_debut) {
+      whereClause[Op.and] = [where(fn('DATE', col('dateecriture')), { [Op.gte]: date_debut })];
+    } else if (date_fin) {
+      whereClause[Op.and] = [where(fn('DATE', col('dateecriture')), { [Op.lte]: date_fin })];
+    }
+
+    const count = await journals.count({ where: whereClause });
+
+    return res.json({
+      state: true,
+      data: { total_anomalies: count, total: count, restantes: count, nonValide: count, nbLignes: count }
+    });
+  } catch (error) {
+    console.error('Erreur stats écritures en suspens:', error);
+    return res.status(500).json({ state: false, msg: 'Erreur serveur', error: error.message });
+  }
 };
 
 exports.buildPdfSection = (data, ctx = {}) => {

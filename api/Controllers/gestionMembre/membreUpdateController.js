@@ -53,7 +53,6 @@ exports.updateRow = async (req, res) => {
 
     if (updated) {
       const updatedRow = await MembreUpdate.findByPk(id);
-      console.log("Ligne mise à jour en base :", updatedRow.toJSON());
       return res.status(200).json(updatedRow);
     }
     
@@ -176,7 +175,6 @@ exports.importExcelUpdate = async (req, res) => {
 
         // 4. Insertion groupée
 
-        console.log(values);
 
         await MembreUpdate.bulkCreate(values, { timestamps: true });
 

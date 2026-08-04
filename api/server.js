@@ -32,7 +32,6 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 //synchronizing the database and forcing it to false so we dont lose data (ito no ampiasaina ra toa ka executena ny DROP TABLE am sequelize)
 //db.sequelize.sync({ force: true }).then(() => {
-//console.log("db has been re sync")
 //})
 
 // Static folder
@@ -40,7 +39,6 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 //synchronizing the database and forcing it to false so we dont lose data
 db.sequelize.sync().then(() => {
-    console.log("db has been re synchronized")
 })
 
 //----------------------------------------------------------------------------------------------------------------
@@ -170,5 +168,4 @@ app.get('/', function (req, res) {
 })
 
 app.listen(PORT, () => {
-    console.log(`listen on port ${PORT}`);
 });

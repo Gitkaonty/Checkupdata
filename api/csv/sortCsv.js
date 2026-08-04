@@ -22,4 +22,3 @@ const sortedCsv = rows.map(row => row.join(',')).join('\n');
 // Écrire le fichier trié
 fs.writeFileSync(outputFile, sortedCsv, 'utf8');
 
-console.log(`✅ Fichier trié sauvegardé dans : ${outputFile}`);

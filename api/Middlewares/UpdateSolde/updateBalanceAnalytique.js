@@ -264,7 +264,6 @@ const updateSold = async (compte_id, dossier_id, exercice_id, listecompte, allCo
     } catch (error) {
         stateUpdate = true;
         console.error("Erreur dans updateSold :", error.message);
-        console.log(error);
         return stateUpdate;
     }
 }

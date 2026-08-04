@@ -56,7 +56,6 @@ const recupPc = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 };
 
@@ -765,7 +764,6 @@ const AddCptToPc = async (req, res) => {
       res.json(resData);
     }
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -806,7 +804,6 @@ const keepListCptChgTvaAssoc = async (req, res) => {
     }
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 };
 
@@ -883,7 +880,6 @@ const deleteItemPc = async (req, res) => {
     resData.msgUndeletableCpt = msgErrorDelete;
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -1112,7 +1108,6 @@ const recupPcClasseSix = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -1187,7 +1182,6 @@ const recupPcCompteIsi = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -1311,7 +1305,6 @@ const recupPcConsolidation = async (req, res) => {
 
     return res.json(resData);
   } catch (error) {
-    console.log(error);
   }
 };
 
