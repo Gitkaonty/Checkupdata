@@ -149,7 +149,10 @@ const findControl = (id) => ALL_CONTROLS.find((c) => c.id === id);
 const DEFAULT_CONTROL = ALL_CONTROLS[0]?.id || 'doublons';
 
 const DetailsControles = () => {
-  const { selectedExerciceId, selectedPeriodeId, selectedPeriodeDates, setSelectedExerciceId, setSelectedPeriodeId } = useContext(ExercicePeriodeContext);
+  const { selectedExerciceId, selectedPeriodeId, selectedPeriodeDates, setSelectedExerciceId, setSelectedPeriodeId, listePeriodes, handleChangePeriode: ctxChangePeriode } = useContext(ExercicePeriodeContext);
+
+  // Une période est-elle réellement sélectionnée ? (sinon on vide les contrôles)
+  const hasPeriode = !!selectedPeriodeId && selectedPeriodeId !== 'exercice';
   const { auth } = useAuth();
   const axiosPrivate = useAxiosPrivate();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
@@ -178,7 +181,9 @@ const DetailsControles = () => {
   };
 
   const handleChangePeriode = (periodeId) => {
-    setSelectedPeriodeId(periodeId);
+    // Utilise le handler du contexte pour aussi renseigner les dates de la période
+    if (ctxChangePeriode) ctxChangePeriode(periodeId);
+    else setSelectedPeriodeId(periodeId);
   };
 
   const activeRef = () => {

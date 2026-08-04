@@ -851,8 +851,8 @@ const ConsultationComptes = () => {
           separator={<NavigateNext fontSize="small" />}
           sx={{ mb: 2, '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 600 } }}
         >
-          <Link underline="hover" color="inherit" href="/dashboard"
-            sx={{ display: 'flex', alignItems: 'center' }}
+          <Link underline="hover" color="inherit" onClick={() => navigate(`/tab/dashboard/${fileId}`)}
+            sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
             <DashboardOutlined sx={{ mr: 0.5, fontSize: 20 }} /> Dashboard
           </Link>

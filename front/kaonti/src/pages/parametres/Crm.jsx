@@ -4,26 +4,19 @@ import {
   Box, Typography, Stack, Button, IconButton, Paper, Grid,
   TextField, Chip, Breadcrumbs, Link, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  List, ListItemButton, ListItemText, ListItemIcon,
-  Tab, Tabs, Select, InputAdornment,
-  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, FormHelperText, Autocomplete,
-  Input
+  List, ListItemButton, ListItemText, ListItemIcon, Select,
+  Autocomplete,
+
 } from '@mui/material';
 import {
   SettingsOutlined, NavigateNext, BusinessOutlined,
   AddOutlined, EditOutlined, DeleteOutline, SaveOutlined,
   AnalyticsOutlined, MenuBookOutlined, AccountTreeOutlined,
-  ListAltOutlined, AdminPanelSettingsOutlined, CheckOutlined, CloseOutlined, ChevronRight,
+  ListAltOutlined, AdminPanelSettingsOutlined, CheckOutlined, CloseOutlined, 
   DashboardOutlined,
-  CheckCircleOutline as CheckIcon,
-  Cancel as CancelIcon
+
 } from '@mui/icons-material';
 import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import DeleteIcon from '@mui/icons-material/DeleteOutline';
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import {
@@ -90,27 +83,6 @@ const primaryBtnSx = {
   boxShadow: 'none',
   '&:hover': { bgcolor: T.accentDark },
   '&.Mui-disabled': { bgcolor: T.ledger, color: T.faint },
-};
-// Style commun des DataGrid (en-têtes « ledger », lignes fines)
-const gridSx = {
-  border: 'none',
-  flex: 1,
-  minHeight: 0,
-  fontSize: '12.5px',
-  '& .MuiDataGrid-columnHeaders': {
-    bgcolor: T.ledger,
-    borderBottom: `1px solid ${T.line}`,
-    '& .MuiDataGrid-columnHeaderTitle': {
-      fontSize: '11px',
-      fontWeight: 700,
-      color: T.muted,
-      letterSpacing: '.3px',
-      textTransform: 'uppercase',
-    },
-  },
-  '& .MuiDataGrid-cell': { borderBottom: '1px solid #F1F4F6', '&:focus': { outline: 'none' } },
-  '& .MuiDataGrid-row:hover': { bgcolor: '#FAFBFB' },
-  '& .Mui-selected': { bgcolor: `${T.accW} !important` },
 };
 
 // Composant DataGrid pour Codes Journaux
@@ -1887,7 +1859,7 @@ const PlanComptableDataGrid = ({ fileId, compteId, axiosPrivate }) => {
 // ─── Comptes TVA (compte + nature) — liste manuelle utilisée par le contrôle UTIL_CPT_TVA ───
 const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
   const [liste, setListe] = useState([]);
-  const [natures, setNatures] = useState(['IMMO', 'DED', 'COLL', 'CA', 'AUTRE']);
+  const [natures, setNatures] = useState(['IMMO', 'DED', 'COLL', 'AUTRE']);
   const [loading, setLoading] = useState(false);
   const [selectedCompte, setSelectedCompte] = useState(null);
   const [nature, setNature] = useState('IMMO');
@@ -1962,7 +1934,18 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
       .finally(() => setDeleteId(null));
   };
 
-  const natureColor = (n) => (n === 'IMMO' ? T.accent : T.muted);
+  const NATURE_LABELS = { IMMO: 'Immobilisations', DED: 'Déductible', COLL: 'Collectée', AUTRE: 'Intra Com' };
+  const NATURE_COLORS = { IMMO: T.accent, DED: '#3A6EA5', COLL: '#1F8A70', AUTRE: '#B5791A' };
+  const natureColor = (n) => NATURE_COLORS[n] || T.muted;
+
+  // Regrouper les comptes TVA par nature → un tableau distinct par nature
+  const groupsMap = liste.reduce((acc, r) => { (acc[r.nature] = acc[r.nature] || []).push(r); return acc; }, {});
+  const NATURE_ORDER = ['IMMO', 'DED', 'COLL', 'AUTRE'];
+  const groupKeys = Object.keys(groupsMap).sort((a, b) => {
+    const ia = NATURE_ORDER.indexOf(a), ib = NATURE_ORDER.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+  const thSx = { fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger };
 
   const FieldLabel = ({ children }) => (
     <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.02rem' }}>
@@ -1983,13 +1966,13 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
               isOptionEqualToValue={(opt, val) => Number(opt?.id) === Number(val?.id)}
               getOptionLabel={(opt) => { if (!opt) return ''; const lib = opt.libelle || opt.intitule; return `${opt.compte}${lib ? ' — ' + lib : ''}`; }}
               size="small"
-              renderInput={(params) => (<TextField {...params} placeholder="Sélectionner un compte (ex. 445…)" />)}
+              renderInput={(params) => (<TextField {...params} placeholder="Sélectionner un compte " />)}
             />
           </Grid>
           <Grid item xs={12} md={4}>
             <FieldLabel>Nature</FieldLabel>
             <Select value={nature} onChange={(e) => setNature(e.target.value)} fullWidth size="small">
-              {natures.map((n) => (<MenuItem key={n} value={n}>{n}</MenuItem>))}
+              {natures.map((n) => (<MenuItem key={n} value={n}>{NATURE_LABELS[n] || n}</MenuItem>))}
             </Select>
           </Grid>
           <Grid item xs={12} md={3} sx={{ display: 'flex', gap: 1 }}>
@@ -2009,45 +1992,50 @@ const ComptesTvaSection = ({ fileId, compteId, axiosPrivate, pc = [] }) => {
         </Grid>
       </Paper>
 
-      <Paper elevation={0} sx={{ ...panelSx, p: 0 }}>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger }}>Compte</TableCell>
-                <TableCell sx={{ fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger }}>Nature</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, color: T.muted, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.3px', bgcolor: T.ledger, width: 110 }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {liste.length === 0 && !loading && (
-                <TableRow>
-                  <TableCell colSpan={3} sx={{ textAlign: 'center', color: T.faint, py: 4, fontSize: '13px' }}>
-                    Aucun compte TVA saisi.
-                  </TableCell>
-                </TableRow>
-              )}
-              {liste.map((row) => (
-                <TableRow key={row.id} hover>
-                  <TableCell sx={{ fontFamily: MONO, fontSize: '13px', color: T.ink }}>{row.compte}</TableCell>
-                  <TableCell>
-                    <Chip label={row.nature} size="small"
-                      sx={{ height: 22, fontSize: '11px', fontWeight: 700, color: natureColor(row.nature), bgcolor: `${natureColor(row.nature)}14` }} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => handleEdit(row)} sx={{ color: T.muted }}>
-                      <EditOutlined fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => setDeleteId(row.id)} sx={{ color: T.neg }}>
-                      <DeleteOutline fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+      {liste.length === 0 && !loading ? (
+        <Paper elevation={0} sx={{ ...panelSx, p: 4, textAlign: 'center' }}>
+          <Typography sx={{ color: T.faint, fontSize: '13px' }}>Aucun compte TVA saisi.</Typography>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {groupKeys.map((n) => (
+            <Paper key={n} elevation={0} sx={{ ...panelSx, p: 0, overflow: 'hidden' }}>
+              {/* En-tête du tableau de la nature */}
+              <Box sx={{ px: 2, py: 1.2, bgcolor: `${natureColor(n)}12`, borderBottom: `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 18, borderRadius: 2, bgcolor: natureColor(n) }} />
+                <Typography sx={{ fontSize: '13px', fontWeight: 800, color: T.ink }}>{NATURE_LABELS[n] || 'Comptes TVA'}</Typography>
+                <Chip label={n} size="small" sx={{ height: 20, fontSize: '10px', fontWeight: 700, color: natureColor(n), bgcolor: `${natureColor(n)}18` }} />
+                <Typography sx={{ ml: 'auto', fontSize: '12px', fontWeight: 600, color: T.muted }}>{groupsMap[n].length} compte{groupsMap[n].length > 1 ? 's' : ''}</Typography>
+              </Box>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={thSx}>Compte</TableCell>
+                      <TableCell align="right" sx={{ ...thSx, width: 110 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {groupsMap[n].map((row) => (
+                      <TableRow key={row.id} hover>
+                        <TableCell sx={{ fontFamily: MONO, fontSize: '13px', color: T.ink }}>{row.compte}</TableCell>
+                        <TableCell align="right">
+                          <IconButton size="small" onClick={() => handleEdit(row)} sx={{ color: T.muted }}>
+                            <EditOutlined fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => setDeleteId(row.id)} sx={{ color: T.neg }}>
+                            <DeleteOutline fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       <ConfirmDeleteDialog
         open={!!deleteId}
@@ -2449,7 +2437,7 @@ const CRM = () => {
           separator={<NavigateNext sx={{ fontSize: 16, color: T.faint }} />}
           sx={{ mb: 1.5, '& .MuiTypography-root, & a': { fontSize: '12.5px', fontWeight: 600 } }}
         >
-          <Link underline="hover" href="/dashboard" sx={{ display: 'flex', alignItems: 'center', color: T.muted }}>
+          <Link underline="hover" onClick={() => navigate(`/tab/dashboard/${fileId}`)} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: T.muted }}>
             <DashboardOutlined sx={{ mr: 0.5, fontSize: 16 }} /> Dashboard
           </Link>
           <Typography sx={{ color: T.ink, fontWeight: 700 }}>Paramètres · CRM</Typography>

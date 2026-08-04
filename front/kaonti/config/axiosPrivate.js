@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import axios from "axios";
 import useAuth from "../src/hooks/useAuth";
 
-const BASE_URL = "http://localhost:5100";
+// const BASE_URL = "http://localhost:5100";
 //const BASE_URL = 'https://finance.inframad.com/api';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const axiosPrivate = axios.create({
     baseURL: BASE_URL,

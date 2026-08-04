@@ -1,8 +1,11 @@
 const allowedOrigins = [
     'http://localhost:5000',
     'http://localhost:5100',
+    'http://localhost:5300',
     'https://finance.inframad.com',
     'https://www.finance.inframad.com',
+    'https://plateforme-ged.com',
+    'https://www.plateforme-ged.com',
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5100',

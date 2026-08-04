@@ -5,6 +5,16 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
+const { valideIconCell, xlValide, statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
+
+// Stats doublons : total = nb de groupes ; restant = groupes non validés
+const doublonStats = (resultats) => {
+  const g = {};
+  (resultats || []).forEach(r => { if (g[r.id_doublon] === undefined) g[r.id_doublon] = (r.statut === 'VALIDE'); });
+  const total = Object.keys(g).length;
+  const restant = Object.values(g).filter(v => !v).length;
+  return { total, restant };
+};
 
 // ==========================================
 // SECTION 1: Extraction des critères
@@ -433,20 +443,26 @@ exports.getStats = async (req, res) => {
         const { id_dossier, id_exercice } = req.params;
         const { id_periode } = req.query;
 
-        const whereClause = { id_dossier, id_exercice };
-        if (id_periode) whereClause.id_periode = id_periode;
+        const replacements = { id_dossier, id_exercice };
+        let whereSql = 'id_dossier = :id_dossier AND id_exercice = :id_exercice';
+        if (id_periode) {
+            whereSql += ' AND id_periode = :id_periode';
+            replacements.id_periode = id_periode;
+        }
 
-        const nbLignes = await db.rechercheDoublons.count({ where: whereClause });
-        const nbGroupes = await db.rechercheDoublons.count({
-            where: whereClause,
-            distinct: true,
-            col: 'id_doublon'
-        });
-        const nbGroupesValides = await db.rechercheDoublons.count({
-            where: { ...whereClause, statut: 'VALIDE' },
-            distinct: true,
-            col: 'id_doublon'
-        });
+        const [stats] = await db.sequelize.query(
+            `SELECT
+                COUNT(*) AS nb_lignes,
+                COUNT(DISTINCT id_doublon) AS nb_groupes,
+                COUNT(DISTINCT id_doublon) FILTER (WHERE statut = 'VALIDE') AS nb_valides
+             FROM recherche_doublons
+             WHERE ${whereSql}`,
+            { type: QueryTypes.SELECT, replacements }
+        );
+
+        const nbLignes = Number(stats.nb_lignes) || 0;
+        const nbGroupes = Number(stats.nb_groupes) || 0;
+        const nbGroupesValides = Number(stats.nb_valides) || 0;
         const nbGroupesNonValides = Math.max(nbGroupes - nbGroupesValides, 0);
 
         return res.status(200).json({
@@ -590,17 +606,7 @@ exports.validerGroupeDoublon = async (req, res) => {
         }
 
         const idsJnl = ecrituresGroupe.map(e => e.id_jnl);
-        
-        // Vérifier d'abord ce qui existe
-        const avant = await db.rechercheDoublons.findAll({
-            where: { 
-                id_dossier, 
-                id_exercice, 
-                id_doublon: parseInt(id_doublon) 
-            },
-            transaction
-        });
-        
+
         const [updateRechercheResult] = await db.rechercheDoublons.update(
             { 
                 statut: 'VALIDE',
@@ -615,16 +621,7 @@ exports.validerGroupeDoublon = async (req, res) => {
                 },
                 transaction
             }
-        );        
-        // Vérifier après
-        const apres = await db.rechercheDoublons.findAll({
-            where: { 
-                id_dossier, 
-                id_exercice, 
-                id_doublon: parseInt(id_doublon) 
-            },
-            transaction
-        });
+        );
 
         await transaction.commit();
 
@@ -726,7 +723,7 @@ exports.buildPdfSection = (data, ctx = {}) => {
         { text: item.libelle || '', style: 'cell', fillColor: rowColor },
         { text: formatMontant(item.debit), alignment: 'right', style: 'cell', fillColor: rowColor },
         { text: formatMontant(item.credit), alignment: 'right', style: 'cell', fillColor: rowColor },
-        { text: item.statut === 'VALIDE' ? 'Validé' : 'Non validé', alignment: 'center', style: 'cell', fillColor: rowColor }
+        { ...valideIconCell(item.statut === 'VALIDE'), fillColor: rowColor }
       ]);
       rowCounter++;
     });
@@ -771,7 +768,11 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
   worksheet.mergeCells('A3:I3');
   worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
 
-  // Ligne 4 : vide
+  // Ligne 4 : statistiques (Anomalies / Restant à valider)
+  {
+    const { total, restant } = doublonStats(resultats);
+    writeExcelStats(worksheet, 4, total, restant);
+  }
 
   // --- En-tête du tableau (ligne 5) ---
   worksheet.getRow(5).values = ['Groupe', 'Compte', 'Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Statut'];
@@ -793,10 +794,11 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
       item.libelle || '',
       item.debit || 0,
       item.credit || 0,
-      item.statut === 'VALIDE' ? 'Validé' : 'Non validé'
+      xlValide(item.statut === 'VALIDE')
     ];
     row.getCell(7).numFmt = '#,##0.00';
     row.getCell(8).numFmt = '#,##0.00';
+    row.getCell(9).alignment = { horizontal: 'center' };
     rowIndex++;
   });
 
@@ -828,7 +830,7 @@ exports.exportPdf = async (req, res) => {
       stack: [
         { text: 'RECHERCHE DE DOUBLONS', style: 'header', alignment: 'center' },
         { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
-        { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
+        { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader2', alignment: 'center' }
       ]
     });
 
@@ -840,7 +842,8 @@ exports.exportPdf = async (req, res) => {
       pageMargins: [15, 15, 15, 25],
       defaultStyle: { font: 'Helvetica', fontSize: 8 },
       content: [
-        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
+        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
+        (() => { const { total, restant } = doublonStats(resultats); return statsBand(total, restant); })(),
         ...section.content
       ],
       styles: {
@@ -874,7 +877,7 @@ exports.exportExcel = async (req, res) => {
     const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
     const ctx = {
       dossierName: dossier?.dossier || id_dossier,
-      periodeText: exercice?.libelle || id_exercice
+      periodeText: exerciceLabel(exercice) || id_exercice
     };
 
     const workbook = new ExcelJS.Workbook();

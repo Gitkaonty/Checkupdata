@@ -51,11 +51,11 @@ db.periodes = require('./periodesModel')(sequelize, DataTypes);
 db.compteDossiers = require('./compteDossierModel')(sequelize, DataTypes);
 db.comptePortefeuilles = require('./comptePortefeuilleModel')(sequelize, DataTypes);
 
-db.revision = require('./RevisionModel')(sequelize, DataTypes);
-db.revisionControle = require('./RevisionControleModel')(sequelize, DataTypes);
-db.revisionControleMatrix = require('./RevisionControleMatrixModel')(sequelize, DataTypes);
+db.revision = require('./revisionModel')(sequelize, DataTypes);
+db.revisionControle = require('./revisionControleModel')(sequelize, DataTypes);
+db.revisionControleMatrix = require('./revisionControleMatrixModel')(sequelize, DataTypes);
 db.tableControleAnomalies = require('./tableControleAnomaliesModel')(sequelize, DataTypes);
-db.revisionCommentaireAnomalies = require('./RevisionCommentaireAnomaliesModel')(sequelize, DataTypes);
+db.revisionCommentaireAnomalies = require('./revisionCommentaireAnomaliesModel')(sequelize, DataTypes);
 //paramétres - revision controle
 //db.revisionControleMatrix = require('./revisionControleMatrixModel')(sequelize, DataTypes);
 //db.revisionControle = require('./revisionControleModel')(sequelize, DataTypes);

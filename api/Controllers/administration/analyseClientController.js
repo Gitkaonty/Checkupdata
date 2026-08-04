@@ -106,38 +106,6 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
     ORDER BY j.compteaux, j.dateecriture
   `;
   
-  // Debug: voir toutes les factures VENTE
-  const debugQuery = `
-    SELECT COUNT(*) as total,
-           COUNT(CASE WHEN j.lettrage IS NULL OR j.lettrage = '' THEN 1 END) as sans_lettrage,
-           MIN(j.dateecriture) as min_date,
-           MAX(j.dateecriture) as max_date
-    FROM journals j
-    LEFT JOIN codejournals cj ON j.id_journal = cj.id
-    WHERE j.id_dossier = ${id_dossier}
-      AND j.id_exercice = ${id_exercice}
-      AND (j.compteaux LIKE '411%')
-      AND cj.type = 'VENTE'
-  `;
-  const debugResult = await db.sequelize.query(debugQuery, { type: db.Sequelize.QueryTypes.SELECT });
-  
-  // Debug: voir les factures VENTE sans lettrage dans la période
-  const debugQuery2 = `
-    SELECT j.dateecriture, j.lettrage, j.debit, j.credit, j.compteaux,
-           ('${dateControleFormatted}'::date - j.dateecriture) as jours
-    FROM journals j
-    LEFT JOIN codejournals cj ON j.id_journal = cj.id
-    WHERE j.id_dossier = ${id_dossier}
-      AND j.id_exercice = ${id_exercice}
-      AND (j.compteaux LIKE '411%')
-      AND j.dateecriture >= '${dateDebutFormatted}'
-      AND j.dateecriture <= '${dateFinFormatted}'
-      AND cj.type = 'VENTE'
-      AND (j.lettrage IS NULL OR j.lettrage = '')
-    ORDER BY j.dateecriture
-  `;
-  const debugResult2 = await db.sequelize.query(debugQuery2, { type: db.Sequelize.QueryTypes.SELECT });
-  
   const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
   
   return results;

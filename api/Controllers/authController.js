@@ -11,10 +11,13 @@ const userPermission = db.userPermission;
 const permissions = db.permissions;
 
 const rolePermissionMiddleware = require('../Middlewares/RolePermission/rolePermission');
+const { getJwtCookieOptions } = require("../Utils/authCookieOptions");
 const createUserPermission = rolePermissionMiddleware.createUserPermission;
 
 User.belongsTo(Userscomptes, { foreignKey: 'compte_id' });
 Userscomptes.hasMany(User, { foreignKey: 'compte_id' });
+
+const isInProd = process.env.NODE_ENV === 'prod';
 
 const handleLogin = async (req, res) => {
     const { email, password } = req.body;
@@ -29,14 +32,11 @@ const handleLogin = async (req, res) => {
     if (!foundUser) return res.status(401).json({ 'message': 'Compte non trouvé.' });
 
     const id_role = foundUser.role_id;
-    const foundRole = await roles.findByPk(id_role);
-
-    
+    const foundRole = await roles.findByPk(id_role);    
 
     if (!foundRole) return res.status(401).json({ 'message': 'Rôle non trouvé.' });
 
     const match = await bcrypt.compare(password, foundUser.password);
-
     
     if (match) {
         const userRoles = Object.values(foundUser.roles).filter(Boolean);
@@ -91,7 +91,13 @@ const handleLogin = async (req, res) => {
 
         await User.update({ refresh_token: refreshToken }, { where: { id: foundUser.id } });
 
-        res.cookie('jwt', refreshToken, { httpOnly: true, sameSite: 'Lax', maxAge: 24 * 60 * 60 * 1000 });
+        // res.cookie('jwt', refreshToken, { httpOnly: true, sameSite: 'Lax', maxAge: 24 * 60 * 60 * 1000 });
+
+        res.cookie('jwt', refreshToken, {
+            ...getJwtCookieOptions(isInProd),
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
         res.json({ accessToken });
     } else {
         res.sendStatus(401);

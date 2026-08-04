@@ -255,7 +255,7 @@ const DossiersPage = () => {
           <Box sx={{ p: 0.8, bgcolor: '#F0FDFA', borderRadius: '8px', display: 'flex' }}>
             <FolderOutlined sx={{ color: '#10B981', fontSize: 20 }} />
           </Box>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1E293B' }} onClick={() => selectFile(params.row)}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1E293B', cursor: 'pointer', '&:hover': { color: '#10B981', textDecoration: 'underline' } }} onClick={() => selectFile(params.row)}>
             {params.row.dossier}
           </Typography>
         </Stack>

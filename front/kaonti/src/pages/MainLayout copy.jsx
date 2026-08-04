@@ -4,27 +4,14 @@ import {
   Box, Drawer, AppBar, Toolbar, List, Typography, Divider,
   Avatar, Badge, Stack, Menu, MenuItem, Collapse,
   ButtonBase, ListItemButton, ListItemIcon, ListItemText,
-  IconButton, Tooltip
+  IconButton
 } from '@mui/material';
 import {
   DashboardOutlined, HomeOutlined, SettingsOutlined,
   NotificationsOutlined, LogoutOutlined, PersonOutline,
-  ExpandLess, ExpandMore, AccountBalanceWalletOutlined,
-  BusinessOutlined, VerifiedOutlined
+  ExpandLess, ExpandMore, AccountBalanceWalletOutlined, MenuOutlined,
+  BusinessOutlined, HistoryOutlined
 } from '@mui/icons-material';
-
-/* ── Design tokens alignés sur le cockpit comptable pétrole ── */
-const T = {
-  ink: '#0E2733',          // fond du menu / barre
-  accent: '#10B981',       // emerald — accent de surbrillance
-  accentLight: '#10B981',  // accent lisible sur fond sombre
-  accentTint: 'rgba(16,185,129,.12)',
-  accentBorder: 'rgba(16,185,129,.30)',
-  textMuted: 'rgba(255,255,255,.58)',
-  textStrong: '#F1F5F6',
-  line: 'rgba(255,255,255,.08)',
-};
-const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import useLogout from '../hooks/useLogout';
@@ -130,86 +117,39 @@ const MainLayout = ({ children }) => {
     { label: 'Gestion des contrôles', path: '/parametres/gestioncontrole' },
   ];
 
-  // Libellé de section : eyebrow quand déplié, fin filet quand replié
-  const SectionLabel = ({ children }) => (
-    <Box sx={{ px: 1, pt: 2.5, pb: 1, height: 44, display: 'flex', alignItems: 'flex-end' }}>
-      {isHovered ? (
-        <Typography sx={{
-          fontFamily: MONO, fontSize: '.64rem', fontWeight: 600,
-          letterSpacing: '.14em', color: 'rgba(255,255,255,.35)',
-          textTransform: 'uppercase', whiteSpace: 'nowrap',
-        }}>
-          {children}
-        </Typography>
-      ) : (
-        <Divider sx={{ width: '100%', borderColor: T.line }} />
-      )}
-    </Box>
-  );
-
-  // Entrée de premier niveau, avec tooltip en mode réduit
-  const NavItem = ({ icon, label, ...props }) => (
-    <Tooltip title={isHovered ? '' : label} placement="right" arrow>
-      <ListItemButton sx={menuItemStyle} {...props}>
-        <ListItemIcon sx={iconStyle}>{icon}</ListItemIcon>
-        <ListItemText primary={label} sx={{ opacity: isHovered ? 1 : 0, whiteSpace: 'nowrap' }} />
-      </ListItemButton>
-    </Tooltip>
-  );
-
   const drawer = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: T.ink, color: T.textStrong, zIndex: 1200 }}
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#0F172A', color: '#FFFFFF', zIndex: 1200 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* En-tête de marque */}
-      <Box sx={{ height: 72, display: 'flex', alignItems: 'center', gap: 1.5, px: 2.5, flexShrink: 0 }}>
-        <Box sx={{
-          width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          bgcolor: T.accentTint, border: `1px solid ${T.accentBorder}`,
-        }}>
-          <VerifiedOutlined sx={{ color: T.accentLight, fontSize: 20 }} />
-        </Box>
-        <Box sx={{ opacity: isHovered ? 1 : 0, transition: 'opacity .25s', overflow: 'hidden' }}>
-          <Typography sx={{ fontWeight: 800, fontSize: '1rem', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
-            CheckupData
-          </Typography>
-          <Typography sx={{ fontSize: '.66rem', color: 'rgba(255,255,255,.45)', whiteSpace: 'nowrap' }}>
-            Révision comptable
-          </Typography>
-        </Box>
-      </Box>
 
-      <List sx={{ px: 1.5, flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        <SectionLabel>Navigation</SectionLabel>
+      <List sx={{ px: 2, flexGrow: 1 }}>
+        <ListItemButton onClick={() => navigate('/home')} selected={location.pathname === '/home'} sx={menuItemStyle}>
+          <ListItemIcon sx={iconStyle}><MenuOutlined /></ListItemIcon>
+          {/* <ListItemText primary="Menu" sx={{ opacity: isHovered ? 1 : 0 }} /> */}
+        </ListItemButton>
+<br />
+        <ListItemButton onClick={() => navigate('/home')} selected={location.pathname === '/home'} sx={menuItemStyle}>
+          <ListItemIcon sx={iconStyle}><HomeOutlined /></ListItemIcon>
+          <ListItemText primary="Dossiers" sx={{ opacity: isHovered ? 1 : 0 }} />
+        </ListItemButton>
 
-        <NavItem
-          icon={<HomeOutlined />}
-          label="Dossiers"
-          onClick={() => navigate('/home')}
-          selected={location.pathname === '/home'}
-        />
-        <NavItem
-          icon={<DashboardOutlined />}
-          label="Dashboard"
-          onClick={() => navigate(`/tab/dashboard/${fileId}`)}
-          selected={location.pathname.startsWith('/tab/dashboard')}
-        />
+        <ListItemButton onClick={() => navigate(`/tab/dashboard/${fileId}`)} selected={location.pathname.startsWith('/tab/dashboard')} sx={menuItemStyle}>
+          <ListItemIcon sx={iconStyle}><DashboardOutlined /></ListItemIcon>
+          <ListItemText primary="Dashboard" sx={{ opacity: isHovered ? 1 : 0 }} />
+        </ListItemButton>
 
-        <SectionLabel>Traitement</SectionLabel>
+        <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.05)' }} />
 
         <Box>
-          <Tooltip title={isHovered ? '' : 'Traitement'} placement="right" arrow>
-            <ListItemButton onClick={() => setOpenTraitement(!openTraitement)} sx={menuItemStyle}>
-              <ListItemIcon sx={iconStyle}><AccountBalanceWalletOutlined /></ListItemIcon>
-              <ListItemText primary="Traitement" sx={{ opacity: isHovered ? 1 : 0, whiteSpace: 'nowrap' }} />
-              {isHovered && (openTraitement ? <ExpandLess sx={{ fontSize: 18 }} /> : <ExpandMore sx={{ fontSize: 18 }} />)}
-            </ListItemButton>
-          </Tooltip>
+          <ListItemButton onClick={() => setOpenTraitement(!openTraitement)} sx={menuItemStyle}>
+            <ListItemIcon sx={iconStyle}><AccountBalanceWalletOutlined /></ListItemIcon>
+            <ListItemText primary="Traitement" sx={{ opacity: isHovered ? 1 : 0 }} />
+            {isHovered && (openTraitement ? <ExpandLess /> : <ExpandMore />)}
+          </ListItemButton>
 
           <Collapse in={openTraitement && isHovered} timeout="auto" unmountOnExit>
-            <Box sx={{ ml: 3, pl: 2, borderLeft: `1px solid ${T.line}` }}>
+            <Box sx={{ ml: 2.5, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
               {traitementItems.map((item) => (
                 <React.Fragment key={item.label}>
                   {item.isSubmenu ? (
@@ -219,7 +159,7 @@ const MainLayout = ({ children }) => {
                         {openExport ? <ExpandLess sx={{ fontSize: 16 }} /> : <ExpandMore sx={{ fontSize: 16 }} />}
                       </ListItemButton>
                       <Collapse in={openExport} timeout="auto">
-                        <Box sx={{ ml: 1, pl: 2, borderLeft: `1px solid ${T.line}` }}>
+                        <Box sx={{ ml: 1, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
                           {item.children.map((child) => (
                             <ListItemButton
                               key={child.label}
@@ -250,19 +190,15 @@ const MainLayout = ({ children }) => {
           </Collapse>
         </Box>
 
-        <SectionLabel>Configuration</SectionLabel>
-
-        <Box>
-          <Tooltip title={isHovered ? '' : 'Paramètres'} placement="right" arrow>
-            <ListItemButton onClick={() => setOpenParams(!openParams)} sx={menuItemStyle}>
-              <ListItemIcon sx={iconStyle}><SettingsOutlined /></ListItemIcon>
-              <ListItemText primary="Paramètres" sx={{ opacity: isHovered ? 1 : 0, whiteSpace: 'nowrap' }} />
-              {isHovered && (openParams ? <ExpandLess sx={{ fontSize: 18 }} /> : <ExpandMore sx={{ fontSize: 18 }} />)}
-            </ListItemButton>
-          </Tooltip>
+        <Box sx={{ mt: 1 }}>
+          <ListItemButton onClick={() => setOpenParams(!openParams)} sx={menuItemStyle}>
+            <ListItemIcon sx={iconStyle}><SettingsOutlined /></ListItemIcon>
+            <ListItemText primary="Paramètres" sx={{ opacity: isHovered ? 1 : 0 }} />
+            {isHovered && (openParams ? <ExpandLess /> : <ExpandMore />)}
+          </ListItemButton>
 
           <Collapse in={openParams && isHovered} timeout="auto" unmountOnExit>
-            <Box sx={{ ml: 3, pl: 2, borderLeft: `1px solid ${T.line}` }}>
+            <Box sx={{ ml: 2.5, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
               {paramItems.map((item) => (
                 <ListItemButton
                   key={item.label}
@@ -289,42 +225,42 @@ const MainLayout = ({ children }) => {
         sx={{
           width: { sm: `calc(100% - ${closedDrawerWidth}px)` },
           ml: { sm: `${closedDrawerWidth}px` },
-          bgcolor: 'rgba(14, 39, 51, 0.9)',
+          bgcolor: 'rgba(15, 23, 42, 0.9)',
           backdropFilter: 'blur(12px)',
-          borderBottom: `1px solid ${T.line}`,
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
           transition: 'all 0.3s ease',
           zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: 3 }}>
           <Stack direction="row" spacing={2} alignItems="center">
-            <Box sx={{ p: 1, borderRadius: '8px', bgcolor: T.accentTint, border: `1px solid ${T.accentBorder}`, display: 'flex', alignItems: 'center' }}>
-              <BusinessOutlined sx={{ color: T.accentLight, fontSize: 20 }} />
+            <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center' }}>
+              <BusinessOutlined sx={{ color: '#10B981', fontSize: 20 }} />
             </Box>
             <Box>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,.45)', display: 'block', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', display: 'block', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>
                 Espace Client
               </Typography>
-              <Typography variant="subtitle2" sx={{ color: T.textStrong, fontWeight: 700 }}>
+              <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 700 }}>
                 {comptename}
               </Typography>
             </Box>
           </Stack>
 
           <Stack direction="row" spacing={3} alignItems="center">
-            <IconButton sx={{ color: 'rgba(255,255,255,.55)' }}>
+            <IconButton sx={{ color: '#64748B' }}>
               <Badge badgeContent={4} color="error"><NotificationsOutlined /></Badge>
             </IconButton>
 
             {/* --- BOUTON PROFILE --- */}
             <ButtonBase onClick={handleUserMenuOpen} sx={{ p: 0.5, pr: 1.5, borderRadius: '12px', transition: '0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
               <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar sx={{ width: 38, height: 38, bgcolor: T.accentTint, color: T.accentLight, fontSize: 14, fontWeight: 'bold', border: `1px solid ${T.accentBorder}` }}>{userInitials}</Avatar>
+                <Avatar sx={{ width: 38, height: 38, bgcolor: '#1E293B', color: '#10B981', fontSize: 14, fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{userInitials}</Avatar>
                 <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'left' }}>
-                  <Typography variant="subtitle2" sx={{ color: T.textStrong, fontWeight: 600 }}>{username}</Typography>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,.45)' }}>{roleName}</Typography>
+                  <Typography variant="subtitle2" sx={{ color: '#F8FAFC', fontWeight: 600 }}>{username}</Typography>
+                  <Typography variant="caption" sx={{ color: '#64748B' }}>{roleName}</Typography>
                 </Box>
-                <ExpandMore sx={{ color: 'rgba(255,255,255,.45)', fontSize: 18, transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
+                <ExpandMore sx={{ color: '#64748B', fontSize: 18, transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
               </Stack>
             </ButtonBase>
             <Menu
@@ -336,9 +272,9 @@ const MainLayout = ({ children }) => {
                   mt: 1.5,
                   width: 200,
                   borderRadius: '12px',
-                  bgcolor: T.ink,
-                  color: T.textStrong,
-                  border: `1px solid ${T.line}`,
+                  bgcolor: '#0F172A',
+                  color: '#F8FAFC',
+                  border: '1px solid rgba(255,255,255,0.08)',
                   boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
                   '& .MuiMenuItem-root': {
                     fontSize: '0.85rem',
@@ -346,7 +282,7 @@ const MainLayout = ({ children }) => {
                     px: 2,
                     gap: 1.5,
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                    '& .MuiSvgIcon-root': { fontSize: 18, color: 'rgba(255,255,255,.55)' }
+                    '& .MuiSvgIcon-root': { fontSize: 18, color: '#64748B' }
                   }
                 }
               }}
@@ -371,7 +307,7 @@ const MainLayout = ({ children }) => {
       </AppBar>
 
       <Box component="nav" sx={{ width: { sm: closedDrawerWidth }, flexShrink: 0 }}>
-        <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': { width: isHovered ? drawerWidth : closedDrawerWidth, bgcolor: T.ink, transition: 'width 0.3s ease', overflowX: 'hidden', borderRight: `1px solid ${T.line}`, position: 'fixed', height: '100vh' } }} open>
+        <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': { width: isHovered ? drawerWidth : closedDrawerWidth, bgcolor: '#0F172A', transition: 'width 0.3s ease', overflowX: 'hidden', borderRight: '1px solid rgba(255,255,255,0.05)', position: 'fixed', height: '100vh' } }} open>
           {drawer}
         </Drawer>
       </Box>
@@ -400,22 +336,16 @@ const MainLayout = ({ children }) => {
 
 // --- STYLES ---
 const menuItemStyle = {
-  borderRadius: '10px', mb: 0.5, minHeight: 44, color: T.textMuted, position: 'relative',
-  transition: 'background-color .15s, color .15s',
-  '&.Mui-selected': {
-    bgcolor: `${T.accentTint} !important`, color: T.accentLight,
-    '& .MuiListItemIcon-root': { color: T.accentLight },
-    '&:before': { content: '""', position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: '0 3px 3px 0', bgcolor: T.accentLight },
-    '&:hover': { bgcolor: 'rgba(16,185,129,.20) !important' },
-  },
-  '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: '#FFFFFF' }
+  borderRadius: '8px', mb: 0.5, color: '#94A3B8',
+  '&.Mui-selected': { bgcolor: 'rgba(16, 185, 129, 0.1) !important', color: '#10B981', '& .MuiListItemIcon-root': { color: '#10B981' } },
+  '&:hover': { bgcolor: 'rgba(255,255,255,0.03)', color: '#FFFFFF' }
 };
 
 const subItemStyle = {
-  borderRadius: '8px', mb: 0.2, color: 'rgba(255,255,255,.5)', position: 'relative',
-  '&:before': { content: '""', position: 'absolute', left: -16, top: '50%', width: 12, height: '1px', bgcolor: 'rgba(255,255,255,0.12)' },
+  borderRadius: '6px', mb: 0.2, color: '#64748B', position: 'relative',
+  '&:before': { content: '""', position: 'absolute', left: -16, top: '50%', width: 12, height: '1px', bgcolor: 'rgba(255,255,255,0.1)' },
   '&:hover': { color: '#10B981', bgcolor: 'transparent' },
-  '&.Mui-selected': { color: T.accentLight, bgcolor: 'transparent', '& .MuiTypography-root': { fontWeight: 700 } },
+  '&.Mui-selected': { color: '#10B981', '& .MuiTypography-root': { fontWeight: 800 } },
   '& .MuiTypography-root': { fontSize: '0.85rem', fontWeight: 500 }
 };
 
