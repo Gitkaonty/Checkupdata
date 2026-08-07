@@ -1477,6 +1477,7 @@ exports.executeAll = async (req, res) => {
       // ===== CONTRÔLE ATYPIQUE =====
       else if (type === 'ATYPIQUE') {
         const atypiqueAnomalies = []; // collecte pour insertion groupée
+        const MIN_N = 4; // taille d'échantillon minimale par compte (évite les cas dégénérés 1-3 lignes)
 
         // Traiter chaque contrôle individuellement avec son propre paramUn
         for (const controle of controles) {
@@ -1490,33 +1491,12 @@ exports.executeAll = async (req, res) => {
           `;
           const kRows = await db.sequelize.query(kQuery, { type: db.Sequelize.QueryTypes.SELECT });
           const paramUnDb = kRows?.[0]?.paramUn;
-          const K = (paramUnDb === null || paramUnDb === undefined || paramUnDb === '') ? 3 : Number(paramUnDb);
+          const K = (paramUnDb === null || paramUnDb === undefined || paramUnDb === '' || isNaN(Number(paramUnDb))) ? 3 : Number(paramUnDb);
 
-          // Vérifier d'abord les données brutes
-          const baseQuery = `
-            SELECT
-              j.id,
-              j.id_ecriture,
-              j.dateecriture,
-              j.comptegen,
-              j.compteaux,
-              j.piece,
-              j.libelle,
-              COALESCE(j.debit, 0)::numeric AS debit,
-              COALESCE(j.credit, 0)::numeric AS credit,
-              (COALESCE(j.debit, 0)::numeric + COALESCE(j.credit, 0)::numeric) AS montant
-            FROM journals j
-            WHERE j.id_compte = ${id_compte}
-              AND j.id_dossier = ${id_dossier}
-              AND j.id_exercice = ${id_exercice}
-              ${dateCondition}
-              AND j.comptegen IS NOT NULL
-            ORDER BY j.comptegen ASC, j.dateecriture ASC
-            LIMIT 10
-          `;
-          const baseRows = await db.sequelize.query(baseQuery, { type: db.Sequelize.QueryTypes.SELECT });
-
-          // Requête pour ce contrôle spécifique avec son K
+          // Détection ROBUSTE : médiane + K·MAD (MAD normalisé ×1,4826 pour rester comparable à un
+          // écart-type). Par compteaux, seulement sur les comptes avec au moins MIN_N lignes, borne haute.
+          // Les colonnes de sortie gardent les noms "moyenne"/"ecart_type" pour compat avec l'aval
+          // (moyenne = médiane, ecart_type = MAD normalisé).
           const atypiqueQuery = `
             WITH base AS (
               SELECT
@@ -1537,30 +1517,39 @@ exports.executeAll = async (req, res) => {
                 ${dateCondition}
                 AND j.compteaux IS NOT NULL
                 AND TRIM(j.compteaux) <> ''
-            ), stats AS (
+            ), med AS (
               SELECT
                 compteaux,
-                AVG(montant) AS moyenne,
-                STDDEV_POP(montant) AS ecart_type
+                percentile_cont(0.5) WITHIN GROUP (ORDER BY montant) AS mediane,
+                COUNT(*) AS n
               FROM base
+              GROUP BY compteaux
+            ), dev AS (
+              SELECT b.*, m.mediane, m.n, ABS(b.montant - m.mediane) AS abs_dev
+              FROM base b
+              JOIN med m ON m.compteaux = b.compteaux
+            ), mad AS (
+              SELECT
+                compteaux,
+                percentile_cont(0.5) WITHIN GROUP (ORDER BY abs_dev) AS mad
+              FROM dev
               GROUP BY compteaux
             )
             SELECT
-              b.*,
-              s.moyenne,
-              s.ecart_type,
-              (s.moyenne + (${K} * s.ecart_type)) AS seuil
-            FROM base b
-            JOIN stats s ON s.compteaux = b.compteaux
-            WHERE s.ecart_type IS NOT NULL
-              AND s.ecart_type > 0
-              AND (b.montant - s.moyenne - (${K} * s.ecart_type)) > 0
-            ORDER BY b.compteaux ASC, b.dateecriture ASC, b.id ASC
+              d.id, d.id_ecriture, d.dateecriture, d.comptegen, d.compteaux, d.piece, d.libelle,
+              d.debit, d.credit, d.montant,
+              d.mediane AS moyenne,
+              (1.4826 * mad.mad) AS ecart_type,
+              (d.mediane + (${K} * 1.4826 * mad.mad)) AS seuil
+            FROM dev d
+            JOIN mad ON mad.compteaux = d.compteaux
+            WHERE d.n >= ${MIN_N}
+              AND mad.mad > 0
+              AND (d.montant - d.mediane - (${K} * 1.4826 * mad.mad)) > 0
+            ORDER BY d.compteaux ASC, d.dateecriture ASC, d.id ASC
           `;
 
           const rows = await db.sequelize.query(atypiqueQuery, { type: db.Sequelize.QueryTypes.SELECT });
-          if (rows.length > 0) {
-          }
 
           for (const row of rows) {
             const compte = row.compteaux;
