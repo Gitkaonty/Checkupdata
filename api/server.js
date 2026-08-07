@@ -144,6 +144,9 @@ app.use('/administration/rechercheDoublon', require('./Routes/Administration/rec
 // Routes pour les écritures en suspens
 app.use('/administration/ecrituresSuspense', require('./Routes/Administration/ecrituresSuspenseRoutes'));
 
+// Route pour le contrôle Équilibre débit = crédit (global + par écriture)
+app.use('/administration/equilibreDebitCredit', require('./Routes/Administration/equilibreDebitCreditRoutes'));
+
 // Routes pour la révision analytique
 app.use('/administration/revisionAnalytique', require('./Routes/Administration/revisionAnalytiqueRoute'));
 

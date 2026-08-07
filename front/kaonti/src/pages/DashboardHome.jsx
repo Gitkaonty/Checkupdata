@@ -29,7 +29,7 @@ const SECTIONS_CONFIG = [
       { id: "doublons", title: "Recherche de doublons", source: { kind: 'doublons' }, anomalies: 0, remaining: 0 },
       { id: "suspense", title: "Écritures en suspens — compte 47", source: { kind: 'suspense' }, anomalies: 0, remaining: 0 },
       { id: "fecFormat", title: "Conformité du format FEC (18 champs obligatoires, art. A47 A-1 du LPF)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
-      { id: "equilibreDC", title: "Équilibre débit = crédit, global et par écriture", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "equilibreDC", title: "Équilibre débit = crédit, global et par écriture", source: { kind: 'equilibreDC' }, anomalies: 0, remaining: 0 },
       { id: "continuiteNum", title: "Continuité de la numérotation des écritures (EcritureNum)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
       { id: "controleDates", title: "Contrôle des dates : date comptable dans l'exercice, ≥ date pièce, absence de dates futures", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
       { id: "concordanceAN", title: "Concordance des à-nouveaux avec la clôture N-1", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
@@ -516,8 +516,13 @@ export default function DashboardComponent() {
         suspenseUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
       }
 
+      let equilibreUrl = `/administration/equilibreDebitCredit/${id_compte}/${id_dossier}/${id_exercice}/stats`;
+      if (selectedPeriodeDates) {
+        equilibreUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
+      }
+
       // Un seul appel réseau par source, tous en parallèle.
-      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData] =
+      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData, equilibreData] =
         await Promise.all([
           safeGet(controleAutoUrl),
           safeGet(doublonsUrl),
@@ -525,6 +530,7 @@ export default function DashboardComponent() {
           safeGet(buildRevuUrl('analytiqueNN1')),
           safeGet(buildRevuUrl('analytiqueMensuelle')),
           safeGet(suspenseUrl),
+          safeGet(equilibreUrl),
         ]);
 
       // Map des détails du contrôle auto, indexé par type (= codeCtrl).
@@ -551,6 +557,11 @@ export default function DashboardComponent() {
             return {
               anomalies: suspenseData.total_anomalies || suspenseData.nbLignes || 0,
               remaining: suspenseData.restantes || 0,
+            };
+          case 'equilibreDC':
+            return {
+              anomalies: equilibreData.total_anomalies || 0,
+              remaining: equilibreData.restantes || 0,
             };
           case 'revu': {
             const d = source.typeRevue === 'analytiqueMensuelle' ? revuMensuelleData : revuNN1Data;
@@ -884,14 +895,20 @@ export default function DashboardComponent() {
                 title="État des contrôles spécifiques"
                 action={
                   <Button
+                    variant="contained"
                     endIcon={<ArrowForwardOutlined />}
                     onClick={() => navigate('/controles/details')}
                     sx={{
                       textTransform: 'none',
-                      color: T.accent,
-                      fontWeight: 600,
+                      outline: 'none',
+                      bgcolor: T.accent,
+                      color: 'white',
+                      height: '34px',
+                      fontWeight: 700,
                       fontSize: '13px',
-                      '&:hover': { bgcolor: T.accW },
+                      borderRadius: '10px',
+                      boxShadow: 'none',
+                      '&:hover': { bgcolor: '#0a5d65', boxShadow: 'none' },
                     }}
                   >
                     Voir les détails
