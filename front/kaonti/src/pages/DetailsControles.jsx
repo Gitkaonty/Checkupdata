@@ -15,7 +15,7 @@ import {
   FactCheckOutlined, NavigateNext,
   TrendingUpOutlined, RuleOutlined, AccountBalanceWalletOutlined,
   DomainOutlined, SwapVertOutlined, ReceiptLongOutlined,
-  PendingOutlined, ConstructionOutlined
+  PendingOutlined, ConstructionOutlined, BalanceOutlined
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
@@ -29,6 +29,7 @@ import AnalyseTiers from './listecontroles/analyseTiers';
 import RechercheDoublons from './listecontroles/rechercheDoublon';
 import EcrituresSuspense from './listecontroles/EcrituresSuspense';
 import ControleAnalytique from './listecontroles/controleAnalytique';
+import EquilibreDebitCredit from './listecontroles/EquilibreDebitCredit';
 import ExercicePeriodeSelector from './ExercicePeriodeSelector';
 
 // ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
@@ -58,7 +59,7 @@ const CONTROL_GROUPS = [
       { id: 'doublons', label: 'Recherche de doublons', icon: <ContentCopyOutlined sx={{ fontSize: 20 }} /> },
       { id: 'suspense', label: 'Écritures en suspens', icon: <HelpOutline sx={{ fontSize: 20 }} /> },
       { id: 'fecFormat', label: 'Conformité du format FEC (18 champs obligatoires, art. A47 A-1 du LPF)', icon: PH, placeholder: true },
-      { id: 'equilibreDC', label: 'Équilibre débit = crédit, global et par écriture', icon: PH, placeholder: true },
+      { id: 'equilibreDC', label: 'Équilibre débit = crédit, global et par écriture', icon: <BalanceOutlined sx={{ fontSize: 20 }} /> },
       { id: 'continuiteNum', label: 'Continuité de la numérotation des écritures (EcritureNum)', icon: PH, placeholder: true },
       { id: 'controleDates', label: 'Contrôle des dates : date comptable dans l’exercice, ≥ date pièce, absence de dates futures', icon: PH, placeholder: true },
       { id: 'concordanceAN', label: 'Concordance des à-nouveaux avec la clôture N-1', icon: PH, placeholder: true },
@@ -502,6 +503,12 @@ const DetailsControles = () => {
             {activeControl === 'suspense' && (
               <EcrituresSuspense
                 ref={ecrituresSuspenseRef}
+                id_exercice={selectedExerciceId}
+                id_periode={selectedPeriodeId}
+              />
+            )}
+            {activeControl === 'equilibreDC' && (
+              <EquilibreDebitCredit
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
