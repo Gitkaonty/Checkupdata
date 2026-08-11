@@ -819,8 +819,8 @@ export default function DashboardComponent() {
   const financialKpis = [
     { label: 'Résultat', code: '12', icon: <TrendingUpOutlined />, accent: T.accent, trend: margeBruteNGraph, n: resultatN, n1: resultatN1, variation: variationResultatN, evolution: evolutionResultatN },
     { label: "Chiffre d'affaires", code: '70', icon: <BarChartOutlined />, accent: T.pos, trend: chiffresAffairesNGraph, n: resultatChiffreAffaireN, n1: resultatChiffreAffaireN1, variation: variationChiffreAffaireN, evolution: evolutionChiffreAffaireN },
-    { label: 'Dépenses — Achats', code: '60', icon: <PaymentsOutlined />, accent: T.warn, trend: chiffresAffairesNGraph, n: resultatDepenseAchatN, n1: resultatDepenseAchatN1, variation: variationDepenseAchatN, evolution: evolutionDepenseAchatN },
-    { label: 'Dépenses salariales', code: '64', icon: <GroupsOutlined />, accent: '#7C5CBF', trend: margeBruteNGraph, n: resultatDepenseSalarialeN, n1: resultatDepenseSalarialeN1, variation: variationDepenseSalarialeN, evolution: evolutionDepenseSalarialeN },
+    { label: 'Achats consommés', code: '60', icon: <PaymentsOutlined />, accent: T.warn, trend: chiffresAffairesNGraph, n: resultatDepenseAchatN, n1: resultatDepenseAchatN1, variation: variationDepenseAchatN, evolution: evolutionDepenseAchatN },
+    { label: 'Charges salariales', code: '64', icon: <GroupsOutlined />, accent: '#7C5CBF', trend: margeBruteNGraph, n: resultatDepenseSalarialeN, n1: resultatDepenseSalarialeN1, variation: variationDepenseSalarialeN, evolution: evolutionDepenseSalarialeN },
     { label: 'Trésorerie — Banques', code: '512', icon: <AccountBalanceIcon />, accent: T.info, trend: tresorerieBanqueNGraph, n: resultatTresorerieBanqueN, n1: resultatTresorerieBanqueN1, variation: variationTresorerieBanqueN, evolution: evolutionTresorerieBanqueN },
     { label: 'Trésorerie — Caisse', code: '53', icon: <SavingsOutlined />, accent: '#0E9F9F', trend: tresorerieCaisseNGraph, n: resultatTresorerieCaisseN, n1: resultatTresorerieCaisseN1, variation: variationTresorerieCaisseN, evolution: evolutionTresorerieCaisseN },
   ];
