@@ -74,7 +74,7 @@ const SECTIONS_CONFIG = [
         cycle: "Trésorerie",
         items: [
           { id: "sequenceCheques", title: "Séquence des numéros de chèque", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
-          { id: "caisseCreditrice", title: "Caisse créditrice (solde 53 négatif — impossible physiquement)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "caisseCreditrice", title: "Caisse créditrice (solde 53 négatif — impossible physiquement)", source: { kind: 'caisseCreditrice' }, anomalies: 0, remaining: 0 },
           { id: "banqueNonPointee", title: "Écritures de banque non pointées / rapprochement bancaire", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
           { id: "virementsInternes", title: "Virements internes (compte 58) non soldés", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
         ],
@@ -521,8 +521,13 @@ export default function DashboardComponent() {
         equilibreUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
       }
 
+      let caisseUrl = `/administration/caisseCreditrice/${id_compte}/${id_dossier}/${id_exercice}/stats`;
+      if (selectedPeriodeDates) {
+        caisseUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
+      }
+
       // Un seul appel réseau par source, tous en parallèle.
-      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData, equilibreData] =
+      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData, equilibreData, caisseData] =
         await Promise.all([
           safeGet(controleAutoUrl),
           safeGet(doublonsUrl),
@@ -531,6 +536,7 @@ export default function DashboardComponent() {
           safeGet(buildRevuUrl('analytiqueMensuelle')),
           safeGet(suspenseUrl),
           safeGet(equilibreUrl),
+          safeGet(caisseUrl),
         ]);
 
       // Map des détails du contrôle auto, indexé par type (= codeCtrl).
@@ -562,6 +568,11 @@ export default function DashboardComponent() {
             return {
               anomalies: equilibreData.total_anomalies || 0,
               remaining: equilibreData.restantes || 0,
+            };
+          case 'caisseCreditrice':
+            return {
+              anomalies: caisseData.total_anomalies || 0,
+              remaining: caisseData.restantes || 0,
             };
           case 'revu': {
             const d = source.typeRevue === 'analytiqueMensuelle' ? revuMensuelleData : revuNN1Data;

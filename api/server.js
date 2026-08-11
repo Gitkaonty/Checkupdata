@@ -147,6 +147,9 @@ app.use('/administration/ecrituresSuspense', require('./Routes/Administration/ec
 // Route pour le contrôle Équilibre débit = crédit (global + par écriture)
 app.use('/administration/equilibreDebitCredit', require('./Routes/Administration/equilibreDebitCreditRoutes'));
 
+// Route pour le contrôle Caisse créditrice (comptes 53x, solde cumulé négatif)
+app.use('/administration/caisseCreditrice', require('./Routes/Administration/caisseCreditriceRoutes'));
+
 // Routes pour la révision analytique
 app.use('/administration/revisionAnalytique', require('./Routes/Administration/revisionAnalytiqueRoute'));
 

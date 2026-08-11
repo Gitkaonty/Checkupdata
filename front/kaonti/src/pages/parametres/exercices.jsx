@@ -219,7 +219,7 @@ const exercices = () => {
   const refreshExercices = async () => {
     if (!fileId) return;
     try {
-      const response = await axiosPrivate.get(`/api/exercices/listeExercice/${fileId}`);
+      const response = await axiosPrivate.get(`/paramExercice/listeExercice/${fileId}`);
       const resData = response?.data;
       const list = Array.isArray(resData?.list) ? resData.list : [];
       setExercicesList(list);
@@ -242,7 +242,7 @@ const exercices = () => {
       return;
     }
     try {
-      const response = await axiosPrivate.get(`/api/exercices/listePeriodes/${exerciceId}`);
+      const response = await axiosPrivate.get(`/paramExercice/listePeriodes/${exerciceId}`);
       const resData = response?.data;
       setPeriodesList(Array.isArray(resData?.list) ? resData.list : []);
     } catch (err) {
@@ -287,7 +287,7 @@ const exercices = () => {
     };
 
     try {
-      const response = await axiosPrivate.post('/api/exercices/createFirstExercice', payload);
+      const response = await axiosPrivate.post('/paramExercice/createFirstExercice', payload);
       const resData = response?.data;
       if (resData?.state) {
         toast.success('Exercice créé');
@@ -311,7 +311,7 @@ const exercices = () => {
 
     try {
       const payload = { compteId, fileId };
-      const response = await axiosPrivate.post('/api/exercices/createNextExercice', payload);
+      const response = await axiosPrivate.post('/paramExercice/createNextExercice', payload);
       const resData = response?.data;
       if (resData?.state) {
         toast.success('Exercice créé');
@@ -335,7 +335,7 @@ const exercices = () => {
 
     try {
       const payload = { compteId, fileId };
-      const response = await axiosPrivate.post('/api/exercices/createPreviewExercice', payload);
+      const response = await axiosPrivate.post('/paramExercice/createPreviewExercice', payload);
       const resData = response?.data;
       if (resData?.state) {
         toast.success('Exercice créé');
@@ -421,7 +421,7 @@ const exercices = () => {
     console.log('[handleCreatePeriode] Sending payload:', payload);
 
     try {
-      const response = await axiosPrivate.post('/api/exercices/createPeriode', payload);
+      const response = await axiosPrivate.post('/paramExercice/createPeriode', payload);
       const resData = response?.data;
       console.log('[handleCreatePeriode] Response:', resData);
       if (resData?.state) {
@@ -549,7 +549,7 @@ const exercices = () => {
         onConfirm={async () => {
           if (!periodeToDelete) return;
           try {
-            const response = await axiosPrivate.post('/api/exercices/deletePeriode', { id_periode: periodeToDelete });
+            const response = await axiosPrivate.post('/paramExercice/deletePeriode', { id_periode: periodeToDelete });
             const resData = response?.data;
             if (resData?.state) {
               toast.success('Période supprimée');
