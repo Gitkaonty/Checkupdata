@@ -15,7 +15,7 @@ import {
   FactCheckOutlined, NavigateNext,
   TrendingUpOutlined, RuleOutlined, AccountBalanceWalletOutlined,
   DomainOutlined, SwapVertOutlined, ReceiptLongOutlined,
-  PendingOutlined, ConstructionOutlined, BalanceOutlined
+  PendingOutlined, ConstructionOutlined, BalanceOutlined, PointOfSaleOutlined
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
@@ -30,6 +30,7 @@ import RechercheDoublons from './listecontroles/rechercheDoublon';
 import EcrituresSuspense from './listecontroles/EcrituresSuspense';
 import ControleAnalytique from './listecontroles/controleAnalytique';
 import EquilibreDebitCredit from './listecontroles/EquilibreDebitCredit';
+import CaisseCreditrice from './listecontroles/CaisseCreditrice';
 import ExercicePeriodeSelector from './ExercicePeriodeSelector';
 
 // ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
@@ -102,7 +103,7 @@ const CONTROL_GROUPS = [
         cycle: 'Trésorerie',
         items: [
           { id: 'sequenceCheques', label: 'Séquence des numéros de chèque', icon: PH, placeholder: true },
-          { id: 'caisseCreditrice', label: 'Caisse créditrice (solde 53 négatif — impossible physiquement)', icon: PH, placeholder: true },
+          { id: 'caisseCreditrice', label: 'Caisse créditrice (solde 53 négatif — impossible physiquement)', icon: <PointOfSaleOutlined sx={{ fontSize: 20 }} /> },
           { id: 'banqueNonPointee', label: 'Écritures de banque non pointées / rapprochement bancaire', icon: PH, placeholder: true },
           { id: 'virementsInternes', label: 'Virements internes (compte 58) non soldés', icon: PH, placeholder: true },
         ],
@@ -509,6 +510,12 @@ const DetailsControles = () => {
             )}
             {activeControl === 'equilibreDC' && (
               <EquilibreDebitCredit
+                id_exercice={selectedExerciceId}
+                id_periode={selectedPeriodeId}
+              />
+            )}
+            {activeControl === 'caisseCreditrice' && (
+              <CaisseCreditrice
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
