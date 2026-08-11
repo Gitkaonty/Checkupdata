@@ -174,7 +174,7 @@ exports.addSousCompte = async (req, res) => {
                 <p>Cordialement,<br>L'équipe Kaonti</p>
                </div>`
                 })
-                    .then(info => console.log("Email envoyé pour ajout de sous-compte :", info.messageId))
+                    .then(info => {})
                     .catch(err => console.error("Erreur envoi mail :", err));
             }
 
@@ -355,7 +355,7 @@ exports.deleteSelectedSousCompte = async (req, res) => {
                     text: `Bonjour, les sous-comptes suivants ont été supprimés : ${comptesMap[compteId].map(sc => sc.email).join(', ')}`,
                     html: htmlTable
                 })
-                    .then(info => console.log("Email envoyé pour suppression de sous-compte :", info.messageId))
+                    .then(info => {})
                     .catch(err => console.error("Erreur envoi mail :", err));
             }
         }
@@ -424,7 +424,7 @@ exports.sendCodeToEmail = async (req, res) => {
                     <p>Merci de ne pas le partager.</p>
                   </div>`
         })
-            .then(info => console.log("Email envoyé pour le code de validation :", info.messageId))
+            .then(info => {})
             .catch(err => console.error("Erreur envoi mail :", err));
 
         return res.status(200).json({
@@ -479,7 +479,7 @@ exports.updatePassword = async (req, res) => {
                     <p>Si vous n'êtes pas à l'origine de cette action, <span style="color:red;">contactez immédiatement notre support</span>.</p>
                   </div>`
         })
-            .then(info => console.log("Email envoyé pour la modification de mot de passe :", info.messageId))
+            .then(info => {})
             .catch(err => console.error("Erreur envoi mail :", err));
 
     } catch (error) {
@@ -556,7 +556,7 @@ exports.verifyEmail = async (req, res) => {
                     <p>Ce lien expire dans 1 heure.</p>
                   </div>`
         })
-            .then(info => console.log("Email envoyé :", info.messageId))
+            .then(info => {})
             .catch(err => console.error("Erreur envoi mail :", err));
 
         return res.status(200).json({
@@ -632,7 +632,7 @@ exports.updateForgotPassword = async (req, res) => {
                     <p>Si vous n'êtes pas à l'origine de cette action, <span style="color:red;">contactez immédiatement notre support</span>.</p>
                   </div>`
         })
-            .then(info => console.log("Email envoyé pour la modification de mot de passe :", info.messageId))
+            .then(info => {})
             .catch(err => console.error("Erreur envoi mail :", err));
 
     } catch (error) {

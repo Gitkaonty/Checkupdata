@@ -6,18 +6,8 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
-const { valideIconCell, anomalieIconCell, setExcelAnomalieCell: setAnomalieCell, setExcelValideCell: setValideCell, statsBand, writeExcelStats } = require('../../Middlewares/exportPdfTheme');
 
 const round2 = (value) => Math.round(value * 100) / 100;
-
-// Stats revue mensuelle : total = comptes en anomalie ; restant = anomalies non validées
-const mensuelleStats = (finalData) => {
-  const list = finalData || [];
-  return {
-    total: list.filter(r => r.anomalies).length,
-    restant: list.filter(r => r.anomalies && !r.valide_anomalie).length,
-  };
-};
 
 // Fonction pour générer la liste des mois d'un exercice
 function generateMonthsForExercice(dateDebut, dateFin) {
@@ -129,8 +119,22 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             }
         );
 
-        // // console.log('[revuAnalytiqueMensuelle] allComptes count', allComptes?.length || 0);
-        // // console.log('[revuAnalytiqueMensuelle] allComptes sample', (allComptes || []).slice(0, 20));
+
+        const comptesDistincts = await db.sequelize.query(
+            `SELECT DISTINCT NULLIF(TRIM(comptegen), '') AS compte_key
+             FROM journals
+             WHERE id_compte = :id_compte
+               AND id_dossier = :id_dossier
+               AND id_exercice = :id_exercice
+               ${dateCondition}
+               AND comptegen IS NOT NULL
+               AND TRIM(comptegen) != ''
+             ORDER BY compte_key`,
+            {
+                replacements: queryReplacements,
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
 
         /**
          * 4️⃣ Données mensuelles (avec filtre de dates si periode selectionnee)
@@ -200,7 +204,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
         });
         
         const comptesAvecAvantExercice = avantExerciceResult.map(r => r.compte_key);
-        // // console.log(`[DEBUG] Comptes avec écritures avant exercice: ${comptesAvecAvantExercice.length} comptes`);
         
         // Créer la colonne pour le mois/année avant l'exercice
         const moisAvantExercice = new Date(exercice.date_debut);
@@ -208,7 +211,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
         const nomMoisAvantExercice = `${moisAvantExercice.toLocaleDateString('fr-FR', { month: 'long' })}_${moisAvantExercice.getFullYear()}`;
         const nomMoisAvantExerciceAffiche = moisAvantExercice.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
         
-        // // console.log(`[DEBUG] Colonne ajoutée: ${nomMoisAvantExercice} (${nomMoisAvantExerciceAffiche})`);
 
         allComptes.forEach((c, index) => {
             const row = {
@@ -229,7 +231,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             if (comptesAvecAvantExercice.includes(c.compte_key)) {
                 row[nomMoisAvantExercice] = 0;
                 if (comptesAvecAvantExercice.length <= 5) {
-                    // console.log(`[DEBUG] Ajout colonne ${nomMoisAvantExercice} pour ${c.compte_key}`);
                 }
             }
 
@@ -242,13 +243,69 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             throw new Error("Modèle revuAnalytique non initialisé");
         }
 
+        const revuAnalytiqueData = await revuAnalytiqueModel.findAll({
+            where: {
+                id_compte,
+                id_dossier,
+                id_exercice,
+                type_revue: 'analytiqueMensuelle'
+            }
+        });
+
+        revuAnalytiqueData.forEach((ra) => {
+            const row = map.get(ra.compte);
+            if (!row) return;
+            row.anomalies = (ra.nbr_anomalies || 0) > 0;
+            row.valide_anomalie = (ra.anomalies_valides || 0) > 0;
+        });
+
+        // Charger les commentaires mensuels (table dédiée - sans anomalies)
+        const commentaireAnalytiqueMensuelle = db.commentaireAnalytiqueMensuelle;
+        if (commentaireAnalytiqueMensuelle) {
+            const commentaires = await commentaireAnalytiqueMensuelle.findAll({
+                where: {
+                    id_compte,
+                    id_dossier,
+                    id_exercice
+                }
+            });
+
+            commentaires.forEach((c) => {
+                const row = map.get(c.compte);
+                if (!row) return;
+                row.commentaire = c.commentaire || '';
+                // valide_anomalie est maintenant géré par revu_analytique
+            });
+        }
+
         /**
          * 6️⃣ Remplissage mensuel - UTILISER LE TOTAL EXACT DE N/N-1
          */
+        
+        // D'abord, récupérer les totaux exacts comme N/N-1
+        const totalsQuery = `
+            SELECT 
+                NULLIF(TRIM(comptegen), '') AS compte_key,
+                SUM(COALESCE(debit, 0) - COALESCE(credit, 0)) AS total_exact
+            FROM journals
+            WHERE id_compte = :id_compte
+            AND id_dossier = :id_dossier
+            AND id_exercice = :id_exercice
+            ${dateCondition}
+            AND comptegen IS NOT NULL
+            AND TRIM(comptegen) != ''
+            GROUP BY NULLIF(TRIM(comptegen), '')
+        `;
+        
+        const totalsResults = await db.sequelize.query(totalsQuery, {
+            replacements: queryReplacements,
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+        
+        
         monthlyResults.forEach((r, idx) => {
             const row = map.get(r.compte_key);
             if (!row) {
-                // console.log(`[DEBUG] Compte ${r.compte_key} non trouvé dans le map`);
                 return;
             }
 
@@ -259,7 +316,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 row[nomMoisAvantExercice] = val;
                 row.total_exercice += val;
                 if (idx < 5) {
-                    // console.log(`[DEBUG] Assigné: ${r.compte_key} ${nomMoisAvantExercice} = ${val}`);
                 }
             } else {
                 // Gérer les mois normaux de l'exercice
@@ -272,16 +328,29 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                     row[mois.nom] = val;
                     row.total_exercice += val;
                     if (idx < 5) {
-                        // console.log(`[DEBUG] Assigné: ${r.compte_key} ${mois.nom} = ${val}`);
                     }
                 } else {
                     if (idx < 5) {
-                        // console.log(`[DEBUG] Mois non trouvé pour ${r.compte_key}: mois=${r.mois}, annee=${r.annee}`);
                     }
                 }
             }
         });
 
+        // SANS CORRECTION: Garder les totaux calculés naturellement
+        let totalCorrections = 0;
+        totalsResults.forEach(total => {
+            const row = map.get(total.compte_key);
+            if (row) {
+                const calculeTotal = row.total_exercice;
+                const exactTotal = round2(parseFloat(total.total_exact) || 0);
+                const difference = Math.abs(calculeTotal - exactTotal);
+                
+                if (difference > 0.01) {
+                    totalCorrections++;
+                }
+            }
+        });
+        
         // Sauvegarder les anomalies pour la Synthèse si une période est sélectionnée
         if (id_periode) {
             try {
@@ -337,6 +406,141 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
             }
         }
 
+        
+        // Identification simple des écritures problématiques pour TOUS les comptes
+        
+        // 1. Total toutes écritures (comme N/N-1) - TOUS LES COMPTES
+        const totalAllQuery = `
+            SELECT 
+                NULLIF(TRIM(comptegen), '') AS compte_key,
+                COUNT(*) as count_all,
+                SUM(COALESCE(debit, 0) - COALESCE(credit, 0)) as total_all
+            FROM journals
+            WHERE id_compte = :id_compte
+            AND id_dossier = :id_dossier
+            AND id_exercice = :id_exercice
+            ${dateCondition}
+            AND comptegen IS NOT NULL
+            AND TRIM(comptegen) != ''
+            GROUP BY NULLIF(TRIM(comptegen), '')
+            ORDER BY compte_key
+        `;
+        
+        const totalAllResult = await db.sequelize.query(totalAllQuery, {
+            replacements: queryReplacements,
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+        
+        // 2. Total écritures avec dates valides (qui passent dans mensuelle) - TOUS LES COMPTES
+        const totalValidQuery = `
+            SELECT 
+                NULLIF(TRIM(comptegen), '') AS compte_key,
+                COUNT(*) as count_valid,
+                SUM(COALESCE(debit, 0) - COALESCE(credit, 0)) as total_valid
+            FROM journals
+            WHERE id_compte = :id_compte
+            AND id_dossier = :id_dossier
+            AND id_exercice = :id_exercice
+            ${dateCondition}
+            AND comptegen IS NOT NULL
+            AND TRIM(comptegen) != ''
+            AND dateecriture >= '1900-01-01'
+            GROUP BY NULLIF(TRIM(comptegen), '')
+            ORDER BY compte_key
+        `;
+        
+        const totalValidResult = await db.sequelize.query(totalValidQuery, {
+            replacements: queryReplacements,
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+        
+        
+        let totalEcrituresPerdues = 0;
+        let totalMontantPerdu = 0;
+        let totalMontantGlobal = 0;
+        
+        totalAllResult.forEach(all => {
+            const valid = totalValidResult.find(v => v.compte_key === all.compte_key);
+            
+            if (valid) {
+                const countDiff = parseInt(all.count_all) - parseInt(valid.count_valid);
+                const montantDiff = parseFloat(all.total_all) - parseFloat(valid.total_valid);
+                const pourcentagePerdu = all.total_all != 0 ? (montantDiff / Math.abs(parseFloat(all.total_all))) * 100 : 0;
+                
+                totalEcrituresPerdues += countDiff;
+                totalMontantPerdu += montantDiff;
+                totalMontantGlobal += Math.abs(parseFloat(all.total_all));
+                
+                if (countDiff > 0 || Math.abs(montantDiff) > 0.01) {
+                }
+            }
+        });
+        
+        const pourcentageGlobalPerdu = totalMontantGlobal > 0 ? (totalMontantPerdu / totalMontantGlobal) * 100 : 0;
+        
+        
+        // Debug simple: compter les écritures pour le compte 401000
+        const countQuery = `
+            SELECT COUNT(*) as total_ecritures, SUM(COALESCE(debit, 0) - COALESCE(credit, 0)) as total_solde
+            FROM journals
+            WHERE id_compte = :id_compte
+            AND id_dossier = :id_dossier
+            AND id_exercice = :id_exercice
+            AND comptegen = '401000'
+        `;
+        
+        const countResult = await db.sequelize.query(countQuery, {
+            replacements: { id_compte, id_dossier, id_exercice },
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+        
+        
+        // Debug: voir les résultats mensuels pour 401000
+        const monthly401000 = monthlyResults.filter(r => r.compte_key === '401000');
+        
+        // Récupérer les données N/N-1 pour comparaison (même requête que N/N-1)
+        const nn1Query = `
+            SELECT 
+                NULLIF(TRIM(comptegen), '') AS compte_key,
+                libellecompte,
+                SUM(COALESCE(debit, 0) - COALESCE(credit, 0)) AS soldeN
+            FROM journals
+            WHERE id_compte = :id_compte
+            AND id_dossier = :id_dossier
+            AND id_exercice = :id_exercice
+            AND comptegen IS NOT NULL
+            AND TRIM(comptegen) != ''
+            GROUP BY NULLIF(TRIM(comptegen), ''), libellecompte
+            ORDER BY compte_key
+        `;
+
+        const nn1Results = await db.sequelize.query(nn1Query, {
+            replacements: { id_compte, id_dossier, id_exercice },
+            type: db.Sequelize.QueryTypes.SELECT
+        });
+
+
+
+        let totalMensuelGlobal = 0;
+        let totalNn1Global = 0;
+
+        nn1Results.forEach(nn1 => {
+            const mensuelRow = Array.from(map.values()).find(r => r.compte === nn1.compte_key);
+            
+            if (mensuelRow) {
+                const totalMensuel = mensuelRow.total_exercice || 0;
+                const soldeNn1 = nn1.solden || 0; // CORRIGÉ: utiliser solden au lieu de soldeN
+                const diff = totalMensuel - soldeNn1;
+                totalMensuelGlobal += totalMensuel;
+                totalNn1Global += soldeNn1;
+                
+            } else {
+                const soldeNn1 = nn1.solden || 0; // CORRIGÉ: utiliser solden au lieu de soldeN
+                totalNn1Global += soldeNn1;
+            }
+        });
+
+
         // Préparer les colonnes à renvoyer au frontend
         let finalMoisColumns = [...moisExercice];
         
@@ -348,7 +552,6 @@ exports.getRevuAnalytiqueMensuelle = async (req, res) => {
                 numero: new Date(exercice.date_debut).getMonth() + 1,
                 annee: new Date(exercice.date_debut).getFullYear() - 1
             });
-            // // console.log(`[DEBUG] Ajout de ${nomMoisAvantExercice} dans moisColumns`);
         }
 
         // Fusionner les données de commentaireAnalytiqueMensuelle (anomalies, valide_anomalie, commentaire)
@@ -559,21 +762,15 @@ exports.buildPdfSection = (data, ctx = {}) => {
             row.push({ text: formatMontant(val), alignment: 'right', style: 'cell' });
         });
         row.push(
-            anomalieIconCell(r.anomalies),
-            valideIconCell(r.valide_anomalie),
+            { text: r.anomalies ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            { text: r.valide_anomalie ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
             { text: r.commentaire || '', style: 'cell' }
         );
         tableBody.push(row.map(cell => ({ ...cell, fillColor: rowColor })));
     });
 
-    // Largeurs proportionnelles : réserve fixe (Compte/Libellé/Anomalies/Validé/Commentaire)
-    // puis répartit le reste sur les mois → le total reste ≤ 100 % (plus de colonnes rognées à droite).
-    const nMois = finalMoisColumns.length || 1;
-    const moisPct = Math.max(2.5, (100 - 44) / nMois);
-    const widths = ['8%', '16%', ...finalMoisColumns.map(() => `${moisPct}%`), '5%', '5%', '10%'];
-
     const content = [
-        { table: { headerRows: 1, widths, body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3 } }
+        { table: { headerRows: 1, widths: ['8%', '15%', ...finalMoisColumns.map(() => '6%'), '6%', '6%', '15%'], body: tableBody }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3, paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3 } }
     ];
 
     const styles = {
@@ -615,12 +812,6 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     ws.getCell('A4').font = { bold: true, size: 9 };
     ws.getCell('A4').alignment = { horizontal: 'center' };
 
-    // Ligne 5 : statistiques
-    {
-      const { total, restant } = mensuelleStats(finalData);
-      writeExcelStats(ws, 5, total, restant);
-    }
-
     ws.columns = [{ width: 12 }, { width: 30 }, ...finalMoisColumns.map(() => ({ width: 10 })), { width: 10 }, { width: 10 }, { width: 30 }];
 
     const headerRow = ws.getRow(7);
@@ -636,15 +827,15 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
         const row = ws.getRow(8 + i);
         const rowValues = [r.compte, r.libelle];
         finalMoisColumns.forEach(m => rowValues.push(r[m.nom] || 0));
-        rowValues.push('', '', r.commentaire || '');
+        rowValues.push(r.anomalies ? 'Oui' : 'Non', r.valide_anomalie ? 'Oui' : 'Non', r.commentaire || '');
         row.values = rowValues;
 
         for (let j = 2; j < 2 + finalMoisColumns.length; j++) {
             row.getCell(j + 1).numFmt = '#,##0.00';
             row.getCell(j + 1).alignment = { horizontal: 'right' };
         }
-        setAnomalieCell(row.getCell(2 + finalMoisColumns.length + 1), r.anomalies);
-        setValideCell(row.getCell(2 + finalMoisColumns.length + 2), r.valide_anomalie);
+        row.getCell(2 + finalMoisColumns.length + 1).alignment = { horizontal: 'center' };
+        row.getCell(2 + finalMoisColumns.length + 2).alignment = { horizontal: 'center' };
     });
 
     return ws;
@@ -682,8 +873,7 @@ exports.exportPdf = async (req, res) => {
             pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 7 },
             content: [
-                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
-                (() => { const { total, restant } = mensuelleStats(data.finalData); return statsBand(total, restant); })(),
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
                 ...section.content
             ],
             styles: {

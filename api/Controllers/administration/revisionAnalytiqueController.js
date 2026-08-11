@@ -5,7 +5,6 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
-const { statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -30,7 +29,6 @@ const tryReadLogo = () => {
       return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
     }
   } catch (err) {
-    console.log('Logo not found:', err.message);
   }
   return null;
 };
@@ -55,20 +53,12 @@ const getAnalytiqueData = async (id_compte, id_dossier, id_exercice, id_periode)
   }));
 };
 
-/**
- * Récupère les données pour l'export global (signature standardisée).
- * date_debut / date_fin sont ignorés ici (non utilisés par ce contrôle).
- */
+
 exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
     return await getAnalytiqueData(id_compte, id_dossier, id_exercice, id_periode);
 };
 
-/**
- * Construit la section PDF (tableau + ligne de totaux) réutilisable pour l'export combiné.
- * @param {Array} data - tableau de lignes
- * @param {Object} ctx - contexte optionnel
- * @returns {{content: Array, styles: Object}}
- */
+
 exports.buildPdfSection = (data, ctx = {}) => {
     const rows = Array.isArray(data) ? data : [];
 
@@ -117,18 +107,10 @@ exports.buildPdfSection = (data, ctx = {}) => {
     return { content, styles };
 };
 
-/**
- * Ajoute l'onglet 'Contrôle Analytique' au workbook fourni (réutilisable pour l'export combiné).
- * @param {ExcelJS.Workbook} workbook
- * @param {Array} data
- * @param {Object} ctx - contexte optionnel (ctx.logo)
- */
 exports.addExcelSheets = (workbook, data, ctx = {}) => {
     const rows = Array.isArray(data) ? data : [];
     const worksheet = workbook.addWorksheet('Contrôle Analytique');
 
-    // Colonnes : on garde uniquement key + width (les libellés d'en-tête
-    // sont écrits explicitement en ligne 5 pour laisser place au bloc titre).
     worksheet.columns = [
         { key: 'date', width: 14 },
         { key: 'compte', width: 14 },
@@ -151,8 +133,7 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     worksheet.mergeCells(`A3:${lastColLetter}3`);
     worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
 
-    // Ligne 4 : statistiques (Anomalies)
-    writeExcelStats(worksheet, 4, rows.length, null);
+    // Ligne 4 : vide (séparateur).
 
     // Ligne 5 : en-tête du tableau (mêmes libellés qu'avant).
     const headerRow = worksheet.getRow(5);
@@ -187,11 +168,6 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     return worksheet;
 };
 
-/**
- * POST /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
- * Vérifie que chaque ligne des comptes 6* et 7* possèdent des analytiques
- * Algorithme : sélectionner toutes les lignes (6* et 7*) dont le total des analytiques = 0
- */
 exports.controlerAnalytiques = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
@@ -224,7 +200,6 @@ exports.controlerAnalytiques = async (req, res) => {
         });
 
         // Étape 2: Requête SQL pour trouver les lignes sans analytiques
-        // Comptes commençant par 6 ou 7 dont le total des analytiques = 0
         const query = `
             SELECT
                 j.id as id_jnl,
@@ -254,6 +229,93 @@ exports.controlerAnalytiques = async (req, res) => {
                 OR (ABS(COALESCE(SUM(a.credit), 0) - j.credit) > 0.01)
             ORDER BY j.dateecriture, j.comptegen
         `;
+
+        // Debug: compter les écritures 6*/7* dans la période
+        const debugQuery = `
+            SELECT 
+                COUNT(*) as total_67,
+                COUNT(DISTINCT j.id) as distinct_67,
+                MIN(j.dateecriture) as min_date,
+                MAX(j.dateecriture) as max_date
+            FROM journals j
+            WHERE j.id_compte = :id_compte
+                AND j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+                AND j.dateecriture BETWEEN :date_debut AND :date_fin
+                AND (j.comptegen LIKE '6%' OR j.comptegen LIKE '7%')
+        `;
+        const debugResult = await db.sequelize.query(debugQuery, {
+            type: QueryTypes.SELECT,
+            replacements: { id_compte, id_dossier, id_exercice, date_debut, date_fin }
+        });
+
+        // DEBUG SPECIFIQUE pour la ligne 999765
+        const specificDebug = await db.sequelize.query(`
+            SELECT 
+                j.id, j.comptegen, j.debit, j.credit, j.dateecriture,
+                COALESCE(SUM(a.debit), 0) as ana_debit,
+                COALESCE(SUM(a.credit), 0) as ana_credit
+            FROM journals j
+            LEFT JOIN analytiques a ON j.id = a.id_ligne_ecriture
+                AND a.id_compte = :id_compte
+                AND a.id_dossier = :id_dossier
+                AND a.id_exercice = :id_exercice
+            WHERE j.id = 999765
+                AND j.id_compte = :id_compte
+                AND j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+            GROUP BY j.id, j.comptegen, j.debit, j.credit, j.dateecriture
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: { id_compte, id_dossier, id_exercice }
+        });
+        if (specificDebug.length > 0) {
+            const row = specificDebug[0];
+            const diffDebit = Math.abs(row.ana_debit - row.debit);
+            const diffCredit = Math.abs(row.ana_credit - row.credit);
+        }
+
+        // Debug: voir quelques écritures
+        const sampleQuery = `
+            SELECT j.id, j.comptegen, j.debit, j.credit, j.dateecriture
+            FROM journals j
+            WHERE j.id_compte = :id_compte
+                AND j.id_dossier = :id_dossier
+                AND j.id_exercice = :id_exercice
+                AND j.dateecriture BETWEEN :date_debut AND :date_fin
+                AND (j.comptegen LIKE '6%' OR j.comptegen LIKE '7%')
+            LIMIT 5
+        `;
+        const sampleResult = await db.sequelize.query(sampleQuery, {
+            type: QueryTypes.SELECT,
+            replacements: { id_compte, id_dossier, id_exercice, date_debut, date_fin }
+        });
+
+        // Debug: voir les analytiques pour les samples
+        for (const row of sampleResult) {
+            const anaQuery = `
+                SELECT 
+                    a.id_ligne_ecriture,
+                    COALESCE(SUM(a.debit), 0) as total_debit,
+                    COALESCE(SUM(a.credit), 0) as total_credit,
+                    COUNT(*) as nb_lignes
+                FROM analytiques a
+                WHERE a.id_ligne_ecriture = :id_jnl
+                    AND a.id_compte = :id_compte
+                    AND a.id_dossier = :id_dossier
+                    AND a.id_exercice = :id_exercice
+                GROUP BY a.id_ligne_ecriture
+            `;
+            const anaResult = await db.sequelize.query(anaQuery, {
+                type: QueryTypes.SELECT,
+                replacements: { 
+                    id_jnl: row.id, 
+                    id_compte, 
+                    id_dossier, 
+                    id_exercice 
+                }
+            });
+        }
 
         const results = await db.sequelize.query(query, {
             type: QueryTypes.SELECT,
@@ -318,10 +380,6 @@ exports.controlerAnalytiques = async (req, res) => {
     }
 };
 
-/**
- * GET /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
- * Récupère les résultats d'un contrôle précédent
- */
 exports.getResultats = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
@@ -369,10 +427,6 @@ exports.getResultats = async (req, res) => {
     }
 };
 
-/**
- * DELETE /administration/revisionAnalytique/:id_compte/:id_dossier/:id_exercice
- * Supprime les résultats d'un contrôle
- */
 exports.supprimerResultats = async (req, res) => {
     try {
         const { id_compte, id_dossier, id_exercice } = req.params;
@@ -427,7 +481,7 @@ exports.exportPdf = async (req, res) => {
           stack: [
             { text: 'CONTRÔLE CODES ANALYTIQUES', style: 'header', alignment: 'center' },
             { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
-            { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader2', alignment: 'center' }
+            { text: `Exercice : ${exercice?.libelle || id_exercice}`, style: 'subheader2', alignment: 'center' }
           ]
         });
 
@@ -439,8 +493,7 @@ exports.exportPdf = async (req, res) => {
             pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 8 },
             content: [
-                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
-                statsBand(Array.isArray(data) ? data.length : 0, null),
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
                 ...section.content
             ],
             styles: {
@@ -478,7 +531,7 @@ exports.exportExcel = async (req, res) => {
         const dossier = await db.dossiers.findOne({ where: { id: id_dossier } });
         const exercice = await db.exercices.findOne({ where: { id: id_exercice } });
         const dossierName = dossier?.dossier || id_dossier;
-        const periodeText = exerciceLabel(exercice) || id_exercice;
+        const periodeText = exercice?.libelle || id_exercice;
 
         const workbook = new ExcelJS.Workbook();
         exports.addExcelSheets(workbook, data, { dossierName, periodeText });

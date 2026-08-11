@@ -5,19 +5,6 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
-const { statsBand, writeExcelStats, exerciceLabel } = require('../../Middlewares/exportPdfTheme');
-
-// Stats analyse tiers : total = anomalies détectées ; restant = non validées
-const sectionAnomalyStats = (sections) => {
-  const all = [];
-  sections.forEach(sec => (sec || []).forEach(c => (c.lignes || []).forEach(l => (l.anomalies || []).forEach(a => all.push(a)))));
-  return { total: all.length, restant: all.filter(a => !a.valider).length };
-};
-
-/**
- * Analyse Fournisseur/Client Controller
- * Gère l'analyse des comptes fournisseurs avec détection d'anomalies
- */
 
 // Types d'anomalies
 const ANOMALIE_TYPES = {
@@ -38,8 +25,6 @@ const COMMENTAIRES = {
 };
 
 const cleanupOldData = async (id_compte, id_dossier, id_exercice, id_periode) => {
-  // Supprimer uniquement les lignes temporaires
-  // Les anomalies restent avec leurs validations
   await db.analyseFournisseurLignes.destroy({ 
     where: {
       id_compte,
@@ -50,10 +35,6 @@ const cleanupOldData = async (id_compte, id_dossier, id_exercice, id_periode) =>
   });
 };
 
-/**
- * Récupérer les écritures des comptes fournisseurs (401*) pour une période
- * Règle: Code journal BANQUE et sans lettrage
- */
 const getFournisseurEcritures = async (id_compte, id_dossier, id_exercice, date_debut, date_fin) => {  
   // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
@@ -89,11 +70,6 @@ const getFournisseurEcritures = async (id_compte, id_dossier, id_exercice, date_
   return results;
 };
 
-/**
- * Récupérer les factures ACHAT non réglées depuis plus de N jours
- * Règle: date_controle - date_facture >= retard_jours et lettrage vide
- * retard_jours provient du champ retard_fourns du dossier (par défaut 3 mois = 90j)
- */
 const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, date_fin, date_controle, retard_jours = 90) => {
 
   // Convertir les dates au format YYYY-MM-DD
@@ -101,14 +77,12 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   const dateControleFormatted = date_controle ? new Date(date_controle).toISOString().split('T')[0] : null;
 
-  // console.log('[DEBUG] Dates formatées:', { dateDebutFormatted, dateFinFormatted, dateControleFormatted });
 
   // Calculer la date limite (date_controle - retard_jours)
   const dateLimite = new Date(date_controle);
   dateLimite.setDate(dateLimite.getDate() - retard_jours);
   const dateLimiteFormatted = dateLimite.toISOString().split('T')[0];
   
-  // console.log('[DEBUG] Date limite (90j avant):', dateLimiteFormatted);
   
   const query = `
     SELECT 
@@ -137,21 +111,44 @@ const getFactures3MoisNonReglees = async (id_dossier, id_exercice, date_debut, d
     ORDER BY j.compteaux, j.dateecriture
   `;
   
-  const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
+  // Debug: voir toutes les factures ACHAT
+  const debugQuery = `
+    SELECT COUNT(*) as total,
+           COUNT(CASE WHEN j.lettrage IS NULL OR j.lettrage = '' THEN 1 END) as sans_lettrage,
+           MIN(j.dateecriture) as min_date,
+           MAX(j.dateecriture) as max_date
+    FROM journals j
+    LEFT JOIN codejournals cj ON j.id_journal = cj.id
+    WHERE j.id_dossier = ${id_dossier}
+      AND j.id_exercice = ${id_exercice}
+      AND (j.compteaux LIKE '401%')
+      AND cj.type = 'ACHAT'
+  `;
+  const debugResult = await db.sequelize.query(debugQuery, { type: db.Sequelize.QueryTypes.SELECT });
   
-  // console.log('[DEBUG] Nombre de factures >90j:', results.length);
-  // console.log('[DEBUG] Résultats:', results);
+  // Debug: voir les factures ACHAT sans lettrage dans la période
+  const debugQuery2 = `
+    SELECT j.dateecriture, j.lettrage, j.debit, j.credit, j.compteaux,
+           ('${dateControleFormatted}'::date - j.dateecriture) as jours
+    FROM journals j
+    LEFT JOIN codejournals cj ON j.id_journal = cj.id
+    WHERE j.id_dossier = ${id_dossier}
+      AND j.id_exercice = ${id_exercice}
+      AND (j.compteaux LIKE '401%')
+      AND j.dateecriture >= '${dateDebutFormatted}'
+      AND j.dateecriture <= '${dateFinFormatted}'
+      AND cj.type = 'ACHAT'
+      AND (j.lettrage IS NULL OR j.lettrage = '')
+    ORDER BY j.dateecriture
+  `;
+  const debugResult2 = await db.sequelize.query(debugQuery2, { type: db.Sequelize.QueryTypes.SELECT });
+  
+  const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
   
   return results;
 };
 
-/**
- * Récupérer les ajustements non traités (journal != ACHAT/BANQUE/RAN + lettrage vide)
- */
 const getAjustementsNonTraites = async (id_dossier, id_exercice, date_debut, date_fin) => {
-  // console.log('[DEBUG] getAjustementsNonTraites - Paramètres:', { id_dossier, id_exercice, date_debut, date_fin });
-  
-  // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   
@@ -179,24 +176,14 @@ const getAjustementsNonTraites = async (id_dossier, id_exercice, date_debut, dat
       AND (j.lettrage IS NULL OR j.lettrage = '')
     ORDER BY j.compteaux, j.dateecriture
   `;
-  
-  // console.log('[DEBUG] SQL Query ajustements:', query);
-  
+    
   const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
   
-  // console.log('[DEBUG] Nombre d\'ajustements non traités:', results.length);
-  // console.log('[DEBUG] Résultats:', results);
   
   return results;
 };
 
-/**
- * Récupérer les soldes en suspens (journal RAN + lettrage vide)
- */
 const getSoldesSuspens = async (id_dossier, id_exercice, date_debut, date_fin) => {
-  // console.log('[DEBUG] getSoldesSuspens - Paramètres:', { id_dossier, id_exercice, date_debut, date_fin });
-  
-  // Convertir les dates au format YYYY-MM-DD
   const dateDebutFormatted = date_debut ? new Date(date_debut).toISOString().split('T')[0] : null;
   const dateFinFormatted = date_fin ? new Date(date_fin).toISOString().split('T')[0] : null;
   
@@ -224,20 +211,12 @@ const getSoldesSuspens = async (id_dossier, id_exercice, date_debut, date_fin) =
       AND (j.lettrage IS NULL OR j.lettrage = '')
     ORDER BY j.compteaux, j.dateecriture
   `;
-  
-  // console.log('[DEBUG] SQL Query RAN:', query);
-  
+    
   const results = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT });
-  
-  // console.log('[DEBUG] Nombre de soldes suspens:', results.length);
-  // console.log('[DEBUG] Résultats:', results);
   
   return results;
 };
 
-/**
- * Analyser une ligne pour détecter les anomalies
- */
 const analyzeLine = (line, typeRegle) => {
   const anomalies = [];
   const compte = line.compteaux;
@@ -296,20 +275,12 @@ const analyzeLine = (line, typeRegle) => {
   return anomalies;
 };
 
-/**
- * Exécuter l'analyse des fournisseurs
- */
 exports.executerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
     const { date_debut, date_fin, id_periode } = req.query;
 
-    // console.log('[DEBUG] executerAnalyse - req.params:', req.params);
-    // console.log('[DEBUG] executerAnalyse - req.query:', req.query);
-
-    // Validation des paramètres
     if (!date_debut || !date_fin) {
-      // console.log('[DEBUG] Validation échouée - dates manquantes');
       return res.status(400).json({
         state: false,
         message: 'Les dates de début et fin sont requises'
@@ -324,12 +295,10 @@ exports.executerAnalyse = async (req, res) => {
     const retardMois = dossier?.retard_fourns || 3;
     const retardJours = retardMois * 30;
 
-    // console.log('[DEBUG] Nettoyage des anciennes données...');
     // Nettoyer les anciennes données
     await cleanupOldData(id_compte, id_dossier, id_exercice, id_periode || null);
 
     // ========== RÈGLE 1: Paiement sans facture (BANQUE sans lettrage) ==========
-    // console.log('[DEBUG] === RÈGLE 1: Paiement sans facture ===');
     const ecrituresBanque = await getFournisseurEcritures(
       id_compte,
       id_dossier,
@@ -337,10 +306,6 @@ exports.executerAnalyse = async (req, res) => {
       date_debut,
       date_fin
     );
-    // console.log('[DEBUG] BANQUE trouvées:', ecrituresBanque.length);
-
-    // ========== RÈGLE 2: Facture +N mois non réglée ==========
-    // console.log('[DEBUG] === RÈGLE 2: Facture >' + retardMois + ' mois non réglée ===');
     const ecrituresAchat = await getFactures3MoisNonReglees(
       id_dossier,
       id_exercice,
@@ -349,27 +314,21 @@ exports.executerAnalyse = async (req, res) => {
       date_fin,  // date de contrôle = date fin période
       retardJours
     );
-    // console.log('[DEBUG] ACHAT >90j trouvées:', ecrituresAchat.length);
 
-    // ========== RÈGLE 3: Ajustements non traités ==========
-    // console.log('[DEBUG] === RÈGLE 3: Ajustements non traités ===');
     const ecrituresAjustement = await getAjustementsNonTraites(
       id_dossier, 
       id_exercice, 
       date_debut, 
       date_fin
     );
-    // console.log('[DEBUG] Ajustements trouvés:', ecrituresAjustement.length);
 
     // ========== RÈGLE 4: Soldes suspens (RAN sans lettrage) ==========
-    // console.log('[DEBUG] === RÈGLE 4: Soldes suspens ===');
     const ecrituresRan = await getSoldesSuspens(
       id_dossier, 
       id_exercice, 
       date_debut, 
       date_fin
     );
-    // console.log('[DEBUG] RAN trouvés:', ecrituresRan.length);
 
     // Analyser chaque ligne et stocker les résultats
     const lignesAvecAnomalies = [];
@@ -456,9 +415,6 @@ exports.executerAnalyse = async (req, res) => {
   }
 };
 
-/**
- * Traiter une ligne avec anomalies (insertion en base)
- */
 const processAnomalieLine = async (line, anomalies, id_compte, id_dossier, id_exercice, id_periode, lignesAvecAnomalies) => {
   const compte = line.compteaux ;
   
@@ -552,9 +508,6 @@ const processAnomalieLine = async (line, anomalies, id_compte, id_dossier, id_ex
   });
 };
 
-/**
- * Récupérer les résultats d'analyse (lignes avec anomalies groupées par compte)
- */
 exports.getResultats = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -627,9 +580,6 @@ exports.getResultats = async (req, res) => {
   }
 };
 
-/**
- * Valider une anomalie
- */
 exports.validerAnomalie = async (req, res) => {
   try {
     const { id } = req.params;
@@ -664,9 +614,6 @@ exports.validerAnomalie = async (req, res) => {
   }
 };
 
-/**
- * Supprimer les résultats d'analyse
- */
 exports.supprimerAnalyse = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -689,10 +636,6 @@ exports.supprimerAnalyse = async (req, res) => {
   }
 };
 
-/**
- * GET /administration/analyseFournisseurClient/:id_compte/:id_dossier/:id_exercice/stats
- * Récupère les statistiques des anomalies (fournisseurs + clients)
- */
 exports.getStats = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -788,7 +731,6 @@ const tryReadLogo = () => {
       return { dataUrl: `data:image/png;base64,${logoData.toString('base64')}` };
     }
   } catch (err) {
-    console.log('Logo not found:', err.message);
   }
   return null;
 };
@@ -850,90 +792,48 @@ const ANOMALIE_LABELS = {
   'solde_suspens': 'Solde en suspens'
 };
 
-/**
- * Helper: construit les nœuds pdfmake d'une section (Fournisseurs ou Clients)
- * au format « grand livre » : un sous-tableau par compte, avec en-tête de compte
- * et ligne de totaux, plutôt qu'une liste brute.
- */
-const WIDTHS = ['10%', '12%', '*', '12%', '12%', '6%', '16%', '16%'];
-const buildSectionNodes = (data, title) => {
-  const nodes = [{ text: title, style: 'sectionHeader' }];
-
-  if (!data || data.length === 0) {
-    nodes.push({ text: 'Aucune anomalie', style: 'noData' });
-    return nodes;
-  }
+const buildTableBody = (data, title) => {
+  const tableBody = [
+    [{ text: title, colSpan: 9, style: 'sectionHeader', alignment: 'center' }, '', '', '', '', '', '', '', ''],
+    [{ text: 'Compte', style: 'tableHeader', alignment: 'center' }, { text: 'Date', style: 'tableHeader', alignment: 'center' }, { text: 'Pièce', style: 'tableHeader', alignment: 'center' }, { text: 'Libellé', style: 'tableHeader', alignment: 'center' }, { text: 'Débit', style: 'tableHeader', alignment: 'center' }, { text: 'Crédit', style: 'tableHeader', alignment: 'center' }, { text: 'Let.', style: 'tableHeader', alignment: 'center' }, { text: 'Type anomalie', style: 'tableHeader', alignment: 'center' }, { text: 'Commentaire', style: 'tableHeader', alignment: 'center' }]
+  ];
 
   data.forEach((compte) => {
-    nodes.push({
-      text: `Compte ${compte.compte}${compte.libelle ? ' — ' + compte.libelle : ''}`,
-      style: 'anomalyHeader',
-    });
-
-    const body = [
-      ['Date', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Let.', "Type d'anomalie", 'Commentaire']
-        .map((h) => ({ text: h, style: 'tableHeader', alignment: 'center' })),
-    ];
-
-    let td = 0, tc = 0;
     compte.lignes.forEach((ligne) => {
       ligne.anomalies.forEach((anomalie) => {
-        const debit = parseFloat(ligne.debit) || 0;
-        const credit = parseFloat(ligne.credit) || 0;
-        td += debit; tc += credit;
-        body.push([
+        tableBody.push([
+          { text: compte.compte, style: 'cell' },
           { text: formatDate(ligne.date_ecriture), style: 'cell' },
           { text: ligne.piece || '', style: 'cell' },
           { text: ligne.libelle || '', style: 'cell' },
-          { text: formatMontant(debit), alignment: 'right', style: 'cell' },
-          { text: formatMontant(credit), alignment: 'right', style: 'cell' },
+          { text: formatMontant(ligne.debit), alignment: 'right', style: 'cell' },
+          { text: formatMontant(ligne.credit), alignment: 'right', style: 'cell' },
           { text: ligne.lettrage || '-', alignment: 'center', style: 'cell' },
           { text: ANOMALIE_LABELS[anomalie.type] || anomalie.type, style: 'cell' },
-          { text: anomalie.commentaire_validation || '', style: 'cell' },
+          { text: anomalie.commentaire_validation || '', style: 'cell' }
         ]);
       });
     });
-
-    body.push([
-      { text: 'Total', colSpan: 3, alignment: 'right', style: 'totalRow' }, {}, {},
-      { text: formatMontant(td), alignment: 'right', style: 'totalRow' },
-      { text: formatMontant(tc), alignment: 'right', style: 'totalRow' },
-      { text: '', colSpan: 3, style: 'totalRow' }, {}, {},
-    ]);
-
-    nodes.push({
-      table: { headerRows: 1, widths: WIDTHS, body },
-      layout: {
-        fillColor: (ri) => (ri === 0 ? '#E8EEF7' : undefined),
-        hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0',
-        hLineWidth: () => 0.3, vLineWidth: () => 0.3,
-        paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 4, paddingRight: () => 4,
-      },
-    });
   });
 
-  return nodes;
+  return tableBody;
 };
 
-/**
- * Helper: ajoute un onglet Excel pour une section (Fournisseurs ou Clients).
- * Réutilisé par addExcelSheets et exportExcel.
- */
 const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
   const worksheet = workbook.addWorksheet(sheetName);
-  // Grand livre : Compte est porté par une bande de groupe, plus de colonne « Compte ».
   worksheet.columns = [
-    { width: 12 }, // Date
-    { width: 15 }, // Pièce
-    { width: 40 }, // Libellé
-    { width: 14 }, // Débit
-    { width: 14 }, // Crédit
-    { width: 10 }, // Lettrage
-    { width: 25 }, // Type anomalie
-    { width: 30 }  // Commentaire
+    { key: 'compte', width: 12 },
+    { key: 'date', width: 12 },
+    { key: 'piece', width: 15 },
+    { key: 'libelle', width: 35 },
+    { key: 'debit', width: 12 },
+    { key: 'credit', width: 12 },
+    { key: 'lettrage', width: 10 },
+    { key: 'type_anomalie', width: 25 },
+    { key: 'commentaire', width: 30 }
   ];
 
-  const nbCols = worksheet.columns.length; // 8
+  const nbCols = worksheet.columns.length; // 9
 
   // ── Bloc titre (lignes 1 à 4) ──────────────────────────────────────────────
   worksheet.mergeCells(1, 1, 1, nbCols);
@@ -945,14 +845,13 @@ const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
   worksheet.mergeCells(3, 1, 3, nbCols);
   worksheet.getCell('A3').value = `Période : ${ctx.periodeText || ''}`;
 
-  // Ligne 4 : statistiques (Anomalies / Restant à valider) pour cette section
-  {
-    const { total, restant } = sectionAnomalyStats([data]);
-    writeExcelStats(worksheet, 4, total, restant);
-  }
+  // Ligne 4 : vide (laissée telle quelle).
 
-  // ── Ligne 5 : en-tête du tableau (une seule fois, style grand livre) ────────
-  const HEADER_LABELS = ['Date', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Lettrage', "Type d'anomalie", 'Commentaire'];
+  // ── Ligne 5 : en-tête du tableau (mêmes libellés qu'avant) ─────────────────
+  const HEADER_LABELS = [
+    'Compte', 'Date', 'Pièce', 'Libellé', 'Débit',
+    'Crédit', 'Lettrage', 'Type anomalie', 'Commentaire'
+  ];
   const headerRow = worksheet.getRow(5);
   headerRow.values = HEADER_LABELS;
   headerRow.eachCell((cell) => {
@@ -961,110 +860,67 @@ const addWorksheet = (workbook, data, sheetName, blocTitle, ctx = {}) => {
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
   });
 
-  // ── Lignes 6+ : un groupe par compte (bande + écritures + total) ────────────
+  // ── Lignes 6+ : données ────────────────────────────────────────────────────
   let rowNo = 6;
-  if (!data || data.length === 0) {
-    worksheet.getRow(rowNo).getCell(1).value = 'Aucune anomalie';
-    return worksheet;
-  }
-
   data.forEach((compte) => {
-    // Bande de compte (fusionnée sur toute la largeur)
-    worksheet.mergeCells(rowNo, 1, rowNo, nbCols);
-    const band = worksheet.getRow(rowNo).getCell(1);
-    band.value = `Compte ${compte.compte}${compte.libelle ? ' — ' + compte.libelle : ''}`;
-    band.font = { bold: true, color: { argb: 'FF0E7C86' }, size: 11 };
-    band.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0F1' } };
-    band.alignment = { horizontal: 'left', vertical: 'middle' };
-    rowNo++;
-
-    let td = 0, tc = 0;
     compte.lignes.forEach((ligne) => {
       ligne.anomalies.forEach((anomalie) => {
-        const debit = Number(ligne.debit) || 0;
-        const credit = Number(ligne.credit) || 0;
-        td += debit; tc += credit;
         const row = worksheet.getRow(rowNo);
         row.values = [
+          compte.compte,
           formatDate(ligne.date_ecriture),
           ligne.piece || '',
           ligne.libelle || '',
-          debit,
-          credit,
+          ligne.debit || 0,
+          ligne.credit || 0,
           ligne.lettrage || '-',
           ANOMALIE_LABELS[anomalie.type] || anomalie.type,
           anomalie.commentaire_validation || ''
         ];
-        row.getCell(4).numFmt = '#,##0.00';
         row.getCell(5).numFmt = '#,##0.00';
+        row.getCell(6).numFmt = '#,##0.00';
         rowNo++;
       });
     });
-
-    // Ligne de total du compte
-    const totalRow = worksheet.getRow(rowNo);
-    totalRow.getCell(3).value = 'Total';
-    totalRow.getCell(3).alignment = { horizontal: 'right' };
-    totalRow.getCell(4).value = td;
-    totalRow.getCell(5).value = tc;
-    totalRow.getCell(4).numFmt = '#,##0.00';
-    totalRow.getCell(5).numFmt = '#,##0.00';
-    [3, 4, 5].forEach((c) => {
-      totalRow.getCell(c).font = { bold: true, color: { argb: 'FF2C3E50' } };
-      totalRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFE6E4' } };
-    });
-    rowNo += 2; // ligne vide entre les comptes
   });
 
   return worksheet;
 };
 
-/**
- * Récupère les données pour l'export global (fournisseurs + clients).
- * date_debut/date_fin ignorés (non utilisés par ce contrôle).
- */
 exports.getExportData = async (id_compte, id_dossier, id_exercice, id_periode, date_debut, date_fin) => {
   const fournisseurs = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'fournisseur');
   const clients = await getAnalyseTiersData(id_compte, id_dossier, id_exercice, id_periode, 'client');
   return { fournisseurs, clients };
 };
 
-/**
- * Construit la section PDF (tableaux Fournisseurs + Clients) pour un classeur combiné.
- * Retourne les nœuds de contenu et les styles nommés utilisés par ces tableaux.
- */
 exports.buildPdfSection = (data, ctx = {}) => {
   const { fournisseurs = [], clients = [] } = data || {};
 
+  const fournisseurTable = buildTableBody(fournisseurs, 'FOURNISSEURS');
+  const clientTable = buildTableBody(clients, 'CLIENTS');
+
   const content = [
-    ...buildSectionNodes(fournisseurs, 'FOURNISSEURS'),
-    ...buildSectionNodes(clients, 'CLIENTS'),
+    { table: { headerRows: 2, widths: ['10%', '10%', '12%', '25%', '10%', '10%', '6%', '12%', '5%'], body: fournisseurTable }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri === 1 ? '#D1E8FF' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3 } },
+    { text: '', margin: [0, 10, 0, 0] },
+    { table: { headerRows: 2, widths: ['10%', '10%', '12%', '25%', '10%', '10%', '6%', '12%', '5%'], body: clientTable }, layout: { fillColor: (ri) => ri === 0 ? '#E8EEF7' : ri === 1 ? '#D1E8FF' : ri % 2 === 0 ? '#FAFAFA' : '#FFFFFF', hLineColor: () => '#E0E0E0', vLineColor: () => '#E0E0E0', hLineWidth: () => 0.3, vLineWidth: () => 0.3 } }
   ];
 
   const styles = {
-    tableHeader: { bold: true, fontSize: 8, color: '#2C3E50' },
-    sectionHeader: { fontSize: 12, bold: true, color: '#0E7C86', margin: [0, 10, 0, 6] },
-    anomalyHeader: { fontSize: 10, bold: true, color: '#2C3E50', margin: [0, 8, 0, 3] },
-    cell: { fontSize: 7, color: '#2C3E50' },
-    totalRow: { bold: true, fontSize: 7, color: '#2C3E50', fillColor: '#CFE6E4' },
-    noData: { fontSize: 9, italics: true, color: '#7F8C8D', margin: [0, 6, 0, 10] },
+    tableHeader: { fontSize: 9, bold: true, color: '#1E293B', fillColor: '#F1F5F9' },
+    sectionHeader: { fontSize: 11, bold: true, color: '#0F172A', fillColor: '#DBEAFE' },
+    cell: { fontSize: 8 }
   };
 
   return { content, styles };
 };
 
-/**
- * Ajoute les onglets 'Fournisseurs' et 'Clients' au workbook passé en paramètre.
- */
+
 exports.addExcelSheets = (workbook, data, ctx = {}) => {
   const { fournisseurs = [], clients = [] } = data || {};
   addWorksheet(workbook, fournisseurs, 'Fournisseurs', 'ANALYSE FOURNISSEURS', ctx);
   addWorksheet(workbook, clients, 'Clients', 'ANALYSE CLIENTS', ctx);
 };
 
-/**
- * Export PDF for Analyse Tiers
- */
 exports.exportPdf = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -1085,8 +941,8 @@ exports.exportPdf = async (req, res) => {
       width: '*',
       stack: [
         { text: 'ANALYSE TIERS (FOURNISSEURS & CLIENTS)', style: 'header', alignment: 'center' },
-        { text: `Dossier : ${dossier?.dossier || id_dossier}`, style: 'subheader', alignment: 'center' },
-        { text: `Exercice : ${exerciceLabel(exercice) || id_exercice}`, style: 'subheader', alignment: 'center' }
+        { text: `Dossier: ${dossier?.nom || id_dossier}`, style: 'subheader', alignment: 'center' },
+        { text: `Exercice: ${exercice?.libelle || id_exercice}`, style: 'subheader', alignment: 'center' }
       ]
     });
 
@@ -1098,8 +954,7 @@ exports.exportPdf = async (req, res) => {
       pageMargins: [15, 15, 15, 25],
       defaultStyle: { font: 'Helvetica', fontSize: 8 },
       content: [
-        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
-        (() => { const { total, restant } = sectionAnomalyStats([data.fournisseurs, data.clients]); return statsBand(total, restant); })(),
+        { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
         ...section.content
       ],
       styles: {
@@ -1120,9 +975,6 @@ exports.exportPdf = async (req, res) => {
   }
 };
 
-/**
- * Export Excel for Analyse Tiers
- */
 exports.exportExcel = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -1136,7 +988,7 @@ exports.exportExcel = async (req, res) => {
     const periodeText = (date_debut && date_fin)
       ? `${formatDate(date_debut)} au ${formatDate(date_fin)}`
       : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
-    const dossierName = dossier?.dossier || id_dossier;
+    const dossierName = dossier?.dossier || dossier?.nom || id_dossier;
 
     const workbook = new ExcelJS.Workbook();
     exports.addExcelSheets(workbook, data, { dossierName, periodeText });

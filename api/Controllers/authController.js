@@ -32,17 +32,12 @@ const handleLogin = async (req, res) => {
     if (!foundUser) return res.status(401).json({ 'message': 'Compte non trouvé.' });
 
     const id_role = foundUser.role_id;
-    const foundRole = await roles.findByPk(id_role);
-
-    console.log(foundRole);
-
+    const foundRole = await roles.findByPk(id_role);    
 
     if (!foundRole) return res.status(401).json({ 'message': 'Rôle non trouvé.' });
 
     const match = await bcrypt.compare(password, foundUser.password);
-
-    console.log(match);
-
+    
     if (match) {
         const userRoles = Object.values(foundUser.roles).filter(Boolean);
         const role = foundRole.code;

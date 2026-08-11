@@ -7,18 +7,8 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { applyKaontyStyle } = require('../../Middlewares/kaontyExcelStyle');
-const { valideIconCell, anomalieIconCell, setExcelAnomalieCell: setAnomalieCell, setExcelValideCell: setValideCell, statsBand, writeExcelStats } = require('../../Middlewares/exportPdfTheme');
 
 const round2 = (value) => Math.round(value * 100) / 100;
-
-// Stats revue : total = comptes en anomalie ; restant = anomalies non validées
-const revueStats = (results) => {
-  const list = results || [];
-  return {
-    total: list.filter(r => r.anomalies).length,
-    restant: list.filter(r => r.anomalies && !r.valide_anomalie).length,
-  };
-};
 
 exports.getRevuAnalytiqueNN1 = async (req, res) => {
     try {
@@ -34,6 +24,7 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
             if (periode) {
                 date_debut = periode.date_debut;
                 date_fin = periode.date_fin;
+            } else {
             }
         }
 
@@ -63,7 +54,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
         });
 
         const id_exerciceN1 = exerciceN1 ? exerciceN1.id : null;
-        // console.log('[revuAnalytiqueNN1] hasN1 =', !!exerciceN1, 'id_exerciceN1 =', id_exerciceN1);
 
         // Calcul du facteur de proratisation pour N-1
         let facteurProrata = 1; // Par défaut, pas de proratisation
@@ -91,7 +81,6 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
             }
         }
 
-        // console.log('[revuAnalytiqueNN1] prorata:', { nbrMoisPeriodeN, nbrMoisTotalN1, facteurProrata });
 
         // Requête SQL pour agréger les données des exercices N et N-1
         // Dans la requête SQL, on peut calculer directement var et var%
@@ -215,11 +204,53 @@ exports.getRevuAnalytiqueNN1 = async (req, res) => {
         
 
         // Exécuter la requête
-        // console.log('[revuAnalytiqueNN1] params reçus:', { id_compte, id_dossier, id_exercice, id_exerciceN1 });
         const results = await db.sequelize.query(query, {
             replacements: replacements,
             type: db.Sequelize.QueryTypes.SELECT
         });
+
+        // Totaux pour N
+        const totals = await db.sequelize.query(
+            `SELECT COUNT(*) as lignes, SUM(debit) as total_debit, SUM(credit) as total_credit
+             FROM journals
+             WHERE id_compte = :id_compte AND id_dossier = :id_dossier AND id_exercice = :id_exercice`,
+            {
+                replacements: { id_compte, id_dossier, id_exercice },
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        // Comptes distincts pour N
+        const comptesDistincts = await db.sequelize.query(
+            `SELECT DISTINCT TRIM(comptegen) as compte
+             FROM journals
+             WHERE id_compte = :id_compte AND id_dossier = :id_dossier AND id_exercice = :id_exercice
+               AND comptegen IS NOT NULL AND TRIM(comptegen) != ''
+             ORDER BY compte`,
+            {
+                replacements: { id_compte, id_dossier, id_exercice },
+                type: db.Sequelize.QueryTypes.SELECT
+            }
+        );
+
+        if (id_exerciceN1) {
+            const comptesDistinctsN1 = await db.sequelize.query(
+                `SELECT DISTINCT TRIM(comptegen) as compte
+                 FROM journals
+                 WHERE id_compte = :id_compte AND id_dossier = :id_dossier AND id_exercice = :id_exerciceN1
+                   AND comptegen IS NOT NULL AND TRIM(comptegen) != ''
+                 ORDER BY compte`,
+                {
+                    replacements: { id_compte, id_dossier, id_exerciceN1 },
+                    type: db.Sequelize.QueryTypes.SELECT
+                }
+            );
+
+            const setN = new Set((comptesDistincts || []).map(r => r.compte));
+            const setN1 = new Set((comptesDistinctsN1 || []).map(r => r.compte));
+            const onlyInN = Array.from(setN).filter(c => !setN1.has(c));
+            const onlyInN1 = Array.from(setN1).filter(c => !setN.has(c));
+        }
 
         // Formatter les résultats
         const formattedResults = results.map((row, index) => {
@@ -421,8 +452,8 @@ exports.buildPdfSection = (data, ctx = {}) => {
             { text: formatMontant(r.soldeN1 || 0), alignment: 'right', style: 'cell' },
             { text: formatMontant(r.var), alignment: 'right', style: 'cell' },
             { text: r.varPourcent !== null ? `${r.varPourcent}%` : '-', alignment: 'right', style: 'cell' },
-            anomalieIconCell(r.anomalies),
-            valideIconCell(r.valide_anomalie),
+            { text: r.anomalies ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
+            { text: r.valide_anomalie ? 'Oui' : 'Non', alignment: 'center', style: 'cell' },
             { text: r.commentaire, style: 'cell' }
         ].map(cell => ({ ...cell, fillColor: rowColor })));
     });
@@ -453,7 +484,7 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     }
 
     ws.mergeCells('A2:I2');
-    ws.getCell('A2').value = 'REVUE ANALYTIQUE N/N-1';
+    ws.getCell('A2').value = 'CONTRÔLE GLOBAL';
     ws.getCell('A2').font = { bold: true, size: 14 };
     ws.getCell('A2').alignment = { horizontal: 'center' };
 
@@ -467,12 +498,6 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
     ws.getCell('A4').font = { bold: true, size: 9 };
     ws.getCell('A4').alignment = { horizontal: 'center' };
 
-    // Ligne 5 : statistiques
-    {
-      const { total, restant } = revueStats(results);
-      writeExcelStats(ws, 5, total, restant);
-    }
-
     ws.columns = [{ width: 12 }, { width: 35 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 30 }];
 
     const headerRow = ws.getRow(7);
@@ -483,7 +508,7 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
 
     results.forEach((r, i) => {
         const row = ws.getRow(8 + i);
-        row.values = [r.compte, r.libelle, r.soldeN, r.soldeN1 || 0, r.var, r.varPourcent !== null ? `${r.varPourcent}%` : '-', '', '', r.commentaire];
+        row.values = [r.compte, r.libelle, r.soldeN, r.soldeN1 || 0, r.var, r.varPourcent !== null ? `${r.varPourcent}%` : '-', r.anomalies ? 'Oui' : 'Non', r.valide_anomalie ? 'Oui' : 'Non', r.commentaire];
         row.getCell(3).numFmt = '#,##0.00';
         row.getCell(4).numFmt = '#,##0.00';
         row.getCell(5).numFmt = '#,##0.00';
@@ -492,8 +517,8 @@ exports.addExcelSheets = (workbook, data, ctx = {}) => {
         row.getCell(4).alignment = { horizontal: 'right' };
         row.getCell(5).alignment = { horizontal: 'right' };
         row.getCell(6).alignment = { horizontal: 'right' };
-        setAnomalieCell(row.getCell(7), r.anomalies);
-        setValideCell(row.getCell(8), r.valide_anomalie);
+        row.getCell(7).alignment = { horizontal: 'center' };
+        row.getCell(8).alignment = { horizontal: 'center' };
     });
 
     return ws;
@@ -519,7 +544,7 @@ exports.exportPdf = async (req, res) => {
         headerColumns.push({
             width: '*',
             stack: [
-                { text: 'REVUE ANALYTIQUE N/N-1', style: 'header', alignment: 'center' },
+                { text: 'CONTRÔLE GLOBAL', style: 'header', alignment: 'center' },
                 { text: `Dossier : ${dossier?.dossier || ''}`, style: 'subheader', alignment: 'center' },
                 { text: `Période : ${periodeText}`, style: 'subheader2', alignment: 'center' }
             ]
@@ -531,8 +556,7 @@ exports.exportPdf = async (req, res) => {
             pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [15, 15, 15, 25],
             defaultStyle: { font: 'Helvetica', fontSize: 8 },
             content: [
-                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 12] },
-                (() => { const { total, restant } = revueStats(data.results); return statsBand(total, restant); })(),
+                { columns: headerColumns, columnGap: 10, margin: [0, 0, 0, 15] },
                 ...section.content
             ],
             styles: {

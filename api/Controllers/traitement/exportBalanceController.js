@@ -90,7 +90,6 @@ const recupBalance = async (req, res) => {
         return res.json(resData);
 
     } catch (error) {
-        console.log(error);
         return res.json({ state: false, msg: "Erreur interne" });
     }
 };
@@ -109,7 +108,6 @@ const recupBalanceFromJournal = async (req, res) => {
             dateFin = null
         } = req.body;
 
-        // console.log(dateDebut, dateFin)
 
         if (!compteId) {
             return res.json({ state: false, msg: 'Compte vide' })
@@ -335,7 +333,6 @@ const actualizeBalance = async (req, res) => {
             return res.json({ state: true, message: "Balance mise à jour avec succès" })
         }
     } catch (error) {
-        console.log(error);
         return res.json({ state: false, message: "Erreur interne" });
     }
 }

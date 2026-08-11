@@ -1,132 +1,139 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Stack, Paper, Grid, Button, LinearProgress, CircularProgress, Divider } from '@mui/material';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
+import { Typography, Stack, Paper, Button, CircularProgress, Divider } from '@mui/material';
 import PopupTestSelectedFile from './popupTestSelectedFile';
 import axios from '../../config/axios';
 import Box from '@mui/material/Box';
-import { format } from 'date-fns';
 import useAuth from '../hooks/useAuth';
 import { jwtDecode } from 'jwt-decode';
 import toast from 'react-hot-toast';
 import usePermission from '../hooks/usePermission';
-import { Line } from 'react-chartjs-2';
 import useAxiosPrivate from '../hooks/useAxiosPrivate';
 import { useExercicePeriode } from '../context/ExercicePeriodeContext';
 import ExercicePeriodeSelector from './ExercicePeriodeSelector';
 import {
-  ErrorOutline, CheckCircleOutline, TrendingUpOutlined,
-  AccountBalanceWalletOutlined, PaymentsOutlined,
-  BarChartOutlined, ChevronRight,
-  ArrowForwardOutlined, HistoryToggleOffOutlined,
-  HomeOutlined,
-  NavigateNext,
+  TrendingUpOutlined,
+  PaymentsOutlined,
+  BarChartOutlined,
+  ArrowForwardOutlined,
   SavingsOutlined, GroupsOutlined
 } from '@mui/icons-material';
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import SearchIcon from "@mui/icons-material/Search";
 
 const SECTIONS_CONFIG = [
   {
-    title: "Analyses analytiques",
+    id: "forme",
+    title: "Forme & intégrité du fichier",
     items: [
-      {
-        id: "revueNN1",
-        title: "Revue analytique N/N-1",
-        icon: <AssessmentIcon />,
-        endpoint: "/dashboard/revuAnalytiqueNN1",
-        route: "/tab/dashboard/revuAnalytiqueNN1",
-        typeRevue: "analytiqueNN1",
-        hasAnomalies: true,
-        anomalies: 0,
-        remaining: 0
-      },
-      {
-        id: "revueMensuelle",
-        title: "Revue analytique mensuelle",
-        icon: <AssessmentIcon />,
-        endpoint: "/dashboard/revuAnalytiqueMensuelle",
-        route: "/tab/dashboard/revuAnalytiqueMensuelle",
-        typeRevue: "analytiqueMensuelle",
-        hasAnomalies: true,
-        anomalies: 0,
-        remaining: 0
-      }
-    ]
+      { id: "doublons", title: "Recherche de doublons", source: { kind: 'doublons' }, anomalies: 0, remaining: 0 },
+      { id: "suspense", title: "Écritures en suspens — compte 47", source: { kind: 'suspense' }, anomalies: 0, remaining: 0 },
+      { id: "fecFormat", title: "Conformité du format FEC (18 champs obligatoires, art. A47 A-1 du LPF)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "equilibreDC", title: "Équilibre débit = crédit, global et par écriture", source: { kind: 'equilibreDC' }, anomalies: 0, remaining: 0 },
+      { id: "continuiteNum", title: "Continuité de la numérotation des écritures (EcritureNum)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "controleDates", title: "Contrôle des dates : date comptable dans l'exercice, ≥ date pièce, absence de dates futures", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "concordanceAN", title: "Concordance des à-nouveaux avec la clôture N-1", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "libelleManquant", title: "Écritures sans libellé ou libellé non signifiant", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+    ],
   },
   {
-    title: "Analyses comptables",
+    id: "coherence",
+    title: "Cohérence & revue analytique",
     items: [
-      {
-        id: "analyseGlobale",
-        title: "Analyse globale des comptes",
-        icon: <AccountBalanceIcon />,
-        endpoint: "/administration/revisionControleAuto",
-        route: "/tab/administration/revision",
-        typeRevue: "controleAuto",
-        hasAnomalies: true,
-        anomalies: 0,
-        remaining: 0
-      },
-      {
-        id: "analyseFournisseurClient",
-        title: "Analyse fournisseur / Client",
-        icon: <AccountBalanceIcon />,
-        endpoint: "/administration/revisionFournisseurClient",
-        route: "/tab/administration/revisionFournisseurClient",
-        typeRevue: "fournisseurClient",
-        hasAnomalies: true,
-        anomalies: 0,
-        remaining: 0
-      }
-    ]
+      { id: "revueAnalytiqueNN1", title: "Revue analytique N/N-1", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "revueMensuelle", title: "Revue analytique mensuelle", source: { kind: 'revu', typeRevue: 'analytiqueMensuelle' }, anomalies: 0, remaining: 0 },
+      { id: "revueNN1", title: "Contrôle Global", source: { kind: 'revu', typeRevue: 'analytiqueNN1' }, anomalies: 0, remaining: 0 },
+      { id: "atypique", title: "Recherche de montants atypiques", source: { kind: 'controleAutoType', codeCtrl: 'ATYPIQUE' }, anomalies: 0, remaining: 0 },
+      { id: "sensSolde", title: "Conformité du solde au sens normal des comptes", source: { kind: 'controleAutoType', codeCtrl: 'SENS_SOLDE' }, anomalies: 0, remaining: 0 },
+      { id: "variationAnormale", title: "Variation anormale par poste (seuil de variation % paramétrable)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "comptesDisparus", title: "Comptes disparus / nouveaux entre N-1 et N", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "anClasse67", title: "Comptes de classe 6 et 7 portant un à-nouveau (anomalie systématique)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+    ],
   },
   {
-    title: "Contrôles & anomalies",
-    items: [
+    id: "cycles",
+    title: "Contrôles par cycle",
+    groups: [
       {
-        id: "rechercheDoublon",
-        title: "Recherche doublon",
-        icon: <SearchIcon />,
-        endpoint: "/administration/rechercheDoublon",
-        route: "/tab/administration/revisiondoublon",
-        typeRevue: "doublons",
-        hasAnomalies: true,
-        anomalies: 0,
-        remaining: 0
+        cycle: "Capitaux propres",
+        items: [
+          { id: "existence", title: "Existence du compte de capital", source: { kind: 'controleAutoType', codeCtrl: 'EXISTENCE' }, anomalies: 0, remaining: 0 },
+          { id: "concordanceResultat", title: "Concordance du résultat (compte 12) avec le résultat de la balance", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "affectationResultat", title: "Affectation du résultat N-1 (12 → 106 / 110 / 119)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+        ],
       },
       {
-        id: "controleCodeAnalytique",
-        title: "Contrôle code analytique",
-        icon: <SearchIcon />,
-        endpoint: "/administration/revisionAnalytique",
-        route: "/tab/administration/revisionAnalytique",
-        typeRevue: "analytique",
-        hasAnomalies: true,
-        anomalies: 0,
-        remaining: 0
-      }
-    ]
-  }
+        cycle: "Immobilisations",
+        items: [
+          { id: "immoCharge", title: "Conformité du seuil de capitalisation des immobilisations", source: { kind: 'controleAutoType', codeCtrl: 'IMMO_CHARGE' }, anomalies: 0, remaining: 0 },
+          { id: "coherenceImmoAmort", title: "Cohérence immobilisation / amortissement / dotation (2xx ↔ 28xx ↔ 68xx)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "traitementCessions", title: "Traitement des cessions (675 / 775, sortie d'actif, plus/moins-value)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+        ],
+      },
+      {
+        cycle: "Trésorerie",
+        items: [
+          { id: "sequenceCheques", title: "Séquence des numéros de chèque", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "caisseCreditrice", title: "Caisse créditrice (solde 53 négatif — impossible physiquement)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "banqueNonPointee", title: "Écritures de banque non pointées / rapprochement bancaire", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "virementsInternes", title: "Virements internes (compte 58) non soldés", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+        ],
+      },
+      {
+        cycle: "Achats / Ventes / Tiers",
+        items: [
+          { id: "sensEcriture", title: "Sens d'enregistrement des factures d'achats et de ventes", source: { kind: 'controleAutoType', codeCtrl: 'SENS_ECRITURE' }, anomalies: 0, remaining: 0 },
+          { id: "fournisseurClient", title: "Analyse Fournisseurs / Clients", source: { kind: 'fournisseurClient' }, anomalies: 0, remaining: 0 },
+          { id: "soldesInverses", title: "Fournisseur débiteur / Client créditeur (soldes inversés)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "coherenceHtTva", title: "Cohérence HT / TVA / TTC sur les factures", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "balanceAgee", title: "Balance âgée : antériorité des tiers non lettrés", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "fiscal",
+    title: "Fiscal — TVA",
+    items: [
+      { id: "utilCptTva", title: "Utilisation des comptes de TVA", source: { kind: 'controleAutoType', codeCtrl: 'UTIL_CPT_TVA' }, anomalies: 0, remaining: 0 },
+      { id: "tvaNonDeductible", title: "TVA non déductible", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "tauxTva", title: "Contrôle des taux de TVA", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "concordanceTva", title: "Concordance TVA collectée (4457) / base ventes, et TVA déductible (4456) / base achats", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "tvaSansBase", title: "Compte de TVA mouvementé sans base HT correspondante (et inversement)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "concordanceCa3", title: "Concordance comptabilité / déclarations CA3", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+    ],
+  },
+  {
+    id: "analytique",
+    title: "Contrôles analytiques",
+    items: [
+      { id: "codesAnalytiques", title: "Contrôle des codes analytiques (écritures 6 et 7)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "analytiqueHors67", title: "Écritures analytiques posées sur des comptes hors 6/7", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+      { id: "concordanceAnalytique", title: "Concordance totaux analytiques vs comptabilité générale", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+    ],
+  },
 ];
 
-// Format date as dd/mm/yyyy
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return '';
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = String(date.getFullYear());
-  return `${dd}/${mm}/${yyyy}`;
-};
+// Aplatit tous les items d'une section, qu'ils soient directs (items) ou dans des sous-groupes cycle (groups).
+const flattenItems = (sections) =>
+  (sections || []).flatMap((section) =>
+    section.groups ? section.groups.flatMap((g) => g.items || []) : (section.items || [])
+);
 
-const NAV_DARK = '#0B1120';
-const BG_SOFT = '#F8FAFC';
+// Réinitialise anomalies/remaining à 0 sur toute la structure (items directs + sous-groupes cycle).
+const resetSectionsStats = (sections) =>
+  (sections || []).map((section) => {
+    if (section.groups) {
+      return {
+        ...section,
+        groups: section.groups.map((g) => ({
+          ...g,
+          items: g.items.map((i) => ({ ...i, anomalies: 0, remaining: 0 })),
+        })),
+      };
+    }
+    return { ...section, items: section.items.map((i) => ({ ...i, anomalies: 0, remaining: 0 })) };
+  });
 
 // ─── Système de design (inspiré du cockpit comptable de référence) ───
 const T = {
@@ -145,9 +152,11 @@ const T = {
   info: '#3A6EA5',
   accW: '#E2F0F1',
 };
+
 const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
 const NUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
 const CARD_SHADOW = '0 1px 2px rgba(16,39,51,.04), 0 8px 24px -16px rgba(16,39,51,.18)';
+
 const panelSx = {
   border: `1px solid ${T.line}`,
   borderRadius: '16px',
@@ -169,79 +178,15 @@ const fmtPct = (value) => {
   return Math.abs(parseFloat(value)).toFixed(2).replace('.', ',');
 };
 
-// Petit graphique de tendance interne
-const SparklineMini = ({ data = [], color = '#3B82F6', width = 200, height = 80 }) => {
-  if (!data || data.length < 2) return null;
-
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - (min * 0.9) || 1; // Un peu de marge en bas
-
-  const points = data.map((val, i) => ({
-    x: (i / (data.length - 1)) * width,
-    y: height - ((val - min) / range) * (height * 0.7) - (height * 0.15)
-  }));
-
-  // 1. Chemin de la ligne (la courbe)
-  let linePath = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const cp1x = prev.x + (curr.x - prev.x) * 0.4;
-    const cp2x = curr.x - (curr.x - prev.x) * 0.4;
-    linePath += ` C ${cp1x} ${prev.y}, ${cp2x} ${curr.y}, ${curr.x} ${curr.y}`;
-  }
-
-  // 2. Chemin pour le remplissage (on ferme la forme vers le bas)
-  // On part de la fin de la courbe, on descend au coin bas-droit, puis bas-gauche
-  const fillPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
-
-  return (
-    <svg width={width} height={height} style={{ overflow: 'visible' }}>
-      <defs>
-        {/* Dégradé pour l'effet de fond */}
-        <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.4" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* La zone remplie */}
-      <path d={fillPath} fill={`url(#gradient-${color})`} stroke="none" />
-
-      {/* La ligne de la courbe */}
-      <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-};
-
-const dashboardCardHeight = 100;
-const dashboardCardMinWidth = 80;
-
 export default function DashboardComponent() {
 
-  // Liste enrichie des points de contrôle
-  const pointsDeControle = [
-    { nom: 'Revue analytique N / N-1', anomalies: 12, restantes: 2, status: 85 },
-    { nom: 'Revue analytique mensuelle', anomalies: 0, restantes: 0, status: 100 },
-    { nom: 'Contrôle global balance', anomalies: 45, restantes: 28, status: 40 },
-    { nom: 'Analyse Fournisseurs / Clients', anomalies: 30, restantes: 12, status: 60 },
-    { nom: 'Recherche de doublons', anomalies: 8, restantes: 1, status: 95 },
-    { nom: 'Contrôle codes analytiques', anomalies: 50, restantes: 40, status: 20 },
-    { nom: 'Écritures en suspens', anomalies: 15, restantes: 15, status: 0 },
-  ];
+  const { canView } = usePermission();
 
-  const { canAdd, canModify, canDelete, canView } = usePermission();
-
-  const [valueRevuAnalytique, setValueRevuAnalytique] = useState('1');
-
-  const [fileInfos, setFileInfos] = useState('');
+  const [, setFileInfos] = useState('');
   const [noFile, setNoFile] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
   const [fileId, setFileId] = useState(0);
-  const [listeExercice, setListeExercice] = useState([]);
-  const [listeSituation, setListeSituation] = useState([]);
   const [loading, setLoading] = useState(false);
   const axiosPrivate = useAxiosPrivate();
   const { id: routeDossierId } = useParams();
@@ -252,85 +197,77 @@ export default function DashboardComponent() {
     selectedPeriodeId,
     selectedPeriodeDates,
     handleChangeExercice,
-    handleChangePeriode,
-    loading: contextLoading,
-    getApiParams
+    handleChangePeriode
   } = useExercicePeriode();
 
   const [sectionsData, setSectionsData] = useState(SECTIONS_CONFIG);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [resultats, setResultats] = useState([]);
 
   //récupération des informations de connexion
   const { auth } = useAuth();
   const decoded = auth?.accessToken ? jwtDecode(auth.accessToken) : undefined;
   const compteId = decoded.UserInfo.compteId || null;
-  const userId = decoded.UserInfo.userId || null;
 
   const [deviseParDefaut, setDeviseParDefaut] = useState([]);
 
   const [chiffresAffairesNGraph, setChiffresAffairesNGraph] = useState([]);
-  const [chiffresAffairesN1Graph, setChiffresAffairesN1Graph] = useState([]);
+  const [, setChiffresAffairesN1Graph] = useState([]);
 
-  const [moisN, setmoisN] = useState([]);
-  const [moisN1, setmoisN1] = useState([]);
+  const [, setmoisN] = useState([]);
+  const [, setmoisN1] = useState([]);
 
   const [margeBruteNGraph, setMargeBruteNGraph] = useState([]);
-  const [margeBruteN1Graph, setMargeBruteN1Graph] = useState([]);
+  const [, setMargeBruteN1Graph] = useState([]);
 
   const [tresorerieBanqueNGraph, setTresorerieBanqueNGraph] = useState([]);
-  const [tresorerieBanqueN1Graph, setTresorerieBanqueN1Graph] = useState([]);
+  const [, setTresorerieBanqueN1Graph] = useState([]);
 
   const [tresorerieCaisseNGraph, setTresorerieCaisseNGraph] = useState([]);
-  const [tresorerieCaisseN1Graph, setTresorerieCaisseN1Graph] = useState([]);
+  const [, setTresorerieCaisseN1Graph] = useState([]);
 
   const [resultatN, setResultatN] = useState(0);
   const [resultatN1, setResultatN1] = useState(0);
   const [variationResultatN, setVariationResultatN] = useState(0);
-  const [variationResultatN1, setVariationResultatN1] = useState(0);
+  const [, setVariationResultatN1] = useState(0);
   const [evolutionResultatN, setEvolutionResultatN] = useState('');
-  const [evolutionResultatN1, setEvolutionResultatN1] = useState('');
+  const [, setEvolutionResultatN1] = useState('');
 
   const [resultatChiffreAffaireN, setResultatChiffreAffaireN] = useState(0);
   const [resultatChiffreAffaireN1, setResultatChiffreAffaireN1] = useState(0);
   const [variationChiffreAffaireN, setVariationChiffreAffaireN] = useState(0);
-  const [variationChiffreAffaireN1, setVariationChiffreAffaireN1] = useState(0);
+  const [, setVariationChiffreAffaireN1] = useState(0);
   const [evolutionChiffreAffaireN, setEvolutionChiffreAffaireN] = useState('');
-  const [evolutionChiffreAffaireN1, setEvolutionChiffreAffaireN1] = useState('');
+  const [, setEvolutionChiffreAffaireN1] = useState('');
 
   const [resultatDepenseAchatN, setResultatDepenseAchatN] = useState(0);
   const [resultatDepenseAchatN1, setResultatDepenseAchatN1] = useState(0);
   const [variationDepenseAchatN, setVariationDepenseAchatN] = useState(0);
-  const [variationDepenseAchatN1, setVariationDepenseAchatN1] = useState(0);
+  const [, setVariationDepenseAchatN1] = useState(0);
   const [evolutionDepenseAchatN, setEvolutionDepenseAchatN] = useState('');
-  const [evolutionDepenseAchatN1, setEvolutionDepenseAchatN1] = useState('');
+  const [, setEvolutionDepenseAchatN1] = useState('');
 
   const [resultatDepenseSalarialeN, setResultatDepenseSalarialeN] = useState(0);
   const [resultatDepenseSalarialeN1, setResultatDepenseSalarialeN1] = useState(0);
   const [variationDepenseSalarialeN, setVariationDepenseSalarialeN] = useState(0);
-  const [variationDepenseSalarialeN1, setVariationDepenseSalarialeN1] = useState(0);
+  const [, setVariationDepenseSalarialeN1] = useState(0);
   const [evolutionDepenseSalarialeN, setEvolutionDepenseSalarialeN] = useState('');
-  const [evolutionDepenseSalarialeN1, setEvolutionDepenseSalarialeN1] = useState('');
+  const [, setEvolutionDepenseSalarialeN1] = useState('');
 
   const [resultatTresorerieBanqueN, setResultatTresorerieBanqueN] = useState(0);
   const [resultatTresorerieBanqueN1, setResultatTresorerieBanqueN1] = useState(0);
   const [variationTresorerieBanqueN, setVariationTresorerieBanqueN] = useState(0);
-  const [variationTresorerieBanqueN1, setVariationDTresorerieBanqueN1] = useState(0);
+  const [, setVariationDTresorerieBanqueN1] = useState(0);
   const [evolutionTresorerieBanqueN, setEvolutionTresorerieBanqueN] = useState('');
-  const [evolutionTresorerieBanqueN1, setEvolutionTresorerieBanqueN1] = useState('');
+  const [, setEvolutionTresorerieBanqueN1] = useState('');
 
   const [resultatTresorerieCaisseN, setResultatTresorerieCaisseN] = useState(0);
   const [resultatTresorerieCaisseN1, setResultatTresorerieCaisseN1] = useState(0);
   const [variationTresorerieCaisseN, setVariationTresorerieCaisseN] = useState(0);
-  const [variationTresorerieCaisseN1, setVariationDTresorerieCaisseN1] = useState(0);
+  const [, setVariationDTresorerieCaisseN1] = useState(0);
   const [evolutionTresorerieCaisseN, setEvolutionTresorerieCaisseN] = useState('');
-  const [evolutionTresorerieCaisseN1, setEvolutionTresorerieCaisseN1] = useState('');
+  const [, setEvolutionTresorerieCaisseN1] = useState('');
 
   const [journalData, setJournalData] = useState([]);
-
-  const handleChangeRevuAnalytiqueTab = (event, newValue) => {
-    setValueRevuAnalytique(newValue);
-  };
 
   const GetListeDossier = (id) => {
     axios.get(`/home/FileInfos/${id}`).then((response) => {
@@ -508,76 +445,6 @@ export default function DashboardComponent() {
     }
   }, [compteId, fileId, selectedExerciceId, selectedPeriodeDates]);
 
-  const fetchAnomalyStats = async (typeRevue, endpoint) => {
-    try {
-      const { id_compte, id_dossier, id_exercice } = getIds();
-
-      let url;
-
-      // Construire l'URL selon le type de revue
-      switch (typeRevue) {
-        case 'controleAuto':
-          url = `/administration/revisionControleAuto/${id_compte}/${id_dossier}/${id_exercice}/stats`;
-          if (selectedPeriodeId && selectedPeriodeId !== 'exercice') {
-            url += `?id_periode=${selectedPeriodeId}`;
-          }
-          break;
-        case 'fournisseurClient':
-          url = `/administration/revisionFournisseurClient/${id_compte}/${id_dossier}/${id_exercice}/stats`;
-          if (selectedPeriodeId && selectedPeriodeId !== 'exercice') {
-            url += `?id_periode=${selectedPeriodeId}`;
-          }
-          break;
-        case 'doublons':
-          url = `/administration/rechercheDoublon/${id_compte}/${id_dossier}/${id_exercice}/stats`;
-          if (selectedPeriodeId && selectedPeriodeId !== 'exercice') {
-            url += `?id_periode=${selectedPeriodeId}`;
-          }
-          break;
-        case 'analytique': {
-          url = `/administration/revisionAnalytique/${id_compte}/${id_dossier}/${id_exercice}`;
-          const analytiqueParams = new URLSearchParams();
-          if (selectedPeriodeId && selectedPeriodeId !== 'exercice') {
-            analytiqueParams.append('id_periode', selectedPeriodeId);
-          }
-          const analytiqueResponse = await axiosPrivate.get(url + (analytiqueParams.toString() ? `?${analytiqueParams.toString()}` : ''));
-          if (analytiqueResponse.data.state && analytiqueResponse.data.data) {
-            const rows = analytiqueResponse.data.data;
-            const totalAnomalies = rows.length;
-            const nonValidees = rows.filter(r => r.valide === false || r.valide === 0).length;
-            return { anomalies: totalAnomalies, remaining: nonValidees || totalAnomalies };
-          }
-          return { anomalies: 0, remaining: 0 };
-        }
-        case 'analytiqueNN1':
-        case 'analytiqueMensuelle':
-        default:
-          url = `/revuAnalytiqueStats/totals?id_compte=${id_compte}&id_dossier=${id_dossier}&id_exercice=${id_exercice}&type_revue=${typeRevue}`;
-          // Ajouter les paramètres de période pour les revues analytiques
-          if (selectedPeriodeId && selectedPeriodeId !== 'exercice') {
-            url += `&id_periode=${selectedPeriodeId}`;
-          }
-          if (selectedPeriodeDates) {
-            url += `&date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
-          }
-          break;
-      }
-
-      const response = await axiosPrivate.get(url);
-
-      if (response.data.state && response.data.data) {
-        const data = response.data.data;
-        return {
-          anomalies: data.total_anomalies || data.nbLignes || data.total || 0,
-          remaining: data.restantes || data.remaining || data.nbGroupes || data.nonValide || 0
-        };
-      }
-      return { anomalies: 0, remaining: 0 };
-    } catch (error) {
-      console.error(`Error fetching stats for ${typeRevue}:`, error);
-      return { anomalies: 0, remaining: 0 };
-    }
-  };
   // Vérifier si un dossier est sélectionné au chargement
   useEffect(() => {
     const dossierFromSessionRaw = sessionStorage.getItem('fileId');
@@ -604,6 +471,8 @@ export default function DashboardComponent() {
     setLoadingStats(true);
     try {
       const { id_compte, id_dossier, id_exercice } = getIds();
+      const hasPeriode = selectedPeriodeId && selectedPeriodeId !== 'exercice';
+      const periodeQuery = hasPeriode ? `?id_periode=${selectedPeriodeId}` : '';
 
       // D'abord, déclencher la sauvegarde des anomalies pour la période sélectionnée.
       // Ces deux appels doivent se terminer AVANT de lire les stats (ils les sauvegardent),
@@ -619,21 +488,105 @@ export default function DashboardComponent() {
         }
       }
 
-      // Charger les stats de toutes les cartes EN PARALLÈLE (au lieu d'une par une).
-      const updatedSections = await Promise.all(
-        sectionsData.map(async (section) => {
-          const items = await Promise.all(
-            section.items.map(async (item) => {
-              if (item.hasAnomalies && item.typeRevue) {
-                const stats = await fetchAnomalyStats(item.typeRevue, item.endpoint);
-                return { ...item, anomalies: stats.anomalies, remaining: stats.remaining };
-              }
-              return item;
-            })
-          );
-          return { ...section, items };
-        })
-      );
+      // Lecture des stats extrait le payload utile (response.data.data, sinon response.data).
+      const safeGet = async (url) => {
+        try {
+          const resp = await axiosPrivate.get(url);
+          return resp?.data?.data || resp?.data || {};
+        } catch (error) {
+          console.error('[SyntheseAnomalies] Erreur lecture stats:', url, error);
+          return {};
+        }
+      };
+
+      // Construction des URLs de stats.
+      const controleAutoUrl = `/administration/revisionControleAuto/${id_compte}/${id_dossier}/${id_exercice}/stats${periodeQuery}`;
+      const doublonsUrl = `/administration/rechercheDoublon/${id_compte}/${id_dossier}/${id_exercice}/stats${periodeQuery}`;
+      const fournisseurClientUrl = `/administration/revisionFournisseurClient/${id_compte}/${id_dossier}/${id_exercice}/stats${periodeQuery}`;
+
+      const buildRevuUrl = (typeRevue) => {
+        let url = `/revuAnalytiqueStats/totals?id_compte=${id_compte}&id_dossier=${id_dossier}&id_exercice=${id_exercice}&type_revue=${typeRevue}`;
+        if (hasPeriode) url += `&id_periode=${selectedPeriodeId}`;
+        if (selectedPeriodeDates) url += `&date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
+        return url;
+      };
+
+      let suspenseUrl = `/administration/ecrituresSuspense/${id_compte}/${id_dossier}/${id_exercice}/stats`;
+      if (selectedPeriodeDates) {
+        suspenseUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
+      }
+
+      let equilibreUrl = `/administration/equilibreDebitCredit/${id_compte}/${id_dossier}/${id_exercice}/stats`;
+      if (selectedPeriodeDates) {
+        equilibreUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
+      }
+
+      // Un seul appel réseau par source, tous en parallèle.
+      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData, equilibreData] =
+        await Promise.all([
+          safeGet(controleAutoUrl),
+          safeGet(doublonsUrl),
+          safeGet(fournisseurClientUrl),
+          safeGet(buildRevuUrl('analytiqueNN1')),
+          safeGet(buildRevuUrl('analytiqueMensuelle')),
+          safeGet(suspenseUrl),
+          safeGet(equilibreUrl),
+        ]);
+
+      // Map des détails du contrôle auto, indexé par type (= codeCtrl).
+      const detailsByType = {};
+      const details = Array.isArray(controleAutoData.details) ? controleAutoData.details : [];
+      details.forEach((d) => {
+        if (d && d.type) detailsByType[d.type] = d;
+      });
+
+      // Résolution { anomalies, remaining } selon source.kind.
+      const resolveSource = (source) => {
+        switch (source?.kind) {
+          case 'doublons':
+            return {
+              anomalies: doublonsData.total_anomalies || doublonsData.nbGroupes || 0,
+              remaining: doublonsData.restantes || doublonsData.nonValide || 0,
+            };
+          case 'fournisseurClient':
+            return {
+              anomalies: fournisseurClientData.total_anomalies || fournisseurClientData.total || 0,
+              remaining: fournisseurClientData.restantes || fournisseurClientData.nonValide || 0,
+            };
+          case 'suspense':
+            return {
+              anomalies: suspenseData.total_anomalies || suspenseData.nbLignes || 0,
+              remaining: suspenseData.restantes || 0,
+            };
+          case 'equilibreDC':
+            return {
+              anomalies: equilibreData.total_anomalies || 0,
+              remaining: equilibreData.restantes || 0,
+            };
+          case 'revu': {
+            const d = source.typeRevue === 'analytiqueMensuelle' ? revuMensuelleData : revuNN1Data;
+            return { anomalies: d.total_anomalies || 0, remaining: d.restantes || 0 };
+          }
+          case 'controleAutoType': {
+            const d = detailsByType[source.codeCtrl];
+            return { anomalies: d?.total_groups || 0, remaining: d?.remaining_groups || 0 };
+          }
+          default:
+            return { anomalies: 0, remaining: 0 };
+        }
+      };
+
+      const mapItem = (item) => ({ ...item, ...resolveSource(item.source) });
+
+      const updatedSections = sectionsData.map((section) => {
+        if (section.groups) {
+          return {
+            ...section,
+            groups: section.groups.map((g) => ({ ...g, items: g.items.map(mapItem) })),
+          };
+        }
+        return { ...section, items: section.items.map(mapItem) };
+      });
 
       setSectionsData(updatedSections);
     } catch (error) {
@@ -655,17 +608,15 @@ export default function DashboardComponent() {
     };
   };
 
-  const allItems = sectionsData.flatMap(s => s.items);
+  // Totaux : chaque contrôle a désormais sa propre ligne (plus d'agrégat récap).
+  // Le filtre !recap reste un garde-fou au cas où un item récapitulatif serait réintroduit.
+  const allItems = flattenItems(sectionsData).filter((i) => !i.recap);
   const totalAnomalies = allItems.reduce((sum, i) => sum + (Number(i.anomalies) || 0), 0);
   const totalRemaining = allItems.reduce((sum, i) => sum + (Number(i.remaining) || 0), 0);
   const totalValidated = totalAnomalies - totalRemaining;
 
   const globalProgress =
     totalAnomalies === 0 ? 0 : Math.round((totalValidated / totalAnomalies) * 100);
-
-  // Tendances dynamiques basées sur les données réelles des sections
-  const trendAnomalies = sectionsData.flatMap(s => s.items).map(i => Number(i.anomalies) || 0);
-  const trendRemaining = sectionsData.flatMap(s => s.items).map(i => Number(i.remaining) || 0);
 
   // useEffect pour charger les statistiques quand exercice ou période change
   useEffect(() => {
@@ -675,15 +626,7 @@ export default function DashboardComponent() {
         loadAllStats();
       } else {
         // Pas de période sélectionnée : réinitialiser toutes les stats à zéro
-        const resetSections = SECTIONS_CONFIG.map(section => ({
-          ...section,
-          items: section.items.map(item => ({
-            ...item,
-            anomalies: 0,
-            remaining: 0
-          }))
-        }));
-        setSectionsData(resetSections);
+        setSectionsData(resetSectionsStats(SECTIONS_CONFIG));
       }
     }
   }, [selectedExerciceId, selectedPeriodeDates, selectedPeriodeId]);
@@ -691,7 +634,7 @@ export default function DashboardComponent() {
   // Listener pour rafraîchissement automatique après validation depuis un autre composant
   useEffect(() => {
     const handleAnomaliesUpdated = (event) => {
-      const { id_compte, id_dossier, id_exercice, id_periode } = event.detail || {};
+      const { id_compte, id_dossier, id_exercice } = event.detail || {};
       const currentIds = getIds();
 
       // Vérifier que l'event concerne bien le contexte actuel
@@ -747,74 +690,6 @@ export default function DashboardComponent() {
     };
   }, [selectedExerciceId, selectedPeriodeId, selectedPeriodeDates]);
 
-  const handleNavigateToDetails = (item) => {
-    if (!item.route) return;
-    // Cas spécial: Analyse globale => déclencher la révision tout de suite
-    if (item.id === 'analyseGlobale') {
-      (async () => {
-        if (!selectedExerciceId) return;
-
-        // Exiger une période spécifique
-        if (!selectedPeriodeId || selectedPeriodeId === 'exercice' || !selectedPeriodeDates) {
-          alert('Veuillez sélectionner une période avant de lancer la révision.');
-          return;
-        }
-
-        try {
-          const { id_compte, id_dossier, id_exercice } = getIds();
-          let executeUrl = `/administration/revisionControleAuto/${id_compte}/${id_dossier}/${id_exercice}/executeAll`;
-
-          const params = new URLSearchParams();
-          params.append('date_debut', selectedPeriodeDates.date_debut);
-          params.append('date_fin', selectedPeriodeDates.date_fin);
-          params.append('id_periode', selectedPeriodeId);
-          executeUrl += `?${params.toString()}`;
-
-          await axiosPrivate.post(executeUrl);
-        } catch (error) {
-          console.error('[SyntheseAnomalies] Erreur lors du lancement de la révision globale:', error);
-        }
-
-        const { id_compte, id_dossier, id_exercice } = getIds();
-        let url = `${window.location.origin}${item.route}/${id_dossier}/${id_exercice}`;
-        const navParams = new URLSearchParams();
-        navParams.append('date_debut', selectedPeriodeDates.date_debut);
-        navParams.append('date_fin', selectedPeriodeDates.date_fin);
-        if (selectedPeriodeId) {
-          navParams.append('id_periode', selectedPeriodeId);
-        }
-        url += `?${navParams.toString()}`;
-        window.open(url, '_blank');
-      })();
-      return;
-    }
-
-    const { id_compte, id_dossier, id_exercice } = getIds();
-    let url = `${window.location.origin}${item.route}/${id_compte}/${id_dossier}/${id_exercice}`;
-
-    // Ajouter les paramètres de date si une période est sélectionnée
-    if (selectedPeriodeDates) {
-      const params = new URLSearchParams();
-      params.append('date_debut', selectedPeriodeDates.date_debut);
-      params.append('date_fin', selectedPeriodeDates.date_fin);
-      if (selectedPeriodeId) {
-        params.append('id_periode', selectedPeriodeId);
-      }
-      url += `?${params.toString()}`;
-    } else if (selectedExerciceId) {
-      const exercice = listeExercice.find(e => e.id === selectedExerciceId);
-      if (exercice) {
-        const params = new URLSearchParams();
-        params.append('date_debut', exercice.date_debut);
-        params.append('date_fin', exercice.date_fin);
-        url += `?${params.toString()}`;
-      }
-    }
-
-
-    window.open(url, '_blank');
-  };
-
   // Indicateurs financiers : configuration alignée sur le PCG (eyebrow = classe de compte)
   const financialKpis = [
     { label: 'Résultat', code: '12', icon: <TrendingUpOutlined />, accent: T.accent, trend: margeBruteNGraph, n: resultatN, n1: resultatN1, variation: variationResultatN, evolution: evolutionResultatN },
@@ -826,6 +701,24 @@ export default function DashboardComponent() {
   ];
 
   const ecrituresEnAttente = Array.isArray(journalData) ? journalData.length : (Number(journalData?.length) || 0);
+
+  // Rendu d'une liste d'items en lignes de contrôle (avec filet entre chaque ligne).
+  const renderControlRows = (items) =>
+    (items || []).map((item, idx) => {
+      const anomalies = Number(item.anomalies) || 0;
+      const remaining = Number(item.remaining) || 0;
+      const progress = anomalies === 0 ? 0 : Math.round(((anomalies - remaining) / anomalies) * 100);
+      return (
+        <ControlRow
+          key={item.id || idx}
+          title={item.title}
+          anomalies={anomalies}
+          remaining={remaining}
+          progress={progress}
+          divider={idx < items.length - 1}
+        />
+      );
+    });
 
   return (
     <>
@@ -1002,14 +895,20 @@ export default function DashboardComponent() {
                 title="État des contrôles spécifiques"
                 action={
                   <Button
+                    variant="contained"
                     endIcon={<ArrowForwardOutlined />}
                     onClick={() => navigate('/controles/details')}
                     sx={{
                       textTransform: 'none',
-                      color: T.accent,
-                      fontWeight: 600,
+                      outline: 'none',
+                      bgcolor: T.accent,
+                      color: 'white',
+                      height: '34px',
+                      fontWeight: 700,
                       fontSize: '13px',
-                      '&:hover': { bgcolor: T.accW },
+                      borderRadius: '10px',
+                      boxShadow: 'none',
+                      '&:hover': { bgcolor: '#0a5d65', boxShadow: 'none' },
                     }}
                   >
                     Voir les détails
@@ -1017,22 +916,19 @@ export default function DashboardComponent() {
                 }
               />
               <Paper elevation={0} sx={panelSx}>
-                {sectionsData.flatMap((section) => section.items).map((item, index, arr) => {
-                  const anomalies = Number(item.anomalies) || 0;
-                  const remaining = Number(item.remaining) || 0;
-                  const progress = anomalies === 0 ? 0 : Math.round(((anomalies - remaining) / anomalies) * 100);
-                  return (
-                    <ControlRow
-                      key={index}
-                      title={item.title}
-                      anomalies={anomalies}
-                      remaining={remaining}
-                      progress={progress}
-                      divider={index < arr.length - 1}
-                    // onClick={() => handleNavigateToDetails(item)}
-                    />
-                  );
-                })}
+                {sectionsData.map((section, si) => (
+                  <Box key={section.id || si}>
+                    <GroupHead title={section.title} />
+                    {section.items && renderControlRows(section.items)}
+                    {section.groups &&
+                      section.groups.map((g, gi) => (
+                        <Box key={g.cycle || gi}>
+                          <CycleHead title={g.cycle} />
+                          {renderControlRows(g.items)}
+                        </Box>
+                      ))}
+                  </Box>
+                ))}
               </Paper>
             </Box>
           </Box>
@@ -1084,6 +980,33 @@ const SectionHead = ({ code, title, desc, action }) => (
         ))}
     </Box>
   </Stack>
+);
+
+// En-tête de groupe dans la liste des contrôles spécifiques
+const GroupHead = ({ title }) => (
+  <Box
+    sx={{
+      px: { xs: 2.5, md: 3 },
+      py: 0.5,
+      bgcolor: '#EAF4DE',
+      borderBottom: `1px solid ${T.line}`,
+    }}
+  >
+    <Typography
+      sx={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: '#435844' }}
+    >
+      {title}
+    </Typography>
+  </Box>
+);
+
+// Sous-titre de cycle (plus discret, légèrement en retrait)
+const CycleHead = ({ title }) => (
+  <Box sx={{ px: { xs: 2.5, md: 3 }, pl: { xs: 3.5, md: 4.5 }, pt: 0.5, pb: 0.15 }}>
+    <Typography sx={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.3px', color: T.faint }}>
+      {title}
+    </Typography>
+  </Box>
 );
 
 const DELTA_COLOR = { up: T.pos, down: T.neg, flat: T.muted };
@@ -1202,7 +1125,7 @@ const ControlRow = ({ title, anomalies, remaining, progress, divider, onClick })
       onClick={onClick}
       sx={{
         px: { xs: 2.5, md: 3 },
-        py: 1.75,
+        py: 0.4,
         borderBottom: divider ? `1px solid ${T.ledger}` : 'none',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'background .15s',
@@ -1271,4 +1194,3 @@ const Sparkline = ({ data = [], color = T.accent, height = 46 }) => {
     </Box>
   );
 };
-

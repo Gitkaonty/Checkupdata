@@ -1,9 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Export GLOBAL de tous les contrôles de la page « Détails des contrôles »
-// Produit UN SEUL classeur Excel (un onglet par contrôle) et UN SEUL PDF
-// (une section par contrôle). Réutilise les builders DRY exposés par chaque
-// contrôleur : getExportData / buildPdfSection / addExcelSheets.
-// ─────────────────────────────────────────────────────────────────────────────
 const db = require('../../Models');
 const PdfPrinter = require('pdfmake');
 const ExcelJS = require('exceljs');
@@ -63,10 +57,6 @@ const tryReadLogo = () => {
   return null;
 };
 
-// Préfixe tous les styles nommés d'une section pour éviter les collisions entre
-// contrôles qui définissent un même nom de style (ex. « cell », « tableHeader »)
-// avec des valeurs différentes. Clone en profondeur le content en réécrivant les
-// propriétés `style` (chaîne ou tableau) et renvoie les styles préfixés.
 const namespaceSection = (section, prefix) => {
   const remap = (node) => {
     if (Array.isArray(node)) return node.map(remap);
@@ -94,18 +84,14 @@ const namespaceSection = (section, prefix) => {
 
 // Ordre et libellés des sections (alignés sur le menu latéral de DetailsControles)
 const SECTION_TITLES = {
-  revueAnalytique: 'Revue Analytique N/N-1',
+  revueAnalytique: 'Contrôle Global Balance',
   revueMensuelle: 'Revue Mensuelle',
-  controleGlobal: 'Contrôle Global Balance',
+  controleGlobal: 'Revue Analytique N/N-1',
   analyseTiers: 'Analyse Fournisseurs / Clients',
   doublons: 'Recherche de Doublons',
   suspense: 'Écritures en suspens',
   analytique: 'Codes Analytiques',
 };
-
-// ── Synthèse des anomalies (1re page / 1er onglet) ──────────────────────────
-// `synthese` provient du client : { rows: [{ nom, anomalies, restantes, progress }],
-// totals: { anomalies, restantes, validated, progress } }. Identique au dashboard.
 
 const isValidSynthese = (s) => s && Array.isArray(s.rows) && s.totals;
 
@@ -118,8 +104,6 @@ const C = {
   kTotal: '#E2F0F1', kDone: '#E8F5EE', kLeft: '#FBECEA', kProg: '#EAF1FB',
 };
 
-// Styles globaux (chrome de l'export) — les sections de contrôle gardent leurs
-// propres styles préfixés via namespaceSection().
 const STYLES = {
   _hTitle: { fontSize: 19, bold: true, color: '#FFFFFF' },
   _hSubtitle: { fontSize: 9, color: '#CDE7E7' },
@@ -165,7 +149,6 @@ const buildSyntheseNodes = (synthese) => {
 
   return [
     { text: 'Synthèse des anomalies', style: '_synthTitle' },
-    // Cartes KPI colorées
     {
       table: {
         widths: ['*', '*', '*', '*'],
@@ -184,7 +167,6 @@ const buildSyntheseNodes = (synthese) => {
       },
       margin: [0, 0, 0, 14],
     },
-    // Tableau détaillé par contrôle
     {
       table: {
         headerRows: 1,
@@ -217,8 +199,6 @@ const buildSyntheseNodes = (synthese) => {
   ];
 };
 
-// Ajoute (en premier) l'onglet « Synthèse des anomalies » au classeur.
-// En-tête au style Kaonty (titre teal + dossier/période), cartes KPI et tableau.
 const addSyntheseSheet = (workbook, synthese, ctx = {}) => {
   const t = synthese.totals || {};
   const rows = synthese.rows || [];
@@ -230,7 +210,6 @@ const addSyntheseSheet = (workbook, synthese, ctx = {}) => {
   const thin = { style: 'thin', color: { argb: 'FFD9E2E5' } };
   const allBorders = { top: thin, left: thin, bottom: thin, right: thin };
 
-  // ── En-tête style Kaonty ──
   ws.mergeCells('A1:E1');
   const title = ws.getCell('A1');
   title.value = 'SYNTHÈSE DES ANOMALIES';
@@ -308,11 +287,6 @@ const addSyntheseSheet = (workbook, synthese, ctx = {}) => {
   return ws;
 };
 
-// Le style Kaonty (titres + en-têtes + bordures) est centralisé dans
-// Middlewares/kaontyExcelStyle et partagé avec les exports unitaires.
-
-// ── Export PDF global ──────────────────────────────────────────────────────────
-
 exports.exportGlobalPdf = async (req, res) => {
   try {
     const { id_compte, id_dossier, id_exercice } = req.params;
@@ -330,8 +304,6 @@ exports.exportGlobalPdf = async (req, res) => {
       ? `${formatDate(date_debut)} au ${formatDate(date_fin)}`
       : `${formatDate(exercice?.date_debut)} au ${formatDate(exercice?.date_fin)}`;
 
-    // Construit chaque section (préfixée) — une par contrôle. Un contrôle en
-    // échec n'interrompt pas l'export global.
     const mergedContent = [];
     const mergedStyles = { ...STYLES };
 

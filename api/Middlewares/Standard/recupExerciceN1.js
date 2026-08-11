@@ -50,7 +50,6 @@ const recupInfos = async (id_compte, id_dossier, id_exerciceN) => {
         return { id_exerciceN1 }
  
     } catch (error) {
-        console.log(error);
  
         return {
             id_exerciceN1: 0,

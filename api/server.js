@@ -32,7 +32,6 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 //synchronizing the database and forcing it to false so we dont lose data (ito no ampiasaina ra toa ka executena ny DROP TABLE am sequelize)
 //db.sequelize.sync({ force: true }).then(() => {
-//console.log("db has been re sync")
 //})
 
 // Static folder
@@ -40,7 +39,6 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 //synchronizing the database and forcing it to false so we dont lose data
 db.sequelize.sync().then(() => {
-    console.log("db has been re synchronized")
 })
 
 //----------------------------------------------------------------------------------------------------------------
@@ -146,6 +144,9 @@ app.use('/administration/rechercheDoublon', require('./Routes/Administration/rec
 // Routes pour les écritures en suspens
 app.use('/administration/ecrituresSuspense', require('./Routes/Administration/ecrituresSuspenseRoutes'));
 
+// Route pour le contrôle Équilibre débit = crédit (global + par écriture)
+app.use('/administration/equilibreDebitCredit', require('./Routes/Administration/equilibreDebitCreditRoutes'));
+
 // Routes pour la révision analytique
 app.use('/administration/revisionAnalytique', require('./Routes/Administration/revisionAnalytiqueRoute'));
 
@@ -170,5 +171,4 @@ app.get('/', function (req, res) {
 })
 
 app.listen(PORT, () => {
-    console.log(`listen on port ${PORT}`);
 });
