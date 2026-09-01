@@ -85,7 +85,7 @@ const SECTIONS_CONFIG = [
           { id: "sensEcriture", title: "Sens d'enregistrement des factures d'achats et de ventes", source: { kind: 'controleAutoType', codeCtrl: 'SENS_ECRITURE' }, anomalies: 0, remaining: 0 },
           { id: "fournisseurClient", title: "Analyse Fournisseurs / Clients", source: { kind: 'fournisseurClient' }, anomalies: 0, remaining: 0 },
           { id: "soldesInverses", title: "Fournisseur débiteur / Client créditeur (soldes inversés)", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
-          { id: "coherenceHtTva", title: "Cohérence HT / TVA / TTC sur les factures", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
+          { id: "coherenceHtTva", title: "Cohérence HT / TVA / TTC sur les factures", source: { kind: 'coherenceHtTva' }, anomalies: 0, remaining: 0 },
           { id: "balanceAgee", title: "Balance âgée : antériorité des tiers non lettrés", source: { kind: 'todo' }, pending: true, anomalies: 0, remaining: 0 },
         ],
       },
@@ -526,8 +526,13 @@ export default function DashboardComponent() {
         caisseUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
       }
 
+      let coherenceHtTvaUrl = `/administration/coherenceHtTva/${id_compte}/${id_dossier}/${id_exercice}/stats`;
+      if (selectedPeriodeDates) {
+        coherenceHtTvaUrl += `?date_debut=${selectedPeriodeDates.date_debut}&date_fin=${selectedPeriodeDates.date_fin}`;
+      }
+
       // Un seul appel réseau par source, tous en parallèle.
-      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData, equilibreData, caisseData] =
+      const [controleAutoData, doublonsData, fournisseurClientData, revuNN1Data, revuMensuelleData, suspenseData, equilibreData, caisseData, coherenceHtTvaData] =
         await Promise.all([
           safeGet(controleAutoUrl),
           safeGet(doublonsUrl),
@@ -537,6 +542,7 @@ export default function DashboardComponent() {
           safeGet(suspenseUrl),
           safeGet(equilibreUrl),
           safeGet(caisseUrl),
+          safeGet(coherenceHtTvaUrl),
         ]);
 
       // Map des détails du contrôle auto, indexé par type (= codeCtrl).
@@ -573,6 +579,11 @@ export default function DashboardComponent() {
             return {
               anomalies: caisseData.total_anomalies || 0,
               remaining: caisseData.restantes || 0,
+            };
+          case 'coherenceHtTva':
+            return {
+              anomalies: coherenceHtTvaData.total_anomalies || 0,
+              remaining: coherenceHtTvaData.restantes || 0,
             };
           case 'revu': {
             const d = source.typeRevue === 'analytiqueMensuelle' ? revuMensuelleData : revuNN1Data;
