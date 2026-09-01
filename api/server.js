@@ -150,6 +150,9 @@ app.use('/administration/equilibreDebitCredit', require('./Routes/Administration
 // Route pour le contrôle Caisse créditrice (comptes 53x, solde cumulé négatif)
 app.use('/administration/caisseCreditrice', require('./Routes/Administration/caisseCreditriceRoutes'));
 
+// Route pour le contrôle Cohérence HT / TVA / TTC
+app.use('/administration/coherenceHtTva', require('./Routes/Administration/coherenceHtTvaRoutes'));
+
 // Routes pour la révision analytique
 app.use('/administration/revisionAnalytique', require('./Routes/Administration/revisionAnalytiqueRoute'));
 

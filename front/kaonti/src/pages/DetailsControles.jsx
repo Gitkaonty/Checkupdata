@@ -15,7 +15,7 @@ import {
   FactCheckOutlined, NavigateNext,
   TrendingUpOutlined, RuleOutlined, AccountBalanceWalletOutlined,
   DomainOutlined, SwapVertOutlined, ReceiptLongOutlined,
-  PendingOutlined, ConstructionOutlined, BalanceOutlined, PointOfSaleOutlined
+  PendingOutlined, ConstructionOutlined, BalanceOutlined, PointOfSaleOutlined, RequestQuoteOutlined
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
@@ -31,6 +31,7 @@ import EcrituresSuspense from './listecontroles/EcrituresSuspense';
 import ControleAnalytique from './listecontroles/controleAnalytique';
 import EquilibreDebitCredit from './listecontroles/EquilibreDebitCredit';
 import CaisseCreditrice from './listecontroles/CaisseCreditrice';
+import CoherenceHtTva from './listecontroles/CoherenceHtTva';
 import ExercicePeriodeSelector from './ExercicePeriodeSelector';
 
 // ─── Système de design (aligné sur ExportBalance / le tableau de bord) ───
@@ -114,7 +115,7 @@ const CONTROL_GROUPS = [
           { id: 'sensEcriture', label: "Sens d'enregistrement des factures d'achats et de ventes", icon: <SwapVertOutlined sx={{ fontSize: 20 }} />, revisionType: 'SENS_ECRITURE' },
           { id: 'tiers', label: 'Analyse Fournisseurs / Clients', icon: <PeopleAltOutlined sx={{ fontSize: 20 }} /> },
           { id: 'soldesInverses', label: 'Fournisseur débiteur / Client créditeur (soldes inversés)', icon: PH, placeholder: true },
-          { id: 'coherenceHtTva', label: 'Cohérence HT / TVA / TTC sur les factures', icon: PH, placeholder: true },
+          { id: 'coherenceHtTva', label: 'Cohérence HT / TVA / TTC sur les factures', icon: <RequestQuoteOutlined sx={{ fontSize: 20 }} /> },
           { id: 'balanceAgee', label: 'Balance âgée : antériorité des tiers non lettrés', icon: PH, placeholder: true },
         ],
       },
@@ -516,6 +517,12 @@ const DetailsControles = () => {
             )}
             {activeControl === 'caisseCreditrice' && (
               <CaisseCreditrice
+                id_exercice={selectedExerciceId}
+                id_periode={selectedPeriodeId}
+              />
+            )}
+            {activeControl === 'coherenceHtTva' && (
+              <CoherenceHtTva
                 id_exercice={selectedExerciceId}
                 id_periode={selectedPeriodeId}
               />
